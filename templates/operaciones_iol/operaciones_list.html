@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Operaciones{% endblock %}
+
+{% block content %}
+<h1>Operaciones</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Número</th>
+            <th>Fecha Orden</th>
+            <th>Tipo</th>
+            <th>Símbolo</th>
+            <th>Cantidad</th>
+            <th>Precio</th>
+            <th>Monto</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for operacion in operaciones %}
+        <tr>
+            <td>{{ operacion.numero }}</td>
+            <td>{{ operacion.fecha_orden|date:"d/m/Y H:i" }}</td>
+            <td>{{ operacion.tipo }}</td>
+            <td>{{ operacion.simbolo }}</td>
+            <td>{{ operacion.cantidad|floatformat:2 }}</td>
+            <td>${{ operacion.precio|floatformat:2 }}</td>
+            <td>${{ operacion.monto|floatformat:2 }}</td>
+            <td><span class="badge bg-{% if operacion.estado == 'ejecutada' %}success{% elif operacion.estado == 'pendiente' %}warning{% else %}secondary{% endif %}">{{ operacion.estado }}</span></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" class="text-center">No hay operaciones disponibles.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+<nav aria-label="Paginación">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

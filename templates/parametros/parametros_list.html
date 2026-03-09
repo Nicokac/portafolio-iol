@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Parámetros de Activos{% endblock %}
+
+{% block content %}
+<h1>Parámetros de Activos</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Símbolo</th>
+            <th>Sector</th>
+            <th>Bloque Estratégico</th>
+            <th>País Exposición</th>
+            <th>Tipo Patrimonial</th>
+            <th>Observaciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for parametro in parametros %}
+        <tr>
+            <td>{{ parametro.simbolo }}</td>
+            <td>{{ parametro.sector }}</td>
+            <td>{{ parametro.bloque_estrategico }}</td>
+            <td>{{ parametro.pais_exposicion }}</td>
+            <td>{{ parametro.tipo_patrimonial }}</td>
+            <td>{{ parametro.observaciones }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center">No hay parámetros definidos.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+<nav aria-label="Paginación">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

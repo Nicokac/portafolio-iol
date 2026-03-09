@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Portafolio{% endblock %}
+
+{% block content %}
+<h1>Portafolio de Activos</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Símbolo</th>
+            <th>Descripción</th>
+            <th>Cantidad</th>
+            <th>Último Precio</th>
+            <th>Valorizado</th>
+            <th>Ganancia %</th>
+            <th>País</th>
+            <th>Tipo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for activo in activos %}
+        <tr>
+            <td>{{ activo.simbolo }}</td>
+            <td>{{ activo.descripcion }}</td>
+            <td>{{ activo.cantidad|floatformat:2 }}</td>
+            <td>${{ activo.ultimo_precio|floatformat:2 }}</td>
+            <td>${{ activo.valorizado|floatformat:2 }}</td>
+            <td class="{% if activo.ganancia_porcentaje > 0 %}text-success{% elif activo.ganancia_porcentaje < 0 %}text-danger{% endif %}">
+                {{ activo.ganancia_porcentaje|floatformat:2 }}%
+            </td>
+            <td>{{ activo.pais_titulo }}</td>
+            <td>{{ activo.tipo }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" class="text-center">No hay datos de portafolio disponibles.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+<nav aria-label="Paginación">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

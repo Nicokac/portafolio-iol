@@ -1,0 +1,1237 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - Portafolio IOL{% endblock %}
+
+{% block content %}
+<h1>Dashboard del Portafolio</h1>
+
+<div class="alert alert-info mb-4">
+    <strong>Bases de Cálculo:</strong>
+    <ul class="mb-0 mt-2">
+        <li><strong>Total IOL:</strong> Activos invertidos + Cash disponible</li>
+        <li><strong>Total Invertido:</strong> Solo activos del portafolio (excluye cash)</li>
+        <li><strong>Métricas de composición:</strong> Porcentajes calculados sobre Total Invertido</li>
+        <li><strong>Liquidez:</strong> Porcentaje calculado sobre Total IOL</li>
+    </ul>
+</div>
+
+<!-- Bloque superior de KPIs Principales -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted">Total IOL</h6>
+                <h4 class="card-text text-primary">${{ kpis.total_iol|floatformat:0 }}</h4>
+                <small class="text-muted">Activos + Cash</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted">Top 10 Concentración</h6>
+                <h4 class="card-text text-danger">{{ kpis.top_10_concentracion|floatformat:1 }}%</h4>
+                <small class="text-muted">Base: Total Invertido</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted">Rendimiento Total</h6>
+                <h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|floatformat:2 }}%</h4>
+                <small class="text-muted">Total IOL</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title text-muted">Proxy de Volatilidad</h6>
+                <h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|floatformat:1 }}%</h4>
+                <small class="text-muted">Base: Total Invertido</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs por Categoría -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">Liquidez Operativa</h6>
+                <small>Activos + Cash disponibles</small>
+            </div>
+            <div class="card-body text-center">
+                <h4 class="card-text text-success">${{ kpis.liquidez_operativa|floatformat:0 }}</h4>
+                <small class="text-muted">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}% del total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">FCI / Cash Management</h6>
+                <small>FCIs + Caución + Cash</small>
+            </div>
+            <div class="card-body text-center">
+                <h4 class="card-text text-info">${{ kpis.fci_cash_management|floatformat:0 }}</h4>
+                <small class="text-muted">{{ kpis.pct_fci_cash_management|floatformat:1 }}% del total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Portafolio Invertido</h6>
+                <small>Activos de inversión</small>
+            </div>
+            <div class="card-body text-center">
+                <h4 class="card-text text-primary">${{ kpis.portafolio_invertido|floatformat:0 }}</h4>
+                <small class="text-muted">{{ kpis.pct_portafolio_invertido|floatformat:1 }}% del total</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <h3>Distribución por Sector</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="sectorChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h3>Exposición Geográfica Real</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="paisChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h3>Distribución por Tipo Patrimonial</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="tipoChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas de Riesgo Detalladas -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h3>Riesgo del Portafolio</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido (excluye cash)</small>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><strong>% USA</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>% Argentina</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>% Tech</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>% Bonos Soberanos</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_bonos_soberanos|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>% Defensivo</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_defensivo|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>% Growth</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_growth|floatformat:1 }}%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>% Liquidez</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}%</td>
+                            <td><small class="text-muted">Base: Total IOL</small></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h3>Analytics Mensual</h3>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><strong>Compras del Mes</strong></td>
+                            <td class="text-end text-success">${{ analytics_mensual.compras_mes|floatformat:0 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ventas del Mes</strong></td>
+                            <td class="text-end text-danger">${{ analytics_mensual.ventas_mes|floatformat:0 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Aporte Mensual Ejecutado</strong></td>
+                            <td class="text-end {% if analytics_mensual.aporte_mensual_ejecutado >= 0 %}text-success{% else %}text-danger{% endif %}">${{ analytics_mensual.aporte_mensual_ejecutado|floatformat:0 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Aporte Pendiente</strong></td>
+                            <td class="text-end text-warning">${{ analytics_mensual.aporte_pendiente|floatformat:0 }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos de Distribución -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h3>Exposición Geográfica Real</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="paisChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h3>Exposición por Moneda Económica</h3>
+        <small class="text-muted mb-3 d-block">Exposición real del activo (ej: CEDEARs = USD)</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="monedaChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h3>Exposición por Moneda Operativa</h3>
+        <small class="text-muted mb-3 d-block">Moneda de cotización (ej: CEDEARs = ARS)</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="monedaOperativaChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h3>Distribución por Tipo Patrimonial</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <div style="height: 300px; position: relative;">
+            <canvas id="tipoChart" style="max-height: 100%;"></canvas>
+        </div>
+    </div>
+</div>
+                            <td>{{ sector }}</td>
+                            <td class="text-end {% if porcentaje > 25 %}text-danger{% elif porcentaje > 15 %}text-warning{% else %}text-success{% endif %}">{{ porcentaje|floatformat:1 }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h3>Concentración por País</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tbody>
+                        {% for pais, porcentaje in concentracion_pais.items|slice:":8" %}
+                        <tr>
+                            <td>{{ pais }}</td>
+                            <td class="text-end {% if porcentaje > 50 %}text-danger{% elif porcentaje > 30 %}text-warning{% else %}text-success{% endif %}">{{ porcentaje|floatformat:1 }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Señales de Rebalanceo -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h3>Señales de Rebalanceo</h3>
+        <div class="row">
+            <!-- A. Rebalanceo Patrimonial -->
+            <div class="col-md-3">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">Rebalanceo Patrimonial</h6>
+                        <small>Liquidez vs Invertido</small>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-primary mb-2">Sobreponderado</h6>
+                        {% for item in senales_rebalanceo.patrimonial_sobreponderado %}
+                        <div class="mb-2">
+                            <strong>{{ item.sector }}</strong><br>
+                            <small class="text-danger">{{ item.porcentaje|floatformat:1 }}% (obj: {{ item.objetivo|floatformat:1 }}%)</small>
+                            <br><small class="text-muted">+{{ item.diferencia|floatformat:1 }}% sobre objetivo</small>
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.patrimonial_sobreponderado %}
+                        <small class="text-muted">Ninguno</small>
+                        {% endif %}
+
+                        <hr class="my-2">
+
+                        <h6 class="text-info mb-2">Subponderado</h6>
+                        {% for item in senales_rebalanceo.patrimonial_subponderado %}
+                        <div class="mb-2">
+                            <strong>{{ item.sector }}</strong><br>
+                            <small class="text-info">{{ item.porcentaje|floatformat:1 }}% (obj: {{ item.objetivo|floatformat:1 }}%)</small>
+                            <br><small class="text-muted">-{{ item.diferencia|floatformat:1 }}% bajo objetivo</small>
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.patrimonial_subponderado %}
+                        <small class="text-muted">Ninguno</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- B. Rebalanceo Sectorial -->
+            <div class="col-md-3">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">Rebalanceo Sectorial</h6>
+                        <small>Sectores económicos</small>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-success mb-2">Sobreponderado</h6>
+                        {% for item in senales_rebalanceo.sectorial_sobreponderado %}
+                        <div class="mb-2">
+                            <strong>{{ item.sector }}</strong><br>
+                            {% if item.objetivo %}
+                            <small class="text-info">{{ item.porcentaje|floatformat:1 }}% (obj: {{ item.objetivo|floatformat:1 }}%)</small>
+                            <br><small class="text-muted">-{{ item.diferencia|floatformat:1 }}% bajo objetivo</small>
+                            {% else %}
+                            <small class="text-info">{{ item.porcentaje|floatformat:1 }}% (mín: 2.0%)</small>
+                            <br><small class="text-muted">-{{ item.diferencia|floatformat:1 }}% bajo mínimo</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.sectorial_sobreponderado %}
+                        <small class="text-muted">Ninguno</small>
+                        {% endif %}
+
+                        <hr class="my-2">
+
+                        <h6 class="text-info mb-2">Subponderado</h6>
+                        {% for item in senales_rebalanceo.sectorial_subponderado %}
+                        <div class="mb-2">
+                            <strong>{{ item.sector }}</strong><br>
+                            <small class="text-info">{{ item.porcentaje|floatformat:1 }}% (obj: {{ item.objetivo|floatformat:1 }}%)</small>
+                            <br><small class="text-muted">+{{ item.diferencia|floatformat:1 }}% sobre objetivo</small>
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.sectorial_subponderado %}
+                        <small class="text-muted">Ninguno</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activos sin Metadata -->
+            <div class="col-md-3">
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h6 class="mb-0">Activos sin Metadata</h6>
+                    </div>
+                    <div class="card-body">
+                        {% for activo in senales_rebalanceo.activos_sin_metadata %}
+                        <div class="mb-2">
+                            <strong>{{ activo.simbolo }}</strong><br>
+                            <small class="text-muted">${{ activo.valorizado|floatformat:0 }}</small>
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.activos_sin_metadata %}
+                        <small class="text-success">✅ Todos tienen metadata completa</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Posiciones de Alto Peso -->
+            <div class="col-md-3">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-white">
+                        <h6 class="mb-0">Posiciones de Alto Peso</h6>
+                    </div>
+                    <div class="card-body">
+                        {% for posicion in senales_rebalanceo.posiciones_mayor_peso %}
+                        <div class="mb-2">
+                            <strong>{{ posicion.simbolo }}</strong><br>
+                            <small class="text-primary">{{ posicion.peso|floatformat:1 }}%</small>
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.posiciones_mayor_peso %}
+                        <small class="text-muted">Ninguna posición >10%</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+                        {% if not senales_rebalanceo.activos_sin_metadata %}
+                        <small class="text-success">✅ Todos tienen metadata completa</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">Posiciones de Alto Peso</h6>
+                    </div>
+                    <div class="card-body">
+                        {% for posicion in senales_rebalanceo.posiciones_mayor_peso %}
+                        <div class="mb-2">
+                            <strong>{{ posicion.simbolo }}</strong><br>
+                            <small class="text-primary">{{ posicion.peso|floatformat:1 }}%</small>
+                        </div>
+                        {% endfor %}
+                        {% if not senales_rebalanceo.posiciones_mayor_peso %}
+                        <small class="text-muted">Ninguna posición >10%</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Evolución Histórica -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h3>Evolución Histórica (Últimos 30 días)</h3>
+        <div class="card">
+            <div class="card-body">
+                {% if evolucion_historica.tiene_datos %}
+                <canvas id="evolucionChart" style="height: 300px;"></canvas>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="text-muted">
+                        <i class="fas fa-chart-line fa-3x mb-3"></i>
+                        <h5>{{ evolucion_historica.mensaje }}</h5>
+                        <p class="mb-0">Los datos históricos se mostrarán automáticamente cuando haya suficientes snapshots del portafolio.</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mt-5">Liquidez Operativa</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Símbolo</th>
+                <th>Descripción</th>
+                <th class="text-end">Valorizado</th>
+                <th class="text-end">Variación/Tasa</th>
+                <th class="text-end">Ganancia $</th>
+                <th class="text-end">Peso %</th>
+                <th>Moneda</th>
+                <th class="text-end">Disponible Inmediato</th>
+                <th>Tipo</th>
+                <th>Sector</th>
+                <th>Bloque Estratégico</th>
+                <th>País Exposición</th>
+                <th>Tipo Patrimonial</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in portafolio.liquidez %}
+            {% if item.tipo_traducido == 'Caución' %}
+            <!-- Representación especial para caución -->
+            <tr class="table-warning">
+                <td><strong>{{ item.activo.simbolo }}</strong></td>
+                <td><strong>{{ item.activo.descripcion }}</strong></td>
+                <td class="text-end"><strong>${{ item.activo.valorizado|floatformat:2 }}</strong></td>
+                <td class="text-end"><strong>{{ item.activo.variacion_diaria|floatformat:2 }}% <small>(tasa)</small></strong></td>
+                <td class="text-end"><strong>${{ item.activo.ganancia_dinero|floatformat:2 }}</strong></td>
+                <td class="text-end"><strong>{{ item.peso_porcentual|floatformat:1 }}%</strong></td>
+                <td><span class="badge bg-warning">{{ item.moneda_traducida }}</span></td>
+                <td class="text-end"><strong>N/A</strong></td>
+                <td><span class="badge bg-warning">{{ item.tipo_traducido }}</span></td>
+                <td>{{ item.sector }}</td>
+                <td>{{ item.bloque_estrategico }}</td>
+                <td>{{ item.pais_exposicion }}</td>
+                <td>{{ item.tipo_patrimonial }}</td>
+            </tr>
+            {% else %}
+            <!-- Representación normal para otros activos de liquidez -->
+            <tr>
+                <td>{{ item.activo.simbolo }}</td>
+                <td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td>
+                <td class="text-end">${{ item.activo.valorizado|floatformat:2 }}</td>
+                <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">${{ item.activo.ganancia_dinero|floatformat:2 }}</td>
+                <td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td>
+                <td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td>
+                <td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td>
+                <td><span class="badge bg-info">{{ item.tipo_traducido }}</span></td>
+                <td>{{ item.sector }}</td>
+                <td>{{ item.bloque_estrategico }}</td>
+                <td>{{ item.pais_exposicion }}</td>
+                <td>{{ item.tipo_patrimonial }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2 class="mt-5">FCI / Cash Management</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Símbolo</th>
+                <th>Descripción</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Último Precio</th>
+                <th class="text-end">Valorizado</th>
+                <th class="text-end">Variación Diaria</th>
+                <th class="text-end">PPC</th>
+                <th class="text-end">Ganancia $</th>
+                <th class="text-end">Peso %</th>
+                <th>Moneda</th>
+                <th class="text-end">Disponible Inmediato</th>
+                <th>Sector</th>
+                <th>Bloque Estratégico</th>
+                <th>País Exposición</th>
+                <th>Tipo Patrimonial</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in portafolio.fci_cash_management %}
+            <tr>
+                <td>{{ item.activo.simbolo }}</td>
+                <td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td>
+                <td class="text-end">{{ item.activo.cantidad|floatformat:2 }}</td>
+                <td class="text-end">${{ item.activo.ultimo_precio|floatformat:2 }}</td>
+                <td class="text-end">${{ item.activo.valorizado|floatformat:2 }}</td>
+                <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td>
+                <td class="text-end">${{ item.activo.ppc|floatformat:2 }}</td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">${{ item.activo.ganancia_dinero|floatformat:2 }}</td>
+                <td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td>
+                <td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td>
+                <td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td>
+                <td>{{ item.sector }}</td>
+                <td>{{ item.bloque_estrategico }}</td>
+                <td>{{ item.pais_exposicion }}</td>
+                <td>{{ item.tipo_patrimonial }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2 class="mt-5">Top 5 Posiciones</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Símbolo</th>
+                <th>Descripción</th>
+                <th class="text-end">Valorizado</th>
+                <th class="text-end">Variación Diaria</th>
+                <th class="text-end">Ganancia $</th>
+                <th class="text-end">Peso %</th>
+                <th>Sector</th>
+                <th>Tipo Patrimonial</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in portafolio.inversion|slice:":5" %}
+            <tr>
+                <td><strong>{{ forloop.counter }}</strong></td>
+                <td><strong>{{ item.activo.simbolo }}</strong></td>
+                <td title="{{ item.activo.descripcion }}"><strong>{{ item.activo.descripcion|truncatechars:40 }}</strong></td>
+                <td class="text-end"><strong>${{ item.activo.valorizado|floatformat:0 }}</strong></td>
+                <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>{{ item.activo.variacion_diaria|floatformat:2 }}%</strong></td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>${{ item.activo.ganancia_dinero|floatformat:0 }}</strong></td>
+                <td class="text-end"><strong>{{ item.peso_porcentual|floatformat:1 }}%</strong></td>
+                <td><span class="badge bg-primary">{{ item.sector }}</span></td>
+                <td><span class="badge bg-info">{{ item.tipo_patrimonial }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2 class="mt-5">Portafolio Invertido Completo</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Símbolo</th>
+                <th>Descripción</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Último Precio</th>
+                <th class="text-end">Valorizado</th>
+                <th class="text-end">Variación Diaria</th>
+                <th class="text-end">PPC</th>
+                <th class="text-end">Ganancia $</th>
+                <th class="text-end">Peso %</th>
+                <th>Moneda</th>
+                <th class="text-end">Disponible Inmediato</th>
+                <th>Tipo</th>
+                <th>Sector</th>
+                <th>Bloque Estratégico</th>
+                <th>País Exposición</th>
+                <th>Tipo Patrimonial</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in portafolio.inversion %}
+            <tr>
+                <td>{{ item.activo.simbolo }}</td>
+                <td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td>
+                <td class="text-end">{{ item.activo.cantidad|floatformat:2 }}</td>
+                <td class="text-end">${{ item.activo.ultimo_precio|floatformat:2 }}</td>
+                <td class="text-end">${{ item.activo.valorizado|floatformat:2 }}</td>
+                <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td>
+                <td class="text-end">${{ item.activo.ppc|floatformat:2 }}</td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">${{ item.activo.ganancia_dinero|floatformat:2 }}</td>
+                <td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td>
+                <td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td>
+                <td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td>
+                <td><span class="badge bg-info">{{ item.tipo_traducido }}</span></td>
+                <td>{{ item.sector }}</td>
+                <td>{{ item.bloque_estrategico }}</td>
+                <td>{{ item.pais_exposicion }}</td>
+                <td>{{ item.tipo_patrimonial }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% block extra_js %}
+<script>
+const sectorData = {{ distribucion_sector|safe }};
+const paisData = {{ distribucion_pais|safe }};
+const tipoData = {{ distribucion_tipo|safe }};
+const monedaData = {{ distribucion_moneda|safe }};
+const monedaOperativaData = {{ distribucion_moneda_operativa|safe }};
+const evolucionData = {{ evolucion_historica|safe }};
+
+// Función helper para crear charts con validación de datos
+function createPieChart(canvasId, data, title) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+
+    // Verificar si hay datos
+    if (!data || Object.keys(data).length === 0) {
+        // Mostrar mensaje de no datos
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sin datos suficientes para graficar', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(data),
+            datasets: [{
+                data: Object.values(data),
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Función para crear chart de evolución histórica con validación
+function createEvolutionChart() {
+    const canvas = document.getElementById('evolucionChart');
+    if (!canvas) return; // Si no existe el canvas, salir
+
+    const ctx = canvas.getContext('2d');
+
+    // Verificar si hay datos suficientes
+    const hasData = evolucionData.tiene_datos && evolucionData.fechas && evolucionData.fechas.length > 0 &&
+                   ((evolucionData.total_iol && evolucionData.total_iol.length > 0) ||
+                    (evolucionData.liquidez_operativa && evolucionData.liquidez_operativa.length > 0) ||
+                    (evolucionData.portafolio_invertido && evolucionData.portafolio_invertido.length > 0) ||
+                    (evolucionData.cash_management && evolucionData.cash_management.length > 0));
+
+    if (!hasData) {
+        // Mostrar mensaje de no datos
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Sin datos históricos suficientes para graficar', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: evolucionData.fechas,
+            datasets: [{
+                label: 'Total IOL',
+                data: evolucionData.total_iol,
+                borderColor: '#FF6384',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                tension: 0.1,
+                hidden: !evolucionData.total_iol || evolucionData.total_iol.length === 0
+            }, {
+                label: 'Liquidez Operativa',
+                data: evolucionData.liquidez_operativa,
+                borderColor: '#36A2EB',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.1,
+                hidden: !evolucionData.liquidez_operativa || evolucionData.liquidez_operativa.length === 0
+            }, {
+                label: 'Portafolio Invertido',
+                data: evolucionData.portafolio_invertido,
+                borderColor: '#FFCE56',
+                backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                tension: 0.1,
+                hidden: !evolucionData.portafolio_invertido || evolucionData.portafolio_invertido.length === 0
+            }, {
+                label: 'Cash Management',
+                data: evolucionData.cash_management,
+                borderColor: '#4BC0C0',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1,
+                hidden: !evolucionData.cash_management || evolucionData.cash_management.length === 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Evolución del Portafolio (Últimos 30 días)'
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Fecha'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Valor ($)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+createPieChart('sectorChart', sectorData, 'Distribución por Sector');
+createPieChart('paisChart', paisData, 'Exposición Geográfica Real');
+createPieChart('tipoChart', tipoData, 'Distribución por Tipo Patrimonial');
+createPieChart('monedaChart', monedaData, 'Exposición por Moneda Económica');
+createPieChart('monedaOperativaChart', monedaOperativaData, 'Exposición por Moneda Operativa');
+createEvolutionChart();
+
+// P4 - Funcionalidades de Estrategia de Inversión
+loadRecommendations();
+loadPortfolioParameters();
+
+// Cargar recomendaciones al inicio
+function loadRecommendations() {
+    fetch('/api/recommendations/all/')
+        .then(response => response.json())
+        .then(data => {
+            displayRecommendations(data);
+        })
+        .catch(error => {
+            console.error('Error loading recommendations:', error);
+            document.getElementById('recommendations-container').innerHTML =
+                '<div class="alert alert-warning">Error al cargar recomendaciones</div>';
+        });
+}
+
+function displayRecommendations(recommendations) {
+    const container = document.getElementById('recommendations-container');
+
+    if (!recommendations || recommendations.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">No hay recomendaciones disponibles</div>';
+        return;
+    }
+
+    let html = '<div class="list-group">';
+    recommendations.forEach(rec => {
+        const priorityClass = rec.prioridad === 'alta' ? 'danger' :
+                             rec.prioridad === 'media' ? 'warning' : 'info';
+
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">
+                        <span class="badge bg-${priorityClass} me-2">${rec.prioridad.toUpperCase()}</span>
+                        ${rec.titulo}
+                    </h6>
+                </div>
+                <p class="mb-2">${rec.descripcion}</p>
+                ${rec.activos_sugeridos ? `
+                    <small class="text-muted">
+                        Activos sugeridos: ${rec.activos_sugeridos.join(', ')}
+                    </small>
+                ` : ''}
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+// Simulador de compra
+document.getElementById('simulation-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const activo = document.getElementById('simulation-activo').value;
+    const capital = document.getElementById('simulation-capital').value;
+
+    fetch('/api/simulation/purchase/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            activo: activo,
+            capital: parseFloat(capital)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        displaySimulationResult(data);
+    })
+    .catch(error => {
+        console.error('Error in simulation:', error);
+        alert('Error en la simulación');
+    });
+});
+
+function displaySimulationResult(result) {
+    const container = document.getElementById('simulation-result');
+    const details = document.getElementById('simulation-details');
+
+    if (result.error) {
+        details.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+    } else {
+        details.innerHTML = `
+            <div class="row">
+                <div class="col-6">
+                    <strong>Capital invertido:</strong> $${result.capital_invertido.toLocaleString()}
+                </div>
+                <div class="col-6">
+                    <strong>Cantidad comprada:</strong> ${result.cantidad_comprada.toFixed(2)}
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-6">
+                    <strong>Nuevo peso:</strong> ${result.nuevo_peso_activo.toFixed(2)}%
+                </div>
+                <div class="col-6">
+                    <strong>Riesgo estimado:</strong> ${result.riesgo_estimado}
+                </div>
+            </div>
+        `;
+    }
+
+    container.style.display = 'block';
+}
+
+// Plan de inversión mensual
+document.getElementById('monthly-plan-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const amount = document.getElementById('monthly-amount').value;
+    const riskProfile = document.getElementById('risk-profile').value;
+
+    fetch('/api/monthly-plan/custom/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            monthly_amount: parseFloat(amount),
+            risk_profile: riskProfile,
+            investment_horizon: 'medio'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayMonthlyPlan(data);
+    })
+    .catch(error => {
+        console.error('Error generating monthly plan:', error);
+        alert('Error al generar plan mensual');
+    });
+});
+
+function displayMonthlyPlan(plan) {
+    const container = document.getElementById('monthly-plan-result');
+    const details = document.getElementById('monthly-plan-details');
+
+    if (plan.error) {
+        details.innerHTML = `<div class="alert alert-danger">${plan.error}</div>`;
+    } else {
+        let html = '<div class="table-responsive"><table class="table table-sm">';
+        html += '<thead><tr><th>Activo</th><th>Porcentaje</th><th>Monto</th></tr></thead><tbody>';
+
+        Object.entries(plan.distribucion).forEach(([activo, data]) => {
+            html += `
+                <tr>
+                    <td>${activo}</td>
+                    <td>${data.porcentaje}%</td>
+                    <td>$${data.monto.toLocaleString()}</td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        details.innerHTML = html;
+    }
+
+    container.style.display = 'block';
+}
+
+// Optimización de portafolio
+function runOptimization(method) {
+    let url, data;
+
+    switch(method) {
+        case 'risk_parity':
+            url = '/api/optimizer/risk-parity/';
+            data = { activos: ['SPY', 'EEM', 'QQQ', 'GGAL'] };
+            break;
+        case 'markowitz':
+            url = '/api/optimizer/markowitz/';
+            data = { activos: ['SPY', 'EEM', 'QQQ'], target_return: 0.08 };
+            break;
+        case 'target':
+            url = '/api/optimizer/target-allocation/';
+            data = { target_allocations: { liquidez: 20, usa: 40, argentina: 30, emerging: 10 } };
+            break;
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayOptimizationResult(data);
+    })
+    .catch(error => {
+        console.error('Error in optimization:', error);
+        alert('Error en la optimización');
+    });
+}
+
+function displayOptimizationResult(result) {
+    const container = document.getElementById('optimization-result');
+    const details = document.getElementById('optimization-details');
+
+    if (result.error) {
+        details.innerHTML = `<div class="alert alert-danger">${result.error}</div>`;
+    } else {
+        let html = `<div class="alert alert-success">Método: ${result.metodo}</div>`;
+        html += '<div class="table-responsive"><table class="table table-sm">';
+        html += '<thead><tr><th>Activo</th><th>Peso Óptimo</th></tr></thead><tbody>';
+
+        Object.entries(result.pesos_optimos).forEach(([activo, peso]) => {
+            html += `<tr><td>${activo}</td><td>${peso.toFixed(1)}%</td></tr>`;
+        });
+
+        html += '</tbody></table></div>';
+
+        if (result.sharpe_ratio) {
+            html += `<div class="mt-2"><strong>Sharpe Ratio:</strong> ${result.sharpe_ratio.toFixed(2)}</div>`;
+        }
+
+        details.innerHTML = html;
+    }
+
+    container.style.display = 'block';
+}
+
+// Gestión de parámetros del portafolio
+function loadPortfolioParameters() {
+    fetch('/api/portfolio/parameters/')
+        .then(response => response.json())
+        .then(data => {
+            if (!data.error) {
+                document.getElementById('liquidez-target').value = data.liquidez_target;
+                document.getElementById('usa-target').value = data.usa_target;
+                document.getElementById('argentina-target').value = data.argentina_target;
+                document.getElementById('emerging-target').value = data.emerging_target;
+            }
+        })
+        .catch(error => console.error('Error loading portfolio parameters:', error));
+}
+
+document.getElementById('portfolio-params-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const data = {
+        liquidez_target: parseFloat(document.getElementById('liquidez-target').value),
+        usa_target: parseFloat(document.getElementById('usa-target').value),
+        argentina_target: parseFloat(document.getElementById('argentina-target').value),
+        emerging_target: parseFloat(document.getElementById('emerging-target').value)
+    };
+
+    fetch('/api/portfolio/parameters/update/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        const status = document.getElementById('params-save-status');
+        if (data.message) {
+            status.innerHTML = '<span class="text-success">✓ Parámetros guardados</span>';
+            setTimeout(() => status.innerHTML = '', 3000);
+        } else {
+            status.innerHTML = '<span class="text-danger">✗ Error al guardar</span>';
+        }
+    })
+    .catch(error => {
+        console.error('Error saving parameters:', error);
+        document.getElementById('params-save-status').innerHTML =
+            '<span class="text-danger">✗ Error de conexión</span>';
+    });
+});
+
+// Función auxiliar para obtener CSRF token
+function getCsrfToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    return token ? token.value : '';
+}
+
+{% endblock %}
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-brain"></i> Estrategia de Inversión (P4)
+            <small class="text-muted">Motor de decisiones inteligente</small>
+        </h2>
+    </div>
+</div>
+
+<!-- Recomendaciones Activas -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb"></i> Recomendaciones de Inversión
+                </h5>
+                <small>Análisis automático basado en tu portafolio actual</small>
+            </div>
+            <div class="card-body">
+                <div id="recommendations-container">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando recomendaciones...</span>
+                        </div>
+                        <p class="mt-2">Cargando recomendaciones...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-calculator"></i> Simulador Rápido
+                </h5>
+                <small>Prueba cambios hipotéticos</small>
+            </div>
+            <div class="card-body">
+                <form id="simulation-form">
+                    <div class="mb-3">
+                        <label for="simulation-activo" class="form-label">Activo</label>
+                        <select class="form-select" id="simulation-activo" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="SPY">SPY (S&P 500)</option>
+                            <option value="EEM">EEM (Mercados Emergentes)</option>
+                            <option value="QQQ">QQQ (Nasdaq)</option>
+                            <option value="GGAL">GGAL (Banco Galicia)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="simulation-capital" class="form-label">Capital a Invertir ($)</label>
+                        <input type="number" class="form-control" id="simulation-capital"
+                               placeholder="100000" min="1000" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-play"></i> Simular Compra
+                    </button>
+                </form>
+                <div id="simulation-result" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6>Resultado de Simulación:</h6>
+                    <div id="simulation-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plan de Inversión Mensual -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt"></i> Plan de Aportes Mensuales
+                </h5>
+                <small>Distribución automática de nuevos capitales</small>
+            </div>
+            <div class="card-body">
+                <form id="monthly-plan-form">
+                    <div class="mb-3">
+                        <label for="monthly-amount" class="form-label">Aporte Mensual ($)</label>
+                        <input type="number" class="form-control" id="monthly-amount"
+                               placeholder="500000" min="10000" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="risk-profile" class="form-label">Perfil de Riesgo</label>
+                        <select class="form-select" id="risk-profile" required>
+                            <option value="conservador">Conservador</option>
+                            <option value="moderado" selected>Moderado</option>
+                            <option value="agresivo">Agresivo</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100">
+                        <i class="fas fa-magic"></i> Generar Plan
+                    </button>
+                </form>
+                <div id="monthly-plan-result" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6>Distribución Sugerida:</h6>
+                    <div id="monthly-plan-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i> Optimización de Portafolio
+                </h5>
+                <small>Asignaciones óptimas por diferentes métodos</small>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-warning" onclick="runOptimization('risk_parity')">
+                        <i class="fas fa-balance-scale"></i> Risk Parity
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="runOptimization('markowitz')">
+                        <i class="fas fa-chart-area"></i> Markowitz
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="runOptimization('target')">
+                        <i class="fas fa-bullseye"></i> Asignación Objetivo
+                    </button>
+                </div>
+                <div id="optimization-result" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6>Resultado de Optimización:</h6>
+                    <div id="optimization-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Parámetros del Portafolio -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs"></i> Parámetros de Estrategia
+                </h5>
+                <small>Configuración editable de pesos objetivo</small>
+            </div>
+            <div class="card-body">
+                <form id="portfolio-params-form">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="liquidez-target" class="form-label">Liquidez Objetivo (%)</label>
+                            <input type="number" class="form-control" id="liquidez-target"
+                                   min="0" max="100" step="0.1" value="20">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="usa-target" class="form-label">USA Objetivo (%)</label>
+                            <input type="number" class="form-control" id="usa-target"
+                                   min="0" max="100" step="0.1" value="40">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="argentina-target" class="form-label">Argentina Objetivo (%)</label>
+                            <input type="number" class="form-control" id="argentina-target"
+                                   min="0" max="100" step="0.1" value="30">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="emerging-target" class="form-label">Emerging Objetivo (%)</label>
+                            <input type="number" class="form-control" id="emerging-target"
+                                   min="0" max="100" step="0.1" value="10">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="fas fa-save"></i> Guardar Parámetros
+                        </button>
+                        <span id="params-save-status" class="ms-2"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% endblock %}
