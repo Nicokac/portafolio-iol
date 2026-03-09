@@ -282,33 +282,6 @@ def get_distribucion_moneda_operativa() -> Dict[str, float]:
     return distribucion
 
 
-def get_concentracion_sector() -> Dict[str, float]:
-    """Obtiene la concentración por sector (incluyendo liquidez como sector)."""
-    distribucion = get_distribucion_sector()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
-
-
-def get_concentracion_pais() -> Dict[str, float]:
-    """Obtiene la concentración por país."""
-    distribucion = get_distribucion_pais()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {pais: (valor / total * 100) for pais, valor in distribucion.items()}
-
-
-def get_concentracion_tipo_patrimonial() -> Dict[str, float]:
-    """Obtiene la concentración por tipo patrimonial."""
-    distribucion = get_distribucion_tipo_patrimonial()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {tipo: (valor / total * 100) for tipo, valor in distribucion.items()}
-
-
 def get_concentracion_patrimonial() -> Dict[str, float]:
     """Obtiene la concentración por bloque patrimonial (Liquidez, Cash Management, Invertido)."""
     kpis = get_dashboard_kpis()
@@ -420,72 +393,6 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     pct_defensivo = (exposicion_defensivo / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_growth = (exposicion_growth / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_liquidez = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
-
-    return {
-        'pct_usa': pct_usa,
-        'pct_argentina': pct_argentina,
-        'pct_tech': pct_tech,
-        'pct_bonos_soberanos': pct_bonos_soberanos,
-        'pct_defensivo': pct_defensivo,
-        'pct_growth': pct_growth,
-        'pct_liquidez': pct_liquidez,
-    }
-    """Calcula métricas de riesgo del portafolio."""
-    portafolio = get_latest_portafolio_data()
-    resumen = get_latest_resumen_data()
-    portafolio_clasificado = get_portafolio_enriquecido_actual()
-
-    total_portafolio = sum(activo.valorizado for activo in portafolio)
-    total_iol = total_portafolio + sum(cuenta.disponible for cuenta in resumen)
-
-    # Exposición USA
-    exposicion_usa = 0
-    for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            exposicion_usa += activo.valorizado
-    exposicion_usa_pct = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
-
-    # Exposición Argentina
-    exposicion_argentina = 0
-    for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
-        if parametro and parametro.pais_exposicion == 'Argentina':
-            exposicion_argentina += activo.valorizado
-    exposicion_argentina_pct = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
-
-    # Liquidez total
-    liquidez_total = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'])
-    liquidez_total += sum(cuenta.disponible for cuenta in resumen)
-    liquidez_pct = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
-
-    # Proxy de volatilidad (simplificado - basado en tipos de activo, no cálculo real de volatilidad histórica)
-    # Por ahora, estimación básica basada en tipos de activo
-    volatilidad_ponderada = 0
-    for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
-        pct_portafolio = float(activo.valorizado) / float(total_portafolio)
-        
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            # Activos USA tienen mayor volatilidad (tech, equities)
-            volatilidad_activo = 0.28  # 28% volatilidad anual estimada
-        elif parametro and parametro.tipo_patrimonial == 'Hard Assets':
-            volatilidad_activo = 0.22  # 22% para commodities
-        elif parametro and parametro.pais_exposicion == 'Argentina':
-            # Activos argentinos tienen volatilidad por riesgo país
-            if parametro.tipo_patrimonial in ['Bond', 'FCI']:
-                volatilidad_activo = 0.25  # 25% para bonos/FCI argentinos
-            elif parametro.tipo_patrimonial == 'Cash':
-                volatilidad_activo = 0.03  # 3% para cash argentino
-            else:
-                volatilidad_activo = 0.35  # 35% para equities argentinos
-        else:
-            # Otros mercados emergentes o sin clasificación específica
-            volatilidad_activo = 0.20  # 20% para resto
-        
-        volatilidad_ponderada += pct_portafolio * volatilidad_activo
-
-    volatilidad_pct = volatilidad_ponderada * 100  # Convertir a porcentaje
 
     return {
         'pct_usa': pct_usa,
