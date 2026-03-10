@@ -31,7 +31,8 @@ class PortfolioSimulator:
         logger.info(f"Simulating purchase of {activo_symbol} with capital {capital}")
 
         try:
-            # Obtener información del activo
+            capital = Decimal(str(capital))
+            # Obtener informaciÃ³n del activo
             activo = Activo.objects.filter(simbolo=activo_symbol).first()
             if not activo:
                 return {'error': f'Activo {activo_symbol} no encontrado'}

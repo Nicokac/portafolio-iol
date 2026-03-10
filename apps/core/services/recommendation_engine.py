@@ -8,7 +8,7 @@ from apps.dashboard.selectors import (
     get_distribucion_pais,
     get_concentracion_patrimonial
 )
-from apps.portafolio_iol.models import Activo
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot as Activo
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from decimal import Decimal
 
 from apps.dashboard.selectors import get_dashboard_kpis
-from apps.portafolio_iol.models import Activo
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot as Activo
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,8 @@ class MonthlyInvestmentPlanner:
         logger.info(f"Planning monthly investment of {monthly_amount}")
 
         try:
-            # Usar asignación personalizada o por defecto
+            monthly_amount = Decimal(str(monthly_amount))
+            # Usar asignaciÃ³n personalizada o por defecto
             allocation = custom_allocation or self.default_allocation
 
             # Validar que la asignación sume 100%

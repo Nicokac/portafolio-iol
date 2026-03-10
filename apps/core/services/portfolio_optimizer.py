@@ -194,10 +194,10 @@ class PortfolioOptimizer:
 
     def _estimate_return(self, activo: Activo) -> float:
         """Estima retorno esperado del activo."""
-        # Lógica simplificada
-        if activo.sector and activo.sector.nombre == 'Liquidez':
+        tipo_activo = getattr(activo, 'tipo', '').lower()
+        if 'liquidez' in tipo_activo or 'cash' in tipo_activo:
             return 0.035  # 3.5% para liquidez
-        elif activo.pais and activo.pais.nombre == 'Argentina':
+        elif activo.pais_titulo and 'argentina' in activo.pais_titulo.lower():
             return 0.15  # 15% para activos argentinos (alto riesgo/alto retorno)
         elif 'SPY' in activo.simbolo:
             return 0.08  # 8% para S&P 500
