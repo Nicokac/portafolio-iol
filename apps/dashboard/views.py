@@ -1,7 +1,8 @@
+import json
+from decimal import Decimal
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render
 from django.views.generic import TemplateView
-
 from apps.dashboard.selectors import (
     get_analytics_mensual,
     get_concentracion_pais,
@@ -28,17 +29,20 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['kpis'] = get_dashboard_kpis()
         context['portafolio'] = get_portafolio_enriquecido_actual()
-        context['distribucion_sector'] = get_distribucion_sector()
-        context['distribucion_pais'] = get_distribucion_pais()
-        context['distribucion_tipo'] = get_distribucion_tipo_patrimonial()
-        context['distribucion_moneda'] = get_distribucion_moneda()
-        context['distribucion_moneda_operativa'] = get_distribucion_moneda_operativa()
+        def to_json(data):
+            return json.dumps(data, default=lambda o: float(o) if isinstance(o, Decimal) else str(o))
+
+        context['distribucion_sector'] = to_json(get_distribucion_sector())
+        context['distribucion_pais'] = to_json(get_distribucion_pais())
+        context['distribucion_tipo'] = to_json(get_distribucion_tipo_patrimonial())
+        context['distribucion_moneda'] = to_json(get_distribucion_moneda())
+        context['distribucion_moneda_operativa'] = to_json(get_distribucion_moneda_operativa())
         context['riesgo_portafolio'] = get_riesgo_portafolio()
         context['riesgo_portafolio_detallado'] = get_riesgo_portafolio_detallado()
         context['concentracion_sector'] = get_concentracion_sector()
         context['concentracion_pais'] = get_concentracion_pais()
         context['concentracion_tipo'] = get_concentracion_tipo_patrimonial()
         context['analytics_mensual'] = get_analytics_mensual()
-        context['evolucion_historica'] = get_evolucion_historica()
+        context['evolucion_historica'] = to_json(get_evolucion_historica())
         context['senales_rebalanceo'] = get_senales_rebalanceo()
         return context
