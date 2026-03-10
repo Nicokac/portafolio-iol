@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.core.models import PortfolioParameters
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.core.services.portfolio_simulator import PortfolioSimulator
 from apps.core.services.portfolio_optimizer import PortfolioOptimizer
 from apps.core.services.recommendation_engine import RecommendationEngine
@@ -12,10 +13,9 @@ from apps.core.services.monthly_investment_planner import MonthlyInvestmentPlann
 
 class P4ServicesTestCase(TestCase):
     """Tests para servicios de P4."""
-
     def setUp(self):
-        """Configuración inicial para tests."""
-        # Crear parámetros de portafolio de prueba
+        """ConfiguraciÃ³n inicial para tests."""
+        from django.utils import timezone
         self.portfolio_params = PortfolioParameters.objects.create(
             name="Test Parameters",
             liquidez_target=20.00,
@@ -23,6 +23,28 @@ class P4ServicesTestCase(TestCase):
             argentina_target=30.00,
             emerging_target=10.00
         )
+        fecha = timezone.now()
+        for simbolo in ['SPY', 'EEM', 'GGAL']:
+            ActivoPortafolioSnapshot.objects.create(
+                fecha_extraccion=fecha,
+                pais_consulta='argentina',
+                simbolo=simbolo,
+                descripcion=simbolo,
+                cantidad='10',
+                comprometido='0',
+                disponible_inmediato='10',
+                puntos_variacion='0',
+                variacion_diaria='0',
+                ultimo_precio='100',
+                ppc='90',
+                ganancia_porcentaje='10',
+                ganancia_dinero='100',
+                valorizado='1000',
+                pais_titulo='USA',
+                mercado='BCBA',
+                tipo='CEDEARS',
+                moneda='ARS',
+            )
 
     def test_portfolio_simulator_purchase(self):
         """Test simulación de compra."""
@@ -110,6 +132,33 @@ class P4ServicesTestCase(TestCase):
 
 class P4APITestCase(TestCase):
     """Tests para API de P4."""
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from django.utils import timezone
+        self.user = User.objects.create_user(username='p4testuser', password='testpass123')
+        self.client.force_login(self.user)
+        fecha = timezone.now()
+        for simbolo in ['SPY', 'EEM', 'GGAL']:
+            ActivoPortafolioSnapshot.objects.create(
+                fecha_extraccion=fecha,
+                pais_consulta='argentina',
+                simbolo=simbolo,
+                descripcion=simbolo,
+                cantidad='10',
+                comprometido='0',
+                disponible_inmediato='10',
+                puntos_variacion='0',
+                variacion_diaria='0',
+                ultimo_precio='100',
+                ppc='90',
+                ganancia_porcentaje='10',
+                ganancia_dinero='100',
+                valorizado='1000',
+                pais_titulo='USA',
+                mercado='BCBA',
+                tipo='CEDEARS',
+                moneda='ARS',
+            )
 
     def test_simulation_purchase_api(self):
         """Test API de simulación de compra."""
@@ -126,13 +175,13 @@ class P4APITestCase(TestCase):
         self.assertIn('nuevo_peso_activo', result)
 
     def test_optimizer_risk_parity_api(self):
-        """Test API de optimización Risk Parity."""
+        """Test API de optimizaciÃ³n Risk Parity."""
+        import json
         url = reverse('optimizer-risk-parity')
         data = {
             'activos': ['SPY', 'EEM', 'GGAL']
         }
-
-        response = self.client.post(url, data, format='json')
+        response = self.client.post(url, json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
 
         result = response.json()
