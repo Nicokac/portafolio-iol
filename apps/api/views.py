@@ -205,8 +205,8 @@ def historical_portfolio_evolution(request):
         snapshots = PortfolioSnapshot.objects.filter(
             fecha__range=(start_date, end_date)
         ).order_by('fecha').values(
-            'fecha', 'total_iol', 'total_portafolio',
-            'rendimiento_diario', 'liquidez_operativa'
+            'fecha', 'total_iol', 'portafolio_invertido',
+            'rendimiento_total', 'liquidez_operativa'
         )
 
         data = list(snapshots)
@@ -236,14 +236,14 @@ def historical_portfolio_summary(request):
             'latest_snapshot': {
                 'fecha': latest.fecha,
                 'total_iol': latest.total_iol,
-                'total_portafolio': latest.total_portafolio,
-                'rendimiento_diario': latest.rendimiento_diario,
+                'portafolio_invertido': latest.portafolio_invertido,
+                'rendimiento_total': latest.rendimiento_total,
                 'liquidez_operativa': latest.liquidez_operativa,
             },
             'monthly_stats': {
                 'count': monthly_snapshots.count(),
                 'avg_performance': monthly_snapshots.aggregate(
-                    avg=Avg('rendimiento_diario')
+                    avg=Avg('rendimiento_total')
                 )['avg'] or 0,
             }
         }

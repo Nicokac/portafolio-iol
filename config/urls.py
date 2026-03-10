@@ -26,4 +26,5 @@ urlpatterns = [
     path('parametros/', include('apps.parametros.urls')),
     path('users/', include('apps.users.urls')),
     path('api/', include('apps.api.urls')),
+    path('', include('apps.core.urls')),
 ]

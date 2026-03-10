@@ -17,7 +17,7 @@ def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
         return []
     return ActivoPortafolioSnapshot.objects.filter(
         fecha_extraccion=latest_date
-    ).select_related()
+    )
 
 
 def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
@@ -183,39 +183,39 @@ def get_dashboard_kpis() -> Dict:
 def get_distribucion_sector() -> Dict[str, float]:
     """Obtiene la distribución por sector."""
     portafolio = get_latest_portafolio_data()
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
     distribucion = {}
-
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         sector = parametro.sector if parametro else 'Sin clasificar'
         distribucion[sector] = distribucion.get(sector, 0) + float(activo.valorizado)
-
     return distribucion
 
 
 def get_distribucion_pais() -> Dict[str, float]:
     """Obtiene la distribución por país de exposición real."""
     portafolio = get_latest_portafolio_data()
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
     distribucion = {}
-
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         pais = parametro.pais_exposicion if parametro else 'Sin clasificar'
         distribucion[pais] = distribucion.get(pais, 0) + float(activo.valorizado)
-
     return distribucion
 
 
 def get_distribucion_tipo_patrimonial() -> Dict[str, float]:
     """Obtiene la distribución por tipo patrimonial."""
     portafolio = get_latest_portafolio_data()
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
     distribucion = {}
-
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         tipo = parametro.tipo_patrimonial if parametro else 'Sin clasificar'
         distribucion[tipo] = distribucion.get(tipo, 0) + float(activo.valorizado)
-
     return distribucion
 
 
@@ -223,11 +223,12 @@ def get_distribucion_moneda() -> Dict[str, float]:
     """Obtiene la distribución por moneda de exposición real/económica."""
     portafolio = get_latest_portafolio_data()
     resumen = get_latest_resumen_data()
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
     distribucion = {}
-
     # Agregar activos del portafolio
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
 
         # Moneda económica/subyacente (exposición real)
         if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
@@ -280,33 +281,6 @@ def get_distribucion_moneda_operativa() -> Dict[str, float]:
             distribucion['USD'] = distribucion.get('USD', 0) + float(cuenta.disponible)
 
     return distribucion
-
-
-def get_concentracion_sector() -> Dict[str, float]:
-    """Obtiene la concentración por sector (incluyendo liquidez como sector)."""
-    distribucion = get_distribucion_sector()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
-
-
-def get_concentracion_pais() -> Dict[str, float]:
-    """Obtiene la concentración por país."""
-    distribucion = get_distribucion_pais()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {pais: (valor / total * 100) for pais, valor in distribucion.items()}
-
-
-def get_concentracion_tipo_patrimonial() -> Dict[str, float]:
-    """Obtiene la concentración por tipo patrimonial."""
-    distribucion = get_distribucion_tipo_patrimonial()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {tipo: (valor / total * 100) for tipo, valor in distribucion.items()}
 
 
 def get_concentracion_patrimonial() -> Dict[str, float]:
@@ -380,11 +354,14 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     total_portafolio = sum(activo.valorizado for activo in portafolio)
     total_iol = total_portafolio + sum(cuenta.disponible for cuenta in resumen)
 
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
+
     # Exposición geográfica
     exposicion_usa = 0
     exposicion_argentina = 0
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
             exposicion_usa += activo.valorizado
         elif parametro and parametro.pais_exposicion == 'Argentina':
@@ -397,7 +374,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     exposicion_growth = 0
 
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         if parametro:
             if parametro.sector == 'Tecnología':
                 exposicion_tech += activo.valorizado
@@ -430,72 +407,6 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
         'pct_growth': pct_growth,
         'pct_liquidez': pct_liquidez,
     }
-    """Calcula métricas de riesgo del portafolio."""
-    portafolio = get_latest_portafolio_data()
-    resumen = get_latest_resumen_data()
-    portafolio_clasificado = get_portafolio_enriquecido_actual()
-
-    total_portafolio = sum(activo.valorizado for activo in portafolio)
-    total_iol = total_portafolio + sum(cuenta.disponible for cuenta in resumen)
-
-    # Exposición USA
-    exposicion_usa = 0
-    for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            exposicion_usa += activo.valorizado
-    exposicion_usa_pct = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
-
-    # Exposición Argentina
-    exposicion_argentina = 0
-    for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
-        if parametro and parametro.pais_exposicion == 'Argentina':
-            exposicion_argentina += activo.valorizado
-    exposicion_argentina_pct = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
-
-    # Liquidez total
-    liquidez_total = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'])
-    liquidez_total += sum(cuenta.disponible for cuenta in resumen)
-    liquidez_pct = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
-
-    # Proxy de volatilidad (simplificado - basado en tipos de activo, no cálculo real de volatilidad histórica)
-    # Por ahora, estimación básica basada en tipos de activo
-    volatilidad_ponderada = 0
-    for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
-        pct_portafolio = float(activo.valorizado) / float(total_portafolio)
-        
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            # Activos USA tienen mayor volatilidad (tech, equities)
-            volatilidad_activo = 0.28  # 28% volatilidad anual estimada
-        elif parametro and parametro.tipo_patrimonial == 'Hard Assets':
-            volatilidad_activo = 0.22  # 22% para commodities
-        elif parametro and parametro.pais_exposicion == 'Argentina':
-            # Activos argentinos tienen volatilidad por riesgo país
-            if parametro.tipo_patrimonial in ['Bond', 'FCI']:
-                volatilidad_activo = 0.25  # 25% para bonos/FCI argentinos
-            elif parametro.tipo_patrimonial == 'Cash':
-                volatilidad_activo = 0.03  # 3% para cash argentino
-            else:
-                volatilidad_activo = 0.35  # 35% para equities argentinos
-        else:
-            # Otros mercados emergentes o sin clasificación específica
-            volatilidad_activo = 0.20  # 20% para resto
-        
-        volatilidad_ponderada += pct_portafolio * volatilidad_activo
-
-    volatilidad_pct = volatilidad_ponderada * 100  # Convertir a porcentaje
-
-    return {
-        'pct_usa': pct_usa,
-        'pct_argentina': pct_argentina,
-        'pct_tech': pct_tech,
-        'pct_bonos_soberanos': pct_bonos_soberanos,
-        'pct_defensivo': pct_defensivo,
-        'pct_growth': pct_growth,
-        'pct_liquidez': pct_liquidez,
-    }
 
 
 def get_riesgo_portafolio() -> Dict[str, float]:
@@ -507,10 +418,13 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     total_portafolio = sum(activo.valorizado for activo in portafolio)
     total_iol = total_portafolio + sum(cuenta.disponible for cuenta in resumen)
 
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
+
     # Exposición USA
     exposicion_usa = 0
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
             exposicion_usa += activo.valorizado
     exposicion_usa_pct = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
@@ -518,7 +432,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     # Exposición Argentina
     exposicion_argentina = 0
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         if parametro and parametro.pais_exposicion == 'Argentina':
             exposicion_argentina += activo.valorizado
     exposicion_argentina_pct = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
@@ -532,7 +446,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     # Por ahora, estimación básica basada en tipos de activo
     volatilidad_ponderada = 0
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         pct_portafolio = float(activo.valorizado) / float(total_portafolio)
         
         if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
@@ -909,9 +823,11 @@ def get_senales_rebalanceo() -> Dict[str, list]:
 
     # Activos sin metadata (mantener igual)
     portafolio = get_latest_portafolio_data()
+    simbolos = [activo.simbolo for activo in portafolio]
+    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
     activos_sin_metadata = []
     for activo in portafolio:
-        parametro = ParametroActivo.objects.filter(simbolo=activo.simbolo).first()
+        parametro = parametros.get(activo.simbolo)
         if not parametro or not all([
             parametro.sector != 'N/A',
             parametro.bloque_estrategico != 'N/A',
