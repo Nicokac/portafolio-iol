@@ -163,36 +163,45 @@ def comprehensive_portfolio_update():
     """
     Tarea compuesta: Ejecutar actualización completa del portafolio.
     Incluye sync, snapshot, alertas, métricas y rebalanceo.
+    Llama a las subtareas de forma asíncrona para no bloquear workers.
     """
     logger.info("Starting comprehensive portfolio update")
 
-    results = {}
-
     # 1. Sincronizar datos
-    results['sync'] = sync_portfolio_data()
+    sync_result = sync_portfolio_data.delay()
 
     # 2. Generar snapshot si es hora (6 AM)
     now = timezone.now()
+    snapshot_result = None
     if now.hour == 6:
-        results['snapshot'] = generate_daily_snapshot()
+        snapshot_result = generate_daily_snapshot.delay()
 
     # 3. Generar alertas
-    results['alerts'] = generate_alerts()
+    alerts_result = generate_alerts.delay()
 
     # 4. Calcular métricas
-    results['metrics'] = calculate_temporal_metrics()
+    metrics_result = calculate_temporal_metrics.delay()
 
     # 5. Generar sugerencias de rebalanceo
-    results['rebalance'] = generate_rebalance_suggestions()
+    rebalance_result = generate_rebalance_suggestions.delay()
 
-    success_count = sum(1 for r in results.values() if r.get('success', False))
-    total_count = len(results)
-
-    result = {
-        'success': success_count == total_count,
-        'message': f'Comprehensive update: {success_count}/{total_count} tasks successful',
-        'results': results
+    # Devolver IDs de las tareas lanzadas para seguimiento
+    task_ids = {
+        'sync': sync_result.id,
+        'alerts': alerts_result.id,
+        'metrics': metrics_result.id,
+        'rebalance': rebalance_result.id
     }
 
-    logger.info(f"Comprehensive portfolio update completed: {result['message']}")
+    if snapshot_result:
+        task_ids['snapshot'] = snapshot_result.id
+
+    result = {
+        'success': True,
+        'message': f'Launched {len(task_ids)} asynchronous tasks',
+        'task_ids': task_ids,
+        'snapshot_launched': snapshot_result is not None
+    }
+
+    logger.info(f"Comprehensive portfolio update launched: {result['message']}")
     return result

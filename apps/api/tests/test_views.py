@@ -115,6 +115,34 @@ class TestAPIErrorHandling:
             assert 'error' in response.json()
 
 @pytest.mark.django_db
+class TestAPIInputValidation:
+    """Verifica que los endpoints validan correctamente los parámetros de entrada."""
+
+    def test_metrics_returns_invalid_days(self, auth_client):
+        url = reverse('metrics-returns') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_metrics_volatility_invalid_days(self, auth_client):
+        url = reverse('metrics-volatility') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_metrics_performance_invalid_days(self, auth_client):
+        url = reverse('metrics-performance') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_metrics_historical_comparison_invalid_periods(self, auth_client):
+        url = reverse('metrics-historical-comparison') + '?periods=7,invalid,90'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+@pytest.mark.django_db
 class TestAPIPostEndpointsHappyPath:
     """Cubre path feliz de POST endpoints con mocks."""
 
@@ -161,3 +189,32 @@ class TestAPIPostEndpointsHappyPath:
         url = reverse('portfolio-parameters-update')
         response = auth_client.post(url, {}, format='json')
         assert response.status_code in [200, 400, 500]
+
+    def test_portfolio_parameters_update_invalid_allocation(self, auth_client):
+        """Verifica que no se permita guardar asignaciones que no sumen 100%."""
+        url = reverse('portfolio-parameters-update')
+        # Asignación que suma más de 100%
+        invalid_data = {
+            'liquidez_target': 30,
+            'usa_target': 40,
+            'argentina_target': 40,
+            'emerging_target': 20
+        }
+        response = auth_client.post(url, invalid_data, format='json')
+        assert response.status_code == 400
+        assert 'error' in response.json()
+        assert '100%' in response.json()['error']
+
+    def test_portfolio_parameters_update_valid_allocation(self, auth_client):
+        """Verifica que se permita guardar asignaciones válidas."""
+        url = reverse('portfolio-parameters-update')
+        # Asignación que suma exactamente 100%
+        valid_data = {
+            'liquidez_target': 20,
+            'usa_target': 40,
+            'argentina_target': 30,
+            'emerging_target': 10
+        }
+        response = auth_client.post(url, valid_data, format='json')
+        assert response.status_code == 200
+        assert 'message' in response.json()

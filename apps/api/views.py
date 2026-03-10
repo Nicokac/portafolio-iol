@@ -139,7 +139,14 @@ def rebalance_opportunity_actions(request):
 @api_view(['GET'])
 def metrics_returns(request):
     """Obtiene retornos del portafolio."""
-    days = int(request.query_params.get('days', 30))
+    try:
+        days = int(request.query_params.get('days', 30))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro days debe ser un número entero válido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
     try:
         service = TemporalMetricsService()
         returns = service.get_portfolio_returns(days)
@@ -153,7 +160,14 @@ def metrics_returns(request):
 @api_view(['GET'])
 def metrics_volatility(request):
     """Obtiene volatilidad del portafolio."""
-    days = int(request.query_params.get('days', 30))
+    try:
+        days = int(request.query_params.get('days', 30))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro days debe ser un número entero válido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
     try:
         service = TemporalMetricsService()
         volatility = service.get_portfolio_volatility(days)
@@ -167,7 +181,14 @@ def metrics_volatility(request):
 @api_view(['GET'])
 def metrics_performance(request):
     """Obtiene métricas de performance completas."""
-    days = int(request.query_params.get('days', 90))
+    try:
+        days = int(request.query_params.get('days', 90))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro days debe ser un número entero válido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
     try:
         service = TemporalMetricsService()
         metrics = service.get_performance_metrics(days)
@@ -182,7 +203,14 @@ def metrics_performance(request):
 def metrics_historical_comparison(request):
     """Obtiene comparación histórica de performance."""
     periods = request.query_params.get('periods', '7,30,90,180')
-    periods = [int(p) for p in periods.split(',')]
+    try:
+        periods = [int(p) for p in periods.split(',')]
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro periods debe contener números enteros válidos separados por comas'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
     try:
         service = TemporalMetricsService()
         comparison = service.get_historical_comparison(periods)
@@ -197,7 +225,14 @@ def metrics_historical_comparison(request):
 @api_view(['GET'])
 def historical_portfolio_evolution(request):
     """Obtiene evolución histórica del portafolio."""
-    days = int(request.query_params.get('days', 90))
+    try:
+        days = int(request.query_params.get('days', 90))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro days debe ser un número entero válido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
     end_date = timezone.now()
     start_date = end_date - timedelta(days=days)
 
@@ -546,6 +581,16 @@ def portfolio_parameters_update(request):
         params.max_single_position = Decimal(str(request.data.get('max_single_position', params.max_single_position)))
         params.risk_free_rate = Decimal(str(request.data.get('risk_free_rate', params.risk_free_rate)))
         params.rebalance_threshold = Decimal(str(request.data.get('rebalance_threshold', params.rebalance_threshold)))
+
+        # Validar que la asignación sume 100%
+        if not params.is_valid_allocation():
+            return Response(
+                {
+                    'error': f'La asignación objetivo debe sumar 100%. Actualmente suma {params.total_target_allocation}%.',
+                    'total_allocation': float(params.total_target_allocation)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         params.save()
 
