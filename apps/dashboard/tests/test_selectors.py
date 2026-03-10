@@ -14,12 +14,58 @@ from apps.dashboard.selectors import (
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
+    get_portafolio_enriquecido_actual,
     get_riesgo_portafolio,
+    get_riesgo_portafolio_detallado,
     get_senales_rebalanceo,
 )
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
+
+
+def make_activo(fecha, simbolo, valorizado, tipo='ACCIONES', moneda='ARS', **kwargs):
+    """Factory helper para crear ActivoPortafolioSnapshot en tests."""
+    defaults = dict(
+        fecha_extraccion=fecha,
+        pais_consulta='argentina',
+        simbolo=simbolo,
+        descripcion=f'Descripcion {simbolo}',
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=valorizado,
+        ppc=valorizado,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=valorizado,
+        pais_titulo='Argentina',
+        mercado='BCBA',
+        tipo=tipo,
+        moneda=moneda,
+    )
+    defaults.update(kwargs)
+    return ActivoPortafolioSnapshot.objects.create(**defaults)
+
+
+def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
+    """Factory helper para crear ResumenCuentaSnapshot en tests."""
+    defaults = dict(
+        fecha_extraccion=fecha,
+        numero_cuenta='123',
+        tipo_cuenta='CA',
+        moneda=moneda,
+        disponible=disponible,
+        comprometido=0,
+        saldo=disponible,
+        titulos_valorizados=0,
+        total=disponible,
+        estado='activa',
+    )
+    defaults.update(kwargs)
+    return ResumenCuentaSnapshot.objects.create(**defaults)
 
 
 class TestDashboardSelectors(TestCase):
@@ -140,66 +186,39 @@ class TestDashboardSelectors(TestCase):
         """Test cálculo de concentración top 10."""
         fecha = timezone.now()
 
-        # Crear 12 activos con valores decrecientes
         for i in range(12):
-            ActivoPortafolioSnapshot.objects.create(
-                fecha_extraccion=fecha,
-                pais_consulta='argentina',
-                simbolo=f'ACT{i}',
-                descripcion=f'Activo {i}',
-                cantidad=10,
-                comprometido=0,
-                disponible_inmediato=10,
-                puntos_variacion=0,
-                variacion_diaria=0,
-                ultimo_precio=100.00,
-                ppc=100.00,
-                ganancia_porcentaje=0,
-                ganancia_dinero=0,
-                valorizado=1000 - i * 50,  # Valores: 1000, 950, 900, ..., 450
-                pais_titulo='Argentina',
-                mercado='BCBA',
-                tipo='ACCIONES',
-                moneda='ARS',
-            )
+            make_activo(fecha, f'ACT{i}', valorizado=1000 - i * 50)
 
         kpis = get_dashboard_kpis()
 
         # Top 10 deberían sumar: 1000+950+900+850+800+750+700+650+600+550 = 7750
         # Total portafolio = suma de todos (12 activos) = 7750 + 500 + 450 = 8700
         # Top 10 concentración = 7750/8700 ≈ 89.08%
-        assert abs(kpis['top_10_concentracion'] - 89.08) < 0.01
+        assert abs(float(kpis['top_10_concentracion']) - 89.08) < 0.01
 
     def test_concentracion_por_pais(self):
         """Test cálculo de concentración por país."""
         fecha = timezone.now()
 
-        # Crear activos en diferentes países
-        ActivoPortafolioSnapshot.objects.create(
-            fecha_extraccion=fecha,
+        ParametroActivo.objects.create(
             simbolo='AAPL',
-            descripcion='Apple Inc',
-            cantidad=10,
-            valorizado=1000.00,
-            pais_titulo='Estados Unidos',
-            tipo='ACCIONES',
-            moneda='USD',
+            sector='Tecnología',
+            bloque_estrategico='Inversión',
+            pais_exposicion='Estados Unidos',
+            tipo_patrimonial='Growth',
         )
-        ActivoPortafolioSnapshot.objects.create(
-            fecha_extraccion=fecha,
+        ParametroActivo.objects.create(
             simbolo='YPF',
-            descripcion='YPF SA',
-            cantidad=10,
-            valorizado=500.00,
-            pais_titulo='Argentina',
-            tipo='ACCIONES',
-            moneda='ARS',
+            sector='Energía',
+            bloque_estrategico='Inversión',
+            pais_exposicion='Argentina',
+            tipo_patrimonial='Bond',
         )
+        make_activo(fecha, 'AAPL', valorizado=1000.00, moneda='USD')
+        make_activo(fecha, 'YPF', valorizado=500.00)
 
         concentracion = get_concentracion_pais()
 
-        # Estados Unidos: 1000/1500 = 66.67%
-        # Argentina: 500/1500 = 33.33%
         assert abs(concentracion['Estados Unidos'] - 66.67) < 0.01
         assert abs(concentracion['Argentina'] - 33.33) < 0.01
 
@@ -207,7 +226,6 @@ class TestDashboardSelectors(TestCase):
         """Test cálculo de concentración por tipo patrimonial."""
         fecha = timezone.now()
 
-        # Crear parámetro para activo
         ParametroActivo.objects.create(
             simbolo='AAPL',
             sector='Tecnología',
@@ -215,16 +233,7 @@ class TestDashboardSelectors(TestCase):
             pais_exposicion='USA',
             tipo_patrimonial='Growth',
         )
-
-        ActivoPortafolioSnapshot.objects.create(
-            fecha_extraccion=fecha,
-            simbolo='AAPL',
-            descripcion='Apple Inc',
-            cantidad=10,
-            valorizado=1000.00,
-            tipo='ACCIONES',
-            moneda='USD',
-        )
+        make_activo(fecha, 'AAPL', valorizado=1000.00, moneda='USD')
 
         concentracion = get_concentracion_tipo_patrimonial()
         assert 'Growth' in concentracion
@@ -234,7 +243,6 @@ class TestDashboardSelectors(TestCase):
         """Test diferencia entre exposición económica vs operativa."""
         fecha = timezone.now()
 
-        # Crear parámetro para CEDEAR (exposición económica USD, operativa ARS)
         ParametroActivo.objects.create(
             simbolo='AAPL',
             sector='Tecnología',
@@ -242,16 +250,7 @@ class TestDashboardSelectors(TestCase):
             pais_exposicion='USA',
             tipo_patrimonial='Growth',
         )
-
-        ActivoPortafolioSnapshot.objects.create(
-            fecha_extraccion=fecha,
-            simbolo='AAPL',  # CEDEAR
-            descripcion='Apple Inc',
-            cantidad=10,
-            valorizado=1000.00,
-            tipo='CEDEARS',
-            moneda='peso_Argentino',  # Operativa en ARS
-        )
+        make_activo(fecha, 'AAPL', valorizado=1000.00, tipo='CEDEARS', moneda='peso_Argentino')
 
         # Moneda económica (exposición real)
         distribucion_economica = get_distribucion_moneda()
@@ -265,7 +264,6 @@ class TestDashboardSelectors(TestCase):
         """Test señales de rebalanceo basadas en objetivos."""
         fecha = timezone.now()
 
-        # Crear parámetros para activos
         ParametroActivo.objects.create(
             simbolo='AAPL',
             sector='Tecnología',
@@ -273,26 +271,8 @@ class TestDashboardSelectors(TestCase):
             pais_exposicion='USA',
             tipo_patrimonial='Growth',
         )
-
-        # Crear activos que excedan objetivos
-        ActivoPortafolioSnapshot.objects.create(
-            fecha_extraccion=fecha,
-            simbolo='AAPL',
-            descripcion='Apple Inc',
-            cantidad=100,  # Valor alto para superar objetivos
-            valorizado=20000.00,  # Tecnología objetivo 17.5%, esto sería >17.5%
-            tipo='CEDEARS',
-            moneda='peso_Argentino',
-        )
-
-        # Crear cash para liquidez
-        ResumenCuentaSnapshot.objects.create(
-            fecha_extraccion=fecha,
-            numero_cuenta='123',
-            tipo_cuenta='CA',
-            moneda='ARS',
-            disponible=50000.00,  # Alta liquidez
-        )
+        make_activo(fecha, 'AAPL', valorizado=20000.00, tipo='CEDEARS', moneda='peso_Argentino', cantidad=100)
+        make_resumen(fecha, disponible=50000.00)
 
         senales = get_senales_rebalanceo()
 
@@ -320,21 +300,178 @@ class TestDashboardSelectors(TestCase):
         fecha = timezone.now()
 
         # Crear datos históricos para analytics
-        for i in range(3):  # Crear datos para algunos meses
+        for i in range(3):
             fecha_mes = fecha.replace(month=fecha.month - i, day=1)
-
-            ActivoPortafolioSnapshot.objects.create(
-                fecha_extraccion=fecha_mes,
-                simbolo='AAPL',
-                descripcion='Apple Inc',
-                cantidad=10,
-                valorizado=1000.00 + i * 100,  # Valor creciente
-                tipo='CEDEARS',
-                moneda='peso_Argentino',
-            )
+            make_activo(fecha_mes, 'AAPL', valorizado=1000.00 + i * 100, tipo='CEDEARS', moneda='peso_Argentino')
 
         analytics = get_analytics_mensual()
 
         # Debería tener datos de analytics
         assert isinstance(analytics, dict)
         assert len(analytics) > 0  # Al menos algún cálculo
+
+    def test_evolucion_historica_con_datos(self):
+        """Test evolución histórica cuando hay datos suficientes."""
+        from django.utils import timezone
+        from dateutil.relativedelta import relativedelta
+
+        now = timezone.now()
+        fecha1 = now - relativedelta(days=5)
+        fecha2 = now - relativedelta(days=3)
+
+        make_activo(fecha1, 'AAPL', valorizado=1000.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha2, 'AAPL', valorizado=1100.00, tipo='CEDEARS', moneda='USD')
+        make_resumen(fecha1, disponible=500.00)
+        make_resumen(fecha2, disponible=600.00)
+
+        evolucion = get_evolucion_historica()
+        assert evolucion['tiene_datos'] is True
+        assert len(evolucion['fechas']) >= 2
+        assert len(evolucion['total_iol']) >= 2
+
+    def test_riesgo_portafolio_detallado_con_parametros(self):
+        """Test métricas de riesgo con ParametroActivo populado."""
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(
+            simbolo='AAPL',
+            sector='Tecnología',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='YPF',
+            sector='Energía',
+            bloque_estrategico='Defensivo',
+            pais_exposicion='Argentina',
+            tipo_patrimonial='Bond',
+        )
+        make_activo(fecha, 'AAPL', valorizado=2000.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'YPF', valorizado=1000.00)
+        make_resumen(fecha, disponible=500.00)
+
+        riesgo = get_riesgo_portafolio_detallado()
+        assert 'pct_usa' in riesgo
+        assert 'pct_argentina' in riesgo
+        assert 'pct_tech' in riesgo
+        assert riesgo['pct_usa'] > 0
+        assert riesgo['pct_argentina'] > 0
+
+    def test_riesgo_portafolio_con_parametros(self):
+        """Test métricas de riesgo simplificadas con ParametroActivo."""
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(
+            simbolo='AAPL',
+            sector='Tecnología',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        make_activo(fecha, 'AAPL', valorizado=1000.00, tipo='CEDEARS', moneda='USD')
+        make_resumen(fecha, disponible=200.00)
+
+        riesgo = get_riesgo_portafolio()
+        assert 'volatilidad_estimada' in riesgo
+        assert 'exposicion_usa' in riesgo
+        assert riesgo['exposicion_usa'] > 0
+
+    def test_distribucion_sector_con_datos(self):
+        """Test distribución por sector con ParametroActivo."""
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(
+            simbolo='AAPL',
+            sector='Tecnología',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        make_activo(fecha, 'AAPL', valorizado=1000.00)
+
+        distribucion = get_distribucion_sector()
+        assert 'Tecnología' in distribucion
+        assert distribucion['Tecnología'] == 1000.00
+
+    def test_portafolio_enriquecido_con_tipos(self):
+        """Test clasificación de portafolio con distintos tipos de activo."""
+        fecha = timezone.now()
+
+        make_activo(fecha, 'AAPL', valorizado=1000.00, tipo='CEDEARS')
+        make_activo(fecha, 'GGAL', valorizado=500.00, tipo='ACCIONES')
+        make_activo(fecha, 'AL30', valorizado=300.00, tipo='TitulosPublicos')
+
+        portafolio = get_portafolio_enriquecido_actual()
+        assert 'inversion' in portafolio
+        assert 'liquidez' in portafolio
+        assert 'fci_cash_management' in portafolio
+        assert len(portafolio['inversion']) == 3
+
+    def test_distribucion_moneda_ramas_alternativas(self):
+        """Cubre ramas de inferencia de moneda (Hard Assets, ARS default)."""
+        fecha = timezone.now()
+
+        # Hard Assets — sin pais_exposicion USA, tipo_patrimonial Hard Assets
+        pa_hard = ParametroActivo.objects.create(
+            simbolo='ORO',
+            sector='Commodities',
+            bloque_estrategico='Defensivo',
+            pais_exposicion='Global',
+            tipo_patrimonial='Hard Assets',
+        )
+        # Activo con moneda ambigua (no dolar ni peso)
+        make_activo(fecha, 'ORO', valorizado=500.00, moneda='otro')
+        # Activo ARS explícito
+        make_activo(fecha, 'GFGC', valorizado=200.00, moneda='peso_Argentino')
+
+        distribucion = get_distribucion_moneda()
+        assert 'Hard Assets' in distribucion or 'ARS' in distribucion
+
+    def test_riesgo_portafolio_ramas_volatilidad(self):
+        """Cubre ramas Hard Assets, bonos argentinos, cash y equities."""
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(
+            simbolo='ORO', sector='Commodities', bloque_estrategico='Defensivo',
+            pais_exposicion='Global', tipo_patrimonial='Hard Assets',
+        )
+        ParametroActivo.objects.create(
+            simbolo='AL30', sector='Bonos', bloque_estrategico='Renta Fija',
+            pais_exposicion='Argentina', tipo_patrimonial='Bond',
+        )
+        ParametroActivo.objects.create(
+            simbolo='CASH', sector='Liquidez', bloque_estrategico='Liquidez',
+            pais_exposicion='Argentina', tipo_patrimonial='Cash',
+        )
+        ParametroActivo.objects.create(
+            simbolo='GGAL', sector='Financiero', bloque_estrategico='Growth',
+            pais_exposicion='Argentina', tipo_patrimonial='Equity',
+        )
+        make_activo(fecha, 'ORO', valorizado=1000.00)
+        make_activo(fecha, 'AL30', valorizado=1000.00)
+        make_activo(fecha, 'CASH', valorizado=500.00)
+        make_activo(fecha, 'GGAL', valorizado=500.00)
+        make_resumen(fecha, disponible=200.00)
+
+        riesgo = get_riesgo_portafolio()
+        assert 'volatilidad_estimada' in riesgo
+        assert riesgo['volatilidad_estimada'] > 0
+
+    def test_senales_rebalanceo_sin_metadata(self):
+        """Cubre rama de activos sin metadata completa."""
+        fecha = timezone.now()
+
+        # Activo con ParametroActivo con valores N/A
+        ParametroActivo.objects.create(
+            simbolo='UNKNOWN',
+            sector='N/A',
+            bloque_estrategico='N/A',
+            pais_exposicion='N/A',
+            tipo_patrimonial='N/A',
+        )
+        make_activo(fecha, 'UNKNOWN', valorizado=1000.00)
+        make_resumen(fecha, disponible=100.00)
+
+        senales = get_senales_rebalanceo()
+        assert isinstance(senales, dict)

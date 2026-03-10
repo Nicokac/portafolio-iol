@@ -170,7 +170,7 @@ class AlertsEngine:
             'concentracion_pais': concentracion_pais,
             'concentracion_sector': concentracion_sector,
             'top_10_concentracion': kpis.get('top_10_concentracion', 0),
-            'pct_liquidez_operativa': kpis.get('pct_fci_cash_management', 0) + (kpis.get('liquidez_operativa', 0) / kpis.get('total_iol', 1) * 100),
+            'pct_liquidez_operativa': kpis.get('pct_fci_cash_management', 0) + (kpis.get('liquidez_operativa', 0) / (kpis.get('total_iol') or 1) * 100),
         }
 
         alerts = []

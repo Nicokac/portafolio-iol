@@ -40,6 +40,8 @@ class ConcentrationRebalance(RebalanceRule):
         suggestions = []
 
         for senal in senales:
+            if not isinstance(senal, dict):
+                continue
             if senal.get('tipo') == 'concentracion':
                 suggestions.append({
                     'activo': senal.get('activo'),
@@ -185,7 +187,7 @@ class RebalanceEngine:
             'concentracion_pais': concentracion_pais,
             'concentracion_sector': concentracion_sector,
             'senales_rebalanceo': senales_rebalanceo,
-            'pct_liquidez_operativa': kpis.get('pct_fci_cash_management', 0) + (kpis.get('liquidez_operativa', 0) / kpis.get('total_iol', 1) * 100),
+            'pct_liquidez_operativa': kpis.get('pct_fci_cash_management', 0) + (kpis.get('liquidez_operativa', 0) / (kpis.get('total_iol') or 1) * 100),
         }
 
         all_suggestions = []
