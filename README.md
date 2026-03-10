@@ -76,8 +76,8 @@ POST /api/optimizer/markowitz/
 POST /api/optimizer/target-allocation/
 POST /api/monthly-plan/basic/
 POST /api/monthly-plan/custom/
-GET  /api/portfolio-parameters/
-POST /api/portfolio-parameters/update/
+GET  /api/portfolio/parameters/
+POST /api/portfolio/parameters/update/
 GET  /health/
 ```
 
@@ -160,6 +160,7 @@ celery -A portafolio_iol beat --loglevel=info
 python manage.py actualizar_iol
 python manage.py actualizar_iol --estado-cuenta
 python manage.py actualizar_iol --portafolio
+python manage.py actualizar_iol --operaciones
 python manage.py actualizar_iol -v 2
 ```
 

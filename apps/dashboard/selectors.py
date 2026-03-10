@@ -1,7 +1,4 @@
 from typing import Dict, List
-import threading
-
-from django.core.cache import cache
 from django.db.models import Max, Sum
 from django.utils import timezone
 
@@ -10,28 +7,6 @@ from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
 
-# Request-scoped cache to avoid redundant queries
-_request_cache = threading.local()
-
-
-def request_cache(func):
-    """Decorator for request-scoped caching of expensive operations."""
-    def wrapper(*args, **kwargs):
-        if not hasattr(_request_cache, 'data'):
-            _request_cache.data = {}
-
-        cache_key = f"{func.__name__}_{str(args)}_{str(kwargs)}"
-        if cache_key in _request_cache.data:
-            return _request_cache.data[cache_key]
-
-        result = func(*args, **kwargs)
-        _request_cache.data[cache_key] = result
-        return result
-
-    return wrapper
-
-
-@request_cache
 def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
     """Obtiene los datos más recientes del portafolio."""
     latest_date = ActivoPortafolioSnapshot.objects.aggregate(
@@ -44,7 +19,6 @@ def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
     ))
 
 
-@request_cache
 def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
     """Obtiene los datos más recientes del resumen de cuenta."""
     latest_date = ResumenCuentaSnapshot.objects.aggregate(
@@ -57,7 +31,6 @@ def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
     ))
 
 
-@request_cache
 def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
     """Obtiene el portafolio actual enriquecido con metadata, separado en liquidez e inversión."""
     portafolio = get_latest_portafolio_data()

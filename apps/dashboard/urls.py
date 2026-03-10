@@ -1,9 +1,13 @@
 from django.urls import path
 
-from apps.dashboard.views import DashboardView
+from apps.dashboard.views import AnalisisView, DashboardView, ResumenView, SetPreferencesView
 
 app_name = 'dashboard'
 
 urlpatterns = [
-    path('', DashboardView.as_view(), name='dashboard'),
+    path('', ResumenView.as_view(), name='dashboard'),
+    path('resumen/', ResumenView.as_view(), name='resumen'),
+    path('analisis/', AnalisisView.as_view(), name='analisis'),
+    path('estrategia/', DashboardView.as_view(), name='estrategia'),
+    path('preferencias/', SetPreferencesView.as_view(), name='set_preferences'),
 ]

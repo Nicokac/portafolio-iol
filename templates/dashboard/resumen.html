@@ -1,0 +1,162 @@
+﻿{% extends 'base.html' %}
+{% block title %}Resumen - Portafolio IOL{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="mb-1">Resumen diario</h1>
+            <p class="text-muted mb-0">Vista compacta para controlar salud del portafolio sin sobrecarga.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'dashboard:analisis' %}" class="btn btn-outline-primary">Ir a Análisis</a>
+            <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Ir a Estrategia</a>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Total IOL</div>
+                <div class="kpi-value text-primary">{{ kpis.total_iol|currency:0 }}</div>
+                <div class="text-body-secondary small">Activos + cash</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Liquidez Operativa</div>
+                <div class="kpi-value text-success">{{ kpis.liquidez_operativa|currency:0 }}</div>
+                <div class="text-body-secondary small">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}% del total</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Rendimiento Total</div>
+                <div class="kpi-value {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ kpis.rendimiento_total_porcentaje|floatformat:2 }}%
+                </div>
+                <div class="text-body-secondary small">Sobre total invertido</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Riesgo Concentración</div>
+                <div class="kpi-value {% if kpis.top_10_concentracion > 75 %}text-danger{% elif kpis.top_10_concentracion > 60 %}text-warning-emphasis{% else %}text-success{% endif %}">
+                    {{ kpis.top_10_concentracion|floatformat:1 }}%
+                </div>
+                <div class="text-body-secondary small">Top 10 posiciones</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0">Evolución del Portafolio</h5>
+            </div>
+            <div class="card-body">
+                {% if evolucion_historica_obj.tiene_datos %}
+                <div class="chart-container">
+                    <canvas id="evolucionResumenChart"></canvas>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <div class="empty-state-title">{{ evolucion_historica_obj.mensaje }}</div>
+                    <div class="empty-state-description">Sin snapshots suficientes para trazar tendencia.</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0">Alertas Activas</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-3">
+                    <span class="badge text-bg-danger">Críticas: {{ alerts_critical_count }}</span>
+                    <span class="badge text-bg-warning">Warning: {{ alerts_warning_count }}</span>
+                </div>
+                {% if alerts %}
+                    <div class="list-group list-group-flush">
+                        {% for alert in alerts|slice:":5" %}
+                        <div class="list-group-item px-0">
+                            <div class="fw-semibold">{{ alert.tipo|title }}</div>
+                            <div class="small text-muted">{{ alert.mensaje }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state py-3">
+                        <div class="empty-state-title">Sin alertas activas</div>
+                        <div class="empty-state-description mb-0">Estado estable del portafolio.</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const resumenEvolution = {{ evolucion_historica|safe }};
+
+function createResumenEvolutionChart() {
+    const canvas = document.getElementById('evolucionResumenChart');
+    if (!canvas || !resumenEvolution.tiene_datos) return;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    gradient.addColorStop(0, 'rgba(37,99,235,0.32)');
+    gradient.addColorStop(1, 'rgba(37,99,235,0.02)');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: resumenEvolution.fechas,
+            datasets: [{
+                label: 'Total IOL',
+                data: resumenEvolution.total_iol,
+                borderColor: '#2563EB',
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.35,
+                pointRadius: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) { return ` $${Number(ctx.raw).toLocaleString('es-AR')}`; }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: 'rgba(148,163,184,0.2)' } }
+            }
+        }
+    });
+}
+
+createResumenEvolutionChart();
+</script>
+{% endblock %}
+
+

@@ -17,3 +17,6 @@ known-first-party = ["apps"]
 DJANGO_SETTINGS_MODULE = "config.settings.dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "-v --cov=apps --cov-report=html --cov-report=term-missing --cov-fail-under=80"
+markers = [
+  "celery_always_eager: marks tests that rely on eager Celery behavior",
+]

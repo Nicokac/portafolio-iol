@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Análisis - Portafolio IOL{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="mb-1">Análisis de composición y riesgo</h1>
+            <p class="text-muted mb-0">Vista detallada para entender concentración y exposición.</p>
+        </div>
+        <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Ir a Estrategia</a>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Sector</h5></div>
+            <div class="card-body"><div class="chart-container"><canvas id="sectorChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">País</h5></div>
+            <div class="card-body"><div class="chart-container"><canvas id="paisChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Tipo Patrimonial</h5></div>
+            <div class="card-body"><div class="chart-container"><canvas id="tipoChart"></canvas></div></div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Concentración por Sector</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Sector</th>
+                            <th class="text-end">Peso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sector, porcentaje in concentracion_sector.items|slice:":10" %}
+                        <tr>
+                            <td>{{ sector }}</td>
+                            <td class="text-end">
+                                <span class="{% if porcentaje > 25 %}text-danger{% elif porcentaje > 15 %}text-warning-emphasis{% else %}text-success{% endif %}">
+                                    {{ porcentaje|floatformat:1 }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Riesgo Detallado</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover align-middle">
+                    <tbody>
+                        <tr><td>% USA</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|floatformat:1 }}%</td></tr>
+                        <tr><td>% Argentina</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|floatformat:1 }}%</td></tr>
+                        <tr><td>% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|floatformat:1 }}%</td></tr>
+                        <tr><td>% Bonos Soberanos</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_bonos_soberanos|floatformat:1 }}%</td></tr>
+                        <tr><td>% Defensivo</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_defensivo|floatformat:1 }}%</td></tr>
+                        <tr><td>% Growth</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_growth|floatformat:1 }}%</td></tr>
+                        <tr><td>% Liquidez</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const sectorData = {{ distribucion_sector|safe }};
+const paisData = {{ distribucion_pais|safe }};
+const tipoData = {{ distribucion_tipo|safe }};
+
+function chartPalette() {
+    return ['#2563EB', '#10B981', '#0EA5E9', '#F59E0B', '#EF4444', '#8B5CF6', '#14B8A6', '#F97316'];
+}
+
+function createPieChart(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!data || Object.keys(data).length === 0) return;
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(data),
+            datasets: [{
+                data: Object.values(data),
+                backgroundColor: chartPalette(),
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '56%',
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
+                tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
+            }
+        }
+    });
+}
+
+createPieChart('sectorChart', sectorData);
+createPieChart('paisChart', paisData);
+createPieChart('tipoChart', tipoData);
+</script>
+{% endblock %}

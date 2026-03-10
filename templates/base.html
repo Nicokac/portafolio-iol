@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,23 +6,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Portafolio IOL{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block extra_head %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<body class="profile-{{ risk_profile|default:'moderado' }}">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'dashboard:dashboard' %}">Portafolio IOL</a>
+            <a class="navbar-brand navbar-brand-custom" href="{% url 'dashboard:dashboard' %}">Portafolio IOL</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'dashboard:dashboard' %}">Dashboard</a>
+                        <a class="nav-link {% if active_section == 'resumen' %}active{% endif %}" href="{% url 'dashboard:resumen' %}">Resumen</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'resumen_iol:resumen_list' %}">Resumen</a>
+                        <a class="nav-link {% if active_section == 'analisis' %}active{% endif %}" href="{% url 'dashboard:analisis' %}">Análisis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_section == 'estrategia' %}active{% endif %}" href="{% url 'dashboard:estrategia' %}">Estrategia</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'resumen_iol:resumen_list' %}">Resumen IOL</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'portafolio_iol:portafolio_list' %}">Portafolio</a>
@@ -33,14 +41,35 @@
                         <a class="nav-link" href="{% url 'parametros:parametros_list' %}">Parámetros</a>
                     </li>
                 </ul>
-                <ul class="navbar-nav">
+                {% if user.is_authenticated %}
+                <form method="get" action="{% url 'dashboard:set_preferences' %}" class="d-flex align-items-center gap-2 me-3 ui-preferences">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <select name="ui_mode" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% with mode=ui_mode|default:'compacto' %}
+                        <option value="compacto" {% if mode == 'compacto' %}selected{% endif %}>Vista rápida</option>
+                        <option value="denso" {% if mode == 'denso' %}selected{% endif %}>Power user</option>
+                        {% endwith %}
+                    </select>
+                    <select name="risk_profile" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% with profile=risk_profile|default:'moderado' %}
+                        <option value="conservador" {% if profile == 'conservador' %}selected{% endif %}>Conservador</option>
+                        <option value="moderado" {% if profile == 'moderado' %}selected{% endif %}>Moderado</option>
+                        <option value="agresivo" {% if profile == 'agresivo' %}selected{% endif %}>Agresivo</option>
+                        {% endwith %}
+                    </select>
+                </form>
+                {% endif %}
+                <ul class="navbar-nav align-items-center">
                     {% if user.is_authenticated %}
+                        <li class="nav-item me-2">
+                            <span class="user-avatar" title="{{ user.username }}">{{ user.username|slice:":1"|upper }}</span>
+                        </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'users:logout' %}">Logout</a>
+                            <a class="nav-link" href="{% url 'users:logout' %}">Salir</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'users:login' %}">Login</a>
+                            <a class="nav-link" href="{% url 'users:login' %}">Ingresar</a>
                         </li>
                     {% endif %}
                 </ul>

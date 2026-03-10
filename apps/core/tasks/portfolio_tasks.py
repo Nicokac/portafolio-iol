@@ -12,6 +12,26 @@ from apps.core.services.temporal_metrics_service import TemporalMetricsService
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_ALERT_TYPE = 'concentracion_excesiva'
+DEFAULT_ALERT_SEVERITY = 'warning'
+SEVERITY_MAP = {
+    'high': 'critical',
+    'medium': 'warning',
+    'low': 'info',
+}
+
+
+def _normalize_alert(alert_data: dict) -> dict:
+    """Normaliza payload de alerta para prevenir fallos por claves ausentes."""
+    data = dict(alert_data or {})
+    data['tipo'] = data.get('tipo') or DEFAULT_ALERT_TYPE
+    data['mensaje'] = data.get('mensaje') or 'Alerta sin detalle'
+
+    raw_severity = str(data.get('severidad', DEFAULT_ALERT_SEVERITY)).lower()
+    mapped = SEVERITY_MAP.get(raw_severity, raw_severity)
+    data['severidad'] = mapped if mapped in {'info', 'warning', 'critical'} else DEFAULT_ALERT_SEVERITY
+    return data
+
 
 @shared_task
 def sync_portfolio_data():
@@ -68,7 +88,8 @@ def generate_alerts():
 
     try:
         engine = AlertsEngine()
-        alerts_data = engine.generate_alerts()
+        raw_alerts_data = engine.generate_alerts()
+        alerts_data = [_normalize_alert(alert) for alert in raw_alerts_data]
 
         # Guardar alertas en BD
         saved_alerts = []
@@ -97,7 +118,7 @@ def generate_alerts():
                 logger.info(f"Alert already exists: {alert_data['mensaje']}")
 
         # Desactivar alertas que ya no se cumplen
-        active_alert_types = {alert['tipo'] for alert in alerts_data}
+        active_alert_types = {alert.get('tipo', DEFAULT_ALERT_TYPE) for alert in alerts_data}
         expired_alerts = Alert.objects.filter(
             is_active=True,
             is_acknowledged=False

@@ -1,0 +1,19 @@
+from django.template import Context, Template
+from django.test import SimpleTestCase
+
+from apps.core.utils.currency_formatter import CurrencyFormatter
+
+
+class TestCurrencyFormatter(SimpleTestCase):
+    def test_format_number_with_thousands_and_decimals(self):
+        assert CurrencyFormatter.format_number(1234567.89, 2) == "1.234.567,89"
+
+    def test_format_currency_with_zero_decimals(self):
+        assert CurrencyFormatter.format_currency(1234567.89, 0) == "$1.234.568"
+
+    def test_format_currency_negative(self):
+        assert CurrencyFormatter.format_currency(-1234.5, 2) == "-$1.234,50"
+
+    def test_currency_template_filter_is_available_globally(self):
+        rendered = Template("{{ value|currency:2 }}").render(Context({"value": 9876543.2}))
+        assert rendered == "$9.876.543,20"

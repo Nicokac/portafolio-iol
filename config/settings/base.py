@@ -13,8 +13,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
+def get_debug_setting() -> bool:
+    """Parsea DEBUG de forma tolerante a valores no estándar en el entorno."""
+    raw = str(config('DEBUG', default='True')).strip().lower()
+    if raw in {'1', 'true', 't', 'yes', 'y', 'on'}:
+        return True
+    if raw in {'0', 'false', 'f', 'no', 'n', 'off', 'release', 'prod', 'production'}:
+        return False
+    return False
+
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default='True', cast=bool)
+DEBUG = get_debug_setting()
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -70,11 +80,15 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
+            'builtins': [
+                'apps.core.templatetags.currency_filters',
+            ],
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.core.context_processors.ui_preferences',
             ],
         },
     },

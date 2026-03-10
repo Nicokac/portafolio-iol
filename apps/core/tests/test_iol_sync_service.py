@@ -103,7 +103,7 @@ class TestIOLSyncService:
     def test_sync_operaciones_success(self, service):
         service.client.get_operaciones.return_value = [{
             'numero': 1001,
-            'fechaOrden': '2026-01-01T10:00:00',
+            'fechaOrden': '2026-01-01T10:00:00+00:00',
             'tipo': 'Compra',
             'estado': 'Terminada',
             'mercado': 'BCBA',
@@ -119,7 +119,7 @@ class TestIOLSyncService:
     def test_sync_operaciones_no_duplicate(self, service):
         service.client.get_operaciones.return_value = [{
             'numero': 1001,
-            'fechaOrden': '2026-01-01T10:00:00',
+            'fechaOrden': '2026-01-01T10:00:00+00:00',
             'tipo': 'Compra',
             'estado': 'Terminada',
             'mercado': 'BCBA',
