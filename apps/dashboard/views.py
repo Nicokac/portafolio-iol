@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.views.generic import TemplateView
 from apps.dashboard.selectors import (
     get_analytics_mensual,
+    get_active_alerts,
     get_concentracion_pais,
     get_concentracion_sector,
     get_concentracion_tipo_patrimonial,
@@ -45,4 +46,5 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context['analytics_mensual'] = get_analytics_mensual()
         context['evolucion_historica'] = to_json(get_evolucion_historica())
         context['senales_rebalanceo'] = get_senales_rebalanceo()
+        context['alerts'] = get_active_alerts()
         return context

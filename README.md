@@ -16,10 +16,10 @@ Aplicación web Django para gestionar, analizar y optimizar el portafolio de inv
 
 - **Backend**: Python 3.12 + Django 5.2 + Django REST Framework
 - **Frontend**: Django Templates + Bootstrap 5 + Chart.js
-- **Base de datos**: SQLite (desarrollo) / PostgreSQL — AWS RDS (producción)
+- **Base de datos**: SQLite (desarrollo) / PostgreSQL (producción)
 - **Task scheduling**: Celery + Redis + django-celery-beat
 - **Data processing**: Pandas para métricas temporales
-- **Deploy**: Render + Gunicorn + WhiteNoise
+- **Deploy**: Render + Gunicorn
 - **Testing**: pytest + pytest-django + pytest-cov
 - **Linting**: Ruff
 - **CI/CD**: GitHub Actions

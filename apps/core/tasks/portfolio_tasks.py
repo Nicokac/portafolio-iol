@@ -4,6 +4,7 @@ from datetime import datetime
 from celery import shared_task
 from django.utils import timezone
 
+from apps.core.models import Alert
 from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.rebalance_engine import RebalanceEngine
@@ -67,17 +68,51 @@ def generate_alerts():
 
     try:
         engine = AlertsEngine()
-        alerts = engine.generate_alerts()
+        alerts_data = engine.generate_alerts()
 
-        # Aquí se podrían guardar las alertas en BD o enviar notificaciones
-        # Por ahora solo logueamos
-        for alert in alerts:
-            logger.warning(f"ALERT [{alert['severidad'].upper()}]: {alert['mensaje']}")
+        # Guardar alertas en BD
+        saved_alerts = []
+        for alert_data in alerts_data:
+            # Verificar si ya existe una alerta similar activa
+            existing_alert = Alert.objects.filter(
+                tipo=alert_data['tipo'],
+                is_active=True,
+                is_acknowledged=False
+            ).first()
+
+            if not existing_alert:
+                # Crear nueva alerta
+                alert = Alert.objects.create(
+                    tipo=alert_data['tipo'],
+                    mensaje=alert_data['mensaje'],
+                    severidad=alert_data['severidad'],
+                    valor=alert_data.get('valor'),
+                    simbolo=alert_data.get('simbolo'),
+                    sector=alert_data.get('sector'),
+                    pais=alert_data.get('pais')
+                )
+                saved_alerts.append(alert)
+                logger.warning(f"NEW ALERT [{alert.severidad.upper()}]: {alert.mensaje}")
+            else:
+                logger.info(f"Alert already exists: {alert_data['mensaje']}")
+
+        # Desactivar alertas que ya no se cumplen
+        active_alert_types = {alert['tipo'] for alert in alerts_data}
+        expired_alerts = Alert.objects.filter(
+            is_active=True,
+            is_acknowledged=False
+        ).exclude(tipo__in=active_alert_types)
+
+        for expired_alert in expired_alerts:
+            expired_alert.is_active = False
+            expired_alert.save()
+            logger.info(f"Deactivated expired alert: {expired_alert.mensaje}")
 
         result = {
             'success': True,
-            'message': f'Generated {len(alerts)} alerts',
-            'alerts_count': len(alerts)
+            'message': f'Generated {len(alerts_data)} alerts, saved {len(saved_alerts)} new alerts',
+            'alerts_count': len(alerts_data),
+            'new_alerts_count': len(saved_alerts)
         }
 
         logger.info(f"Alerts generation completed: {result['message']}")

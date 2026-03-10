@@ -119,3 +119,64 @@ class PortfolioParameters(models.Model):
             'argentina': float(self.argentina_target),
             'emerging': float(self.emerging_target)
         }
+
+
+class Alert(models.Model):
+    """Modelo para almacenar alertas del portafolio."""
+
+    SEVERITY_CHOICES = [
+        ('info', 'Info'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+    ]
+
+    ALERT_TYPES = [
+        ('concentracion_excesiva', 'Concentración Excesiva'),
+        ('liquidez_excesiva', 'Liquidez Excesiva'),
+        ('exposicion_pais', 'Exposición País'),
+        ('exposicion_sector', 'Exposición Sector'),
+        ('perdida_significativa', 'Pérdida Significativa'),
+    ]
+
+    tipo = models.CharField(max_length=50, choices=ALERT_TYPES, help_text="Tipo de alerta")
+    mensaje = models.TextField(help_text="Mensaje descriptivo de la alerta")
+    severidad = models.CharField(max_length=10, choices=SEVERITY_CHOICES, help_text="Severidad de la alerta")
+    valor = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+                               help_text="Valor numérico relacionado con la alerta")
+
+    # Campos opcionales para contexto adicional
+    simbolo = models.CharField(max_length=20, null=True, blank=True, help_text="Símbolo del activo relacionado")
+    sector = models.CharField(max_length=100, null=True, blank=True, help_text="Sector relacionado")
+    pais = models.CharField(max_length=100, null=True, blank=True, help_text="País relacionado")
+
+    # Estado de la alerta
+    is_active = models.BooleanField(default=True, help_text="Si la alerta está activa")
+    is_acknowledged = models.BooleanField(default=False, help_text="Si la alerta ha sido reconocida")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    acknowledged_at = models.DateTimeField(null=True, blank=True, help_text="Fecha de reconocimiento")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Alerta"
+        verbose_name_plural = "Alertas"
+
+    def __str__(self):
+        return f"[{self.severidad.upper()}] {self.tipo}: {self.mensaje[:50]}..."
+
+    def acknowledge(self):
+        """Marca la alerta como reconocida."""
+        self.is_acknowledged = True
+        self.acknowledged_at = timezone.now()
+        self.save()
+
+    @classmethod
+    def get_active_alerts(cls):
+        """Obtiene todas las alertas activas."""
+        return cls.objects.filter(is_active=True)
+
+    @classmethod
+    def get_alerts_by_severity(cls, severity):
+        """Obtiene alertas filtradas por severidad."""
+        return cls.objects.filter(severidad=severity, is_active=True)
