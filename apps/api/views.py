@@ -10,6 +10,7 @@ from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.performance.attribution_service import AttributionService
 from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
+from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
@@ -413,6 +414,25 @@ def metrics_liquidity(request):
             }
         }
         return Response(liquidity, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+def metrics_data_quality(request):
+    """Obtiene reporte de calidad de metadata para activos."""
+    try:
+        report = MetadataAuditService().run_audit()
+        report["metadata"] = {
+            "methodology": {
+                "unclassified": "Activos sin ParametroActivo",
+                "inconsistent": "Sector/país vacíos o tipo patrimonial inválido",
+            }
+        }
+        return Response(report, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
             {"error": str(e)},

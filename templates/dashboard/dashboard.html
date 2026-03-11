@@ -234,6 +234,20 @@
                             <td><small class="text-muted">estimado</small></td>
                         </tr>
                         {% endif %}
+                        <tr>
+                            <td><strong>Activos sin clasificación</strong></td>
+                            <td class="text-end {% if riesgo_portafolio.metadata_unclassified_count > 0 %}text-warning{% else %}text-success{% endif %}">
+                                {{ riesgo_portafolio.metadata_unclassified_count|default:0 }}
+                            </td>
+                            <td><small class="text-muted">metadata</small></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Activos inconsistentes</strong></td>
+                            <td class="text-end {% if riesgo_portafolio.metadata_inconsistent_count > 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ riesgo_portafolio.metadata_inconsistent_count|default:0 }}
+                            </td>
+                            <td><small class="text-muted">metadata</small></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

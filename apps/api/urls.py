@@ -29,6 +29,7 @@ urlpatterns = [
     path('metrics/attribution/', views.metrics_attribution, name='metrics-attribution'),
     path('metrics/benchmarking/', views.metrics_benchmarking, name='metrics-benchmarking'),
     path('metrics/liquidity/', views.metrics_liquidity, name='metrics-liquidity'),
+    path('metrics/data-quality/', views.metrics_data_quality, name='metrics-data-quality'),
 
     # Datos históricos
     path('historical/evolution/', views.historical_portfolio_evolution, name='historical-evolution'),

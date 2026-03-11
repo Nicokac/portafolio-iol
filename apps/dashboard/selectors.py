@@ -14,6 +14,7 @@ from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
 from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
+from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -485,6 +486,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     stress_metrics = StressTestService().run_all()
     benchmarking = TrackingErrorService().calculate(days=90)
     liquidity = LiquidityService().analyze_portfolio_liquidity()
+    metadata_quality = MetadataAuditService().run_audit()
     volatilidad_pct = volatility_metrics.get('annualized_volatility')
 
     # Fallback: proxy si no hay histórico suficiente
@@ -523,6 +525,9 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     if liquidity:
         result["liquidity_score"] = liquidity.get("portfolio_liquidity_score")
         result["days_to_liquidate"] = liquidity.get("days_to_liquidate")
+    if metadata_quality:
+        result["metadata_unclassified_count"] = metadata_quality.get("unclassified_assets_count", 0)
+        result["metadata_inconsistent_count"] = metadata_quality.get("inconsistent_assets_count", 0)
     if stress_metrics:
         worst_case = min(
             stress_metrics.values(),
