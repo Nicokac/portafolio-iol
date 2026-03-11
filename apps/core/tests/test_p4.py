@@ -86,7 +86,7 @@ class P4ServicesTestCase(TestCase):
         result = optimizer.optimize_markowitz(activos, 0.08)
 
         self.assertIn('metodo', result)
-        self.assertEqual(result['metodo'], 'markowitz_simplified')
+        self.assertEqual(result['metodo'], 'markowitz')
         self.assertIn('pesos_optimos', result)
 
     def test_recommendation_engine(self):
