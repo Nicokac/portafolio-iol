@@ -50,6 +50,15 @@ class TestDashboardView:
         assert auth_client.session['ui_mode'] == 'denso'
         assert auth_client.session['risk_profile'] == 'agresivo'
 
+    def test_preferences_rejects_external_next_url(self, auth_client):
+        url = reverse('dashboard:set_preferences')
+        response = auth_client.get(
+            url,
+            {'ui_mode': 'compacto', 'risk_profile': 'moderado', 'next': 'https://evil.example/phishing'}
+        )
+        assert response.status_code == 302
+        assert response['Location'] == '/'
+
     def test_dashboard_view_class_is_protected(self):
         from apps.dashboard.views import DashboardView
         from django.contrib.auth.mixins import LoginRequiredMixin

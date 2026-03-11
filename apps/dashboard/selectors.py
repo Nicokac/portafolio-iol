@@ -1,4 +1,6 @@
 from typing import Dict, List
+import hashlib
+from django.core.cache import cache
 from django.db.models import Max, Sum
 from django.utils import timezone
 
@@ -6,6 +8,30 @@ from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
+
+
+SELECTOR_CACHE_TTL_SECONDS = 60
+
+
+def _get_data_stamp() -> str:
+    latest_portafolio = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
+    latest_resumen = ResumenCuentaSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
+    latest_parametro_id = ParametroActivo.objects.aggregate(latest=Max("id"))["latest"] or 0
+    return f"{latest_portafolio}|{latest_resumen}|{latest_parametro_id}"
+
+
+def _get_cached_selector_result(cache_key_prefix: str, builder):
+    stamp = _get_data_stamp()
+    stamp_hash = hashlib.md5(stamp.encode("utf-8")).hexdigest()
+    cache_key = f"dashboard_selector:{cache_key_prefix}:{stamp_hash}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    value = builder()
+    cache.set(cache_key, value, timeout=SELECTOR_CACHE_TTL_SECONDS)
+    return value
+
 
 def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
     """Obtiene los datos más recientes del portafolio."""
@@ -33,150 +59,156 @@ def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
 
 def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
     """Obtiene el portafolio actual enriquecido con metadata, separado en liquidez e inversión."""
-    portafolio = get_latest_portafolio_data()
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
+    def build():
+        portafolio = get_latest_portafolio_data()
+        simbolos = [activo.simbolo for activo in portafolio]
+        parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
 
-    # Calcular total del portafolio para pesos porcentuales
-    total_portafolio = sum(activo.valorizado for activo in portafolio)
+        # Calcular total del portafolio para pesos porcentuales
+        total_portafolio = sum(activo.valorizado for activo in portafolio)
 
-    # Traducciones de tipos
-    tipo_traducciones = {
-        'CEDEARS': 'CEDEAR',
-        'ACCIONES': 'Acción',
-        'TitulosPublicos': 'Título Público',
-        'FondoComundeInversion': 'FCI',
-        'CAUCIONESPESOS': 'Caución',
-    }
-
-    # Traducciones de monedas
-    moneda_traducciones = {
-        'peso_Argentino': 'ARS',
-        'dolar_Estadounidense': 'USD',
-    }
-
-    liquidez = []
-    inversion = []
-    fci_cash_management = []  # Categoría intermedia para FCI de cash management
-
-    for activo in portafolio:
-        param = parametros.get(activo.simbolo)
-        tipo_traducido = tipo_traducciones.get(activo.tipo, activo.tipo)
-        moneda_traducida = moneda_traducciones.get(activo.moneda, activo.moneda)
-        
-        # Calcular peso porcentual
-        peso_porcentual = (activo.valorizado / total_portafolio * 100) if total_portafolio > 0 else 0
-        
-        item = {
-            'activo': activo,
-            'sector': param.sector if param else 'N/A',
-            'bloque_estrategico': param.bloque_estrategico if param else 'N/A',
-            'pais_exposicion': param.pais_exposicion if param else 'N/A',
-            'tipo_patrimonial': param.tipo_patrimonial if param else 'N/A',
-            'observaciones': param.observaciones if param else '',
-            'tipo_traducido': tipo_traducido,
-            'moneda_traducida': moneda_traducida,
-            'peso_porcentual': peso_porcentual,
+        # Traducciones de tipos
+        tipo_traducciones = {
+            'CEDEARS': 'CEDEAR',
+            'ACCIONES': 'Acción',
+            'TitulosPublicos': 'Título Público',
+            'FondoComundeInversion': 'FCI',
+            'CAUCIONESPESOS': 'Caución',
         }
-        
-        # Clasificación refinada
-        simbolo_upper = activo.simbolo.upper()
-        if activo.tipo == 'CAUCIONESPESOS' or 'CAUCIÓN' in simbolo_upper:
-            # Caución como liquidez operativa
-            liquidez.append(item)
-        elif simbolo_upper in ['ADBAICA', 'IOLPORA', 'PRPEDOB']:
-            # FCI de cash management como categoría intermedia
-            fci_cash_management.append(item)
-        elif activo.tipo == 'FondoComundeInversion':
-            # Otros FCI van al portafolio invertido
-            inversion.append(item)
-        elif activo.tipo in ['CEDEARS', 'ACCIONES', 'TitulosPublicos'] or 'ETF' in simbolo_upper:
-            # Activos tradicionales van al portafolio invertido
-            inversion.append(item)
-        else:
-            # Resto va al portafolio invertido por defecto
-            inversion.append(item)
 
-    # Ordenar inversión por valorizado descendente
-    inversion.sort(key=lambda x: x['activo'].valorizado, reverse=True)
-    fci_cash_management.sort(key=lambda x: x['activo'].valorizado, reverse=True)
+        # Traducciones de monedas
+        moneda_traducciones = {
+            'peso_Argentino': 'ARS',
+            'dolar_Estadounidense': 'USD',
+        }
 
-    return {
-        'liquidez': liquidez,
-        'fci_cash_management': fci_cash_management,
-        'inversion': inversion,
-        'total_portafolio': total_portafolio,
-    }
+        liquidez = []
+        inversion = []
+        fci_cash_management = []  # Categoría intermedia para FCI de cash management
+
+        for activo in portafolio:
+            param = parametros.get(activo.simbolo)
+            tipo_traducido = tipo_traducciones.get(activo.tipo, activo.tipo)
+            moneda_traducida = moneda_traducciones.get(activo.moneda, activo.moneda)
+
+            # Calcular peso porcentual
+            peso_porcentual = (activo.valorizado / total_portafolio * 100) if total_portafolio > 0 else 0
+
+            item = {
+                'activo': activo,
+                'sector': param.sector if param else 'N/A',
+                'bloque_estrategico': param.bloque_estrategico if param else 'N/A',
+                'pais_exposicion': param.pais_exposicion if param else 'N/A',
+                'tipo_patrimonial': param.tipo_patrimonial if param else 'N/A',
+                'observaciones': param.observaciones if param else '',
+                'tipo_traducido': tipo_traducido,
+                'moneda_traducida': moneda_traducida,
+                'peso_porcentual': peso_porcentual,
+            }
+
+            # Clasificación refinada
+            simbolo_upper = activo.simbolo.upper()
+            if activo.tipo == 'CAUCIONESPESOS' or 'CAUCIÓN' in simbolo_upper:
+                # Caución como liquidez operativa
+                liquidez.append(item)
+            elif simbolo_upper in ['ADBAICA', 'IOLPORA', 'PRPEDOB']:
+                # FCI de cash management como categoría intermedia
+                fci_cash_management.append(item)
+            elif activo.tipo == 'FondoComundeInversion':
+                # Otros FCI van al portafolio invertido
+                inversion.append(item)
+            elif activo.tipo in ['CEDEARS', 'ACCIONES', 'TitulosPublicos'] or 'ETF' in simbolo_upper:
+                # Activos tradicionales van al portafolio invertido
+                inversion.append(item)
+            else:
+                # Resto va al portafolio invertido por defecto
+                inversion.append(item)
+
+        # Ordenar inversión por valorizado descendente
+        inversion.sort(key=lambda x: x['activo'].valorizado, reverse=True)
+        fci_cash_management.sort(key=lambda x: x['activo'].valorizado, reverse=True)
+
+        return {
+            'liquidez': liquidez,
+            'fci_cash_management': fci_cash_management,
+            'inversion': inversion,
+            'total_portafolio': total_portafolio,
+        }
+
+    return _get_cached_selector_result("portafolio_enriquecido_actual", build)
 
 
 def get_dashboard_kpis() -> Dict:
     """Calcula los KPIs principales del dashboard con métricas separadas por categoría."""
-    portafolio = get_latest_portafolio_data()
-    resumen = get_latest_resumen_data()
+    def build():
+        portafolio = get_latest_portafolio_data()
+        resumen = get_latest_resumen_data()
 
-    # Obtener clasificación del portafolio
-    portafolio_clasificado = get_portafolio_enriquecido_actual()
+        # Obtener clasificación del portafolio
+        portafolio_clasificado = get_portafolio_enriquecido_actual()
 
-    # Cash disponible
-    cash_ars = sum(cuenta.disponible for cuenta in resumen if cuenta.moneda == 'ARS')
-    cash_usd = sum(cuenta.disponible for cuenta in resumen if cuenta.moneda == 'USD')
+        # Cash disponible
+        cash_ars = sum(cuenta.disponible for cuenta in resumen if cuenta.moneda == 'ARS')
+        cash_usd = sum(cuenta.disponible for cuenta in resumen if cuenta.moneda == 'USD')
 
-    # 1. Total IOL = SUM(valorizado de todos los activos) + cash ARS + cash USD
-    total_activos_valorizados = sum(activo.valorizado for activo in portafolio)
-    total_iol = total_activos_valorizados + cash_ars + cash_usd
+        # 1. Total IOL = SUM(valorizado de todos los activos) + cash ARS + cash USD
+        total_activos_valorizados = sum(activo.valorizado for activo in portafolio)
+        total_iol = total_activos_valorizados + cash_ars + cash_usd
 
-    # KPIs separados por categoría
-    # 2. Liquidez Operativa = caución + saldo ARS disponible + saldo USD disponible
-    caucion_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'] if item['tipo_traducido'] == 'Caución')
-    liquidez_operativa = caucion_valor + cash_ars + cash_usd
+        # KPIs separados por categoría
+        # 2. Liquidez Operativa = caución + saldo ARS disponible + saldo USD disponible
+        caucion_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'] if item['tipo_traducido'] == 'Caución')
+        liquidez_operativa = caucion_valor + cash_ars + cash_usd
 
-    # 3. FCI Cash Management = suma de FCI de cash management
-    fci_cash_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['fci_cash_management'])
+        # 3. FCI Cash Management = suma de FCI de cash management
+        fci_cash_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['fci_cash_management'])
 
-    # 4. Portafolio Invertido = activos de inversión (CEDEAR, acciones, bonos, ETF, otros FCI)
-    portafolio_invertido = sum(item['activo'].valorizado for item in portafolio_clasificado['inversion'])
+        # 4. Portafolio Invertido = activos de inversión (CEDEAR, acciones, bonos, ETF, otros FCI)
+        portafolio_invertido = sum(item['activo'].valorizado for item in portafolio_clasificado['inversion'])
 
-    # KPIs heredados para compatibilidad
-    titulos_valorizados = sum(
-        activo.valorizado for activo in portafolio
-        if activo.tipo in ['CEDEARS', 'ACCIONES', 'TitulosPublicos'] or 'ETF' in activo.simbolo.upper()
-    )
-    capital_invertido_real = total_iol - liquidez_operativa - fci_cash_valor
+        # KPIs heredados para compatibilidad
+        titulos_valorizados = sum(
+            activo.valorizado for activo in portafolio
+            if activo.tipo in ['CEDEARS', 'ACCIONES', 'TitulosPublicos'] or 'ETF' in activo.simbolo.upper()
+        )
+        capital_invertido_real = total_iol - liquidez_operativa - fci_cash_valor
 
-    # Rendimiento
-    rendimiento_total_dinero = sum(activo.ganancia_dinero for activo in portafolio)
-    total_invertido = sum(activo.valorizado for activo in portafolio)
-    rendimiento_total_porcentaje = (rendimiento_total_dinero / total_invertido * 100) if total_invertido else 0
+        # Rendimiento
+        rendimiento_total_dinero = sum(activo.ganancia_dinero for activo in portafolio)
+        total_invertido = sum(activo.valorizado for activo in portafolio)
+        rendimiento_total_porcentaje = (rendimiento_total_dinero / total_invertido * 100) if total_invertido else 0
 
-    # Concentración
-    portafolio_ordenado = sorted(portafolio, key=lambda x: x.valorizado, reverse=True)
-    top_5_valor = sum(activo.valorizado for activo in portafolio_ordenado[:5])
-    top_5_concentracion = (top_5_valor / total_invertido * 100) if total_invertido else 0
+        # Concentración
+        portafolio_ordenado = sorted(portafolio, key=lambda x: x.valorizado, reverse=True)
+        top_5_valor = sum(activo.valorizado for activo in portafolio_ordenado[:5])
+        top_5_concentracion = (top_5_valor / total_invertido * 100) if total_invertido else 0
 
-    # Top 10 concentración
-    top_10_valor = sum(activo.valorizado for activo in portafolio_ordenado[:10])
-    top_10_concentracion = (top_10_valor / total_invertido * 100) if total_invertido else 0
+        # Top 10 concentración
+        top_10_valor = sum(activo.valorizado for activo in portafolio_ordenado[:10])
+        top_10_concentracion = (top_10_valor / total_invertido * 100) if total_invertido else 0
 
-    # Porcentajes de los bloques patrimoniales
-    pct_fci_cash_management = (fci_cash_valor / total_iol * 100) if total_iol else 0
-    pct_portafolio_invertido = (portafolio_invertido / total_iol * 100) if total_iol else 0
+        # Porcentajes de los bloques patrimoniales
+        pct_fci_cash_management = (fci_cash_valor / total_iol * 100) if total_iol else 0
+        pct_portafolio_invertido = (portafolio_invertido / total_iol * 100) if total_iol else 0
 
-    return {
-        'total_iol': total_iol,
-        'titulos_valorizados': titulos_valorizados,
-        'cash_ars': cash_ars,
-        'cash_usd': cash_usd,
-        'liquidez_operativa': liquidez_operativa,
-        'fci_cash_management': fci_cash_valor,
-        'portafolio_invertido': portafolio_invertido,
-        'capital_invertido_real': capital_invertido_real,
-        'rendimiento_total_porcentaje': rendimiento_total_porcentaje,
-        'rendimiento_total_dinero': rendimiento_total_dinero,
-        'top_5_concentracion': top_5_concentracion,
-        'top_10_concentracion': top_10_concentracion,
-        'pct_fci_cash_management': pct_fci_cash_management,
-        'pct_portafolio_invertido': pct_portafolio_invertido,
-    }
+        return {
+            'total_iol': total_iol,
+            'titulos_valorizados': titulos_valorizados,
+            'cash_ars': cash_ars,
+            'cash_usd': cash_usd,
+            'liquidez_operativa': liquidez_operativa,
+            'fci_cash_management': fci_cash_valor,
+            'portafolio_invertido': portafolio_invertido,
+            'capital_invertido_real': capital_invertido_real,
+            'rendimiento_total_porcentaje': rendimiento_total_porcentaje,
+            'rendimiento_total_dinero': rendimiento_total_dinero,
+            'top_5_concentracion': top_5_concentracion,
+            'top_10_concentracion': top_10_concentracion,
+            'pct_fci_cash_management': pct_fci_cash_management,
+            'pct_portafolio_invertido': pct_portafolio_invertido,
+        }
+
+    return _get_cached_selector_result("dashboard_kpis", build)
 
 
 def get_distribucion_sector() -> Dict[str, float]:

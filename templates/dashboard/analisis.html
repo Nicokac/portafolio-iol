@@ -113,7 +113,7 @@ function createPieChart(canvasId, data) {
             cutout: '56%',
             plugins: {
                 legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } },
-                tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${Number(ctx.raw).toLocaleString('es-AR')}` } }
+                tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${window.formatCurrencyAr(ctx.raw, 0)}` } }
             }
         }
     });

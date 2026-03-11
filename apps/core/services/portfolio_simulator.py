@@ -32,7 +32,7 @@ class PortfolioSimulator:
 
         try:
             capital = Decimal(str(capital))
-            # Obtener informaciÃ³n del activo
+            # Obtener información del activo
             activo = Activo.objects.filter(simbolo=activo_symbol).first()
             if not activo:
                 return {'error': f'Activo {activo_symbol} no encontrado'}

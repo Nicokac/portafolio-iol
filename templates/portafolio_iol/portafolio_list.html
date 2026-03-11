@@ -2,18 +2,18 @@
 {% block title %}Portafolio{% endblock %}
 
 {% block content %}
-<h1>Portafolio de Activos</h1>
+<h1>Lista de Activos en Portafolio</h1>
 
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>Símbolo</th>
-            <th>Descripción</th>
+            <th>Simbolo</th>
+            <th>Descripcion</th>
             <th>Cantidad</th>
-            <th>Último Precio</th>
+            <th>Ultimo Precio</th>
             <th>Valorizado</th>
             <th>Ganancia %</th>
-            <th>País</th>
+            <th>Pais</th>
             <th>Tipo</th>
         </tr>
     </thead>
@@ -23,8 +23,8 @@
             <td>{{ activo.simbolo }}</td>
             <td>{{ activo.descripcion }}</td>
             <td>{{ activo.cantidad|floatformat:2 }}</td>
-            <td>${{ activo.ultimo_precio|floatformat:2 }}</td>
-            <td>${{ activo.valorizado|floatformat:2 }}</td>
+            <td>{{ activo.ultimo_precio|currency:2 }}</td>
+            <td>{{ activo.valorizado|currency:2 }}</td>
             <td class="{% if activo.ganancia_porcentaje > 0 %}text-success{% elif activo.ganancia_porcentaje < 0 %}text-danger{% endif %}">
                 {{ activo.ganancia_porcentaje|floatformat:2 }}%
             </td>
@@ -33,14 +33,14 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8" class="text-center">No hay datos de portafolio disponibles.</td>
+            <td colspan="8" class="text-center">No hay activos para mostrar.</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
 {% if is_paginated %}
-<nav aria-label="Paginación">
+<nav aria-label="Paginacion">
     <ul class="pagination">
         {% if page_obj.has_previous %}
         <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>

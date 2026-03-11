@@ -2,7 +2,10 @@ import pytest
 from unittest.mock import MagicMock, patch
 from django.utils import timezone
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
+from apps.operaciones_iol.models import OperacionIOL
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.portafolio_iol.models import PortfolioSnapshot
+from apps.resumen_iol.models import ResumenCuentaSnapshot
 
 
 @pytest.mark.django_db
@@ -75,11 +78,57 @@ class TestPortfolioSnapshotService:
         assert result is False
 
     def test_sync_iol_data_success(self, service):
-        service.api_client.get_estado_cuenta.return_value = {'cuentas': []}
-        service.api_client.get_portafolio.return_value = {'activos': []}
-        service.api_client.get_operaciones.return_value = []
+        service.api_client.get_estado_cuenta.return_value = {
+            'cuentas': [{
+                'numero': '123',
+                'tipo': 'CA',
+                'moneda': 'ARS',
+                'disponible': 1000.0,
+                'comprometido': 0.0,
+                'saldo': 1000.0,
+                'titulosValorizados': 0.0,
+                'total': 1000.0,
+                'estado': 'activa',
+            }]
+        }
+        service.api_client.get_portafolio.return_value = {
+            'activos': [{
+                'titulo': {
+                    'simbolo': 'AAPL',
+                    'descripcion': 'Apple Inc',
+                    'pais': 'USA',
+                    'mercado': 'NASDAQ',
+                    'tipo': 'CEDEARS',
+                    'moneda': 'ARS',
+                    'plazo': None,
+                },
+                'cantidad': 10,
+                'comprometido': 1,
+                'puntosVariacion': 0.5,
+                'variacionDiaria': 1.0,
+                'ultimoPrecio': 100.0,
+                'ppc': 90.0,
+                'gananciaPorcentaje': 11.11,
+                'gananciaDinero': 100.0,
+                'valorizado': 1000.0,
+            }]
+        }
+        service.api_client.get_operaciones.return_value = [{
+            'numero': 1001,
+            'fechaOrden': '2026-01-01T10:00:00+00:00',
+            'tipo': 'Compra',
+            'estado': 'Terminada',
+            'mercado': 'BCBA',
+            'simbolo': 'GGAL',
+            'cantidad': 100,
+            'monto': 5000.0,
+            'modalidad': 'PRECIO_LIMITE',
+        }]
         result = service.sync_iol_data()
         assert result is True
+        assert ResumenCuentaSnapshot.objects.count() == 1
+        assert ActivoPortafolioSnapshot.objects.count() == 1
+        assert OperacionIOL.objects.count() == 1
 
     def test_sync_iol_data_exception(self, service):
         service.api_client.get_estado_cuenta.side_effect = Exception('Network error')

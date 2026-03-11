@@ -29,7 +29,7 @@ class TemporalMetricsService:
         """
         logger.info(f"Calculating portfolio returns for last {days} days")
 
-        end_date = timezone.now()
+        end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
 
         # Obtener snapshots ordenados por fecha
@@ -42,14 +42,13 @@ class TemporalMetricsService:
             return {}
 
         # Crear DataFrame con datos históricos
-        df = pd.DataFrame(list(snapshots.values(
-            'fecha', 'total_iol', 'total_portafolio', 'rendimiento_diario'
-        )))
+        df = pd.DataFrame(list(snapshots.values('fecha', 'total_iol')))
 
         if df.empty:
             return {}
 
         df['fecha'] = pd.to_datetime(df['fecha'])
+        df['total_iol'] = pd.to_numeric(df['total_iol'], errors='coerce')
         df = df.set_index('fecha').sort_index()
 
         # Calcular retornos
@@ -63,20 +62,20 @@ class TemporalMetricsService:
             returns['total_period_return'] = round(total_return, 2)
 
         # Retorno mensual (últimos 30 días)
-        monthly_data = df.last('30D')
+        monthly_data = df.loc[df.index >= (df.index.max() - pd.Timedelta(days=30))]
         if len(monthly_data) >= 2:
             monthly_return = (monthly_data['total_iol'].iloc[-1] - monthly_data['total_iol'].iloc[0]) / monthly_data['total_iol'].iloc[0] * 100
             returns['monthly_return'] = round(monthly_return, 2)
 
         # Retorno semanal (últimos 7 días)
-        weekly_data = df.last('7D')
+        weekly_data = df.loc[df.index >= (df.index.max() - pd.Timedelta(days=7))]
         if len(weekly_data) >= 2:
             weekly_return = (weekly_data['total_iol'].iloc[-1] - weekly_data['total_iol'].iloc[0]) / weekly_data['total_iol'].iloc[0] * 100
             returns['weekly_return'] = round(weekly_return, 2)
 
         # Retorno diario (último día)
         if len(df) >= 2:
-            daily_return = df['rendimiento_diario'].iloc[-1] if pd.notna(df['rendimiento_diario'].iloc[-1]) else 0
+            daily_return = df['total_iol'].pct_change().iloc[-1] * 100
             returns['daily_return'] = round(daily_return, 2)
 
         # Máximo drawdown del período
@@ -102,7 +101,7 @@ class TemporalMetricsService:
         """
         logger.info(f"Calculating portfolio volatility for last {days} days")
 
-        end_date = timezone.now()
+        end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
 
         snapshots = PortfolioSnapshot.objects.filter(
@@ -115,6 +114,7 @@ class TemporalMetricsService:
 
         df = pd.DataFrame(list(snapshots.values('fecha', 'total_iol')))
         df['fecha'] = pd.to_datetime(df['fecha'])
+        df['total_iol'] = pd.to_numeric(df['total_iol'], errors='coerce')
         df = df.set_index('fecha').sort_index()
 
         # Calcular retornos diarios

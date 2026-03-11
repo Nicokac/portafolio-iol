@@ -14,7 +14,7 @@ from apps.core.services.monthly_investment_planner import MonthlyInvestmentPlann
 class P4ServicesTestCase(TestCase):
     """Tests para servicios de P4."""
     def setUp(self):
-        """ConfiguraciÃ³n inicial para tests."""
+        """Configuración inicial para tests."""
         from django.utils import timezone
         self.portfolio_params = PortfolioParameters.objects.create(
             name="Test Parameters",
@@ -175,7 +175,7 @@ class P4APITestCase(TestCase):
         self.assertIn('nuevo_peso_activo', result)
 
     def test_optimizer_risk_parity_api(self):
-        """Test API de optimizaciÃ³n Risk Parity."""
+        """Test API de optimización Risk Parity."""
         import json
         url = reverse('optimizer-risk-parity')
         data = {

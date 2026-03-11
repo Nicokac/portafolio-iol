@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 from apps.dashboard.selectors import (
     get_analytics_mensual,
@@ -107,5 +108,11 @@ class SetPreferencesView(LoginRequiredMixin, TemplateView):
         if risk_profile in ALLOWED_RISK_PROFILES:
             request.session['risk_profile'] = risk_profile
 
-        return redirect(next_url)
+        if not url_has_allowed_host_and_scheme(
+            url=next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = '/'
 
+        return redirect(next_url)

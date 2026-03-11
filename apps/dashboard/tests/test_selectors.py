@@ -1,5 +1,9 @@
 from django.test import TestCase
 from decimal import Decimal
+from django.core.cache import cache
+from django.db import connection
+from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.dashboard.selectors import (
@@ -69,6 +73,9 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
 
 
 class TestDashboardSelectors(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_get_dashboard_kpis_no_data(self):
         kpis = get_dashboard_kpis()
         assert kpis == {
@@ -475,3 +482,21 @@ class TestDashboardSelectors(TestCase):
 
         senales = get_senales_rebalanceo()
         assert isinstance(senales, dict)
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+    def test_dashboard_kpis_uses_cache_on_second_call(self):
+        cache.clear()
+        fecha = timezone.now()
+        make_resumen(fecha, disponible=1000.00)
+        make_activo(fecha, 'AAPL', valorizado=2000.00, tipo='ACCIONES', moneda='USD')
+
+        with CaptureQueriesContext(connection) as first_call_queries:
+            get_dashboard_kpis()
+
+        with CaptureQueriesContext(connection) as second_call_queries:
+            get_dashboard_kpis()
+
+        assert len(first_call_queries) > 0
+        assert len(second_call_queries) < len(first_call_queries)

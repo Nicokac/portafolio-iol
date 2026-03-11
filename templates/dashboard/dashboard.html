@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% block title %}Dashboard - Portafolio IOL{% endblock %}
 
 {% block content %}
@@ -20,7 +20,7 @@
         <div class="card h-100">
             <div class="card-body text-center">
                 <h6 class="card-title text-muted">Total IOL</h6>
-                <h4 class="card-text text-primary">${{ kpis.total_iol|floatformat:0 }}</h4>
+                <h4 class="card-text text-primary">{{ kpis.total_iol|currency:0 }}</h4>
                 <small class="text-muted">Activos + Cash</small>
             </div>
         </div>
@@ -63,7 +63,7 @@
                 <small>Activos + Cash disponibles</small>
             </div>
             <div class="card-body text-center">
-                <h4 class="card-text text-success">${{ kpis.liquidez_operativa|floatformat:0 }}</h4>
+                <h4 class="card-text text-success">{{ kpis.liquidez_operativa|currency:0 }}</h4>
                 <small class="text-muted">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}% del total</small>
             </div>
         </div>
@@ -75,7 +75,7 @@
                 <small>FCIs + Caución + Cash</small>
             </div>
             <div class="card-body text-center">
-                <h4 class="card-text text-info">${{ kpis.fci_cash_management|floatformat:0 }}</h4>
+                <h4 class="card-text text-info">{{ kpis.fci_cash_management|currency:0 }}</h4>
                 <small class="text-muted">{{ kpis.pct_fci_cash_management|floatformat:1 }}% del total</small>
             </div>
         </div>
@@ -87,7 +87,7 @@
                 <small>Activos de inversión</small>
             </div>
             <div class="card-body text-center">
-                <h4 class="card-text text-primary">${{ kpis.portafolio_invertido|floatformat:0 }}</h4>
+                <h4 class="card-text text-primary">{{ kpis.portafolio_invertido|currency:0 }}</h4>
                 <small class="text-muted">{{ kpis.pct_portafolio_invertido|floatformat:1 }}% del total</small>
             </div>
         </div>
@@ -187,19 +187,19 @@
                     <tbody>
                         <tr>
                             <td><strong>Compras del Mes</strong></td>
-                            <td class="text-end text-success">${{ analytics_mensual.compras_mes|floatformat:0 }}</td>
+                            <td class="text-end text-success">{{ analytics_mensual.compras_mes|currency:0 }}</td>
                         </tr>
                         <tr>
                             <td><strong>Ventas del Mes</strong></td>
-                            <td class="text-end text-danger">${{ analytics_mensual.ventas_mes|floatformat:0 }}</td>
+                            <td class="text-end text-danger">{{ analytics_mensual.ventas_mes|currency:0 }}</td>
                         </tr>
                         <tr>
                             <td><strong>Aporte Mensual Ejecutado</strong></td>
-                            <td class="text-end {% if analytics_mensual.aporte_mensual_ejecutado >= 0 %}text-success{% else %}text-danger{% endif %}">${{ analytics_mensual.aporte_mensual_ejecutado|floatformat:0 }}</td>
+                            <td class="text-end {% if analytics_mensual.aporte_mensual_ejecutado >= 0 %}text-success{% else %}text-danger{% endif %}">{{ analytics_mensual.aporte_mensual_ejecutado|currency:0 }}</td>
                         </tr>
                         <tr>
                             <td><strong>Aporte Pendiente</strong></td>
-                            <td class="text-end text-warning">${{ analytics_mensual.aporte_pendiente|floatformat:0 }}</td>
+                            <td class="text-end text-warning">{{ analytics_mensual.aporte_pendiente|currency:0 }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -357,11 +357,11 @@
                         {% for activo in senales_rebalanceo.activos_sin_metadata %}
                         <div class="mb-2">
                             <strong>{{ activo.simbolo }}</strong><br>
-                            <small class="text-muted">${{ activo.valorizado|floatformat:0 }}</small>
+                            <small class="text-muted">{{ activo.valorizado|currency:0 }}</small>
                         </div>
                         {% endfor %}
                         {% if not senales_rebalanceo.activos_sin_metadata %}
-                        <small class="text-success">✅ Todos tienen metadata completa</small>
+                        <small class="text-success">Todos tienen metadata completa</small>
                         {% endif %}
                     </div>
                 </div>
@@ -437,9 +437,9 @@
             <tr class="table-warning">
                 <td><strong>{{ item.activo.simbolo }}</strong></td>
                 <td><strong>{{ item.activo.descripcion }}</strong></td>
-                <td class="text-end"><strong>${{ item.activo.valorizado|floatformat:2 }}</strong></td>
+                <td class="text-end"><strong>{{ item.activo.valorizado|currency:2 }}</strong></td>
                 <td class="text-end"><strong>{{ item.activo.variacion_diaria|floatformat:2 }}% <small>(tasa)</small></strong></td>
-                <td class="text-end"><strong>${{ item.activo.ganancia_dinero|floatformat:2 }}</strong></td>
+                <td class="text-end"><strong>{{ item.activo.ganancia_dinero|currency:2 }}</strong></td>
                 <td class="text-end"><strong>{{ item.peso_porcentual|floatformat:1 }}%</strong></td>
                 <td><span class="badge bg-warning">{{ item.moneda_traducida }}</span></td>
                 <td class="text-end"><strong>N/A</strong></td>
@@ -453,9 +453,9 @@
             <tr>
                 <td>{{ item.activo.simbolo }}</td>
                 <td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td>
-                <td class="text-end">${{ item.activo.valorizado|floatformat:2 }}</td>
+                <td class="text-end">{{ item.activo.valorizado|currency:2 }}</td>
                 <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td>
-                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">${{ item.activo.ganancia_dinero|floatformat:2 }}</td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.ganancia_dinero|currency:2 }}</td>
                 <td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td>
                 <td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td>
                 <td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td>
@@ -499,11 +499,11 @@
                 <td>{{ item.activo.simbolo }}</td>
                 <td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td>
                 <td class="text-end">{{ item.activo.cantidad|floatformat:2 }}</td>
-                <td class="text-end">${{ item.activo.ultimo_precio|floatformat:2 }}</td>
-                <td class="text-end">${{ item.activo.valorizado|floatformat:2 }}</td>
+                <td class="text-end">{{ item.activo.ultimo_precio|currency:2 }}</td>
+                <td class="text-end">{{ item.activo.valorizado|currency:2 }}</td>
                 <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td>
-                <td class="text-end">${{ item.activo.ppc|floatformat:2 }}</td>
-                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">${{ item.activo.ganancia_dinero|floatformat:2 }}</td>
+                <td class="text-end">{{ item.activo.ppc|currency:2 }}</td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.ganancia_dinero|currency:2 }}</td>
                 <td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td>
                 <td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td>
                 <td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td>
@@ -539,9 +539,9 @@
                 <td><strong>{{ forloop.counter }}</strong></td>
                 <td><strong>{{ item.activo.simbolo }}</strong></td>
                 <td title="{{ item.activo.descripcion }}"><strong>{{ item.activo.descripcion|truncatechars:40 }}</strong></td>
-                <td class="text-end"><strong>${{ item.activo.valorizado|floatformat:0 }}</strong></td>
+                <td class="text-end"><strong>{{ item.activo.valorizado|currency:0 }}</strong></td>
                 <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>{{ item.activo.variacion_diaria|floatformat:2 }}%</strong></td>
-                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>${{ item.activo.ganancia_dinero|floatformat:0 }}</strong></td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>{{ item.activo.ganancia_dinero|currency:0 }}</strong></td>
                 <td class="text-end"><strong>{{ item.peso_porcentual|floatformat:1 }}%</strong></td>
                 <td><span class="badge bg-primary">{{ item.sector }}</span></td>
                 <td><span class="badge bg-info">{{ item.tipo_patrimonial }}</span></td>
@@ -580,11 +580,11 @@
                 <td>{{ item.activo.simbolo }}</td>
                 <td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td>
                 <td class="text-end">{{ item.activo.cantidad|floatformat:2 }}</td>
-                <td class="text-end">${{ item.activo.ultimo_precio|floatformat:2 }}</td>
-                <td class="text-end">${{ item.activo.valorizado|floatformat:2 }}</td>
+                <td class="text-end">{{ item.activo.ultimo_precio|currency:2 }}</td>
+                <td class="text-end">{{ item.activo.valorizado|currency:2 }}</td>
                 <td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td>
-                <td class="text-end">${{ item.activo.ppc|floatformat:2 }}</td>
-                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">${{ item.activo.ganancia_dinero|floatformat:2 }}</td>
+                <td class="text-end">{{ item.activo.ppc|currency:2 }}</td>
+                <td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.ganancia_dinero|currency:2 }}</td>
                 <td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td>
                 <td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td>
                 <td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td>
@@ -864,7 +864,7 @@ function runSimulation() {
     .then(data => {
         const details = document.getElementById('simulation-details');
         details.innerHTML = data.error ? `<div class="alert alert-danger">${data.error}</div>` :
-            `<div class="row"><div class="col-6"><strong>Capital:</strong> $${data.capital_invertido.toLocaleString()}</div><div class="col-6"><strong>Cantidad:</strong> ${data.cantidad_comprada.toFixed(2)}</div></div><div class="row mt-2"><div class="col-6"><strong>Nuevo peso:</strong> ${data.nuevo_peso_activo.toFixed(2)}%</div><div class="col-6"><strong>Riesgo:</strong> ${data.riesgo_estimado}</div></div>`;
+            `<div class="row"><div class="col-6"><strong>Capital:</strong> ${window.formatCurrencyAr(data.capital_invertido, 0)}</div><div class="col-6"><strong>Cantidad:</strong> ${window.formatNumberAr(data.cantidad_comprada, 2)}</div></div><div class="row mt-2"><div class="col-6"><strong>Nuevo peso:</strong> ${window.formatNumberAr(data.nuevo_peso_activo, 2)}%</div><div class="col-6"><strong>Riesgo:</strong> ${data.riesgo_estimado}</div></div>`;
         document.getElementById('simulation-result').style.display = 'block';
     });
 }
@@ -884,7 +884,7 @@ function runMonthlyPlan() {
         if (data.error) { details.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; }
         else {
             let html = '<table class="table table-sm"><thead><tr><th>Activo</th><th>%</th><th>Monto</th></tr></thead><tbody>';
-            Object.entries(data.distribucion).forEach(([activo, d]) => { html += `<tr><td>${activo}</td><td>${d.porcentaje}%</td><td>$${d.monto.toLocaleString()}</td></tr>`; });
+            Object.entries(data.distribucion).forEach(([activo, d]) => { html += `<tr><td>${activo}</td><td>${window.formatNumberAr(d.porcentaje, 1)}%</td><td>${window.formatCurrencyAr(d.monto, 0)}</td></tr>`; });
             html += '</tbody></table>';
             details.innerHTML = html;
         }
@@ -945,9 +945,10 @@ function savePortfolioParams() {
     .then(r => r.json())
     .then(data => {
         const status = document.getElementById('params-save-status');
-        status.innerHTML = data.message ? '<span class="text-success">✓ Guardado</span>' : '<span class="text-danger">✗ Error</span>';
+        status.innerHTML = data.message ? '<span class="text-success">OK Guardado</span>' : '<span class="text-danger">Error</span>';
         setTimeout(() => status.innerHTML = '', 3000);
     });
 }
 </script>
 {% endblock %}
+

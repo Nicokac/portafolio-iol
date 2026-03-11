@@ -43,7 +43,7 @@ class MonthlyInvestmentPlanner:
 
         try:
             monthly_amount = Decimal(str(monthly_amount))
-            # Usar asignaciÃ³n personalizada o por defecto
+            # Usar asignación personalizada o por defecto
             allocation = custom_allocation or self.default_allocation
 
             # Validar que la asignación sume 100%

@@ -1,0 +1,54 @@
+import pytest
+from django.contrib.auth.models import User
+from django.test import Client
+from django.urls import reverse
+
+
+@pytest.mark.django_db
+class TestDashboardFeatureFlows:
+    @pytest.fixture
+    def auth_client(self):
+        user = User.objects.create_user(username="flow-user", password="testpass123")
+        client = Client(raise_request_exception=False)
+        client.force_login(user)
+        return client
+
+    @pytest.mark.parametrize(
+        ("route_name", "expected_template", "required_context_keys"),
+        [
+            ("dashboard:dashboard", "dashboard/resumen.html", ["kpis", "portafolio", "senales_rebalanceo"]),
+            ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts"]),
+            ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
+            ("dashboard:estrategia", "dashboard/dashboard.html", ["kpis", "portafolio", "senales_rebalanceo"]),
+        ],
+    )
+    def test_dashboard_routes_have_template_and_context(
+        self, auth_client, route_name, expected_template, required_context_keys
+    ):
+        response = auth_client.get(reverse(route_name))
+
+        assert response.status_code == 200
+        assert expected_template in [template.name for template in response.templates]
+        for key in required_context_keys:
+            assert key in response.context
+
+    def test_strategy_page_contains_critical_modules(self, auth_client):
+        response = auth_client.get(reverse("dashboard:estrategia"))
+        content = response.content.decode("utf-8")
+
+        assert response.status_code == 200
+        assert "recommendations-container" in content
+        assert "simulation-activo" in content
+        assert "monthly-plan-result" in content
+        assert "optimization-result" in content
+
+    def test_preferences_are_reflected_in_body_class(self, auth_client):
+        auth_client.get(
+            reverse("dashboard:set_preferences"),
+            {"ui_mode": "denso", "risk_profile": "agresivo", "next": reverse("dashboard:estrategia")},
+        )
+        response = auth_client.get(reverse("dashboard:estrategia"))
+        content = response.content.decode("utf-8")
+
+        assert response.status_code == 200
+        assert 'class="profile-agresivo"' in content

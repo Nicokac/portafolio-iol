@@ -42,7 +42,14 @@ def sync_portfolio_data():
 
     try:
         service = PortfolioSnapshotService()
-        result = service.sync_iol_data()
+        raw_result = service.sync_iol_data()
+        if isinstance(raw_result, dict):
+            result = raw_result
+        else:
+            result = {
+                'success': bool(raw_result),
+                'message': 'Sync OK' if raw_result else 'Sync failed',
+            }
 
         if result['success']:
             logger.info(f"Portfolio sync completed successfully: {result['message']}")
@@ -65,7 +72,15 @@ def generate_daily_snapshot():
 
     try:
         service = PortfolioSnapshotService()
-        result = service.generate_daily_snapshot()
+        raw_result = service.generate_daily_snapshot()
+        if isinstance(raw_result, dict):
+            result = raw_result
+        else:
+            snapshot_date = getattr(raw_result, 'fecha', None)
+            result = {
+                'success': raw_result is not None,
+                'message': f'Snapshot generated for {snapshot_date}' if raw_result else 'Snapshot failed',
+            }
 
         if result['success']:
             logger.info(f"Daily snapshot generated successfully: {result['message']}")

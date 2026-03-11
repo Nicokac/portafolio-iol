@@ -7,9 +7,8 @@
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>Fecha</th>
-            <th>Cuenta</th>
-            <th>Tipo</th>
+            <th>Numero Cuenta</th>
+            <th>Tipo Cuenta</th>
             <th>Moneda</th>
             <th>Disponible</th>
             <th>Saldo</th>
@@ -20,25 +19,24 @@
     <tbody>
         {% for resumen in resumenes %}
         <tr>
-            <td>{{ resumen.fecha_extraccion|date:"d/m/Y H:i" }}</td>
             <td>{{ resumen.numero_cuenta }}</td>
             <td>{{ resumen.tipo_cuenta }}</td>
             <td>{{ resumen.moneda }}</td>
-            <td>${{ resumen.disponible|floatformat:2 }}</td>
-            <td>${{ resumen.saldo|floatformat:2 }}</td>
-            <td>${{ resumen.total|floatformat:2 }}</td>
+            <td>{{ resumen.disponible|currency:2 }}</td>
+            <td>{{ resumen.saldo|currency:2 }}</td>
+            <td>{{ resumen.total|currency:2 }}</td>
             <td><span class="badge bg-success">{{ resumen.estado }}</span></td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8" class="text-center">No hay datos de resumen disponibles.</td>
+            <td colspan="7" class="text-center">No hay datos para mostrar.</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
 {% if is_paginated %}
-<nav aria-label="Paginación">
+<nav aria-label="Paginacion">
     <ul class="pagination">
         {% if page_obj.has_previous %}
         <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>

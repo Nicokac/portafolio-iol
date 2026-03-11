@@ -2,15 +2,15 @@
 {% block title %}Operaciones{% endblock %}
 
 {% block content %}
-<h1>Operaciones</h1>
+<h1>Lista de Operaciones</h1>
 
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>Número</th>
+            <th>Numero</th>
             <th>Fecha Orden</th>
             <th>Tipo</th>
-            <th>Símbolo</th>
+            <th>Simbolo</th>
             <th>Cantidad</th>
             <th>Precio</th>
             <th>Monto</th>
@@ -25,20 +25,20 @@
             <td>{{ operacion.tipo }}</td>
             <td>{{ operacion.simbolo }}</td>
             <td>{{ operacion.cantidad|floatformat:2 }}</td>
-            <td>${{ operacion.precio|floatformat:2 }}</td>
-            <td>${{ operacion.monto|floatformat:2 }}</td>
+            <td>{{ operacion.precio|currency:2 }}</td>
+            <td>{{ operacion.monto|currency:2 }}</td>
             <td><span class="badge bg-{% if operacion.estado == 'ejecutada' %}success{% elif operacion.estado == 'pendiente' %}warning{% else %}secondary{% endif %}">{{ operacion.estado }}</span></td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8" class="text-center">No hay operaciones disponibles.</td>
+            <td colspan="8" class="text-center">No hay operaciones para mostrar.</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
 {% if is_paginated %}
-<nav aria-label="Paginación">
+<nav aria-label="Paginacion">
     <ul class="pagination">
         {% if page_obj.has_previous %}
         <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
