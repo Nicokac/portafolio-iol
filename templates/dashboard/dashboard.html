@@ -220,6 +220,20 @@
                             <td><small class="text-muted">vs benchmark</small></td>
                         </tr>
                         {% endif %}
+                        {% if riesgo_portafolio.liquidity_score is not None %}
+                        <tr>
+                            <td><strong>Liquidity Score</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio.liquidity_score|floatformat:1 }}</td>
+                            <td><small class="text-muted">0-100</small></td>
+                        </tr>
+                        {% endif %}
+                        {% if riesgo_portafolio.days_to_liquidate is not None %}
+                        <tr>
+                            <td><strong>Días para desarme</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio.days_to_liquidate|floatformat:1 }}</td>
+                            <td><small class="text-muted">estimado</small></td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

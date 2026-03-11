@@ -42,6 +42,7 @@ GET_ENDPOINTS = [
     'metrics-stress-test',
     'metrics-attribution',
     'metrics-benchmarking',
+    'metrics-liquidity',
     'historical-evolution',
     'historical-summary',
     'recommendations-all',
@@ -200,6 +201,15 @@ class TestAPIInputValidation:
 
     def test_metrics_benchmarking_includes_metadata(self, auth_client):
         url = reverse('metrics-benchmarking')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'methodology' in body['metadata']
+
+    def test_metrics_liquidity_includes_metadata(self, auth_client):
+        url = reverse('metrics-liquidity')
         response = auth_client.get(url)
         assert response.status_code in [200, 500]
         if response.status_code == 200:

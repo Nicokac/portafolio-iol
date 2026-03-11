@@ -13,6 +13,7 @@ from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
 from apps.core.services.performance.tracking_error import TrackingErrorService
+from apps.core.services.liquidity.liquidity_service import LiquidityService
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -483,6 +484,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     cvar_metrics = CVaRService().calculate_cvar_set(confidence=0.95, lookback_days=252)
     stress_metrics = StressTestService().run_all()
     benchmarking = TrackingErrorService().calculate(days=90)
+    liquidity = LiquidityService().analyze_portfolio_liquidity()
     volatilidad_pct = volatility_metrics.get('annualized_volatility')
 
     # Fallback: proxy si no hay histórico suficiente
@@ -518,6 +520,9 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     result.update(var_metrics)
     result.update(cvar_metrics)
     result.update(benchmarking)
+    if liquidity:
+        result["liquidity_score"] = liquidity.get("portfolio_liquidity_score")
+        result["days_to_liquidate"] = liquidity.get("days_to_liquidate")
     if stress_metrics:
         worst_case = min(
             stress_metrics.values(),

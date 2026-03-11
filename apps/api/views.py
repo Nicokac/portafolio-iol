@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.performance.attribution_service import AttributionService
 from apps.core.services.performance.tracking_error import TrackingErrorService
+from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
@@ -397,6 +398,25 @@ def metrics_benchmarking(request):
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def metrics_liquidity(request):
+    """Obtiene métricas de liquidez operativa y días de liquidación estimados."""
+    try:
+        liquidity = LiquidityService().analyze_portfolio_liquidity()
+        liquidity["metadata"] = {
+            "methodology": {
+                "liquidity_score": "score 0-100 basado en tipo, volumen proxy y spread estimado",
+                "days_to_liquidate": "valor_portafolio / capacidad_diaria_estimada",
+            }
+        }
+        return Response(liquidity, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 # Historical Data API
