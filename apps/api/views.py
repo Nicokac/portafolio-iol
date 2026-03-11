@@ -8,6 +8,9 @@ from rest_framework.response import Response
 
 from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.rebalance_engine import RebalanceEngine
+from apps.core.services.risk.cvar_service import CVaRService
+from apps.core.services.risk.stress_test_service import StressTestService
+from apps.core.services.risk.var_service import VaRService
 from apps.core.services.temporal_metrics_service import TemporalMetricsService
 from apps.dashboard.selectors import (
     get_concentracion_pais,
@@ -263,6 +266,75 @@ def metrics_historical_comparison(request):
         service = TemporalMetricsService()
         comparison = service.get_historical_comparison(periods)
         return Response(comparison, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def metrics_var(request):
+    """Obtiene VaR histórico y paramétrico."""
+    try:
+        confidence = float(request.query_params.get('confidence', 0.95))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro confidence debe ser numérico'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        var_metrics = VaRService().calculate_var_set(confidence=confidence)
+        var_metrics['metadata'] = {
+            'methodology': 'Historical VaR y Parametric VaR',
+            'confidence': confidence,
+        }
+        return Response(var_metrics, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def metrics_cvar(request):
+    """Obtiene CVaR histórico."""
+    try:
+        confidence = float(request.query_params.get('confidence', 0.95))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro confidence debe ser numérico'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        cvar_metrics = CVaRService().calculate_cvar_set(confidence=confidence)
+        cvar_metrics['metadata'] = {
+            'methodology': 'Historical CVaR (Expected Shortfall)',
+            'confidence': confidence,
+        }
+        return Response(cvar_metrics, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def metrics_stress_test(request):
+    """Obtiene resultados de stress testing de portafolio."""
+    try:
+        result = StressTestService().run_all()
+        return Response(
+            {
+                'scenarios': result,
+                'metadata': {'methodology': 'Deterministic scenario stress testing'},
+            },
+            status=status.HTTP_200_OK
+        )
     except Exception as e:
         return Response(
             {'error': str(e)},

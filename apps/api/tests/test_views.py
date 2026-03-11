@@ -37,6 +37,9 @@ GET_ENDPOINTS = [
     'metrics-volatility',
     'metrics-performance',
     'metrics-historical-comparison',
+    'metrics-var',
+    'metrics-cvar',
+    'metrics-stress-test',
     'historical-evolution',
     'historical-summary',
     'recommendations-all',
@@ -138,6 +141,18 @@ class TestAPIInputValidation:
 
     def test_metrics_historical_comparison_invalid_periods(self, auth_client):
         url = reverse('metrics-historical-comparison') + '?periods=7,invalid,90'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_metrics_var_invalid_confidence(self, auth_client):
+        url = reverse('metrics-var') + '?confidence=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_metrics_cvar_invalid_confidence(self, auth_client):
+        url = reverse('metrics-cvar') + '?confidence=invalid'
         response = auth_client.get(url)
         assert response.status_code == 400
         assert 'error' in response.json()

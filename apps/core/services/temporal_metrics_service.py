@@ -6,6 +6,8 @@ import pandas as pd
 from django.utils import timezone
 
 from apps.core.services.performance.twr_service import TWRService
+from apps.core.services.risk.cvar_service import CVaRService
+from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
 from apps.portafolio_iol.models import PortfolioSnapshot
 
@@ -19,6 +21,8 @@ class TemporalMetricsService:
         self.logger = logging.getLogger(__name__)
         self.volatility_service = VolatilityService()
         self.twr_service = TWRService()
+        self.var_service = VaRService()
+        self.cvar_service = CVaRService()
 
     def get_portfolio_returns(self, days: int = 30) -> Dict:
         """
@@ -130,6 +134,8 @@ class TemporalMetricsService:
         metrics = {
             'returns': returns,
             'volatility': volatility,
+            'var': self.var_service.calculate_var_set(),
+            'cvar': self.cvar_service.calculate_cvar_set(),
             'period_days': days,
             'calculated_at': timezone.now().isoformat()
         }

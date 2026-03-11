@@ -8,6 +8,9 @@ from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
+from apps.core.services.risk.cvar_service import CVaRService
+from apps.core.services.risk.stress_test_service import StressTestService
+from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
 
 
@@ -475,6 +478,9 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     liquidez_pct = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
 
     volatility_metrics = VolatilityService().calculate_volatility(days=90)
+    var_metrics = VaRService().calculate_var_set(confidence=0.95, lookback_days=252)
+    cvar_metrics = CVaRService().calculate_cvar_set(confidence=0.95, lookback_days=252)
+    stress_metrics = StressTestService().run_all()
     volatilidad_pct = volatility_metrics.get('annualized_volatility')
 
     # Fallback: proxy si no hay histórico suficiente
@@ -501,12 +507,22 @@ def get_riesgo_portafolio() -> Dict[str, float]:
             volatilidad_ponderada += pct_portafolio * volatilidad_activo
         volatilidad_pct = volatilidad_ponderada * 100
 
-    return {
+    result = {
         'volatilidad_estimada': volatilidad_pct,
         'exposicion_usa': exposicion_usa_pct,
         'exposicion_argentina': exposicion_argentina_pct,
         'liquidez': liquidez_pct,
     }
+    result.update(var_metrics)
+    result.update(cvar_metrics)
+    if stress_metrics:
+        worst_case = min(
+            stress_metrics.values(),
+            key=lambda scenario: scenario.get("impact_portfolio_pct", 0)
+        )
+        result["stress_worst_case_label"] = worst_case["label"]
+        result["stress_worst_case_pct"] = worst_case["impact_portfolio_pct"]
+    return result
 
 
 def get_analytics_mensual() -> Dict[str, float]:
