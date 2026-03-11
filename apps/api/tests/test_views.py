@@ -142,6 +142,24 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
+    def test_metrics_returns_includes_basis_metadata(self, auth_client):
+        url = reverse('metrics-returns')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'bases' in body['metadata']
+
+    def test_metrics_volatility_includes_basis_metadata(self, auth_client):
+        url = reverse('metrics-volatility')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'fields_basis' in body['metadata']
+
 @pytest.mark.django_db
 class TestAPIPostEndpointsHappyPath:
     """Cubre path feliz de POST endpoints con mocks."""

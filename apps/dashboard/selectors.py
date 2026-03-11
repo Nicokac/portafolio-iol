@@ -8,6 +8,7 @@ from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
+from apps.core.services.risk.volatility_service import VolatilityService
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -473,33 +474,32 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     liquidez_total += sum(cuenta.disponible for cuenta in resumen)
     liquidez_pct = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
 
-    # Proxy de volatilidad (simplificado - basado en tipos de activo, no cálculo real de volatilidad histórica)
-    # Por ahora, estimación básica basada en tipos de activo
-    volatilidad_ponderada = 0
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        pct_portafolio = float(activo.valorizado) / float(total_portafolio)
-        
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            # Activos USA tienen mayor volatilidad (tech, equities)
-            volatilidad_activo = 0.28  # 28% volatilidad anual estimada
-        elif parametro and parametro.tipo_patrimonial == 'Hard Assets':
-            volatilidad_activo = 0.22  # 22% para commodities
-        elif parametro and parametro.pais_exposicion == 'Argentina':
-            # Activos argentinos tienen volatilidad por riesgo país
-            if parametro.tipo_patrimonial in ['Bond', 'FCI']:
-                volatilidad_activo = 0.25  # 25% para bonos/FCI argentinos
-            elif parametro.tipo_patrimonial == 'Cash':
-                volatilidad_activo = 0.03  # 3% para cash argentino
-            else:
-                volatilidad_activo = 0.35  # 35% para equities argentinos
-        else:
-            # Otros mercados emergentes o sin clasificación específica
-            volatilidad_activo = 0.20  # 20% para resto
-        
-        volatilidad_ponderada += pct_portafolio * volatilidad_activo
+    volatility_metrics = VolatilityService().calculate_volatility(days=90)
+    volatilidad_pct = volatility_metrics.get('annualized_volatility')
 
-    volatilidad_pct = volatilidad_ponderada * 100  # Convertir a porcentaje
+    # Fallback: proxy si no hay histórico suficiente
+    if volatilidad_pct is None:
+        volatilidad_ponderada = 0
+        for activo in portafolio:
+            parametro = parametros.get(activo.simbolo)
+            pct_portafolio = float(activo.valorizado) / float(total_portafolio) if total_portafolio > 0 else 0
+
+            if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
+                volatilidad_activo = 0.28
+            elif parametro and parametro.tipo_patrimonial == 'Hard Assets':
+                volatilidad_activo = 0.22
+            elif parametro and parametro.pais_exposicion == 'Argentina':
+                if parametro.tipo_patrimonial in ['Bond', 'FCI']:
+                    volatilidad_activo = 0.25
+                elif parametro.tipo_patrimonial == 'Cash':
+                    volatilidad_activo = 0.03
+                else:
+                    volatilidad_activo = 0.35
+            else:
+                volatilidad_activo = 0.20
+
+            volatilidad_ponderada += pct_portafolio * volatilidad_activo
+        volatilidad_pct = volatilidad_ponderada * 100
 
     return {
         'volatilidad_estimada': volatilidad_pct,

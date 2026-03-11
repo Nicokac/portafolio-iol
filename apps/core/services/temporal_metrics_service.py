@@ -1,11 +1,12 @@
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import timedelta
+from typing import Dict, List
 
 import pandas as pd
-from django.db.models import Sum
 from django.utils import timezone
 
+from apps.core.services.performance.twr_service import TWRService
+from apps.core.services.risk.volatility_service import VolatilityService
 from apps.portafolio_iol.models import PortfolioSnapshot
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,8 @@ class TemporalMetricsService:
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.volatility_service = VolatilityService()
+        self.twr_service = TWRService()
 
     def get_portfolio_returns(self, days: int = 30) -> Dict:
         """
@@ -86,6 +89,10 @@ class TemporalMetricsService:
             max_drawdown = drawdown.min()
             returns['max_drawdown'] = round(max_drawdown, 2)
 
+        # TWR: retorno neutralizando (estimación de) flujos externos
+        twr_metrics = self.twr_service.calculate_twr(days=days)
+        returns.update(twr_metrics)
+
         logger.info(f"Calculated returns: {returns}")
         return returns
 
@@ -100,52 +107,7 @@ class TemporalMetricsService:
             Dict con volatilidad diaria, anualizada, etc.
         """
         logger.info(f"Calculating portfolio volatility for last {days} days")
-
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=days)
-
-        snapshots = PortfolioSnapshot.objects.filter(
-            fecha__range=(start_date, end_date)
-        ).order_by('fecha')
-
-        if not snapshots.exists() or len(snapshots) < 2:
-            logger.warning("Insufficient data for volatility calculation")
-            return {}
-
-        df = pd.DataFrame(list(snapshots.values('fecha', 'total_iol')))
-        df['fecha'] = pd.to_datetime(df['fecha'])
-        df['total_iol'] = pd.to_numeric(df['total_iol'], errors='coerce')
-        df = df.set_index('fecha').sort_index()
-
-        # Calcular retornos diarios
-        daily_returns = df['total_iol'].pct_change().dropna()
-
-        if daily_returns.empty:
-            return {}
-
-        volatility = {}
-
-        # Volatilidad diaria
-        daily_vol = daily_returns.std()
-        volatility['daily_volatility'] = round(daily_vol * 100, 2)
-
-        # Volatilidad anualizada (asumiendo 252 días de trading)
-        annualized_vol = daily_vol * (252 ** 0.5)
-        volatility['annualized_volatility'] = round(annualized_vol * 100, 2)
-
-        # Sharpe ratio (simplificado, asumiendo tasa libre de riesgo = 0)
-        if daily_vol > 0:
-            sharpe_ratio = daily_returns.mean() / daily_vol * (252 ** 0.5)
-            volatility['sharpe_ratio'] = round(sharpe_ratio, 2)
-
-        # Sortino ratio (solo pérdidas)
-        downside_returns = daily_returns[daily_returns < 0]
-        if not downside_returns.empty:
-            downside_vol = downside_returns.std()
-            if downside_vol > 0:
-                sortino_ratio = daily_returns.mean() / downside_vol * (252 ** 0.5)
-                volatility['sortino_ratio'] = round(sortino_ratio, 2)
-
+        volatility = self.volatility_service.calculate_volatility(days=days)
         logger.info(f"Calculated volatility: {volatility}")
         return volatility
 

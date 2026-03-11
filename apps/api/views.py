@@ -17,6 +17,12 @@ from apps.dashboard.selectors import (
 )
 from apps.portafolio_iol.models import PortfolioSnapshot
 
+METRIC_BASES = {
+    'total_portfolio': 'Total IOL (activos + cash)',
+    'invested_capital': 'Capital invertido en activos',
+    'portfolio_ex_cash': 'Portafolio excluyendo cash',
+}
+
 
 # Dashboard API
 @api_view(['GET'])
@@ -24,6 +30,16 @@ def dashboard_kpis(request):
     """Obtiene KPIs principales del dashboard."""
     try:
         kpis = get_dashboard_kpis()
+        kpis['metadata'] = {
+            'bases': METRIC_BASES,
+            'fields_basis': {
+                'top_5_concentracion': 'invested_capital',
+                'top_10_concentracion': 'invested_capital',
+                'pct_fci_cash_management': 'total_portfolio',
+                'pct_portafolio_invertido': 'total_portfolio',
+                'rendimiento_total_porcentaje': 'invested_capital',
+            },
+        }
         return Response(kpis, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -150,6 +166,21 @@ def metrics_returns(request):
     try:
         service = TemporalMetricsService()
         returns = service.get_portfolio_returns(days)
+        returns['metadata'] = {
+            'bases': METRIC_BASES,
+            'fields_basis': {
+                'total_period_return': 'total_portfolio',
+                'monthly_return': 'total_portfolio',
+                'weekly_return': 'total_portfolio',
+                'daily_return': 'total_portfolio',
+                'twr_total_return': 'total_portfolio',
+                'twr_annualized_return': 'total_portfolio',
+                'max_drawdown': 'total_portfolio',
+            },
+            'methodology': {
+                'twr': 'Time Weighted Return',
+            },
+        }
         return Response(returns, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -171,6 +202,18 @@ def metrics_volatility(request):
     try:
         service = TemporalMetricsService()
         volatility = service.get_portfolio_volatility(days)
+        volatility['metadata'] = {
+            'bases': METRIC_BASES,
+            'fields_basis': {
+                'daily_volatility': 'total_portfolio',
+                'annualized_volatility': 'total_portfolio',
+                'sharpe_ratio': 'total_portfolio',
+                'sortino_ratio': 'total_portfolio',
+            },
+            'methodology': {
+                'volatility': 'std(returns) * sqrt(252)',
+            },
+        }
         return Response(volatility, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -192,6 +235,11 @@ def metrics_performance(request):
     try:
         service = TemporalMetricsService()
         metrics = service.get_performance_metrics(days)
+        metrics['metadata'] = {
+            'bases': METRIC_BASES,
+            'returns': 'Time Weighted Return + retornos por período',
+            'volatility': 'Retornos históricos de patrimonio',
+        }
         return Response(metrics, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
