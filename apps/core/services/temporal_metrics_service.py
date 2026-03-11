@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from apps.core.services.performance.twr_service import TWRService
 from apps.core.services.performance.attribution_service import AttributionService
+from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
@@ -23,6 +24,7 @@ class TemporalMetricsService:
         self.volatility_service = VolatilityService()
         self.twr_service = TWRService()
         self.attribution_service = AttributionService()
+        self.tracking_error_service = TrackingErrorService()
         self.var_service = VaRService()
         self.cvar_service = CVaRService()
 
@@ -139,6 +141,7 @@ class TemporalMetricsService:
             'var': self.var_service.calculate_var_set(),
             'cvar': self.cvar_service.calculate_cvar_set(),
             'attribution': self.attribution_service.calculate_attribution(days=days),
+            'benchmarking': self.tracking_error_service.calculate(days=days),
             'period_days': days,
             'calculated_at': timezone.now().isoformat()
         }

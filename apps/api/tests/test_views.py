@@ -41,6 +41,7 @@ GET_ENDPOINTS = [
     'metrics-cvar',
     'metrics-stress-test',
     'metrics-attribution',
+    'metrics-benchmarking',
     'historical-evolution',
     'historical-summary',
     'recommendations-all',
@@ -164,6 +165,12 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
+    def test_metrics_benchmarking_invalid_days(self, auth_client):
+        url = reverse('metrics-benchmarking') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
     def test_metrics_returns_includes_basis_metadata(self, auth_client):
         url = reverse('metrics-returns')
         response = auth_client.get(url)
@@ -184,6 +191,15 @@ class TestAPIInputValidation:
 
     def test_metrics_attribution_includes_metadata(self, auth_client):
         url = reverse('metrics-attribution')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'methodology' in body['metadata']
+
+    def test_metrics_benchmarking_includes_metadata(self, auth_client):
+        url = reverse('metrics-benchmarking')
         response = auth_client.get(url)
         assert response.status_code in [200, 500]
         if response.status_code == 200:

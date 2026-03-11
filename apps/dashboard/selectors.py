@@ -12,6 +12,7 @@ from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
+from apps.core.services.performance.tracking_error import TrackingErrorService
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -481,6 +482,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     var_metrics = VaRService().calculate_var_set(confidence=0.95, lookback_days=252)
     cvar_metrics = CVaRService().calculate_cvar_set(confidence=0.95, lookback_days=252)
     stress_metrics = StressTestService().run_all()
+    benchmarking = TrackingErrorService().calculate(days=90)
     volatilidad_pct = volatility_metrics.get('annualized_volatility')
 
     # Fallback: proxy si no hay histórico suficiente
@@ -515,6 +517,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     }
     result.update(var_metrics)
     result.update(cvar_metrics)
+    result.update(benchmarking)
     if stress_metrics:
         worst_case = min(
             stress_metrics.values(),

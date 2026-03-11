@@ -204,6 +204,22 @@
                             <td><small class="text-muted">{{ riesgo_portafolio.stress_worst_case_label }}</small></td>
                         </tr>
                         {% endif %}
+                        {% if riesgo_portafolio.tracking_error_annualized is not None %}
+                        <tr>
+                            <td><strong>Tracking Error</strong></td>
+                            <td class="text-end">{{ riesgo_portafolio.tracking_error_annualized|floatformat:2 }}%</td>
+                            <td><small class="text-muted">Anualizado</small></td>
+                        </tr>
+                        {% endif %}
+                        {% if riesgo_portafolio.information_ratio is not None %}
+                        <tr>
+                            <td><strong>Information Ratio</strong></td>
+                            <td class="text-end {% if riesgo_portafolio.information_ratio >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ riesgo_portafolio.information_ratio|floatformat:2 }}
+                            </td>
+                            <td><small class="text-muted">vs benchmark</small></td>
+                        </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

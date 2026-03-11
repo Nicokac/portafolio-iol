@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.performance.attribution_service import AttributionService
+from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
@@ -364,6 +365,34 @@ def metrics_attribution(request):
             'bases': METRIC_BASES,
         }
         return Response(attribution, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def metrics_benchmarking(request):
+    """Obtiene métricas de benchmarking (tracking error + information ratio)."""
+    try:
+        days = int(request.query_params.get('days', 90))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro days debe ser un número entero válido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        result = TrackingErrorService().calculate(days=days)
+        result['metadata'] = {
+            'methodology': {
+                'tracking_error': 'std(portfolio_return - benchmark_return) * sqrt(252)',
+                'information_ratio': '(portfolio_return - benchmark_return) / tracking_error',
+            },
+            'benchmark_config': 'ParametrosBenchmark',
+        }
+        return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
             {'error': str(e)},

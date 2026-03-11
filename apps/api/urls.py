@@ -27,6 +27,7 @@ urlpatterns = [
     path('metrics/cvar/', views.metrics_cvar, name='metrics-cvar'),
     path('metrics/stress-test/', views.metrics_stress_test, name='metrics-stress-test'),
     path('metrics/attribution/', views.metrics_attribution, name='metrics-attribution'),
+    path('metrics/benchmarking/', views.metrics_benchmarking, name='metrics-benchmarking'),
 
     # Datos históricos
     path('historical/evolution/', views.historical_portfolio_evolution, name='historical-evolution'),
