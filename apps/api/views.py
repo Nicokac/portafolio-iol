@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.core.services.alerts_engine import AlertsEngine
+from apps.core.services.performance.attribution_service import AttributionService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
@@ -335,6 +336,34 @@ def metrics_stress_test(request):
             },
             status=status.HTTP_200_OK
         )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def metrics_attribution(request):
+    """Obtiene attribution de performance por activo/buckets/flujos."""
+    try:
+        days = int(request.query_params.get('days', 30))
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro days debe ser un número entero válido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        attribution = AttributionService().calculate_attribution(days=days)
+        attribution['metadata'] = {
+            'methodology': {
+                'asset_contribution': 'weight * return',
+                'flow_split': 'total_return = market_return + flow_effect',
+            },
+            'bases': METRIC_BASES,
+        }
+        return Response(attribution, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
             {'error': str(e)},

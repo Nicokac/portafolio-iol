@@ -6,6 +6,7 @@ import pandas as pd
 from django.utils import timezone
 
 from apps.core.services.performance.twr_service import TWRService
+from apps.core.services.performance.attribution_service import AttributionService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
@@ -21,6 +22,7 @@ class TemporalMetricsService:
         self.logger = logging.getLogger(__name__)
         self.volatility_service = VolatilityService()
         self.twr_service = TWRService()
+        self.attribution_service = AttributionService()
         self.var_service = VaRService()
         self.cvar_service = CVaRService()
 
@@ -136,6 +138,7 @@ class TemporalMetricsService:
             'volatility': volatility,
             'var': self.var_service.calculate_var_set(),
             'cvar': self.cvar_service.calculate_cvar_set(),
+            'attribution': self.attribution_service.calculate_attribution(days=days),
             'period_days': days,
             'calculated_at': timezone.now().isoformat()
         }

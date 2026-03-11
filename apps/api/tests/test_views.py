@@ -40,6 +40,7 @@ GET_ENDPOINTS = [
     'metrics-var',
     'metrics-cvar',
     'metrics-stress-test',
+    'metrics-attribution',
     'historical-evolution',
     'historical-summary',
     'recommendations-all',
@@ -157,6 +158,12 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
+    def test_metrics_attribution_invalid_days(self, auth_client):
+        url = reverse('metrics-attribution') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
     def test_metrics_returns_includes_basis_metadata(self, auth_client):
         url = reverse('metrics-returns')
         response = auth_client.get(url)
@@ -174,6 +181,15 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'fields_basis' in body['metadata']
+
+    def test_metrics_attribution_includes_metadata(self, auth_client):
+        url = reverse('metrics-attribution')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'methodology' in body['metadata']
 
 @pytest.mark.django_db
 class TestAPIPostEndpointsHappyPath:
