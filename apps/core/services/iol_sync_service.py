@@ -4,6 +4,7 @@ from typing import List, Optional
 from django.utils import timezone
 
 from apps.core.services.iol_api_client import IOLAPIClient
+from apps.core.services.observability import timed
 from apps.operaciones_iol.models import OperacionIOL
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
@@ -20,8 +21,9 @@ class IOLSyncService:
 
     def sync_estado_cuenta(self) -> bool:
         """Sincroniza el estado de cuenta."""
-        logger.info("Starting estado cuenta sync")
-        data = self.client.get_estado_cuenta()
+        logger.info("Starting estado cuenta sync", extra={"event": "iol_sync_estado_start"})
+        with timed("iol.api.estado_cuenta.latency_ms"):
+            data = self.client.get_estado_cuenta()
         if not data:
             return False
 
@@ -40,13 +42,23 @@ class IOLSyncService:
                 margen_descubierto=cuenta.get('margenDescubierto'),
                 estado=cuenta['estado'],
             )
-        logger.info(f"Synced {len(data.get('cuentas', []))} cuentas")
+        logger.info(
+            "Estado cuenta sync completed",
+            extra={
+                "event": "iol_sync_estado_end",
+                "extra_data": {"cuentas": len(data.get('cuentas', []))},
+            },
+        )
         return True
 
     def sync_portafolio(self, pais: str = 'argentina') -> bool:
         """Sincroniza el portafolio."""
-        logger.info(f"Starting portafolio sync for {pais}")
-        data = self.client.get_portafolio(pais)
+        logger.info(
+            "Starting portafolio sync",
+            extra={"event": "iol_sync_portafolio_start", "extra_data": {"pais": pais}},
+        )
+        with timed("iol.api.portafolio.latency_ms"):
+            data = self.client.get_portafolio(pais)
         if not data:
             return False
 
@@ -78,13 +90,20 @@ class IOLSyncService:
             except KeyError as e:
                 logger.error(f"Missing key in activo data: {e}, data: {activo}")
                 continue
-        logger.info(f"Synced {len(data.get('activos', []))} activos for {pais}")
+        logger.info(
+            "Portafolio sync completed",
+            extra={
+                "event": "iol_sync_portafolio_end",
+                "extra_data": {"pais": pais, "activos": len(data.get('activos', []))},
+            },
+        )
         return True
 
     def sync_operaciones(self, params: Optional[dict] = None) -> bool:
         """Sincroniza las operaciones."""
-        logger.info("Starting operaciones sync")
-        data = self.client.get_operaciones(params)
+        logger.info("Starting operaciones sync", extra={"event": "iol_sync_operaciones_start"})
+        with timed("iol.api.operaciones.latency_ms"):
+            data = self.client.get_operaciones(params)
         if not data:
             return False
 
@@ -119,7 +138,13 @@ class IOLSyncService:
             except Exception as e:
                 logger.error(f"Error syncing operacion: {e}, data: {operacion}")
                 continue
-        logger.info(f"Synced {synced_count} new operaciones")
+        logger.info(
+            "Operaciones sync completed",
+            extra={
+                "event": "iol_sync_operaciones_end",
+                "extra_data": {"new_operaciones": synced_count},
+            },
+        )
         return True
 
     def sync_all(self) -> dict:

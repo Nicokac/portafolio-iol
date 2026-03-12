@@ -1,0 +1,94 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: portafolio_iol
+      POSTGRES_USER: portafolio
+      POSTGRES_PASSWORD: portafolio
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 120"
+    env_file:
+      - .env.example
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+      JSON_LOGS: "True"
+      DATABASE_URL: postgresql://portafolio:portafolio@postgres:5432/portafolio_iol
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      SECRET_KEY: change-me
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      IOL_USERNAME: demo
+      IOL_PASSWORD: demo
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8000:8000"
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A portafolio_iol worker --loglevel=info
+    env_file:
+      - .env.example
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+      JSON_LOGS: "True"
+      DATABASE_URL: postgresql://portafolio:portafolio@postgres:5432/portafolio_iol
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      SECRET_KEY: change-me
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      IOL_USERNAME: demo
+      IOL_PASSWORD: demo
+    depends_on:
+      - django
+      - redis
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A portafolio_iol beat --loglevel=info
+    env_file:
+      - .env.example
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+      JSON_LOGS: "True"
+      DATABASE_URL: postgresql://portafolio:portafolio@postgres:5432/portafolio_iol
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      SECRET_KEY: change-me
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      IOL_USERNAME: demo
+      IOL_PASSWORD: demo
+    depends_on:
+      - django
+      - redis
+
+volumes:
+  postgres_data:

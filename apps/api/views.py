@@ -11,6 +11,9 @@ from apps.core.services.performance.attribution_service import AttributionServic
 from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
+from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
+from apps.core.services.iol_sync_audit import IOLSyncAuditService
+from apps.core.services.observability import get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
@@ -29,6 +32,22 @@ METRIC_BASES = {
     'invested_capital': 'Capital invertido en activos',
     'portfolio_ex_cash': 'Portafolio excluyendo cash',
 }
+
+
+def build_metric_metadata(
+    methodology: str,
+    data_basis: str,
+    limitations: str,
+    extra: dict | None = None,
+) -> dict:
+    metadata = {
+        "methodology": methodology,
+        "data_basis": data_basis,
+        "limitations": limitations,
+    }
+    if extra:
+        metadata.update(extra)
+    return metadata
 
 
 # Dashboard API
@@ -173,21 +192,23 @@ def metrics_returns(request):
     try:
         service = TemporalMetricsService()
         returns = service.get_portfolio_returns(days)
-        returns['metadata'] = {
-            'bases': METRIC_BASES,
-            'fields_basis': {
-                'total_period_return': 'total_portfolio',
-                'monthly_return': 'total_portfolio',
-                'weekly_return': 'total_portfolio',
-                'daily_return': 'total_portfolio',
-                'twr_total_return': 'total_portfolio',
-                'twr_annualized_return': 'total_portfolio',
-                'max_drawdown': 'total_portfolio',
+        returns['metadata'] = build_metric_metadata(
+            methodology='Time Weighted Return + returns by period over total portfolio value',
+            data_basis='PortfolioSnapshot.total_iol',
+            limitations='Requires at least two historical snapshots in selected period',
+            extra={
+                'bases': METRIC_BASES,
+                'fields_basis': {
+                    'total_period_return': 'total_portfolio',
+                    'monthly_return': 'total_portfolio',
+                    'weekly_return': 'total_portfolio',
+                    'daily_return': 'total_portfolio',
+                    'twr_total_return': 'total_portfolio',
+                    'twr_annualized_return': 'total_portfolio',
+                    'max_drawdown': 'total_portfolio',
+                },
             },
-            'methodology': {
-                'twr': 'Time Weighted Return',
-            },
-        }
+        )
         return Response(returns, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -209,18 +230,20 @@ def metrics_volatility(request):
     try:
         service = TemporalMetricsService()
         volatility = service.get_portfolio_volatility(days)
-        volatility['metadata'] = {
-            'bases': METRIC_BASES,
-            'fields_basis': {
-                'daily_volatility': 'total_portfolio',
-                'annualized_volatility': 'total_portfolio',
-                'sharpe_ratio': 'total_portfolio',
-                'sortino_ratio': 'total_portfolio',
+        volatility['metadata'] = build_metric_metadata(
+            methodology='Annualized standard deviation of daily returns: std(returns) * sqrt(252)',
+            data_basis='PortfolioSnapshot.total_iol',
+            limitations='Requires at least two snapshots; Sharpe/Sortino require non-zero volatility',
+            extra={
+                'bases': METRIC_BASES,
+                'fields_basis': {
+                    'daily_volatility': 'total_portfolio',
+                    'annualized_volatility': 'total_portfolio',
+                    'sharpe_ratio': 'total_portfolio',
+                    'sortino_ratio': 'total_portfolio',
+                },
             },
-            'methodology': {
-                'volatility': 'std(returns) * sqrt(252)',
-            },
-        }
+        )
         return Response(volatility, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -242,11 +265,12 @@ def metrics_performance(request):
     try:
         service = TemporalMetricsService()
         metrics = service.get_performance_metrics(days)
-        metrics['metadata'] = {
-            'bases': METRIC_BASES,
-            'returns': 'Time Weighted Return + retornos por período',
-            'volatility': 'Retornos históricos de patrimonio',
-        }
+        metrics['metadata'] = build_metric_metadata(
+            methodology='Composite metrics package: returns, volatility, VaR/CVaR, attribution and benchmarking',
+            data_basis='PortfolioSnapshot + PositionSnapshot + benchmark configuration',
+            limitations='Sub-metrics may return warnings when historical depth is insufficient',
+            extra={'bases': METRIC_BASES},
+        )
         return Response(metrics, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -269,6 +293,11 @@ def metrics_historical_comparison(request):
     try:
         service = TemporalMetricsService()
         comparison = service.get_historical_comparison(periods)
+        comparison['metadata'] = build_metric_metadata(
+            methodology='Comparative period returns and volatility over multiple lookback windows',
+            data_basis='PortfolioSnapshot.total_iol',
+            limitations='Each window requires at least two snapshots; sparse periods may be absent',
+        )
         return Response(comparison, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -290,10 +319,12 @@ def metrics_var(request):
 
     try:
         var_metrics = VaRService().calculate_var_set(confidence=confidence)
-        var_metrics['metadata'] = {
-            'methodology': 'Historical VaR y Parametric VaR',
-            'confidence': confidence,
-        }
+        var_metrics['metadata'] = build_metric_metadata(
+            methodology='Historical VaR and Parametric VaR on daily portfolio returns',
+            data_basis='PortfolioSnapshot.total_iol returns',
+            limitations='Requires enough historical observations and assumes stable distribution for parametric VaR',
+            extra={'confidence': confidence},
+        )
         return Response(var_metrics, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -315,10 +346,12 @@ def metrics_cvar(request):
 
     try:
         cvar_metrics = CVaRService().calculate_cvar_set(confidence=confidence)
-        cvar_metrics['metadata'] = {
-            'methodology': 'Historical CVaR (Expected Shortfall)',
-            'confidence': confidence,
-        }
+        cvar_metrics['metadata'] = build_metric_metadata(
+            methodology='Historical CVaR (Expected Shortfall) over left-tail portfolio returns',
+            data_basis='PortfolioSnapshot.total_iol returns',
+            limitations='Requires enough tail observations to be statistically stable',
+            extra={'confidence': confidence},
+        )
         return Response(cvar_metrics, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -335,7 +368,11 @@ def metrics_stress_test(request):
         return Response(
             {
                 'scenarios': result,
-                'metadata': {'methodology': 'Deterministic scenario stress testing'},
+                'metadata': build_metric_metadata(
+                    methodology='Deterministic stress scenarios applied over current portfolio exposures',
+                    data_basis='Current enriched portfolio positions and parameter metadata',
+                    limitations='Scenario shocks are static and do not model second-order effects',
+                ),
             },
             status=status.HTTP_200_OK
         )
@@ -359,13 +396,18 @@ def metrics_attribution(request):
 
     try:
         attribution = AttributionService().calculate_attribution(days=days)
-        attribution['metadata'] = {
-            'methodology': {
-                'asset_contribution': 'weight * return',
-                'flow_split': 'total_return = market_return + flow_effect',
+        attribution['metadata'] = build_metric_metadata(
+            methodology='Asset contribution based on weight * return and flow split',
+            data_basis='Current portfolio + historical performance snapshots',
+            limitations='Flow decomposition is an approximation when complete cashflow granularity is unavailable',
+            extra={
+                'details': {
+                    'asset_contribution': 'weight * return',
+                    'flow_split': 'total_return = market_return + flow_effect',
+                },
+                'bases': METRIC_BASES,
             },
-            'bases': METRIC_BASES,
-        }
+        )
         return Response(attribution, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -387,13 +429,18 @@ def metrics_benchmarking(request):
 
     try:
         result = TrackingErrorService().calculate(days=days)
-        result['metadata'] = {
-            'methodology': {
-                'tracking_error': 'std(portfolio_return - benchmark_return) * sqrt(252)',
-                'information_ratio': '(portfolio_return - benchmark_return) / tracking_error',
+        result['metadata'] = build_metric_metadata(
+            methodology='Tracking Error as annualized std(active return) and Information Ratio as active return / tracking error',
+            data_basis='Portfolio returns from snapshots and benchmark configuration',
+            limitations='Benchmark proxies may not fully match investable universe',
+            extra={
+                'details': {
+                    'tracking_error': 'std(portfolio_return - benchmark_return) * sqrt(252)',
+                    'information_ratio': '(portfolio_return - benchmark_return) / tracking_error',
+                },
+                'benchmark_config': 'ParametrosBenchmark',
             },
-            'benchmark_config': 'ParametrosBenchmark',
-        }
+        )
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -407,12 +454,17 @@ def metrics_liquidity(request):
     """Obtiene métricas de liquidez operativa y días de liquidación estimados."""
     try:
         liquidity = LiquidityService().analyze_portfolio_liquidity()
-        liquidity["metadata"] = {
-            "methodology": {
-                "liquidity_score": "score 0-100 basado en tipo, volumen proxy y spread estimado",
-                "days_to_liquidate": "valor_portafolio / capacidad_diaria_estimada",
-            }
-        }
+        liquidity["metadata"] = build_metric_metadata(
+            methodology='Liquidity score and liquidation horizon from instrument proxies',
+            data_basis='Current portfolio positions and static liquidity assumptions',
+            limitations='Uses estimated volume/spread proxies, not real-time market microstructure',
+            extra={
+                "details": {
+                    "liquidity_score": "score 0-100 basado en tipo, volumen proxy y spread estimado",
+                    "days_to_liquidate": "valor_portafolio / capacidad_diaria_estimada",
+                }
+            },
+        )
         return Response(liquidity, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -426,18 +478,101 @@ def metrics_data_quality(request):
     """Obtiene reporte de calidad de metadata para activos."""
     try:
         report = MetadataAuditService().run_audit()
-        report["metadata"] = {
-            "methodology": {
-                "unclassified": "Activos sin ParametroActivo",
-                "inconsistent": "Sector/país vacíos o tipo patrimonial inválido",
-            }
-        }
+        report["metadata"] = build_metric_metadata(
+            methodology='Rule-based metadata completeness and consistency audit',
+            data_basis='Activos + ParametroActivo',
+            limitations='Detects structural metadata issues, not semantic classification quality',
+            extra={
+                "details": {
+                    "unclassified": "Activos sin ParametroActivo",
+                    "inconsistent": "Sector/pais vacios o tipo patrimonial invalido",
+                }
+            },
+        )
         return Response(report, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+@api_view(['GET'])
+def metrics_snapshot_integrity(request):
+    """Reporte de integridad de snapshots patrimoniales."""
+    try:
+        days = int(request.query_params.get('days', 120))
+    except ValueError:
+        return Response(
+            {'error': 'Parametro days debe ser un numero entero valido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        report = SnapshotIntegrityService().run_checks(days=days)
+        report["metadata"] = build_metric_metadata(
+            methodology='Integrity checks for duplicates, gaps, extreme jumps and valuation consistency',
+            data_basis='PortfolioSnapshot daily series',
+            limitations='Threshold rules are heuristic and may require tuning by portfolio regime',
+        )
+        return Response(report, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+def metrics_sync_audit(request):
+    """Reporte de auditoria de sincronizacion con IOL."""
+    try:
+        hours = int(request.query_params.get('hours', 24))
+    except ValueError:
+        return Response(
+            {'error': 'Parametro hours debe ser un numero entero valido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        report = IOLSyncAuditService().run_audit(freshness_hours=hours)
+        report["metadata"] = build_metric_metadata(
+            methodology='Operational health checks over sync freshness, token status and operations continuity',
+            data_basis='IOLToken + snapshots + operaciones',
+            limitations='Detects synchronization symptoms, not root causes from external API outages',
+        )
+        return Response(report, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['GET'])
+def metrics_internal_observability(request):
+    """Resumen de metricas internas de latencia en memoria."""
+    metric_names = [
+        "metrics.returns.calc_ms",
+        "metrics.volatility.calc_ms",
+        "metrics.performance.calc_ms",
+        "optimizer.risk_parity.calc_ms",
+        "optimizer.markowitz.calc_ms",
+        "iol.api.estado_cuenta.latency_ms",
+        "iol.api.portafolio.latency_ms",
+        "iol.api.operaciones.latency_ms",
+    ]
+    data = [get_timing_summary(name) for name in metric_names]
+    return Response(
+        {
+            "metrics": data,
+            "metadata": build_metric_metadata(
+                methodology='In-memory rolling summaries of internal timing metrics',
+                data_basis='Django cache timing series',
+                limitations='Non-persistent in default cache backend and reset after cache eviction',
+            ),
+        },
+        status=status.HTTP_200_OK,
+    )
 
 # Historical Data API
 @api_view(['GET'])
@@ -821,3 +956,4 @@ def portfolio_parameters_update(request):
             {'error': str(e)},
             status=status.HTTP_400_BAD_REQUEST
         )
+

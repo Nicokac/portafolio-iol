@@ -5,6 +5,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
+from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
+from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.dashboard.selectors import (
     get_analytics_mensual,
     get_active_alerts,
@@ -72,6 +74,8 @@ class DashboardContextMixin:
         context['evolucion_historica'] = to_json(evolucion_historica_obj)
 
         context['senales_rebalanceo'] = get_senales_rebalanceo()
+        context['snapshot_integrity'] = SnapshotIntegrityService().run_checks(days=120)
+        context['sync_audit'] = IOLSyncAuditService().run_audit(freshness_hours=24)
 
         alerts = get_active_alerts()
         context['alerts'] = alerts

@@ -60,3 +60,20 @@ class CovarianceService:
         # Regularización leve para estabilidad numérica
         cov += np.eye(cov.shape[0]) * 1e-8
         return cov
+
+    def build_model_inputs(self, activos: List[str], lookback_days: int = 252):
+        returns = self.build_returns_matrix(activos, lookback_days=lookback_days)
+        if returns.empty:
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": 2,
+                "observations": 0,
+                "returns": returns,
+                "expected_returns": np.array([]),
+                "covariance_matrix": np.array([[]]),
+            }
+        return {
+            "returns": returns,
+            "expected_returns": self.expected_returns_annualized(returns),
+            "covariance_matrix": self.covariance_matrix_annualized(returns),
+        }

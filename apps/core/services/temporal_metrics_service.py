@@ -11,6 +11,7 @@ from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.var_service import VaRService
 from apps.core.services.risk.volatility_service import VolatilityService
+from apps.core.services.observability import timed
 from apps.portafolio_iol.models import PortfolioSnapshot
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,10 @@ class TemporalMetricsService:
             Dict con retornos diarios, semanales, mensuales
         """
         logger.info(f"Calculating portfolio returns for last {days} days")
+        with timed("metrics.returns.calc_ms"):
+            return self._get_portfolio_returns(days)
+
+    def _get_portfolio_returns(self, days: int) -> Dict:
 
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
@@ -115,7 +120,8 @@ class TemporalMetricsService:
             Dict con volatilidad diaria, anualizada, etc.
         """
         logger.info(f"Calculating portfolio volatility for last {days} days")
-        volatility = self.volatility_service.calculate_volatility(days=days)
+        with timed("metrics.volatility.calc_ms"):
+            volatility = self.volatility_service.calculate_volatility(days=days)
         logger.info(f"Calculated volatility: {volatility}")
         return volatility
 
@@ -130,6 +136,10 @@ class TemporalMetricsService:
             Dict con todas las métricas de performance
         """
         logger.info(f"Calculating comprehensive performance metrics for last {days} days")
+        with timed("metrics.performance.calc_ms"):
+            return self._get_performance_metrics(days)
+
+    def _get_performance_metrics(self, days: int) -> Dict:
 
         returns = self.get_portfolio_returns(days)
         volatility = self.get_portfolio_volatility(days)

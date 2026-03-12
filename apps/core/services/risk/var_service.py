@@ -70,6 +70,14 @@ class VaRService:
         return round(var, 2)
 
     def calculate_var_set(self, confidence: float = 0.95, lookback_days: int = 252) -> Dict[str, float]:
+        returns = self._get_returns(days=lookback_days)
+        if returns.empty:
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": 2,
+                "observations": 0,
+            }
+
         historical_1d = self.historical_var(confidence=confidence, horizon_days=1, lookback_days=lookback_days)
         historical_10d = self.historical_var(confidence=confidence, horizon_days=10, lookback_days=lookback_days)
         parametric_1d = self.parametric_var(confidence=confidence, horizon_days=1, lookback_days=lookback_days)

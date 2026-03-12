@@ -1,19 +1,33 @@
 from .base import *
 from decouple import config
+from urllib.parse import urlparse
 
 DEBUG = False
+JSON_LOGS = str(config('JSON_LOGS', default='True')).strip().lower() in {'1', 'true', 'yes', 'on'}
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
 
 # Production database
-DATABASES['default'] = {
-    'ENGINE': 'django.db.backends.postgresql',
-    'NAME': config('DB_NAME'),
-    'USER': config('DB_USER'),
-    'PASSWORD': config('DB_PASSWORD'),
-    'HOST': config('DB_HOST', default='localhost'),
-    'PORT': config('DB_PORT', default='5432'),
-}
+database_url = config('DATABASE_URL', default='')
+if database_url:
+    parsed = urlparse(database_url)
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': (parsed.path or '').lstrip('/'),
+        'USER': parsed.username or '',
+        'PASSWORD': parsed.password or '',
+        'HOST': parsed.hostname or 'localhost',
+        'PORT': str(parsed.port or '5432'),
+    }
+else:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default='5432'),
+    }
 
 # Security settings
 SECURE_SSL_REDIRECT = True
@@ -63,3 +77,7 @@ required_settings = ['SECRET_KEY', 'IOL_USERNAME', 'IOL_PASSWORD']
 for setting in required_settings:
     if not globals().get(setting):
         raise ValueError(f"Required setting {setting} is not set in production.")
+
+# En produccion priorizamos logs estructurados
+if 'handlers' in LOGGING and 'console' in LOGGING['handlers']:
+    LOGGING['handlers']['console']['formatter'] = 'json' if JSON_LOGS else 'simple'

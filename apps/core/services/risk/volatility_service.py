@@ -20,12 +20,21 @@ class VolatilityService:
             fecha__range=(start_date, end_date)
         ).order_by("fecha")
 
-        if snapshots.count() < 2:
-            return {}
+        count = snapshots.count()
+        if count < 2:
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": 2,
+                "observations": count,
+            }
 
         df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
         if df.empty:
-            return {}
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": 2,
+                "observations": 0,
+            }
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
@@ -33,7 +42,11 @@ class VolatilityService:
 
         returns = df["total_iol"].pct_change().dropna()
         if returns.empty:
-            return {}
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": 2,
+                "observations": 0,
+            }
 
         daily_vol = float(returns.std())
         annualized_vol = daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)

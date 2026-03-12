@@ -25,6 +25,7 @@ def get_debug_setting() -> bool:
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = get_debug_setting()
+JSON_LOGS = str(config('JSON_LOGS', default='False')).strip().lower() in {'1', 'true', 'yes', 'on'}
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
@@ -168,6 +169,9 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
+        'json': {
+            '()': 'apps.core.logging_utils.JsonFormatter',
+        },
         'verbose': {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
@@ -180,7 +184,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+            'formatter': 'json' if JSON_LOGS else 'simple',
         },
     },
     'root': {

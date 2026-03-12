@@ -100,3 +100,5 @@ jobs:
         pip install -r requirements/dev.txt
     - name: Run migrations check
       run: python manage.py makemigrations --check
+    - name: Build Docker image
+      run: docker build -t portafolio-iol:ci .

@@ -30,6 +30,9 @@ urlpatterns = [
     path('metrics/benchmarking/', views.metrics_benchmarking, name='metrics-benchmarking'),
     path('metrics/liquidity/', views.metrics_liquidity, name='metrics-liquidity'),
     path('metrics/data-quality/', views.metrics_data_quality, name='metrics-data-quality'),
+    path('metrics/snapshot-integrity/', views.metrics_snapshot_integrity, name='metrics-snapshot-integrity'),
+    path('metrics/sync-audit/', views.metrics_sync_audit, name='metrics-sync-audit'),
+    path('metrics/internal-observability/', views.metrics_internal_observability, name='metrics-internal-observability'),
 
     # Datos históricos
     path('historical/evolution/', views.historical_portfolio_evolution, name='historical-evolution'),

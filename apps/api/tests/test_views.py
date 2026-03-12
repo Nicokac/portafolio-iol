@@ -44,6 +44,9 @@ GET_ENDPOINTS = [
     'metrics-benchmarking',
     'metrics-liquidity',
     'metrics-data-quality',
+    'metrics-snapshot-integrity',
+    'metrics-sync-audit',
+    'metrics-internal-observability',
     'historical-evolution',
     'historical-summary',
     'recommendations-all',
@@ -173,6 +176,18 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
+    def test_metrics_snapshot_integrity_invalid_days(self, auth_client):
+        url = reverse('metrics-snapshot-integrity') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_metrics_sync_audit_invalid_hours(self, auth_client):
+        url = reverse('metrics-sync-audit') + '?hours=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
     def test_metrics_returns_includes_basis_metadata(self, auth_client):
         url = reverse('metrics-returns')
         response = auth_client.get(url)
@@ -226,6 +241,25 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'methodology' in body['metadata']
+
+    @pytest.mark.parametrize('url_name', [
+        'metrics-var',
+        'metrics-cvar',
+        'metrics-attribution',
+        'metrics-benchmarking',
+        'metrics-liquidity',
+        'metrics-data-quality',
+        'metrics-snapshot-integrity',
+        'metrics-sync-audit',
+    ])
+    def test_metric_endpoints_include_methodology_basis_and_limitations(self, auth_client, url_name):
+        response = auth_client.get(reverse(url_name))
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            metadata = response.json().get('metadata', {})
+            assert 'methodology' in metadata
+            assert 'data_basis' in metadata
+            assert 'limitations' in metadata
 
 @pytest.mark.django_db
 class TestAPIPostEndpointsHappyPath:

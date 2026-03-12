@@ -46,12 +46,24 @@
     <div class="col-md-3 mb-3">
         <div class="card h-100">
             <div class="card-body text-center">
-                <h6 class="card-title text-muted">Proxy de Volatilidad</h6>
+                <h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Desvio estandar anualizado de retornos diarios sobre patrimonio total.">Proxy de Volatilidad</h6>
                 <h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|floatformat:1 }}%</h4>
                 <small class="text-muted">Base: Total Invertido</small>
             </div>
         </div>
     </div>
+</div>
+
+<div class="mb-4">
+    {% if kpis.top_10_concentracion > 70 %}
+    <span class="badge bg-danger me-2">Riesgo alto: concentracion Top 10 > 70%</span>
+    {% endif %}
+    {% if riesgo_portafolio_detallado.pct_liquidez < 10 %}
+    <span class="badge bg-warning text-dark me-2">Liquidez baja: menor al 10%</span>
+    {% endif %}
+    {% if riesgo_portafolio.stress_worst_case_pct and riesgo_portafolio.stress_worst_case_pct < -10 %}
+    <span class="badge bg-danger me-2">Stress severo: escenario peor a -10%</span>
+    {% endif %}
 </div>
 
 <!-- KPIs por Categoría -->
@@ -176,21 +188,21 @@
                         </tr>
                         {% if riesgo_portafolio.historical_var_95_1d is not None %}
                         <tr>
-                            <td><strong>VaR 95% (1d)</strong></td>
+                            <td><strong data-bs-toggle="tooltip" title="Perdida maxima esperada en 1 dia al 95% de confianza.">VaR 95% (1d)</strong></td>
                             <td class="text-end text-danger">{{ riesgo_portafolio.historical_var_95_1d|floatformat:2 }}%</td>
                             <td><small class="text-muted">Historical</small></td>
                         </tr>
                         {% endif %}
                         {% if riesgo_portafolio.historical_var_95_10d is not None %}
                         <tr>
-                            <td><strong>VaR 95% (10d)</strong></td>
+                            <td><strong data-bs-toggle="tooltip" title="VaR escalado a 10 dias habiles con raiz de tiempo.">VaR 95% (10d)</strong></td>
                             <td class="text-end text-danger">{{ riesgo_portafolio.historical_var_95_10d|floatformat:2 }}%</td>
                             <td><small class="text-muted">Historical</small></td>
                         </tr>
                         {% endif %}
                         {% if riesgo_portafolio.historical_cvar_95_1d is not None %}
                         <tr>
-                            <td><strong>CVaR 95% (1d)</strong></td>
+                            <td><strong data-bs-toggle="tooltip" title="Perdida promedio condicional cuando se excede el VaR.">CVaR 95% (1d)</strong></td>
                             <td class="text-end text-warning">{{ riesgo_portafolio.historical_cvar_95_1d|floatformat:2 }}%</td>
                             <td><small class="text-muted">Expected Shortfall</small></td>
                         </tr>
@@ -206,7 +218,7 @@
                         {% endif %}
                         {% if riesgo_portafolio.tracking_error_annualized is not None %}
                         <tr>
-                            <td><strong>Tracking Error</strong></td>
+                            <td><strong data-bs-toggle="tooltip" title="Desvio anualizado del retorno activo contra benchmark.">Tracking Error</strong></td>
                             <td class="text-end">{{ riesgo_portafolio.tracking_error_annualized|floatformat:2 }}%</td>
                             <td><small class="text-muted">Anualizado</small></td>
                         </tr>
@@ -274,6 +286,46 @@
                         <tr>
                             <td><strong>Aporte Pendiente</strong></td>
                             <td class="text-end text-warning">{{ analytics_mensual.aporte_pendiente|currency:0 }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h3>Calidad de Datos</h3>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td><strong>Activos sin clasificación</strong></td>
+                            <td class="text-end {% if riesgo_portafolio.metadata_unclassified_count > 0 %}text-warning{% else %}text-success{% endif %}">
+                                {{ riesgo_portafolio.metadata_unclassified_count|default:0 }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Activos inconsistentes</strong></td>
+                            <td class="text-end {% if riesgo_portafolio.metadata_inconsistent_count > 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ riesgo_portafolio.metadata_inconsistent_count|default:0 }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Issues integridad snapshots</strong></td>
+                            <td class="text-end {% if snapshot_integrity.issues_count > 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ snapshot_integrity.issues_count|default:0 }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estado sync IOL</strong></td>
+                            <td class="text-end">
+                                <span class="badge {% if sync_audit.status == 'ok' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                    {{ sync_audit.status|default:"unknown" }}
+                                </span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -829,6 +881,10 @@ const tipoData = {{ distribucion_tipo|safe }};
 const monedaData = {{ distribucion_moneda|safe }};
 const monedaOperativaData = {{ distribucion_moneda_operativa|safe }};
 const evolucionData = {{ evolucion_historica|safe }};
+
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el);
+});
 
 function createPieChart(canvasId, data, title) {
     const canvas = document.getElementById(canvasId);

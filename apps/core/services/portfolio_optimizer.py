@@ -6,6 +6,7 @@ import numpy as np
 from apps.core.services.portfolio.covariance_service import CovarianceService
 from apps.core.services.portfolio.optimizer_markowitz import MarkowitzOptimizer
 from apps.core.services.portfolio.risk_parity_service import RiskParityService
+from apps.core.services.observability import timed
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,9 @@ class PortfolioOptimizer:
 
     def optimize_risk_parity(self, activos: List[str], target_return: Optional[float] = None) -> Dict:
         logger.info("Optimizing portfolio with Risk Parity for assets: %s", activos)
-
-        returns = self.cov_service.build_returns_matrix(activos)
+        with timed("optimizer.risk_parity.calc_ms"):
+            model_inputs = self.cov_service.build_model_inputs(activos)
+        returns = model_inputs["returns"]
         if returns.empty:
             if not activos:
                 return {"error": "No hay activos válidos"}
@@ -37,8 +39,8 @@ class PortfolioOptimizer:
                 "warning": "Datos históricos insuficientes: se usaron pesos equitativos",
             }
 
-        cov = self.cov_service.covariance_matrix_annualized(returns)
-        exp_returns = self.cov_service.expected_returns_annualized(returns)
+        cov = model_inputs["covariance_matrix"]
+        exp_returns = model_inputs["expected_returns"]
 
         weights = self.risk_parity.optimize(cov)
         weight_dict = {symbol: round(weight * 100, 2) for symbol, weight in zip(returns.columns, weights)}
@@ -58,8 +60,9 @@ class PortfolioOptimizer:
 
     def optimize_markowitz(self, activos: List[str], target_return: float) -> Dict:
         logger.info("Optimizing portfolio with Markowitz for target return %s", target_return)
-
-        returns = self.cov_service.build_returns_matrix(activos)
+        with timed("optimizer.markowitz.calc_ms"):
+            model_inputs = self.cov_service.build_model_inputs(activos)
+        returns = model_inputs["returns"]
         if returns.empty:
             if not activos:
                 return {"error": "No hay activos válidos"}
@@ -75,8 +78,8 @@ class PortfolioOptimizer:
                 "warning": "Datos históricos insuficientes: se usaron pesos equitativos",
             }
 
-        cov = self.cov_service.covariance_matrix_annualized(returns)
-        exp_returns = self.cov_service.expected_returns_annualized(returns)
+        cov = model_inputs["covariance_matrix"]
+        exp_returns = model_inputs["expected_returns"]
         weights = self.markowitz.optimize(exp_returns, cov, target_return=target_return)
 
         weight_dict = {symbol: round(weight * 100, 2) for symbol, weight in zip(returns.columns, weights)}
