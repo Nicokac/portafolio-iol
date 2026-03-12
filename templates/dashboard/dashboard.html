@@ -991,8 +991,18 @@ loadDataQualityDetails();
 loadPortfolioParameters();
 
 function getCsrfToken() {
-    const token = document.querySelector('[name=csrfmiddlewaretoken]');
-    return token ? token.value : '';
+    const inputToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (inputToken && inputToken.value) {
+        return inputToken.value;
+    }
+
+    const cookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='));
+    if (!cookie) {
+        return '';
+    }
+    return decodeURIComponent(cookie.split('=')[1]);
 }
 
 function loadRecommendedActions() {

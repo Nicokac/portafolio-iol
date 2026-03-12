@@ -2,6 +2,8 @@ import logging
 from typing import Dict, List, Optional
 from decimal import Decimal
 
+from apps.core.models import PortfolioParameters
+from apps.dashboard.selectors import get_concentracion_pais
 from apps.dashboard.selectors import get_dashboard_kpis
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot as Activo
 
@@ -132,7 +134,11 @@ class MonthlyInvestmentPlanner:
             }
 
             # Ajustar por horizonte temporal
-            allocation = allocations.get(risk_profile, self.default_allocation).copy()
+            base_allocation = allocations.get(risk_profile, self.default_allocation).copy()
+            allocation = base_allocation.copy()
+
+            if not current_portfolio:
+                current_portfolio = get_dashboard_kpis()
 
             if investment_horizon == 'corto':
                 # Más conservador para horizontes cortos
@@ -144,11 +150,112 @@ class MonthlyInvestmentPlanner:
                 allocation['LIQUIDEZ'] = max(0, allocation.get('LIQUIDEZ', 0) - 5)
                 allocation['SPY'] = allocation.get('SPY', 0) + 5
 
-            return self.plan_monthly_investment(monthly_amount, current_portfolio, allocation)
+            # Ajuste principal por estado real del portafolio.
+            dynamic_allocation, rationale = self._build_state_based_allocation(
+                base_allocation=allocation,
+                current_portfolio=current_portfolio,
+                risk_profile=risk_profile,
+            )
+
+            # Mezcla para mantener coherencia de perfil pero responder al estado real.
+            blend_factor = 0.65
+            blended = {}
+            keys = set(allocation.keys()) | set(dynamic_allocation.keys())
+            for key in keys:
+                base_value = float(allocation.get(key, 0))
+                dyn_value = float(dynamic_allocation.get(key, 0))
+                blended[key] = round((1 - blend_factor) * base_value + blend_factor * dyn_value, 2)
+
+            allocation = self._normalize_allocation(blended)
+            result = self.plan_monthly_investment(monthly_amount, current_portfolio, allocation)
+            if isinstance(result, dict) and 'error' not in result:
+                result['allocation_basis'] = {
+                    'mode': rationale.get('mode'),
+                    'targets': rationale.get('targets'),
+                    'gaps': rationale.get('gaps'),
+                    'base_allocation': allocation,
+                }
+            return result
 
         except Exception as e:
             logger.error(f"Error creating custom plan: {str(e)}")
             return {'error': str(e)}
+
+    def _build_state_based_allocation(self, base_allocation: Dict[str, float],
+                                      current_portfolio: Dict,
+                                      risk_profile: str) -> tuple[Dict[str, float], Dict]:
+        """
+        Construye asignacion guiada por desvio entre exposicion actual y targets.
+        """
+        params = PortfolioParameters.get_active_parameters()
+        if params:
+            targets = {
+                'liquidez': float(params.liquidez_target),
+                'usa': float(params.usa_target),
+                'argentina': float(params.argentina_target),
+                'emerging': float(params.emerging_target),
+            }
+        else:
+            targets = {'liquidez': 20.0, 'usa': 40.0, 'argentina': 30.0, 'emerging': 10.0}
+
+        total_iol = float(current_portfolio.get('total_iol', 0) or 0)
+        liq_oper = float(current_portfolio.get('liquidez_operativa', 0) or 0)
+        fci_cash = float(current_portfolio.get('fci_cash_management', 0) or 0)
+        current_liquidez = ((liq_oper + fci_cash) / total_iol * 100) if total_iol > 0 else 0
+
+        pais_dist = get_concentracion_pais()
+        current_usa = float(pais_dist.get('USA', 0) or 0)
+        current_arg = float(pais_dist.get('Argentina', 0) or 0)
+        current_em = sum(float(pais_dist.get(k, 0) or 0) for k in ['EM', 'Emergentes', 'China', 'Brasil', 'Latam'])
+
+        gaps = {
+            'liquidez': max(0.0, targets['liquidez'] - current_liquidez),
+            'usa': max(0.0, targets['usa'] - current_usa),
+            'argentina': max(0.0, targets['argentina'] - current_arg),
+            'emerging': max(0.0, targets['emerging'] - current_em),
+        }
+
+        total_gap = sum(gaps.values())
+        if total_gap <= 0:
+            return base_allocation, {'mode': 'base_only', 'targets': targets, 'gaps': gaps}
+
+        # Mapeo de buckets target -> instrumentos sugeridos para aporte mensual.
+        alloc = {'LIQUIDEZ': 0.0, 'BONOS': 0.0, 'SPY': 0.0, 'EEM': 0.0, 'CEDEAR_USA': 0.0}
+        alloc['LIQUIDEZ'] += (gaps['liquidez'] / total_gap) * 100
+        usa_weight = (gaps['usa'] / total_gap) * 100
+        alloc['SPY'] += usa_weight * 0.7
+        alloc['CEDEAR_USA'] += usa_weight * 0.3
+        alloc['BONOS'] += (gaps['argentina'] / total_gap) * 100
+        alloc['EEM'] += (gaps['emerging'] / total_gap) * 100
+
+        # Ajuste suave por perfil de riesgo.
+        if risk_profile == 'conservador':
+            alloc['LIQUIDEZ'] += 5
+            alloc['BONOS'] += 5
+            alloc['SPY'] = max(0, alloc['SPY'] - 5)
+            alloc['CEDEAR_USA'] = max(0, alloc['CEDEAR_USA'] - 5)
+        elif risk_profile == 'agresivo':
+            alloc['LIQUIDEZ'] = max(0, alloc['LIQUIDEZ'] - 5)
+            alloc['BONOS'] = max(0, alloc['BONOS'] - 5)
+            alloc['SPY'] += 5
+            alloc['CEDEAR_USA'] += 5
+
+        normalized = self._normalize_allocation(alloc)
+        return normalized, {'mode': 'state_based', 'targets': targets, 'gaps': gaps}
+
+    @staticmethod
+    def _normalize_allocation(allocation: Dict[str, float]) -> Dict[str, float]:
+        cleaned = {k: max(0.0, float(v)) for k, v in allocation.items()}
+        total = sum(cleaned.values())
+        if total <= 0:
+            return cleaned
+        normalized = {k: round((v / total) * 100, 2) for k, v in cleaned.items()}
+        # Ajuste de redondeo para cerrar en 100.
+        drift = round(100 - sum(normalized.values()), 2)
+        if abs(drift) > 0 and normalized:
+            max_key = max(normalized, key=normalized.get)
+            normalized[max_key] = round(normalized[max_key] + drift, 2)
+        return normalized
 
     def _estimate_quantity(self, asset_symbol: str, amount: Decimal) -> Optional[float]:
         """Estima cantidad de activos a comprar."""
@@ -158,8 +265,19 @@ class MonthlyInvestmentPlanner:
                 return None  # No aplicable para estos tipos
 
             activo = Activo.objects.filter(simbolo__icontains=asset_symbol.split('_')[0]).first()
-            if activo and activo.precio_actual:
-                return float(amount / activo.precio_actual)
+            if not activo:
+                return None
+
+            # ActivoPortafolioSnapshot no tiene precio_actual; usar precio operativo disponible.
+            reference_price = getattr(activo, "ultimo_precio", None) or getattr(activo, "ppc", None)
+            if not reference_price:
+                return None
+
+            reference_price = Decimal(str(reference_price))
+            if reference_price <= 0:
+                return None
+
+            return float(amount / reference_price)
 
         except Exception as e:
             logger.error(f"Error estimating quantity for {asset_symbol}: {str(e)}")
@@ -236,3 +354,4 @@ class MonthlyInvestmentPlanner:
             logger.error(f"Error generating additional recommendations: {str(e)}")
 
         return recommendations
+

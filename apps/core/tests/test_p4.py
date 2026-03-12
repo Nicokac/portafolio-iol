@@ -1,5 +1,6 @@
 import pytest
 from decimal import Decimal
+from unittest.mock import patch
 from django.test import TestCase
 from django.urls import reverse
 
@@ -113,6 +114,34 @@ class P4ServicesTestCase(TestCase):
         self.assertIn('distribucion', result)
         self.assertIn('aporte_mensual', result)
         self.assertEqual(float(result['aporte_mensual']), 500000)
+
+    @patch('apps.core.services.monthly_investment_planner.get_concentracion_pais')
+    def test_custom_plan_uses_real_portfolio_state(self, mock_concentracion_pais):
+        """El plan custom debe ajustarse por estado actual, no quedar fijo por perfil."""
+        mock_concentracion_pais.return_value = {
+            'USA': 10.0,
+            'Argentina': 80.0,
+            'EM': 0.0,
+        }
+        planner = MonthlyInvestmentPlanner()
+        monthly_amount = Decimal('600000')
+        current_portfolio = {
+            'total_iol': 1000000,
+            'liquidez_operativa': 500000,
+            'fci_cash_management': 100000,
+        }
+
+        result = planner.create_custom_plan(
+            monthly_amount=monthly_amount,
+            risk_profile='moderado',
+            investment_horizon='medio',
+            current_portfolio=current_portfolio,
+        )
+
+        distrib = result['distribucion']
+        # Base moderada fija era LIQUIDEZ=15/SPY=35; esperamos ajuste state-aware.
+        self.assertLess(distrib['LIQUIDEZ']['porcentaje'], 15)
+        self.assertGreater(distrib['SPY']['porcentaje'], 35)
 
     def test_portfolio_parameters_model(self):
         """Test modelo PortfolioParameters."""
