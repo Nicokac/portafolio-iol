@@ -43,6 +43,24 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
+    def test_performance_route_accessible_authenticated(self, auth_client):
+        url = reverse('dashboard:performance')
+        response = auth_client.get(url)
+        assert response.status_code == 200
+
+    def test_metricas_route_accessible_authenticated(self, auth_client):
+        url = reverse('dashboard:metricas')
+        response = auth_client.get(url)
+        assert response.status_code == 200
+
+    def test_ops_requires_expert_profile_or_staff(self, auth_client):
+        url = reverse('dashboard:ops')
+        denied = auth_client.get(url)
+        assert denied.status_code == 403
+        auth_client.get(reverse('dashboard:set_preferences'), {'ui_mode': 'denso', 'next': '/'})
+        allowed = auth_client.get(url)
+        assert allowed.status_code == 200
+
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')
         response = auth_client.get(url, {'ui_mode': 'denso', 'risk_profile': 'agresivo', 'next': '/'})

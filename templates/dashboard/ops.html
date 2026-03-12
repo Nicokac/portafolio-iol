@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Ops - Portafolio IOL{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero mb-4">
+    <h1 class="mb-1">Ops - Observabilidad</h1>
+    <p class="text-muted mb-0">Vista para admin/perfil experto con latencias y tiempos internos.</p>
+</section>
+
+<section class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Metricas internas</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Metric</th><th class="text-end">Count</th><th class="text-end">Mean (ms)</th><th class="text-end">Max (ms)</th></tr>
+                    </thead>
+                    <tbody id="ops-metrics-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/api/metrics/internal-observability/')
+  .then(r => r.json())
+  .then(data => {
+    const rows = (data.metrics || []).map(m => `
+      <tr>
+        <td>${m.metric_name}</td>
+        <td class="text-end">${m.count || 0}</td>
+        <td class="text-end">${m.mean_ms || '-'}</td>
+        <td class="text-end">${m.max_ms || '-'}</td>
+      </tr>
+    `).join('');
+    document.getElementById('ops-metrics-body').innerHTML = rows || '<tr><td colspan="4" class="text-muted">Sin datos</td></tr>';
+  })
+  .catch(() => {
+    document.getElementById('ops-metrics-body').innerHTML = '<tr><td colspan="4" class="text-danger">Error cargando datos de observabilidad</td></tr>';
+  });
+</script>
+{% endblock %}

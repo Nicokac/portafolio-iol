@@ -20,6 +20,8 @@ class TestDashboardFeatureFlows:
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/dashboard.html", ["kpis", "portafolio", "senales_rebalanceo"]),
+            ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
+            ("dashboard:metricas", "dashboard/metricas.html", ["kpis", "riesgo_portafolio"]),
         ],
     )
     def test_dashboard_routes_have_template_and_context(

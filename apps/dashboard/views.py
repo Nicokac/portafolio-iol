@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -97,6 +98,25 @@ class ResumenView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
 class AnalisisView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
     template_name = 'dashboard/analisis.html'
     active_section = 'analisis'
+
+
+class PerformanceView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/performance.html'
+    active_section = 'analisis'
+
+
+class MetricasView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/metricas.html'
+    active_section = 'analisis'
+
+
+class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = 'dashboard/ops.html'
+    active_section = 'analisis'
+
+    def test_func(self):
+        # Perfil experto: staff o modo denso.
+        return self.request.user.is_staff or self.request.session.get('ui_mode') == 'denso'
 
 
 class SetPreferencesView(LoginRequiredMixin, TemplateView):

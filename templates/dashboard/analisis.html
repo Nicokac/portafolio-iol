@@ -8,7 +8,11 @@
             <h1 class="mb-1">Análisis de composición y riesgo</h1>
             <p class="text-muted mb-0">Vista detallada para entender concentración y exposición.</p>
         </div>
-        <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Ir a Estrategia</a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'dashboard:performance' %}" class="btn btn-outline-primary">Centro de Performance</a>
+            <a href="{% url 'dashboard:metricas' %}" class="btn btn-outline-secondary">Centro de Metricas</a>
+            <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Ir a Estrategia</a>
+        </div>
     </div>
 </section>
 

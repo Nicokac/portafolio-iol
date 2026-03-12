@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Metricas - Portafolio IOL{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="mb-1">Centro de Metricas Analiticas</h1>
+            <p class="text-muted mb-0">Volatilidad, ratios, benchmarking y retorno en una sola vista.</p>
+        </div>
+        <a href="{% url 'dashboard:performance' %}" class="btn btn-outline-primary">Ver Performance</a>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Volatilidad anualizada</div><div class="h4 mb-0" id="m-vol">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sharpe ratio</div><div class="h4 mb-0" id="m-sharpe">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sortino ratio</div><div class="h4 mb-0" id="m-sortino">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso vs benchmark</div><div class="h3 mb-0" id="m-excess">-</div></div></div></div>
+</section>
+
+<section class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Detalle de metricas</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <tbody id="metrics-detail-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function formatPct(value) {
+    if (value === undefined || value === null) return '-';
+    return `${window.formatNumberAr(value, 2)}%`;
+}
+function formatNum(value) {
+    if (value === undefined || value === null) return '-';
+    return window.formatNumberAr(value, 2);
+}
+
+Promise.all([
+    fetch('/api/metrics/volatility/?days=365').then(r => r.json()),
+    fetch('/api/metrics/benchmarking/?days=365').then(r => r.json()),
+    fetch('/api/metrics/returns/?days=365').then(r => r.json())
+]).then(([vol, bench, ret]) => {
+    document.getElementById('m-vol').textContent = formatPct(vol.annualized_volatility);
+    document.getElementById('m-sharpe').textContent = formatNum(vol.sharpe_ratio);
+    document.getElementById('m-sortino').textContent = formatNum(vol.sortino_ratio);
+    document.getElementById('m-te').textContent = formatPct(bench.tracking_error_annualized);
+    document.getElementById('m-ir').textContent = formatNum(bench.information_ratio);
+    document.getElementById('m-ret').textContent = formatPct(ret.total_period_return);
+    document.getElementById('m-excess').textContent = formatPct(bench.excess_return_period);
+
+    const detail = [
+        ['Retorno diario', formatPct(ret.daily_return)],
+        ['Retorno semanal', formatPct(ret.weekly_return)],
+        ['Retorno mensual', formatPct(ret.monthly_return)],
+        ['TWR total', formatPct(ret.twr_total_return)],
+        ['TWR anualizado', formatPct(ret.twr_annualized_return)],
+        ['Portfolio return period', formatPct(bench.portfolio_return_period)],
+        ['Benchmark return period', formatPct(bench.benchmark_return_period)],
+    ];
+    document.getElementById('metrics-detail-body').innerHTML = detail.map(([k,v]) => `<tr><td>${k}</td><td class="text-end">${v}</td></tr>`).join('');
+}).catch(() => {
+    document.getElementById('metrics-detail-body').innerHTML = '<tr><td colspan="2" class="text-danger">Error cargando metricas</td></tr>';
+});
+</script>
+{% endblock %}

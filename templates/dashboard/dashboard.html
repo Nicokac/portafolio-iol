@@ -334,6 +334,25 @@
     </div>
 </div>
 
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="accordion" id="qualityAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#qualityDetails">
+                        Calidad de datos (detalle)
+                    </button>
+                </h2>
+                <div id="qualityDetails" class="accordion-collapse collapse" data-bs-parent="#qualityAccordion">
+                    <div class="accordion-body">
+                        <div id="quality-details-content" class="text-muted">Cargando detalle de snapshots, sync y metadata...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Concentración por Sector y País -->
 <div class="row mb-4">
     <div class="col-md-4">
@@ -738,8 +757,8 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Recomendaciones de Inversión</h5>
-                <small>Análisis automático basado en tu portafolio actual</small>
+                <h5 class="mb-0">Acciones Recomendadas</h5>
+                <small>Integracion de recomendaciones, alertas y rebalanceo</small>
             </div>
             <div class="card-body">
                 <div id="recommendations-container">
@@ -774,7 +793,23 @@
                     <label for="simulation-capital" class="form-label">Capital a Invertir ($)</label>
                     <input type="number" class="form-control" id="simulation-capital" placeholder="100000" min="1000">
                 </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label for="simulation-quantity" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="simulation-quantity" placeholder="10" min="1" step="0.01">
+                    </div>
+                    <div class="col-6">
+                        <label for="simulation-price" class="form-label">Precio Estimado</label>
+                        <input type="number" class="form-control" id="simulation-price" placeholder="25000" min="0.01" step="0.01">
+                    </div>
+                </div>
                 <button class="btn btn-success w-100" onclick="runSimulation()">Simular Compra</button>
+                <button class="btn btn-outline-danger w-100 mt-2" onclick="runSaleSimulation()">Simular Venta</button>
+                <div class="mt-3">
+                    <label for="rebalance-json" class="form-label">Rebalanceo (JSON pesos %)</label>
+                    <textarea class="form-control" id="rebalance-json" rows="3" placeholder='{"SPY": 30, "AAPL": 20, "GGAL": 10}'></textarea>
+                    <button class="btn btn-outline-primary w-100 mt-2" onclick="runRebalanceSimulation()">Simular Rebalanceo</button>
+                </div>
                 <div id="simulation-result" class="mt-3" style="display: none;">
                     <hr>
                     <h6>Resultado de Simulación:</h6>
@@ -951,7 +986,8 @@ createPieChart('tipoChart', tipoData, 'Distribución por Tipo Patrimonial');
 createPieChart('monedaChart', monedaData, 'Exposición por Moneda Económica');
 createPieChart('monedaOperativaChart', monedaOperativaData, 'Exposición por Moneda Operativa');
 createEvolutionChart();
-loadRecommendations();
+loadRecommendedActions();
+loadDataQualityDetails();
 loadPortfolioParameters();
 
 function getCsrfToken() {
@@ -959,42 +995,159 @@ function getCsrfToken() {
     return token ? token.value : '';
 }
 
-function loadRecommendations() {
-    fetch('/api/recommendations/all/')
-        .then(r => r.json())
-        .then(data => {
-            const container = document.getElementById('recommendations-container');
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="alert alert-info">No hay recomendaciones disponibles</div>';
-                return;
-            }
-            let html = '<div class="list-group">';
-            data.forEach(rec => {
-                const cls = rec.prioridad === 'alta' ? 'danger' : rec.prioridad === 'media' ? 'warning' : 'info';
-                html += `<div class="list-group-item"><div class="d-flex w-100 justify-content-between"><h6 class="mb-1"><span class="badge bg-${cls} me-2">${rec.prioridad.toUpperCase()}</span>${rec.titulo}</h6></div><p class="mb-2">${rec.descripcion}</p>${rec.activos_sugeridos ? `<small class="text-muted">Activos sugeridos: ${rec.activos_sugeridos.join(', ')}</small>` : ''}</div>`;
+function loadRecommendedActions() {
+    Promise.all([
+        fetch('/api/recommendations/all/').then(r => r.json()),
+        fetch('/api/alerts/active/').then(r => r.json()),
+        fetch('/api/rebalance/suggestions/').then(r => r.json())
+    ]).then(([recommendations, alerts, rebalance]) => {
+        const container = document.getElementById('recommendations-container');
+        const items = [];
+
+        (recommendations || []).forEach(rec => {
+            items.push({
+                source: 'Recomendación',
+                severity: (rec.prioridad || 'info').toUpperCase(),
+                title: rec.titulo || rec.tipo || 'Recomendación',
+                description: rec.descripcion || rec.mensaje || '',
+                detail: rec.activos_sugeridos ? `Activos: ${rec.activos_sugeridos.join(', ')}` : ''
             });
-            html += '</div>';
-            container.innerHTML = html;
-        })
-        .catch(() => {
-            document.getElementById('recommendations-container').innerHTML = '<div class="alert alert-warning">Error al cargar recomendaciones</div>';
         });
+
+        (alerts || []).forEach(alert => {
+            items.push({
+                source: 'Alerta',
+                severity: (alert.severidad || 'warning').toUpperCase(),
+                title: alert.tipo || 'Alerta',
+                description: alert.mensaje || '',
+                detail: alert.valor !== undefined ? `Valor: ${window.formatNumberAr(alert.valor, 2)}` : ''
+            });
+        });
+
+        (rebalance || []).forEach(action => {
+            items.push({
+                source: 'Rebalanceo',
+                severity: 'WARNING',
+                title: action.accion || action.razon || 'Acción de rebalanceo',
+                description: action.razon || 'Sugerencia de ajuste de portafolio',
+                detail: action.activo ? `Activo: ${action.activo}` : (action.sector ? `Sector: ${action.sector}` : '')
+            });
+        });
+
+        if (!items.length) {
+            container.innerHTML = '<div class="alert alert-info">No hay acciones recomendadas disponibles</div>';
+            return;
+        }
+
+        const severityClass = (severity) => {
+            if (severity === 'CRITICAL' || severity === 'ALTA') return 'danger';
+            if (severity === 'WARNING' || severity === 'MEDIA') return 'warning text-dark';
+            return 'info';
+        };
+
+        const html = '<div class="list-group">' + items.map(item => `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted">${item.source}</small>
+                    <span class="badge bg-${severityClass(item.severity)}">${item.severity}</span>
+                </div>
+                <h6 class="mb-1">${item.title}</h6>
+                <p class="mb-1">${item.description}</p>
+                ${item.detail ? `<small class="text-muted">${item.detail}</small>` : ''}
+            </div>
+        `).join('') + '</div>';
+        container.innerHTML = html;
+    }).catch(() => {
+        document.getElementById('recommendations-container').innerHTML = '<div class="alert alert-warning">Error al cargar acciones recomendadas</div>';
+    });
 }
 
 function runSimulation() {
     const activo = document.getElementById('simulation-activo').value;
     const capital = document.getElementById('simulation-capital').value;
-    if (!activo || !capital) return;
+    const quantity = parseFloat(document.getElementById('simulation-quantity').value || 0);
+    const estimatedPrice = parseFloat(document.getElementById('simulation-price').value || 0);
+    const effectiveCapital = parseFloat(capital || 0) || (quantity > 0 && estimatedPrice > 0 ? quantity * estimatedPrice : 0);
+    if (!activo || !effectiveCapital) return;
     fetch('/api/simulation/purchase/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-        body: JSON.stringify({ activo, capital: parseFloat(capital) })
+        body: JSON.stringify({ activo, capital: effectiveCapital })
     })
     .then(r => r.json())
     .then(data => {
         const details = document.getElementById('simulation-details');
         details.innerHTML = data.error ? `<div class="alert alert-danger">${data.error}</div>` :
-            `<div class="row"><div class="col-6"><strong>Capital:</strong> ${window.formatCurrencyAr(data.capital_invertido, 0)}</div><div class="col-6"><strong>Cantidad:</strong> ${window.formatNumberAr(data.cantidad_comprada, 2)}</div></div><div class="row mt-2"><div class="col-6"><strong>Nuevo peso:</strong> ${window.formatNumberAr(data.nuevo_peso_activo, 2)}%</div><div class="col-6"><strong>Riesgo:</strong> ${data.riesgo_estimado}</div></div>`;
+            `<div class="row">
+                <div class="col-6"><strong>Capital:</strong> ${window.formatCurrencyAr(data.capital_invertido, 0)}</div>
+                <div class="col-6"><strong>Cantidad:</strong> ${window.formatNumberAr(data.cantidad_comprada, 2)}</div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-6"><strong>Nuevo peso:</strong> ${window.formatNumberAr(data.nuevo_peso_activo, 2)}%</div>
+                <div class="col-6"><strong>Riesgo:</strong> ${data.riesgo_estimado || 'N/D'}</div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-6"><strong>Impacto liquidez:</strong> ${data.impacto_liquidez || 'N/D'}</div>
+                <div class="col-6"><strong>Impacto exposición:</strong> ${data.diversificacion || 'N/D'}</div>
+            </div>`;
+        document.getElementById('simulation-result').style.display = 'block';
+    });
+}
+
+function runSaleSimulation() {
+    const activo = document.getElementById('simulation-activo').value;
+    const cantidad = parseFloat(document.getElementById('simulation-quantity').value || 0);
+    if (!activo || !cantidad) return;
+    fetch('/api/simulation/sale/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ activo, cantidad })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const details = document.getElementById('simulation-details');
+        details.innerHTML = data.error ? `<div class="alert alert-danger">${data.error}</div>` :
+            `<div class="row">
+                <div class="col-6"><strong>Capital recuperado:</strong> ${window.formatCurrencyAr(data.capital_recuperado, 0)}</div>
+                <div class="col-6"><strong>Cantidad vendida:</strong> ${window.formatNumberAr(data.cantidad_vendida, 2)}</div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-6"><strong>Impacto liquidez:</strong> ${data.impacto_liquidez || 'N/D'}</div>
+                <div class="col-6"><strong>Impacto diversificación:</strong> ${data.diversificacion || 'N/D'}</div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-12"><strong>Impacto concentración:</strong> ${data.riesgo_estimado || 'N/D'}</div>
+            </div>`;
+        document.getElementById('simulation-result').style.display = 'block';
+    });
+}
+
+function runRebalanceSimulation() {
+    const raw = document.getElementById('rebalance-json').value || '{}';
+    let target_weights;
+    try {
+        target_weights = JSON.parse(raw);
+    } catch (e) {
+        document.getElementById('simulation-details').innerHTML = '<div class="alert alert-danger">JSON de rebalanceo inválido</div>';
+        document.getElementById('simulation-result').style.display = 'block';
+        return;
+    }
+    fetch('/api/simulation/rebalance/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ target_weights })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const details = document.getElementById('simulation-details');
+        if (data.error) {
+            details.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+        } else {
+            const ops = (data.operaciones || []).map(op => `<tr><td>${op.activo}</td><td class="text-end">${window.formatNumberAr(op.peso_objetivo, 1)}%</td><td class="text-end">${window.formatCurrencyAr(op.valor_objetivo, 0)}</td></tr>`).join('');
+            details.innerHTML = `<div><strong>Impacto en riesgo:</strong> ${data.riesgo_post_rebalanceo || 'calcular'}</div>
+                                 <div><strong>Activos a ajustar:</strong></div>
+                                 <table class="table table-sm mt-2"><thead><tr><th>Activo</th><th class="text-end">Peso resultante</th><th class="text-end">Valor objetivo</th></tr></thead><tbody>${ops}</tbody></table>`;
+        }
         document.getElementById('simulation-result').style.display = 'block';
     });
 }
@@ -1058,6 +1211,33 @@ function loadPortfolioParameters() {
                 document.getElementById('emerging-target').value = data.emerging_target;
             }
         });
+}
+
+function loadDataQualityDetails() {
+    Promise.all([
+        fetch('/api/metrics/snapshot-integrity/').then(r => r.json()),
+        fetch('/api/metrics/sync-audit/').then(r => r.json()),
+        fetch('/api/metrics/data-quality/').then(r => r.json()),
+    ]).then(([snapshot, sync, metadata]) => {
+        const snapshotIssues = snapshot.issues_count || 0;
+        const syncIssues = sync.issues_count || 0;
+        const unclassified = metadata.unclassified_assets_count || 0;
+        const inconsistent = metadata.inconsistent_assets_count || 0;
+        const content = `
+            <div class="row g-3">
+                <div class="col-md-3"><div class="p-2 border rounded"><strong>Snapshot issues</strong><br>${snapshotIssues}</div></div>
+                <div class="col-md-3"><div class="p-2 border rounded"><strong>Sync issues</strong><br>${syncIssues}</div></div>
+                <div class="col-md-3"><div class="p-2 border rounded"><strong>Sin metadata</strong><br>${unclassified}</div></div>
+                <div class="col-md-3"><div class="p-2 border rounded"><strong>Inconsistentes</strong><br>${inconsistent}</div></div>
+            </div>
+            <div class="mt-3 small text-muted">
+                Sync status: ${sync.status || 'unknown'} | Token: ${(sync.token && sync.token.status) || 'unknown'}
+            </div>
+        `;
+        document.getElementById('quality-details-content').innerHTML = content;
+    }).catch(() => {
+        document.getElementById('quality-details-content').innerHTML = '<div class="text-danger">Error cargando calidad de datos.</div>';
+    });
 }
 
 function savePortfolioParams() {

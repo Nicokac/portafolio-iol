@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Performance - Portafolio IOL{% endblock %}
+
+{% block content %}
+<section class="dashboard-hero mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="mb-1">Centro de Performance</h1>
+            <p class="text-muted mb-0">Retornos, drawdown y comparacion temporal del portafolio.</p>
+        </div>
+        <a href="{% url 'dashboard:metricas' %}" class="btn btn-outline-primary">Ver Centro de Metricas</a>
+    </div>
+</section>
+
+<section class="row g-3 mb-4" id="performance-kpis">
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno total</div><div class="h4 mb-0" id="ret-total">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR total</div><div class="h4 mb-0" id="ret-twr-total" data-bs-toggle="tooltip" title="Time Weighted Return: neutraliza flujos externos.">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR anualizado</div><div class="h4 mb-0" id="ret-twr-anual">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h4 mb-0 text-danger" id="ret-max-dd">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Drawdown historico (365 dias)</h5></div>
+            <div class="card-body"><div class="chart-container"><canvas id="drawdownChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Drawdown actual</h5></div>
+            <div class="card-body">
+                <div class="display-6 {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}" id="ret-current-dd">-</div>
+                <p class="text-muted mb-0">Calculado sobre serie de Total IOL.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Comparacion de retornos por ventana</h5></div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Ventana</th><th class="text-end">Retorno</th><th class="text-end">Volatilidad</th></tr></thead>
+                        <tbody id="comparison-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+function formatPct(value) {
+    if (value === undefined || value === null) return '-';
+    const cls = value >= 0 ? 'text-success' : 'text-danger';
+    return `<span class="${cls}">${window.formatNumberAr(value, 2)}%</span>`;
+}
+
+function computeDrawdownSeries(values) {
+    let runningMax = -Infinity;
+    return values.map(v => {
+        runningMax = Math.max(runningMax, v);
+        if (runningMax <= 0) return 0;
+        return ((v / runningMax) - 1) * 100;
+    });
+}
+
+function loadPerformanceData() {
+    Promise.all([
+        fetch('/api/metrics/returns/?days=365').then(r => r.json()),
+        fetch('/api/metrics/historical-comparison/?periods=7,30,90,180,365').then(r => r.json()),
+        fetch('/api/historical/evolution/?days=365').then(r => r.json())
+    ]).then(([returns, comparison, evolution]) => {
+        document.getElementById('ret-total').innerHTML = formatPct(returns.total_period_return || 0);
+        document.getElementById('ret-twr-total').innerHTML = formatPct(returns.twr_total_return || 0);
+        document.getElementById('ret-twr-anual').innerHTML = formatPct(returns.twr_annualized_return || 0);
+        document.getElementById('ret-max-dd').innerHTML = formatPct(returns.max_drawdown || 0);
+
+        const comparisonBody = document.getElementById('comparison-body');
+        const keys = ['7d', '30d', '90d', '180d', '365d'];
+        comparisonBody.innerHTML = keys.map(k => {
+            const row = comparison[k] || {};
+            return `<tr><td>${k}</td><td class="text-end">${formatPct(row.total_return || 0)}</td><td class="text-end">${formatPct(row.volatility || 0)}</td></tr>`;
+        }).join('');
+
+        if (evolution && evolution.length > 2) {
+            const labels = evolution.map(x => x.fecha);
+            const values = evolution.map(x => Number(x.total_iol || 0));
+            const dd = computeDrawdownSeries(values);
+            const currentDd = dd[dd.length - 1] || 0;
+            document.getElementById('ret-current-dd').innerHTML = formatPct(currentDd);
+            new Chart(document.getElementById('drawdownChart').getContext('2d'), {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Drawdown %', data: dd, borderColor: '#EF4444', fill: false, tension: 0.25 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+    }).catch(() => {
+        document.getElementById('comparison-body').innerHTML = '<tr><td colspan="3" class="text-danger">Error cargando performance</td></tr>';
+    });
+}
+
+loadPerformanceData();
+</script>
+{% endblock %}
