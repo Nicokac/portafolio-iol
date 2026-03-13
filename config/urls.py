@@ -15,13 +15,14 @@ Including another URLconf
     2. path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.contrib.auth import views as auth_views
 from django.urls import path, include
+
+from apps.users.views import LogoutView, RateLimitedLoginView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
-    path('accounts/logout/', auth_views.LogoutView.as_view(next_page='/accounts/login/'), name='logout'),
+    path('accounts/login/', RateLimitedLoginView.as_view(template_name='users/login.html'), name='login'),
+    path('accounts/logout/', LogoutView.as_view(next_page='/accounts/login/'), name='logout'),
     path('', include('apps.dashboard.urls')),
     path('resumen/', include('apps.resumen_iol.urls')),
     path('portafolio/', include('apps.portafolio_iol.urls')),

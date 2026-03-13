@@ -116,6 +116,18 @@ class TestAPIResponseFormat:
         if response.status_code != 500:
             assert response['Content-Type'] == 'application/json'
 
+
+@pytest.mark.django_db
+class TestAPIThrottling:
+    def test_rest_framework_throttling_is_enabled_in_settings(self, settings):
+        throttle_classes = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES']
+        throttle_rates = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+
+        assert 'rest_framework.throttling.AnonRateThrottle' in throttle_classes
+        assert 'rest_framework.throttling.UserRateThrottle' in throttle_classes
+        assert throttle_rates['anon'] == '100/min'
+        assert throttle_rates['user'] == '300/min'
+
 @pytest.mark.django_db
 class TestAPIErrorHandling:
     """Verifica que los endpoints manejan excepciones y retornan 500."""
