@@ -68,6 +68,39 @@ def test_markowitz_optimizer_returns_normalized_weights():
     assert np.all(weights >= 0)
 
 
+def test_markowitz_optimizer_handles_empty_and_single_asset_inputs():
+    optimizer = MarkowitzOptimizer()
+
+    assert optimizer.optimize(np.array([]), np.array([])).size == 0
+    assert np.array_equal(optimizer.optimize(np.array([0.1]), np.array([[0.04]])), np.array([1.0]))
+
+
+def test_markowitz_optimizer_uses_max_sharpe_when_target_is_missing():
+    expected_returns = np.array([0.10, 0.07])
+    covariance = np.array([[0.04, 0.01], [0.01, 0.03]])
+
+    weights = MarkowitzOptimizer().optimize(expected_returns, covariance)
+
+    assert np.isclose(weights.sum(), 1.0)
+    assert np.all(weights >= 0)
+
+
+def test_markowitz_optimizer_falls_back_when_system_is_degenerate():
+    expected_returns = np.array([0.10, 0.10])
+    covariance = np.array([[0.04, 0.00], [0.00, 0.04]])
+
+    weights = MarkowitzOptimizer().optimize(expected_returns, covariance, target_return=0.10)
+
+    assert np.isclose(weights.sum(), 1.0)
+    assert np.all(weights >= 0)
+
+
+def test_markowitz_normalize_long_only_defaults_to_equal_weights_for_non_positive_total():
+    weights = MarkowitzOptimizer._normalize_long_only(np.array([-2.0, -1.0, 0.0]))
+
+    assert np.allclose(weights, np.array([1 / 3, 1 / 3, 1 / 3]))
+
+
 def test_risk_parity_service_returns_inverse_vol_weights():
     covariance = np.array(
         [
@@ -82,3 +115,10 @@ def test_risk_parity_service_returns_inverse_vol_weights():
     assert len(weights) == 3
     assert np.isclose(weights.sum(), 1.0)
     assert weights[2] > weights[1] > weights[0]
+
+
+def test_risk_parity_service_handles_empty_and_single_asset_inputs():
+    service = RiskParityService()
+
+    assert service.optimize(np.array([])).size == 0
+    assert np.array_equal(service.optimize(np.array([[0.09]])), np.array([1.0]))

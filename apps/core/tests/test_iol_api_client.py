@@ -1,5 +1,10 @@
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+import requests
+from django.utils import timezone
+
+from apps.core.models import IOLToken
 from apps.core.services.iol_api_client import IOLAPIClient
 
 
@@ -52,6 +57,32 @@ class TestIOLAPIClient:
         assert result is None
         assert client.last_error.get("error_type") == "unexpected_error"
 
+    def test_get_headers_requires_token(self, client):
+        client.token_manager.get_valid_token.return_value = None
+
+        with pytest.raises(ValueError):
+            client._get_headers()
+
+    def test_build_auth_context_without_saved_token(self, client):
+        context = client._build_auth_context()
+
+        assert context["has_saved_token"] is False
+        assert context["token_expired"] is None
+
+    def test_build_auth_context_with_saved_token(self, client):
+        IOLToken.objects.create(
+            access_token='legacy-token',
+            refresh_token='legacy-refresh',
+            expires_at=timezone.now() + timezone.timedelta(minutes=30),
+        )
+
+        context = client._build_auth_context()
+
+        assert context["has_saved_token"] is True
+        assert context["has_refresh_token"] is True
+        assert context["token_expired"] is False
+        assert context["seconds_to_expiry"] > 0
+
     @patch('apps.core.services.iol_api_client.requests.post')
     def test_refresh_access_token_success(self, mock_post, client):
         mock_token = MagicMock()
@@ -84,6 +115,28 @@ class TestIOLAPIClient:
         result = client.refresh_access_token()
         assert result is False
 
+    def test_ensure_valid_token_tries_refresh_then_login(self, client):
+        token = MagicMock()
+        token.refresh_token = 'refresh'
+        client.token_manager.get_valid_token.return_value = None
+        client.token_manager._current_token = token
+        client.refresh_access_token = MagicMock(return_value=False)
+        client.login = MagicMock(return_value=True)
+
+        client._ensure_valid_token()
+
+        client.refresh_access_token.assert_called_once()
+        client.login.assert_called_once()
+
+    def test_ensure_valid_token_logs_in_when_no_current_token(self, client):
+        client.token_manager.get_valid_token.return_value = None
+        client.token_manager._current_token = None
+        client.login = MagicMock(return_value=True)
+
+        client._ensure_valid_token()
+
+        client.login.assert_called_once()
+
     @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_portafolio_success(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
@@ -97,8 +150,7 @@ class TestIOLAPIClient:
     @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_portafolio_failure(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
-        import requests as req
-        mock_get.side_effect = req.RequestException('error')
+        mock_get.side_effect = requests.RequestException('error')
 
         result = client.get_portafolio()
         assert result is None
@@ -116,8 +168,81 @@ class TestIOLAPIClient:
     @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_operaciones_failure(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
-        import requests as req
-        mock_get.side_effect = req.RequestException('error')
+        mock_get.side_effect = requests.RequestException('error')
 
         result = client.get_operaciones()
         assert result is None
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_request_json_retries_once_on_401_and_then_succeeds(self, mock_get, client):
+        client._ensure_valid_token = MagicMock()
+        client.token_manager.invalidate_current_token = MagicMock()
+        client.token_manager.get_valid_token.return_value = 'test-token'
+
+        first = Mock()
+        first.raise_for_status.side_effect = requests.HTTPError(response=Mock(status_code=401))
+        second = Mock()
+        second.raise_for_status.return_value = None
+        second.json.return_value = {'ok': True}
+        mock_get.side_effect = [first, second]
+
+        result = client._request_json(operation='test', url='https://iol.test/resource')
+
+        assert result == {'ok': True}
+        client.token_manager.invalidate_current_token.assert_called_once()
+        assert client.last_error == {}
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_request_json_returns_http_error_after_retry(self, mock_get, client):
+        client._ensure_valid_token = MagicMock()
+        client.token_manager.invalidate_current_token = MagicMock()
+        client.token_manager.get_valid_token.return_value = 'test-token'
+
+        first = Mock()
+        first.raise_for_status.side_effect = requests.HTTPError(response=Mock(status_code=401))
+        second = Mock()
+        second.raise_for_status.side_effect = requests.HTTPError(response=Mock(status_code=403))
+        mock_get.side_effect = [first, second]
+
+        result = client._request_json(operation='test', url='https://iol.test/resource')
+
+        assert result is None
+        assert client.last_error["error_type"] == "http_error_after_retry"
+        assert client.last_error["status_code"] == 403
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_request_json_handles_http_error_without_retry(self, mock_get, client):
+        client._ensure_valid_token = MagicMock()
+        client.token_manager.get_valid_token.return_value = 'test-token'
+
+        response = Mock()
+        response.raise_for_status.side_effect = requests.HTTPError(response=Mock(status_code=500))
+        mock_get.return_value = response
+
+        result = client._request_json(operation='test', url='https://iol.test/resource')
+
+        assert result is None
+        assert client.last_error["error_type"] == "http_error"
+        assert client.last_error["status_code"] == 500
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_request_json_handles_request_exception(self, mock_get, client):
+        client._ensure_valid_token = MagicMock()
+        client.token_manager.get_valid_token.return_value = 'test-token'
+        mock_get.side_effect = requests.RequestException('network down')
+
+        result = client._request_json(operation='test', url='https://iol.test/resource')
+
+        assert result is None
+        assert client.last_error["error_type"] == "request_error"
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_request_json_handles_unexpected_error(self, mock_get, client):
+        client._ensure_valid_token = MagicMock()
+        client.token_manager.get_valid_token.return_value = 'test-token'
+        mock_get.side_effect = RuntimeError('boom')
+
+        result = client._request_json(operation='test', url='https://iol.test/resource')
+
+        assert result is None
+        assert client.last_error["error_type"] == "unexpected_error"

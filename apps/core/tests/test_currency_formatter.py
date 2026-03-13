@@ -1,6 +1,7 @@
 from django.template import Context, Template
 from django.test import SimpleTestCase
 
+from apps.core.templatetags.currency_filters import currency
 from apps.core.utils.currency_formatter import CurrencyFormatter
 
 
@@ -17,3 +18,6 @@ class TestCurrencyFormatter(SimpleTestCase):
     def test_currency_template_filter_is_available_globally(self):
         rendered = Template("{{ value|currency:2 }}").render(Context({"value": 9876543.2}))
         assert rendered == "$9.876.543,20"
+
+    def test_currency_filter_falls_back_to_two_decimals_for_invalid_precision(self):
+        assert currency(1234.5, "invalid") == "$1.234,50"
