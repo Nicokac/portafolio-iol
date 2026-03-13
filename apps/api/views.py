@@ -17,6 +17,7 @@ from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrity
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.observability import get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
+from apps.core.services.security_audit import record_sensitive_action
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
@@ -853,48 +854,91 @@ def portfolio_parameters_get(request):
 
 @api_view(['POST'])
 def portfolio_parameters_update(request):
-    """Actualiza parámetros del portafolio."""
-    from apps.core.models import PortfolioParameters
+    """Actualiza parametros globales del portafolio."""
     from decimal import Decimal
+
+    from apps.core.models import PortfolioParameters
 
     try:
         if not request.user or not request.user.is_staff:
+            record_sensitive_action(
+                request,
+                action='portfolio_parameters_update',
+                status='denied',
+                details={'reason': 'non_staff_user'},
+            )
             return Response(
                 {'error': 'No autorizado para modificar parametros globales'},
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Obtener parámetros actuales o crear nuevos
         params = PortfolioParameters.get_active_parameters()
         if not params:
             params = PortfolioParameters()
 
-        # Actualizar campos
         params.name = request.data.get('name', params.name)
-        params.liquidez_target = Decimal(str(request.data.get('liquidez_target', params.liquidez_target)))
+        params.liquidez_target = Decimal(
+            str(request.data.get('liquidez_target', params.liquidez_target))
+        )
         params.usa_target = Decimal(str(request.data.get('usa_target', params.usa_target)))
-        params.argentina_target = Decimal(str(request.data.get('argentina_target', params.argentina_target)))
-        params.emerging_target = Decimal(str(request.data.get('emerging_target', params.emerging_target)))
-        params.max_single_position = Decimal(str(request.data.get('max_single_position', params.max_single_position)))
-        params.risk_free_rate = Decimal(str(request.data.get('risk_free_rate', params.risk_free_rate)))
-        params.rebalance_threshold = Decimal(str(request.data.get('rebalance_threshold', params.rebalance_threshold)))
+        params.argentina_target = Decimal(
+            str(request.data.get('argentina_target', params.argentina_target))
+        )
+        params.emerging_target = Decimal(
+            str(request.data.get('emerging_target', params.emerging_target))
+        )
+        params.max_single_position = Decimal(
+            str(request.data.get('max_single_position', params.max_single_position))
+        )
+        params.risk_free_rate = Decimal(
+            str(request.data.get('risk_free_rate', params.risk_free_rate))
+        )
+        params.rebalance_threshold = Decimal(
+            str(request.data.get('rebalance_threshold', params.rebalance_threshold))
+        )
 
-        # Validar que la asignación sume 100%
         if not params.is_valid_allocation():
+            record_sensitive_action(
+                request,
+                action='portfolio_parameters_update',
+                status='failed',
+                details={
+                    'reason': 'invalid_allocation',
+                    'total_allocation': float(params.total_target_allocation),
+                },
+            )
             return Response(
                 {
-                    'error': f'La asignación objetivo debe sumar 100%. Actualmente suma {params.total_target_allocation}%.',
-                    'total_allocation': float(params.total_target_allocation)
+                    'error': (
+                        'La asignacion objetivo debe sumar 100%. '
+                        f'Actualmente suma {params.total_target_allocation}%.'
+                    ),
+                    'total_allocation': float(params.total_target_allocation),
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         params.save()
-
+        record_sensitive_action(
+            request,
+            action='portfolio_parameters_update',
+            status='success',
+            details={
+                'portfolio_parameters_id': params.id,
+                'name': params.name,
+                'total_allocation': float(params.total_target_allocation),
+            },
+        )
         return Response(
-            {'message': 'Parámetros actualizados correctamente'},
-            status=status.HTTP_200_OK
+            {'message': 'Par?metros actualizados correctamente'},
+            status=status.HTTP_200_OK,
         )
     except Exception as e:
+        record_sensitive_action(
+            request,
+            action='portfolio_parameters_update',
+            status='failed',
+            details={'reason': 'exception'},
+        )
         return internal_error_response(e, "portfolio_parameters_update")
 

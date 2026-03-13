@@ -4,6 +4,8 @@ from django.contrib.messages import get_messages
 from django.test import Client
 from django.urls import reverse
 
+from apps.core.models import SensitiveActionAudit
+
 
 @pytest.mark.django_db
 class TestDashboardView:
@@ -128,6 +130,9 @@ class TestDashboardView:
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
         assert any('Sincronizacion completada' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='manual_sync')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
 
     @pytest.mark.django_db
     def test_generate_snapshot_view_success_message(self, staff_client, monkeypatch):
@@ -143,3 +148,6 @@ class TestDashboardView:
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
         assert any('Snapshot disponible' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='generate_snapshot')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'

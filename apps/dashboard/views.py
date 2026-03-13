@@ -13,6 +13,7 @@ from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrity
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
+from apps.core.services.security_audit import record_sensitive_action
 from apps.dashboard.selectors import (
     get_analytics_mensual,
     get_active_alerts,
@@ -158,6 +159,12 @@ class RunSyncView(StaffRequiredMixin, View):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         results = IOLSyncService().sync_all()
         success = bool(results.get('estado_cuenta') and results.get('portafolio_argentina'))
+        record_sensitive_action(
+            request,
+            action='manual_sync',
+            status='success' if success else 'failed',
+            details={'results': results},
+        )
         if success:
             snapshot_status = 'ok' if results.get('portfolio_snapshot') else 'sin snapshot'
             messages.success(
@@ -176,6 +183,12 @@ class GenerateSnapshotView(StaffRequiredMixin, View):
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         snapshot = PortfolioSnapshotService().generate_daily_snapshot()
+        record_sensitive_action(
+            request,
+            action='generate_snapshot',
+            status='success' if snapshot is not None else 'failed',
+            details={'snapshot_date': str(snapshot.fecha) if snapshot is not None else None},
+        )
         if snapshot is not None:
             messages.success(request, f"Snapshot disponible para {snapshot.fecha}.")
         else:

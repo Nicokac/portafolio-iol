@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -188,3 +189,35 @@ class Alert(models.Model):
     def get_alerts_by_severity(cls, severity):
         """Obtiene alertas filtradas por severidad."""
         return cls.objects.filter(severidad=severity, is_active=True)
+
+
+class SensitiveActionAudit(models.Model):
+    """Auditoria persistente de acciones sensibles ejecutadas desde la app."""
+
+    STATUS_CHOICES = [
+        ("success", "Success"),
+        ("failed", "Failed"),
+        ("denied", "Denied"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sensitive_action_audits",
+    )
+    action = models.CharField(max_length=64)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Sensitive action audit"
+        verbose_name_plural = "Sensitive action audits"
+
+    def __str__(self):
+        username = self.user.username if self.user else "anonymous"
+        return f"{self.action} [{self.status}] by {username}"

@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from apps.core.models import SensitiveActionAudit
+
 
 @pytest.fixture
 def user(db):
@@ -378,6 +380,9 @@ class TestAPIPostEndpointsHappyPath:
         url = reverse('portfolio-parameters-update')
         response = auth_client.post(url, {}, format='json')
         assert response.status_code == 403
+        audit = SensitiveActionAudit.objects.get(action='portfolio_parameters_update')
+        assert audit.status == 'denied'
+        assert audit.user.username == 'testuser'
 
     def test_portfolio_parameters_update_missing_params(self, staff_auth_client):
         url = reverse('portfolio-parameters-update')
@@ -398,6 +403,8 @@ class TestAPIPostEndpointsHappyPath:
         assert response.status_code == 400
         assert 'error' in response.json()
         assert '100%' in response.json()['error']
+        audit = SensitiveActionAudit.objects.get(action='portfolio_parameters_update')
+        assert audit.status == 'failed'
 
     def test_portfolio_parameters_update_valid_allocation(self, staff_auth_client):
         """Verifica que se permita guardar asignaciones válidas."""
@@ -412,6 +419,9 @@ class TestAPIPostEndpointsHappyPath:
         response = staff_auth_client.post(url, valid_data, format='json')
         assert response.status_code == 200
         assert 'message' in response.json()
+        audit = SensitiveActionAudit.objects.get(action='portfolio_parameters_update')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
 
 @pytest.mark.django_db
 class TestHistoricalEvolutionFallback:
