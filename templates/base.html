@@ -42,7 +42,8 @@
                     </li>
                 </ul>
                 {% if user.is_authenticated %}
-                <form method="get" action="{% url 'dashboard:set_preferences' %}" class="d-flex align-items-center gap-2 me-3 ui-preferences">
+                <form method="post" action="{% url 'dashboard:set_preferences' %}" class="d-flex align-items-center gap-2 me-3 ui-preferences">
+                    {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <select name="ui_mode" class="form-select form-select-sm" onchange="this.form.submit()">
                         {% with mode=ui_mode|default:'compacto' %}

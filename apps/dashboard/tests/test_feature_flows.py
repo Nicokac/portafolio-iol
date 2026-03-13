@@ -45,7 +45,7 @@ class TestDashboardFeatureFlows:
         assert "optimization-result" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
-        auth_client.get(
+        auth_client.post(
             reverse("dashboard:set_preferences"),
             {"ui_mode": "denso", "risk_profile": "agresivo", "next": reverse("dashboard:estrategia")},
         )
