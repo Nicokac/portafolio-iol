@@ -10,6 +10,13 @@ from apps.resumen_iol.views import ResumenListView
 
 
 @pytest.mark.django_db
+def test_resumen_list_view_redirects_anonymous(client):
+    response = client.get(reverse("resumen_iol:resumen_list"))
+    assert response.status_code == 302
+    assert "/accounts/login/" in response["Location"]
+
+
+@pytest.mark.django_db
 def test_resumen_list_view_renders_template_and_context(client):
     ResumenCuentaSnapshot.objects.create(
         fecha_extraccion=timezone.now(),
@@ -23,6 +30,8 @@ def test_resumen_list_view_renders_template_and_context(client):
         total=1000,
         estado="Activa",
     )
+    user = User.objects.create_user(username="resumen-user", password="testpass123")
+    client.force_login(user)
 
     response = client.get(reverse("resumen_iol:resumen_list"))
 

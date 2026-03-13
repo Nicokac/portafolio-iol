@@ -1,8 +1,16 @@
 import pytest
+from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
+
+
+@pytest.mark.django_db
+def test_portafolio_list_view_redirects_anonymous(client):
+    response = client.get(reverse("portafolio_iol:portafolio_list"))
+    assert response.status_code == 302
+    assert "/accounts/login/" in response["Location"]
 
 
 @pytest.mark.django_db
@@ -27,6 +35,8 @@ def test_portafolio_list_view_renders_template_and_context(client):
         tipo="CEDEAR",
         moneda="ARS",
     )
+    user = User.objects.create_user(username="portafolio-user", password="testpass123")
+    client.force_login(user)
 
     response = client.get(reverse("portafolio_iol:portafolio_list"))
 
