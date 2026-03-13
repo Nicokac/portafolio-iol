@@ -49,28 +49,36 @@ function formatNum(value) {
     if (value === undefined || value === null) return '-';
     return window.formatNumberAr(value, 2);
 }
+function formatPctOrNA(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return 'N/D';
+    return formatPct(Number(value));
+}
+function formatNumOrNA(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return 'N/D';
+    return formatNum(Number(value));
+}
 
 Promise.all([
     fetch('/api/metrics/volatility/?days=365').then(r => r.json()),
     fetch('/api/metrics/benchmarking/?days=365').then(r => r.json()),
     fetch('/api/metrics/returns/?days=365').then(r => r.json())
 ]).then(([vol, bench, ret]) => {
-    document.getElementById('m-vol').textContent = formatPct(vol.annualized_volatility);
-    document.getElementById('m-sharpe').textContent = formatNum(vol.sharpe_ratio);
-    document.getElementById('m-sortino').textContent = formatNum(vol.sortino_ratio);
-    document.getElementById('m-te').textContent = formatPct(bench.tracking_error_annualized);
-    document.getElementById('m-ir').textContent = formatNum(bench.information_ratio);
-    document.getElementById('m-ret').textContent = formatPct(ret.total_period_return);
-    document.getElementById('m-excess').textContent = formatPct(bench.excess_return_period);
+    document.getElementById('m-vol').textContent = formatPctOrNA(vol.annualized_volatility);
+    document.getElementById('m-sharpe').textContent = formatNumOrNA(vol.sharpe_ratio);
+    document.getElementById('m-sortino').textContent = formatNumOrNA(vol.sortino_ratio);
+    document.getElementById('m-te').textContent = formatPctOrNA(bench.tracking_error_annualized);
+    document.getElementById('m-ir').textContent = formatNumOrNA(bench.information_ratio);
+    document.getElementById('m-ret').textContent = formatPctOrNA(ret.total_period_return);
+    document.getElementById('m-excess').textContent = formatPctOrNA(bench.excess_return_period);
 
     const detail = [
-        ['Retorno diario', formatPct(ret.daily_return)],
-        ['Retorno semanal', formatPct(ret.weekly_return)],
-        ['Retorno mensual', formatPct(ret.monthly_return)],
-        ['TWR total', formatPct(ret.twr_total_return)],
-        ['TWR anualizado', formatPct(ret.twr_annualized_return)],
-        ['Portfolio return period', formatPct(bench.portfolio_return_period)],
-        ['Benchmark return period', formatPct(bench.benchmark_return_period)],
+        ['Retorno diario', formatPctOrNA(ret.daily_return)],
+        ['Retorno semanal', formatPctOrNA(ret.weekly_return)],
+        ['Retorno mensual', formatPctOrNA(ret.monthly_return)],
+        ['TWR total', formatPctOrNA(ret.twr_total_return)],
+        ['TWR anualizado', formatPctOrNA(ret.twr_annualized_return)],
+        ['Portfolio return period', formatPctOrNA(bench.portfolio_return_period)],
+        ['Benchmark return period', formatPctOrNA(bench.benchmark_return_period)],
     ];
     document.getElementById('metrics-detail-body').innerHTML = detail.map(([k,v]) => `<tr><td>${k}</td><td class="text-end">${v}</td></tr>`).join('');
 }).catch(() => {

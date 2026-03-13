@@ -5,6 +5,7 @@ import requests
 from django.conf import settings
 from django.utils import timezone
 
+from apps.core.models import IOLToken
 from apps.core.services.token_manager import IOLTokenManager
 
 
@@ -24,6 +25,7 @@ class IOLAPIClient:
         self.access_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
         self.token_expires_at: Optional[timezone.datetime] = None
+        self.last_error: Dict[str, object] = {}
 
     def _get_headers(self) -> Dict[str, str]:
         """Obtiene headers con token de acceso."""
@@ -35,6 +37,116 @@ class IOLAPIClient:
             'Content-Type': 'application/json',
         }
 
+    def _build_auth_context(self) -> Dict[str, object]:
+        latest_token = IOLToken.objects.order_by("-created_at").first()
+        now = timezone.now()
+        token_expired = None
+        seconds_to_expiry = None
+        has_refresh_token = False
+        if latest_token:
+            token_expired = latest_token.expires_at <= now
+            seconds_to_expiry = int((latest_token.expires_at - now).total_seconds())
+            has_refresh_token = bool(latest_token.refresh_token)
+
+        return {
+            "has_username": bool(self.username),
+            "has_password": bool(self.password),
+            "has_saved_token": latest_token is not None,
+            "token_expired": token_expired,
+            "seconds_to_expiry": seconds_to_expiry,
+            "has_refresh_token": has_refresh_token,
+        }
+
+    def _set_last_error(
+        self,
+        *,
+        operation: str,
+        url: str,
+        error_type: str,
+        status_code: Optional[int] = None,
+        message: str = "",
+    ) -> None:
+        self.last_error = {
+            "operation": operation,
+            "url": url,
+            "error_type": error_type,
+            "status_code": status_code,
+            "message": message,
+            "auth_context": self._build_auth_context(),
+            "occurred_at": timezone.now().isoformat(),
+        }
+
+    def _request_json(
+        self,
+        *,
+        operation: str,
+        url: str,
+        params: Optional[Dict] = None,
+    ) -> Optional[object]:
+        self._ensure_valid_token()
+        try:
+            response = requests.get(url, headers=self._get_headers(), params=params, timeout=30)
+            response.raise_for_status()
+            self.last_error = {}
+            return response.json()
+        except requests.HTTPError as exc:
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code == 401:
+                logger.warning(
+                    "IOL API returned 401 for %s. Trying token refresh/login and retrying once.",
+                    operation,
+                )
+                self.token_manager.invalidate_current_token()
+                self._ensure_valid_token()
+                try:
+                    retry_response = requests.get(url, headers=self._get_headers(), params=params, timeout=30)
+                    retry_response.raise_for_status()
+                    self.last_error = {}
+                    return retry_response.json()
+                except requests.RequestException as retry_exc:
+                    retry_status = (
+                        retry_exc.response.status_code
+                        if isinstance(retry_exc, requests.HTTPError) and retry_exc.response is not None
+                        else None
+                    )
+                    self._set_last_error(
+                        operation=operation,
+                        url=url,
+                        error_type="http_error_after_retry",
+                        status_code=retry_status,
+                        message=str(retry_exc),
+                    )
+                    logger.error("Failed %s after retry: %s", operation, retry_exc)
+                    return None
+
+            self._set_last_error(
+                operation=operation,
+                url=url,
+                error_type="http_error",
+                status_code=status_code,
+                message=str(exc),
+            )
+            logger.error("Failed %s: %s", operation, exc)
+            return None
+        except requests.RequestException as exc:
+            self._set_last_error(
+                operation=operation,
+                url=url,
+                error_type="request_error",
+                message=str(exc),
+            )
+            logger.error("Failed %s: %s", operation, exc)
+            return None
+        except Exception as exc:
+            self._set_last_error(
+                operation=operation,
+                url=url,
+                error_type="unexpected_error",
+                message=str(exc),
+            )
+            logger.error("Failed %s with unexpected error: %s", operation, exc)
+            return None
+
     def login(self) -> bool:
         """Autentica con IOL y obtiene tokens."""
         url = f"{self.base_url}/token"
@@ -44,6 +156,15 @@ class IOLAPIClient:
             'grant_type': 'password',
         }
         try:
+            if not self.username or not self.password:
+                self._set_last_error(
+                    operation="login",
+                    url=url,
+                    error_type="missing_credentials",
+                    message="IOL_USERNAME/IOL_PASSWORD are empty",
+                )
+                logger.error("Cannot login to IOL API: missing credentials in environment")
+                return False
             response = requests.post(url, data=data, timeout=30)
             response.raise_for_status()
             token_data = response.json()
@@ -59,10 +180,19 @@ class IOLAPIClient:
             self.access_token = token_data['access_token']
             self.refresh_token = token_data.get('refresh_token')
             self.token_expires_at = timezone.now() + timezone.timedelta(hours=1)
+            self.last_error = {}
 
             logger.info("Successfully logged in to IOL API")
             return True
         except Exception as e:
+            status_code = e.response.status_code if isinstance(e, requests.HTTPError) and e.response is not None else None
+            self._set_last_error(
+                operation="login",
+                url=url,
+                error_type="login_error",
+                status_code=status_code,
+                message=str(e),
+            )
             logger.error(f"Failed to login to IOL API: {e}")
             return False
 
@@ -94,10 +224,19 @@ class IOLAPIClient:
             self.access_token = token_data['access_token']
             self.refresh_token = token_data.get('refresh_token')
             self.token_expires_at = timezone.now() + timezone.timedelta(hours=1)
+            self.last_error = {}
 
             logger.info("Successfully refreshed IOL API token")
             return True
         except Exception as e:
+            status_code = e.response.status_code if isinstance(e, requests.HTTPError) and e.response is not None else None
+            self._set_last_error(
+                operation="refresh_token",
+                url=url,
+                error_type="refresh_error",
+                status_code=status_code,
+                message=str(e),
+            )
             logger.error(f"Failed to refresh IOL API token: {e}")
             return False
 
@@ -115,36 +254,18 @@ class IOLAPIClient:
 
     def get_estado_cuenta(self) -> Optional[Dict]:
         """Obtiene el estado de cuenta."""
-        self._ensure_valid_token()
         url = f"{self.base_url}/api/v2/estadocuenta"
-        try:
-            response = requests.get(url, headers=self._get_headers(), timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            logger.error(f"Failed to get estado cuenta: {e}")
-            return None
+        data = self._request_json(operation="get_estado_cuenta", url=url)
+        return data if isinstance(data, dict) else None
 
     def get_portafolio(self, pais: str = 'argentina') -> Optional[Dict]:
         """Obtiene el portafolio para un país."""
-        self._ensure_valid_token()
         url = f"{self.base_url}/api/v2/portafolio/{pais}"
-        try:
-            response = requests.get(url, headers=self._get_headers(), timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            logger.error(f"Failed to get portafolio for {pais}: {e}")
-            return None
+        data = self._request_json(operation=f"get_portafolio:{pais}", url=url)
+        return data if isinstance(data, dict) else None
 
     def get_operaciones(self, params: Optional[Dict] = None) -> Optional[List[Dict]]:
         """Obtiene las operaciones."""
-        self._ensure_valid_token()
         url = f"{self.base_url}/api/v2/operaciones"
-        try:
-            response = requests.get(url, headers=self._get_headers(), params=params, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            logger.error(f"Failed to get operaciones: {e}")
-            return None
+        data = self._request_json(operation="get_operaciones", url=url, params=params)
+        return data if isinstance(data, list) else None

@@ -64,6 +64,11 @@ function formatPct(value) {
     return `<span class="${cls}">${window.formatNumberAr(value, 2)}%</span>`;
 }
 
+function formatPctOrNA(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return '<span class="text-muted">N/D</span>';
+    return formatPct(Number(value));
+}
+
 function computeDrawdownSeries(values) {
     let runningMax = -Infinity;
     return values.map(v => {
@@ -79,16 +84,17 @@ function loadPerformanceData() {
         fetch('/api/metrics/historical-comparison/?periods=7,30,90,180,365').then(r => r.json()),
         fetch('/api/historical/evolution/?days=365').then(r => r.json())
     ]).then(([returns, comparison, evolution]) => {
-        document.getElementById('ret-total').innerHTML = formatPct(returns.total_period_return || 0);
-        document.getElementById('ret-twr-total').innerHTML = formatPct(returns.twr_total_return || 0);
-        document.getElementById('ret-twr-anual').innerHTML = formatPct(returns.twr_annualized_return || 0);
-        document.getElementById('ret-max-dd').innerHTML = formatPct(returns.max_drawdown || 0);
+        document.getElementById('ret-total').innerHTML = formatPctOrNA(returns.total_period_return);
+        document.getElementById('ret-twr-total').innerHTML = formatPctOrNA(returns.twr_total_return);
+        document.getElementById('ret-twr-anual').innerHTML = formatPctOrNA(returns.twr_annualized_return);
+        document.getElementById('ret-max-dd').innerHTML = formatPctOrNA(returns.max_drawdown);
 
         const comparisonBody = document.getElementById('comparison-body');
         const keys = ['7d', '30d', '90d', '180d', '365d'];
         comparisonBody.innerHTML = keys.map(k => {
             const row = comparison[k] || {};
-            return `<tr><td>${k}</td><td class="text-end">${formatPct(row.total_return || 0)}</td><td class="text-end">${formatPct(row.volatility || 0)}</td></tr>`;
+            const note = row.is_partial_window ? `<div class="small text-muted">Base real: ${row.available_history_days || 0}d</div>` : '';
+            return `<tr><td>${k}${note}</td><td class="text-end">${formatPctOrNA(row.total_return)}</td><td class="text-end">${formatPctOrNA(row.volatility)}</td></tr>`;
         }).join('');
 
         if (evolution && evolution.length > 2) {

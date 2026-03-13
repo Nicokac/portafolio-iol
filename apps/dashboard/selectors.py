@@ -653,115 +653,93 @@ def get_portafolio_clasificado_fecha(portafolio_fecha) -> Dict[str, List[Dict]]:
     }
 
 
-def get_evolucion_historica() -> Dict[str, list]:
-    """Obtiene evolución histórica del portafolio (últimos 30 días)."""
+def get_evolucion_historica(days: int = 30, max_points: int = 14) -> Dict[str, list]:
+    """Obtiene evolución histórica consolidada por día calendario."""
+    from collections import defaultdict
     from apps.portafolio_iol.models import ActivoPortafolioSnapshot
     from apps.resumen_iol.models import ResumenCuentaSnapshot
     from django.utils import timezone
     from dateutil.relativedelta import relativedelta
 
-    # Últimos 30 días
     fecha_fin = timezone.now()
-    fecha_inicio = fecha_fin - relativedelta(days=30)
+    fecha_inicio = fecha_fin - relativedelta(days=days)
 
-    # Obtener snapshots únicos por fecha
-    fechas_portafolio = ActivoPortafolioSnapshot.objects.filter(
+    portafolio_snapshots = ActivoPortafolioSnapshot.objects.filter(
         fecha_extraccion__gte=fecha_inicio,
-        fecha_extraccion__lte=fecha_fin
-    ).values('fecha_extraccion').distinct().order_by('fecha_extraccion')
-
-    fechas_resumen = ResumenCuentaSnapshot.objects.filter(
+        fecha_extraccion__lte=fecha_fin,
+    ).order_by("fecha_extraccion")
+    resumen_snapshots = ResumenCuentaSnapshot.objects.filter(
         fecha_extraccion__gte=fecha_inicio,
-        fecha_extraccion__lte=fecha_fin
-    ).values('fecha_extraccion').distinct().order_by('fecha_extraccion')
+        fecha_extraccion__lte=fecha_fin,
+    ).order_by("fecha_extraccion")
 
-    # Combinar fechas únicas
-    fechas_unicas = sorted(set(
-        [f['fecha_extraccion'] for f in fechas_portafolio] +
-        [f['fecha_extraccion'] for f in fechas_resumen]
-    ))
+    portafolio_por_dia = defaultdict(list)
+    for activo in portafolio_snapshots:
+        portafolio_por_dia[activo.fecha_extraccion.date()].append(activo)
 
-    # Verificar si hay suficientes datos
+    resumen_por_dia = defaultdict(list)
+    for cuenta in resumen_snapshots:
+        resumen_por_dia[cuenta.fecha_extraccion.date()].append(cuenta)
+
+    fechas_unicas = sorted(set(portafolio_por_dia.keys()) | set(resumen_por_dia.keys()))
     if len(fechas_unicas) < 2:
         return {
-            'tiene_datos': False,
-            'mensaje': 'Aún no hay historial suficiente para mostrar evolución',
-            'fechas': [],
-            'total_iol': [],
-            'liquidez_operativa': [],
-            'portafolio_invertido': [],
-            'cash_management': [],
+            "tiene_datos": False,
+            "mensaje": "Aún no hay historial suficiente para mostrar evolución",
+            "fechas": [],
+            "total_iol": [],
+            "liquidez_operativa": [],
+            "portafolio_invertido": [],
+            "cash_management": [],
         }
 
-    # Calcular evolución
-    total_iol_data = []
-    liquidez_operativa_data = []
-    portafolio_invertido_data = []
-    cash_management_data = []
+    fechas_a_procesar = fechas_unicas[-max_points:] if max_points and max_points > 0 else fechas_unicas
 
-    for fecha in fechas_unicas[-14:]:  # Últimas 14 fechas para mejor visualización
-        # Datos del portafolio en esta fecha
-        portafolio_fecha = ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=fecha)
-        resumen_fecha = ResumenCuentaSnapshot.objects.filter(fecha_extraccion=fecha)
-
-        # Total IOL = portafolio + cash
-        total_portafolio = sum(activo.valorizado for activo in portafolio_fecha)
-        total_cash = sum(cuenta.disponible for cuenta in resumen_fecha)
-        total_iol = total_portafolio + total_cash
-
-        # Clasificar portafolio para obtener bloques
-        portafolio_clasificado = get_portafolio_clasificado_fecha(portafolio_fecha)
-
-        # Liquidez Operativa = caución + cash ARS + cash USD
-        caucion_valor = sum(item['activo'].valorizado for item in portafolio_clasificado.get('liquidez', []) if item['tipo_traducido'] == 'Caución')
-        cash_ars = sum(cuenta.disponible for cuenta in resumen_fecha if cuenta.moneda == 'ARS')
-        cash_usd = sum(cuenta.disponible for cuenta in resumen_fecha if cuenta.moneda == 'USD')
-        liquidez_operativa = caucion_valor + cash_ars + cash_usd
-
-        # Portafolio Invertido = activos de inversión
-        portafolio_invertido = sum(item['activo'].valorizado for item in portafolio_clasificado.get('inversion', []))
-
-        # Cash Management = FCI cash management
-        cash_management = sum(item['activo'].valorizado for item in portafolio_clasificado.get('fci_cash_management', []))
-
-        total_iol_data.append({'fecha': fecha.date(), 'valor': float(total_iol)})
-        liquidez_operativa_data.append({'fecha': fecha.date(), 'valor': float(liquidez_operativa)})
-        portafolio_invertido_data.append({'fecha': fecha.date(), 'valor': float(portafolio_invertido)})
-        cash_management_data.append({'fecha': fecha.date(), 'valor': float(cash_management)})
-
-    # Convertir a formato Chart.js
-    fechas_ordenadas = sorted(set(item['fecha'] for item in total_iol_data))
-    fechas_str = [fecha.strftime('%Y-%m-%d') for fecha in fechas_ordenadas]
-
+    fechas_str = []
     total_iol_vals = []
     liquidez_vals = []
     portafolio_vals = []
     cash_vals = []
 
-    for fecha in fechas_ordenadas:
-        # Total IOL
-        total_item = next((item for item in total_iol_data if item['fecha'] == fecha), None)
-        total_iol_vals.append(total_item['valor'] if total_item else 0)
+    for fecha in fechas_a_procesar:
+        portafolio_fecha = portafolio_por_dia.get(fecha, [])
+        resumen_fecha = resumen_por_dia.get(fecha, [])
 
-        # Liquidez operativa
-        liquidez_item = next((item for item in liquidez_operativa_data if item['fecha'] == fecha), None)
-        liquidez_vals.append(liquidez_item['valor'] if liquidez_item else 0)
+        total_portafolio = sum(activo.valorizado for activo in portafolio_fecha)
+        total_cash = sum(cuenta.disponible for cuenta in resumen_fecha)
+        total_iol = total_portafolio + total_cash
 
-        # Portafolio invertido
-        portafolio_item = next((item for item in portafolio_invertido_data if item['fecha'] == fecha), None)
-        portafolio_vals.append(portafolio_item['valor'] if portafolio_item else 0)
+        portafolio_clasificado = get_portafolio_clasificado_fecha(portafolio_fecha)
 
-        # Cash management
-        cash_item = next((item for item in cash_management_data if item['fecha'] == fecha), None)
-        cash_vals.append(cash_item['valor'] if cash_item else 0)
+        caucion_valor = sum(
+            item["activo"].valorizado
+            for item in portafolio_clasificado.get("liquidez", [])
+            if item["tipo_traducido"] == "Caución"
+        )
+        cash_ars = sum(cuenta.disponible for cuenta in resumen_fecha if cuenta.moneda == "ARS")
+        cash_usd = sum(cuenta.disponible for cuenta in resumen_fecha if cuenta.moneda == "USD")
+        liquidez_operativa = caucion_valor + cash_ars + cash_usd
+        portafolio_invertido = sum(
+            item["activo"].valorizado for item in portafolio_clasificado.get("inversion", [])
+        )
+        cash_management = sum(
+            item["activo"].valorizado
+            for item in portafolio_clasificado.get("fci_cash_management", [])
+        )
+
+        fechas_str.append(fecha.strftime("%Y-%m-%d"))
+        total_iol_vals.append(float(total_iol))
+        liquidez_vals.append(float(liquidez_operativa))
+        portafolio_vals.append(float(portafolio_invertido))
+        cash_vals.append(float(cash_management))
 
     return {
-        'tiene_datos': True,
-        'fechas': fechas_str,
-        'total_iol': total_iol_vals,
-        'liquidez_operativa': liquidez_vals,
-        'portafolio_invertido': portafolio_vals,
-        'cash_management': cash_vals,
+        "tiene_datos": True,
+        "fechas": fechas_str,
+        "total_iol": total_iol_vals,
+        "liquidez_operativa": liquidez_vals,
+        "portafolio_invertido": portafolio_vals,
+        "cash_management": cash_vals,
     }
 
 

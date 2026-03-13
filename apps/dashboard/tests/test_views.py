@@ -1,5 +1,6 @@
 import pytest
 from django.contrib.auth.models import User
+from django.contrib.messages import get_messages
 from django.test import Client
 from django.urls import reverse
 
@@ -81,3 +82,47 @@ class TestDashboardView:
         from apps.dashboard.views import DashboardView
         from django.contrib.auth.mixins import LoginRequiredMixin
         assert issubclass(DashboardView, LoginRequiredMixin)
+
+    def test_run_sync_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:run_sync'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    def test_generate_snapshot_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:generate_snapshot'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    @pytest.mark.django_db
+    @pytest.mark.usefixtures("auth_client")
+    def test_run_sync_view_success_message(self, auth_client, monkeypatch):
+        class DummyService:
+            def sync_all(self):
+                return {
+                    'estado_cuenta': True,
+                    'portafolio_argentina': True,
+                    'operaciones': True,
+                    'portfolio_snapshot': True,
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLSyncService', lambda: DummyService())
+        response = auth_client.post(reverse('dashboard:run_sync'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Sincronizacion completada' in str(message) for message in messages)
+
+    @pytest.mark.django_db
+    @pytest.mark.usefixtures("auth_client")
+    def test_generate_snapshot_view_success_message(self, auth_client, monkeypatch):
+        class DummySnapshot:
+            fecha = '2026-03-12'
+
+        class DummyService:
+            def generate_daily_snapshot(self):
+                return DummySnapshot()
+
+        monkeypatch.setattr('apps.dashboard.views.PortfolioSnapshotService', lambda: DummyService())
+        response = auth_client.post(reverse('dashboard:generate_snapshot'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Snapshot disponible' in str(message) for message in messages)

@@ -23,6 +23,7 @@ from apps.dashboard.selectors import (
     get_concentracion_pais,
     get_concentracion_sector,
     get_dashboard_kpis,
+    get_evolucion_historica,
     get_senales_rebalanceo,
 )
 from apps.portafolio_iol.models import PortfolioSnapshot
@@ -598,7 +599,34 @@ def historical_portfolio_evolution(request):
         )
 
         data = list(snapshots)
-        return Response(data, status=status.HTTP_200_OK)
+        if len(data) >= 2:
+            return Response(data, status=status.HTTP_200_OK)
+
+        # Fallback: reconstruir desde snapshots operativos (Activo/Resumen)
+        evolution = get_evolucion_historica(days=days, max_points=days)
+        if not evolution.get('tiene_datos'):
+            return Response(data, status=status.HTTP_200_OK)
+
+        normalized = []
+        fechas = evolution.get('fechas', [])
+        total_iol = evolution.get('total_iol', [])
+        portafolio_invertido = evolution.get('portafolio_invertido', [])
+        liquidez_operativa = evolution.get('liquidez_operativa', [])
+        for idx, fecha in enumerate(fechas):
+            normalized.append(
+                {
+                    'fecha': fecha,
+                    'total_iol': total_iol[idx] if idx < len(total_iol) else 0,
+                    'portafolio_invertido': (
+                        portafolio_invertido[idx] if idx < len(portafolio_invertido) else 0
+                    ),
+                    'rendimiento_total': 0,
+                    'liquidez_operativa': (
+                        liquidez_operativa[idx] if idx < len(liquidez_operativa) else 0
+                    ),
+                }
+            )
+        return Response(normalized, status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
             {'error': str(e)},

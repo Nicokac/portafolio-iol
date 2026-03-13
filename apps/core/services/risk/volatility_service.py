@@ -11,6 +11,7 @@ class VolatilityService:
     """Cálculo de volatilidad histórica sobre retornos del patrimonio total."""
 
     TRADING_DAYS_PER_YEAR = 252
+    MIN_OBSERVATIONS = 5
 
     def calculate_volatility(self, days: int = 30) -> Dict[str, float]:
         end_date = timezone.now().date()
@@ -21,40 +22,81 @@ class VolatilityService:
         ).order_by("fecha")
 
         count = snapshots.count()
-        if count < 2:
-            return {
-                "warning": "insufficient_history",
-                "required_min_observations": 2,
-                "observations": count,
-            }
+        if count < self.MIN_OBSERVATIONS:
+            return self._fallback_volatility_from_evolution(days, count)
 
         df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
         if df.empty:
-            return {
-                "warning": "insufficient_history",
-                "required_min_observations": 2,
-                "observations": 0,
-            }
+            return self._fallback_volatility_from_evolution(days, 0)
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
         df = df.set_index("fecha").sort_index()
+        result = self._build_volatility_result(df)
+        if result.get("warning"):
+            return self._fallback_volatility_from_evolution(days, count)
+        return result
 
-        returns = df["total_iol"].pct_change().dropna()
-        if returns.empty:
+    def _fallback_volatility_from_evolution(self, days: int, observations: int) -> Dict[str, float]:
+        try:
+            from apps.dashboard.selectors import get_evolucion_historica
+
+            evolution = get_evolucion_historica(days=days, max_points=days)
+            if not evolution or not evolution.get("tiene_datos"):
+                return {
+                    "warning": "insufficient_history",
+                    "required_min_observations": self.MIN_OBSERVATIONS,
+                    "observations": observations,
+                }
+
+            df = pd.DataFrame(
+                {
+                    "fecha": evolution.get("fechas", []),
+                    "total_iol": evolution.get("total_iol", []),
+                }
+            )
+            if df.empty or len(df) < self.MIN_OBSERVATIONS:
+                return {
+                    "warning": "insufficient_history",
+                    "required_min_observations": self.MIN_OBSERVATIONS,
+                    "observations": observations,
+                }
+
+            df["fecha"] = pd.to_datetime(df["fecha"])
+            df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
+            df = df.dropna(subset=["total_iol"]).set_index("fecha").sort_index()
+            result = self._build_volatility_result(df)
+            if result.get("warning"):
+                result["observations"] = observations
+                return result
+            result["fallback_source"] = "evolucion_historica"
+            return result
+        except Exception:
             return {
                 "warning": "insufficient_history",
-                "required_min_observations": 2,
-                "observations": 0,
+                "required_min_observations": self.MIN_OBSERVATIONS,
+                "observations": observations,
+            }
+
+    def _build_volatility_result(self, df: pd.DataFrame) -> Dict[str, float]:
+        returns = df["total_iol"].pct_change().dropna()
+        if returns.empty or len(df.index) < self.MIN_OBSERVATIONS:
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": self.MIN_OBSERVATIONS,
+                "observations": int(len(df.index)),
             }
 
         daily_vol = float(returns.std())
         annualized_vol = daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)
+        history_span_days = int((df.index.max() - df.index.min()).days) if len(df.index) >= 2 else 0
 
         result = {
             "daily_volatility": round(daily_vol * 100, 2),
             "annualized_volatility": round(annualized_vol * 100, 2),
             "sample_size": int(len(returns)),
+            "history_span_days": history_span_days,
+            "observations": int(len(df.index)),
         }
 
         mean_return = float(returns.mean())

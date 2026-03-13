@@ -3,10 +3,12 @@ from django.urls import path
 from apps.dashboard.views import (
     AnalisisView,
     DashboardView,
+    GenerateSnapshotView,
     MetricasView,
     OpsView,
     PerformanceView,
     ResumenView,
+    RunSyncView,
     SetPreferencesView,
 )
 
@@ -21,4 +23,6 @@ urlpatterns = [
     path('estrategia/', DashboardView.as_view(), name='estrategia'),
     path('ops/', OpsView.as_view(), name='ops'),
     path('preferencias/', SetPreferencesView.as_view(), name='set_preferences'),
+    path('acciones/sync/', RunSyncView.as_view(), name='run_sync'),
+    path('acciones/snapshot/', GenerateSnapshotView.as_view(), name='generate_snapshot'),
 ]

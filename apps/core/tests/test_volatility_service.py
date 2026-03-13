@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from unittest.mock import patch
 from django.utils import timezone
 
 from apps.core.services.risk.volatility_service import VolatilityService
@@ -10,7 +11,7 @@ from apps.portafolio_iol.models import PortfolioSnapshot
 @pytest.mark.django_db
 def test_volatility_service_returns_annualized_volatility():
     today = timezone.now().date()
-    values = [1000, 1050, 1020, 1100]
+    values = [1000, 1050, 1020, 1100, 1080]
 
     for offset, value in enumerate(values[::-1]):
         PortfolioSnapshot.objects.create(
@@ -28,4 +29,22 @@ def test_volatility_service_returns_annualized_volatility():
 
     assert "daily_volatility" in result
     assert "annualized_volatility" in result
+    assert result["annualized_volatility"] > 0
+
+
+@pytest.mark.django_db
+@patch("apps.dashboard.selectors.get_evolucion_historica")
+def test_volatility_service_fallbacks_to_evolution(mock_evolution):
+    mock_evolution.return_value = {
+        "tiene_datos": True,
+        "fechas": ["2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12"],
+        "total_iol": [1000, 1100, 1210, 1180, 1250],
+        "liquidez_operativa": [200, 210, 220, 225, 230],
+        "portafolio_invertido": [700, 780, 860, 840, 900],
+        "cash_management": [100, 110, 130, 115, 120],
+    }
+
+    result = VolatilityService().calculate_volatility(days=30)
+
+    assert result["fallback_source"] == "evolucion_historica"
     assert result["annualized_volatility"] > 0

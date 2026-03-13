@@ -1,13 +1,17 @@
 import json
 from decimal import Decimal
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
+from django.views import View
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
+from apps.core.services.iol_sync_service import IOLSyncService
+from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.dashboard.selectors import (
     get_analytics_mensual,
     get_active_alerts,
@@ -140,3 +144,34 @@ class SetPreferencesView(LoginRequiredMixin, TemplateView):
             next_url = '/'
 
         return redirect(next_url)
+
+
+class RunSyncView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        results = IOLSyncService().sync_all()
+        success = bool(results.get('estado_cuenta') and results.get('portafolio_argentina'))
+        if success:
+            snapshot_status = 'ok' if results.get('portfolio_snapshot') else 'sin snapshot'
+            messages.success(
+                request,
+                f"Sincronizacion completada. Snapshot diario: {snapshot_status}."
+            )
+        else:
+            failed = [key for key, value in results.items() if value is False]
+            failed_text = ", ".join(failed) if failed else "sync"
+            messages.error(request, f"Sincronizacion incompleta. Fallo en: {failed_text}.")
+        return redirect('dashboard:resumen')
+
+
+class GenerateSnapshotView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        snapshot = PortfolioSnapshotService().generate_daily_snapshot()
+        if snapshot is not None:
+            messages.success(request, f"Snapshot disponible para {snapshot.fecha}.")
+        else:
+            messages.error(request, "No fue posible generar el snapshot.")
+        return redirect('dashboard:resumen')

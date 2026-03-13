@@ -78,6 +78,16 @@
     </nav>
 
     <main class="container mt-4">
+        {% if messages %}
+        <section class="mb-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 

@@ -69,15 +69,27 @@ class TestPortfolioSnapshotService:
     def test_sync_iol_data_no_estado_cuenta(self, service):
         service.api_client.get_estado_cuenta.return_value = None
         result = service.sync_iol_data()
-        assert result is False
+        assert result["success"] is False
 
     def test_sync_iol_data_no_portafolio(self, service):
         service.api_client.get_estado_cuenta.return_value = {'cuentas': []}
         service.api_client.get_portafolio.return_value = None
         result = service.sync_iol_data()
-        assert result is False
+        assert result["success"] is False
 
-    def test_sync_iol_data_success(self, service):
+    @patch('apps.core.services.portfolio_snapshot_service.get_dashboard_kpis')
+    @patch('apps.core.services.portfolio_snapshot_service.get_distribucion_pais')
+    @patch('apps.core.services.portfolio_snapshot_service.get_portafolio_enriquecido_actual')
+    def test_sync_iol_data_success(self, mock_portafolio, mock_pais, mock_kpis_fn, service):
+        mock_kpis_fn.return_value = {
+            'total_iol': 10000.0,
+            'liquidez_operativa': 2000.0,
+            'fci_cash_management': 1000.0,
+            'portafolio_invertido': 7000.0,
+            'rendimiento_total_porcentaje': 5.5,
+        }
+        mock_pais.return_value = {'USA': 5000.0, 'Argentina': 2000.0}
+        mock_portafolio.return_value = {'inversion': [], 'liquidez': [], 'fci_cash_management': []}
         service.api_client.get_estado_cuenta.return_value = {
             'cuentas': [{
                 'numero': '123',
@@ -125,12 +137,14 @@ class TestPortfolioSnapshotService:
             'modalidad': 'PRECIO_LIMITE',
         }]
         result = service.sync_iol_data()
-        assert result is True
+        assert result["success"] is True
+        assert result["snapshot_generated"] is True
         assert ResumenCuentaSnapshot.objects.count() == 1
         assert ActivoPortafolioSnapshot.objects.count() == 1
         assert OperacionIOL.objects.count() == 1
+        assert PortfolioSnapshot.objects.count() == 1
 
     def test_sync_iol_data_exception(self, service):
         service.api_client.get_estado_cuenta.side_effect = Exception('Network error')
         result = service.sync_iol_data()
-        assert result is False
+        assert result["success"] is False

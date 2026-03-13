@@ -337,3 +337,23 @@ class TestAPIPostEndpointsHappyPath:
         response = auth_client.post(url, valid_data, format='json')
         assert response.status_code == 200
         assert 'message' in response.json()
+
+@pytest.mark.django_db
+class TestHistoricalEvolutionFallback:
+    @patch("apps.api.views.get_evolucion_historica")
+    def test_historical_evolution_uses_operational_fallback(self, mock_evolution, auth_client):
+        mock_evolution.return_value = {
+            "tiene_datos": True,
+            "fechas": ["2026-03-11", "2026-03-12"],
+            "total_iol": [1000, 1100],
+            "portafolio_invertido": [700, 770],
+            "liquidez_operativa": [200, 220],
+            "cash_management": [100, 110],
+        }
+
+        response = auth_client.get(reverse("historical-evolution") + "?days=365")
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body) == 2
+        assert body[0]["total_iol"] == 1000
+        assert "fecha" in body[0]

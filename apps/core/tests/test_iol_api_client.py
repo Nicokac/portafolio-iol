@@ -48,8 +48,9 @@ class TestIOLAPIClient:
         client.token_manager.get_valid_token.return_value = None
         client.token_manager._current_token = None
         client.username = None
-        with pytest.raises(ValueError):
-            client.get_estado_cuenta()
+        result = client.get_estado_cuenta()
+        assert result is None
+        assert client.last_error.get("error_type") == "unexpected_error"
 
     @patch('apps.core.services.iol_api_client.requests.post')
     def test_refresh_access_token_success(self, mock_post, client):

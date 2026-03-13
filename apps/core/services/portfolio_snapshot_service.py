@@ -103,14 +103,22 @@ class PortfolioSnapshotService:
             estado_cuenta = self.api_client.get_estado_cuenta()
             if not estado_cuenta:
                 logger.error("Failed to get estado de cuenta")
-                return False
+                return {
+                    "success": False,
+                    "message": "Failed to get estado de cuenta",
+                    "snapshot_generated": False,
+                }
             self._save_estado_cuenta(estado_cuenta)
             logger.info("Estado de cuenta synchronized")
 
             portafolio = self.api_client.get_portafolio()
             if not portafolio:
                 logger.error("Failed to get portafolio")
-                return False
+                return {
+                    "success": False,
+                    "message": "Failed to get portafolio",
+                    "snapshot_generated": False,
+                }
             self._save_portafolio(portafolio)
             logger.info("Portafolio synchronized")
 
@@ -121,12 +129,22 @@ class PortfolioSnapshotService:
                 self._save_operaciones(operaciones)
                 logger.info("Operaciones synchronized")
 
+            snapshot = self.generate_daily_snapshot()
             logger.info("IOL data synchronization completed successfully")
-            return True
+            return {
+                "success": True,
+                "message": "Sync OK",
+                "snapshot_generated": snapshot is not None,
+                "snapshot_date": str(getattr(snapshot, "fecha", "")),
+            }
 
         except Exception as e:
             logger.error(f"Error during IOL data synchronization: {e}")
-            return False
+            return {
+                "success": False,
+                "message": str(e),
+                "snapshot_generated": False,
+            }
 
     def _save_estado_cuenta(self, data: dict):
         cuentas = data.get("cuentas", [])

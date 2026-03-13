@@ -18,6 +18,7 @@ class IOLSyncService:
 
     def __init__(self):
         self.client = IOLAPIClient()
+        self.last_diagnostics = {}
 
     def sync_estado_cuenta(self) -> bool:
         """Sincroniza el estado de cuenta."""
@@ -25,6 +26,9 @@ class IOLSyncService:
         with timed("iol.api.estado_cuenta.latency_ms"):
             data = self.client.get_estado_cuenta()
         if not data:
+            self.last_diagnostics["estado_cuenta"] = dict(self.client.last_error)
+            if self.client.last_error:
+                logger.error("Estado cuenta sync failed diagnostics: %s", self.client.last_error)
             return False
 
         fecha_extraccion = timezone.now()
@@ -60,6 +64,9 @@ class IOLSyncService:
         with timed("iol.api.portafolio.latency_ms"):
             data = self.client.get_portafolio(pais)
         if not data:
+            self.last_diagnostics[f"portafolio_{pais}"] = dict(self.client.last_error)
+            if self.client.last_error:
+                logger.error("Portafolio sync failed diagnostics (%s): %s", pais, self.client.last_error)
             return False
 
         fecha_extraccion = timezone.now()
@@ -105,6 +112,9 @@ class IOLSyncService:
         with timed("iol.api.operaciones.latency_ms"):
             data = self.client.get_operaciones(params)
         if not data:
+            self.last_diagnostics["operaciones"] = dict(self.client.last_error)
+            if self.client.last_error:
+                logger.error("Operaciones sync failed diagnostics: %s", self.client.last_error)
             return False
 
         synced_count = 0
@@ -149,8 +159,20 @@ class IOLSyncService:
 
     def sync_all(self) -> dict:
         """Sincroniza todos los datos."""
+        self.last_diagnostics = {}
         results = {}
         results['estado_cuenta'] = self.sync_estado_cuenta()
         results['portafolio_argentina'] = self.sync_portafolio('argentina')
         results['operaciones'] = self.sync_operaciones()
+        results['portfolio_snapshot'] = False
+
+        if results['estado_cuenta'] and results['portafolio_argentina']:
+            try:
+                from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
+
+                snapshot = PortfolioSnapshotService().generate_daily_snapshot()
+                results['portfolio_snapshot'] = snapshot is not None
+            except Exception as exc:
+                logger.error("Failed to generate portfolio snapshot after sync: %s", exc)
+
         return results

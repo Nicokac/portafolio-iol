@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+from unittest.mock import patch
 from django.utils import timezone
 
 from apps.core.services.temporal_metrics_service import TemporalMetricsService
@@ -43,9 +44,38 @@ class TestTemporalMetricsService:
         assert returns["daily_return"] == 10.0
         assert "max_drawdown" in returns
 
+    @patch("apps.dashboard.selectors.get_evolucion_historica")
+    def test_returns_fallback_when_single_snapshot(self, mock_evolution):
+        today = timezone.now().date()
+        PortfolioSnapshot.objects.create(
+            fecha=today,
+            total_iol=1000,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=700,
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+        mock_evolution.return_value = {
+            "tiene_datos": True,
+            "fechas": ["2026-03-10", "2026-03-11", "2026-03-12"],
+            "total_iol": [1000, 1100, 1210],
+            "liquidez_operativa": [200, 210, 220],
+            "portafolio_invertido": [700, 780, 860],
+            "cash_management": [100, 110, 130],
+        }
+
+        service = TemporalMetricsService()
+        returns = service.get_portfolio_returns(days=30)
+
+        assert returns["total_period_return"] == 21.0
+        assert returns["daily_return"] == 10.0
+        assert returns["fallback_source"] == "evolucion_historica"
+
     def test_portfolio_volatility_with_snapshots(self):
         today = timezone.now().date()
-        for offset, value in [(2, 1000), (1, 1100), (0, 1050)]:
+        for offset, value in [(4, 1000), (3, 1100), (2, 1050), (1, 1200), (0, 1180)]:
             PortfolioSnapshot.objects.create(
                 fecha=today - timedelta(days=offset),
                 total_iol=value,
@@ -63,3 +93,23 @@ class TestTemporalMetricsService:
         assert "daily_volatility" in volatility
         assert "annualized_volatility" in volatility
         assert volatility["daily_volatility"] > 0
+
+    @patch("apps.core.services.temporal_metrics_service.TemporalMetricsService.get_portfolio_volatility")
+    @patch("apps.dashboard.selectors.get_evolucion_historica")
+    def test_historical_comparison_marks_partial_windows(self, mock_evolution, mock_volatility):
+        mock_evolution.return_value = {
+            "tiene_datos": True,
+            "fechas": ["2026-03-10", "2026-03-11", "2026-03-12"],
+            "total_iol": [1000, 1100, 1210],
+            "liquidez_operativa": [200, 210, 220],
+            "portafolio_invertido": [700, 780, 860],
+            "cash_management": [100, 110, 130],
+        }
+        mock_volatility.return_value = {"annualized_volatility": 12.34}
+
+        service = TemporalMetricsService()
+        comparison = service.get_historical_comparison([7, 30])
+
+        assert comparison["7d"]["is_partial_window"] is True
+        assert comparison["30d"]["available_history_days"] == 2
+        assert comparison["30d"]["volatility"] == 12.34

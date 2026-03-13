@@ -55,20 +55,24 @@ class TemporalMetricsService:
 
         if not snapshots.exists():
             logger.warning("No portfolio snapshots found for returns calculation")
-            return {}
+            return self._fallback_returns_from_evolution(days)
 
         # Crear DataFrame con datos históricos
         df = pd.DataFrame(list(snapshots.values('fecha', 'total_iol')))
 
-        if df.empty:
-            return {}
+        if df.empty or len(df) < 2:
+            return self._fallback_returns_from_evolution(days)
 
         df['fecha'] = pd.to_datetime(df['fecha'])
         df['total_iol'] = pd.to_numeric(df['total_iol'], errors='coerce')
         df = df.set_index('fecha').sort_index()
 
         # Calcular retornos
-        returns = {}
+        returns = {
+            'observations': int(len(df.index)),
+            'history_span_days': int((df.index.max() - df.index.min()).days),
+            'requested_days': int(days),
+        }
 
         # Retorno total del período
         if len(df) >= 2:
@@ -108,6 +112,65 @@ class TemporalMetricsService:
 
         logger.info(f"Calculated returns: {returns}")
         return returns
+
+    def _fallback_returns_from_evolution(self, days: int) -> Dict:
+        """
+        Fallback cuando no hay PortfolioSnapshot suficiente.
+        Usa serie de evolucion historica construida desde snapshots operativos.
+        """
+        try:
+            from apps.dashboard.selectors import get_evolucion_historica  # import local para evitar ciclos
+
+            evolution = get_evolucion_historica(days=days, max_points=days)
+            if not evolution or not evolution.get('tiene_datos'):
+                return {}
+
+            fechas = evolution.get('fechas', [])
+            valores = evolution.get('total_iol', [])
+            if len(fechas) < 2 or len(valores) < 2:
+                return {}
+
+            df = pd.DataFrame({'fecha': fechas, 'total_iol': valores})
+            df['fecha'] = pd.to_datetime(df['fecha'])
+            df['total_iol'] = pd.to_numeric(df['total_iol'], errors='coerce')
+            df = df.dropna(subset=['total_iol']).set_index('fecha').sort_index()
+            if len(df) < 2:
+                return {}
+
+            returns = {
+                'observations': int(len(df.index)),
+                'history_span_days': int((df.index.max() - df.index.min()).days),
+                'requested_days': int(days),
+            }
+            initial_value = df['total_iol'].iloc[0]
+            final_value = df['total_iol'].iloc[-1]
+            total_return = (final_value - initial_value) / initial_value * 100 if initial_value else 0
+            returns['total_period_return'] = round(total_return, 2)
+
+            if len(df) >= 2:
+                daily_return = df['total_iol'].pct_change().iloc[-1] * 100
+                returns['daily_return'] = round(daily_return, 2)
+
+            weekly_data = df.loc[df.index >= (df.index.max() - pd.Timedelta(days=7))]
+            if len(weekly_data) >= 2 and weekly_data['total_iol'].iloc[0]:
+                weekly_return = (weekly_data['total_iol'].iloc[-1] - weekly_data['total_iol'].iloc[0]) / weekly_data['total_iol'].iloc[0] * 100
+                returns['weekly_return'] = round(weekly_return, 2)
+
+            monthly_data = df.loc[df.index >= (df.index.max() - pd.Timedelta(days=30))]
+            if len(monthly_data) >= 2 and monthly_data['total_iol'].iloc[0]:
+                monthly_return = (monthly_data['total_iol'].iloc[-1] - monthly_data['total_iol'].iloc[0]) / monthly_data['total_iol'].iloc[0] * 100
+                returns['monthly_return'] = round(monthly_return, 2)
+
+            cumulative = (1 + df['total_iol'].pct_change()).cumprod()
+            running_max = cumulative.expanding().max()
+            drawdown = (cumulative - running_max) / running_max * 100
+            returns['max_drawdown'] = round(drawdown.min(), 2)
+
+            returns['fallback_source'] = 'evolucion_historica'
+            return returns
+        except Exception as exc:
+            logger.warning("Fallback returns from evolution failed: %s", exc)
+            return {}
 
     def get_portfolio_volatility(self, days: int = 30) -> Dict:
         """
@@ -184,9 +247,14 @@ class TemporalMetricsService:
         for period in periods:
             returns = self.get_portfolio_returns(period)
             if returns:
+                volatility = self.get_portfolio_volatility(period)
+                history_span_days = int(returns.get('history_span_days', 0) or 0)
                 comparison[f'{period}d'] = {
                     'total_return': returns.get('total_period_return', 0),
-                    'volatility': self.get_portfolio_volatility(period).get('annualized_volatility', 0)
+                    'volatility': volatility.get('annualized_volatility'),
+                    'available_history_days': history_span_days,
+                    'observations': returns.get('observations'),
+                    'is_partial_window': history_span_days < period,
                 }
 
         logger.info(f"Historical comparison: {comparison}")

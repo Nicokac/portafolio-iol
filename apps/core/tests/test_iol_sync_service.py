@@ -148,3 +148,15 @@ class TestIOLSyncService:
         assert 'estado_cuenta' in results
         assert 'portafolio_argentina' in results
         assert 'operaciones' in results
+        assert 'portfolio_snapshot' in results
+
+    @patch('apps.core.services.iol_sync_service.PortfolioSnapshotService', create=True)
+    def test_sync_all_generates_snapshot_after_success(self, mock_snapshot_service, service):
+        service.client.get_estado_cuenta.return_value = {'cuentas': []}
+        service.client.get_portafolio.return_value = {'activos': []}
+        service.client.get_operaciones.return_value = []
+        mock_snapshot_service.return_value.generate_daily_snapshot.return_value = object()
+
+        results = service.sync_all()
+
+        assert results['portfolio_snapshot'] is True
