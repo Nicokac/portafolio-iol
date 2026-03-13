@@ -4,7 +4,8 @@ from datetime import timedelta
 from django.db.models import Avg
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from apps.core.services.alerts_engine import AlertsEngine
@@ -449,6 +450,7 @@ def metrics_data_quality(request):
         return internal_error_response(e, "metrics_data_quality")
 
 @api_view(['GET'])
+@permission_classes([IsAdminUser])
 def metrics_snapshot_integrity(request):
     """Reporte de integridad de snapshots patrimoniales."""
     try:
@@ -472,6 +474,7 @@ def metrics_snapshot_integrity(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAdminUser])
 def metrics_sync_audit(request):
     """Reporte de auditoria de sincronizacion con IOL."""
     try:
@@ -495,6 +498,7 @@ def metrics_sync_audit(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAdminUser])
 def metrics_internal_observability(request):
     """Resumen de metricas internas de latencia en memoria."""
     metric_names = [

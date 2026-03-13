@@ -56,14 +56,17 @@ GET_ENDPOINTS = [
     'metrics-benchmarking',
     'metrics-liquidity',
     'metrics-data-quality',
-    'metrics-snapshot-integrity',
-    'metrics-sync-audit',
-    'metrics-internal-observability',
     'historical-evolution',
     'historical-summary',
     'recommendations-all',
     'recommendations-by-priority',
     'portfolio-parameters-get',
+]
+
+STAFF_ONLY_GET_ENDPOINTS = [
+    'metrics-snapshot-integrity',
+    'metrics-sync-audit',
+    'metrics-internal-observability',
 ]
 
 POST_ENDPOINTS = [
@@ -89,6 +92,12 @@ class TestAPIAuthentication:
         response = anon_client.get(url)
         assert response.status_code == 403
 
+    @pytest.mark.parametrize('url_name', STAFF_ONLY_GET_ENDPOINTS)
+    def test_staff_only_get_endpoints_require_auth(self, anon_client, url_name):
+        url = reverse(url_name)
+        response = anon_client.get(url)
+        assert response.status_code == 403
+
     @pytest.mark.parametrize('url_name', POST_ENDPOINTS)
     def test_post_endpoints_require_auth(self, anon_client, url_name):
         url = reverse(url_name)
@@ -105,6 +114,20 @@ class TestAPIResponseFormat:
         url = reverse(url_name)
         response = auth_client.get(url)
         assert response.status_code in [200, 400, 404, 500]
+        if response.status_code != 500:
+            assert response['Content-Type'] == 'application/json'
+
+    @pytest.mark.parametrize('url_name', STAFF_ONLY_GET_ENDPOINTS)
+    def test_staff_only_endpoints_reject_non_staff_users(self, auth_client, url_name):
+        url = reverse(url_name)
+        response = auth_client.get(url)
+        assert response.status_code == 403
+
+    @pytest.mark.parametrize('url_name', STAFF_ONLY_GET_ENDPOINTS)
+    def test_staff_only_endpoints_allow_staff_users(self, staff_auth_client, url_name):
+        url = reverse(url_name)
+        response = staff_auth_client.get(url)
+        assert response.status_code in [200, 400, 500]
         if response.status_code != 500:
             assert response['Content-Type'] == 'application/json'
 
@@ -209,15 +232,15 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
-    def test_metrics_snapshot_integrity_invalid_days(self, auth_client):
+    def test_metrics_snapshot_integrity_invalid_days(self, staff_auth_client):
         url = reverse('metrics-snapshot-integrity') + '?days=invalid'
-        response = auth_client.get(url)
+        response = staff_auth_client.get(url)
         assert response.status_code == 400
         assert 'error' in response.json()
 
-    def test_metrics_sync_audit_invalid_hours(self, auth_client):
+    def test_metrics_sync_audit_invalid_hours(self, staff_auth_client):
         url = reverse('metrics-sync-audit') + '?hours=invalid'
-        response = auth_client.get(url)
+        response = staff_auth_client.get(url)
         assert response.status_code == 400
         assert 'error' in response.json()
 
@@ -282,11 +305,25 @@ class TestAPIInputValidation:
         'metrics-benchmarking',
         'metrics-liquidity',
         'metrics-data-quality',
-        'metrics-snapshot-integrity',
-        'metrics-sync-audit',
     ])
     def test_metric_endpoints_include_methodology_basis_and_limitations(self, auth_client, url_name):
         response = auth_client.get(reverse(url_name))
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            metadata = response.json().get('metadata', {})
+            assert 'methodology' in metadata
+            assert 'data_basis' in metadata
+            assert 'limitations' in metadata
+
+    @pytest.mark.parametrize('url_name', [
+        'metrics-snapshot-integrity',
+        'metrics-sync-audit',
+        'metrics-internal-observability',
+    ])
+    def test_staff_metric_endpoints_include_methodology_basis_and_limitations(
+        self, staff_auth_client, url_name
+    ):
+        response = staff_auth_client.get(reverse(url_name))
         assert response.status_code in [200, 500]
         if response.status_code == 200:
             metadata = response.json().get('metadata', {})
