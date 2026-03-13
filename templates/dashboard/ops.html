@@ -3,8 +3,49 @@
 
 {% block content %}
 <section class="dashboard-hero mb-4">
-    <h1 class="mb-1">Ops - Observabilidad</h1>
-    <p class="text-muted mb-0">Vista para admin/perfil experto con latencias y tiempos internos.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h1 class="mb-1">Ops - Observabilidad</h1>
+            <p class="text-muted mb-0">Vista para admin/perfil experto con latencias, sync interno y estado de benchmarks.</p>
+        </div>
+        <form method="post" action="{% url 'dashboard:sync_benchmarks' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary">Sincronizar Benchmarks</button>
+        </form>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de benchmarks historicos</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Bucket</th><th>Symbol</th><th>Provider</th><th class="text-end">Rows</th><th>Ultima fecha</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in benchmark_status %}
+                        <tr>
+                            <td>{{ row.benchmark_key }}</td>
+                            <td>{{ row.symbol }}</td>
+                            <td>{{ row.provider }}</td>
+                            <td class="text-end">{{ row.rows_count }}</td>
+                            <td>{{ row.latest_date|default:"-" }}</td>
+                            <td>
+                                {% if row.is_ready %}
+                                <span class="badge text-bg-success">Listo</span>
+                                {% else %}
+                                <span class="badge text-bg-warning">Sin historia suficiente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section class="row g-3">

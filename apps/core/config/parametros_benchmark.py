@@ -28,4 +28,14 @@ class ParametrosBenchmark:
             "provider": "alpha_vantage",
             "field": "adjusted_close",
         },
+        "bonos_ar": {
+            "symbol": "EMB",
+            "provider": "alpha_vantage",
+            "field": "adjusted_close",
+        },
+        "liquidez": {
+            "symbol": "BIL",
+            "provider": "alpha_vantage",
+            "field": "adjusted_close",
+        },
     }

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 from decimal import Decimal
+import time
 from typing import Iterable
 
 import pandas as pd
 from django.db import transaction
+from django.db.models import Count, Max
 
 from apps.core.config.parametros_benchmark import ParametrosBenchmark
 from apps.core.models import BenchmarkSnapshot
@@ -19,7 +21,21 @@ class BenchmarkSeriesService:
     def sync_all(self, outputsize: str = "compact") -> dict:
         results = {}
         for benchmark_key in ParametrosBenchmark.HISTORICAL_SERIES:
-            results[benchmark_key] = self.sync_benchmark(benchmark_key, outputsize=outputsize)
+            try:
+                results[benchmark_key] = self.sync_benchmark(benchmark_key, outputsize=outputsize)
+            except Exception as exc:
+                config = ParametrosBenchmark.HISTORICAL_SERIES[benchmark_key]
+                results[benchmark_key] = {
+                    "success": False,
+                    "benchmark_key": benchmark_key,
+                    "symbol": config["symbol"],
+                    "provider": config["provider"],
+                    "rows_received": 0,
+                    "created": 0,
+                    "updated": 0,
+                    "error": str(exc),
+                }
+            time.sleep(1.1)
         return results
 
     def sync_benchmark(self, benchmark_key: str, outputsize: str = "compact") -> dict:
@@ -95,3 +111,26 @@ class BenchmarkSeriesService:
             return pd.Series(dtype=float)
 
         return returns.reindex(normalized_dates).ffill()
+
+    def get_status_summary(self) -> list[dict]:
+        rows = []
+        aggregated = {
+            row["benchmark_key"]: row
+            for row in BenchmarkSnapshot.objects.values("benchmark_key").annotate(
+                latest_date=Max("fecha"),
+                rows_count=Count("id"),
+            )
+        }
+        for benchmark_key, config in ParametrosBenchmark.HISTORICAL_SERIES.items():
+            summary = aggregated.get(benchmark_key)
+            rows.append(
+                {
+                    "benchmark_key": benchmark_key,
+                    "symbol": config["symbol"],
+                    "provider": config["provider"],
+                    "latest_date": summary["latest_date"] if summary else None,
+                    "rows_count": summary["rows_count"] if summary else 0,
+                    "is_ready": bool(summary and summary["rows_count"] >= 2),
+                }
+            )
+        return rows

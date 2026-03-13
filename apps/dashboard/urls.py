@@ -10,6 +10,7 @@ from apps.dashboard.views import (
     ResumenView,
     RunSyncView,
     SetPreferencesView,
+    SyncBenchmarksView,
 )
 
 app_name = 'dashboard'
@@ -25,4 +26,5 @@ urlpatterns = [
     path('preferencias/', SetPreferencesView.as_view(), name='set_preferences'),
     path('acciones/sync/', RunSyncView.as_view(), name='run_sync'),
     path('acciones/snapshot/', GenerateSnapshotView.as_view(), name='generate_snapshot'),
+    path('acciones/benchmarks/', SyncBenchmarksView.as_view(), name='sync_benchmarks'),
 ]

@@ -18,7 +18,18 @@ class Command(BaseCommand):
         self.stdout.write("Sincronizando benchmarks historicos...")
         result = BenchmarkSeriesService().sync_all(outputsize=options["outputsize"])
         for benchmark_key, payload in result.items():
-            self.stdout.write(
-                f"  {benchmark_key}: created={payload['created']} updated={payload['updated']} rows={payload['rows_received']}"
-            )
-        self.stdout.write(self.style.SUCCESS("Sincronizacion de benchmarks completada"))
+            if payload.get("success", True):
+                self.stdout.write(
+                    f"  {benchmark_key}: created={payload['created']} updated={payload['updated']} rows={payload['rows_received']}"
+                )
+            else:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"  {benchmark_key}: error={payload.get('error', 'unknown')} rows=0"
+                    )
+                )
+
+        if all(payload.get("success", True) for payload in result.values()):
+            self.stdout.write(self.style.SUCCESS("Sincronizacion de benchmarks completada"))
+        else:
+            self.stdout.write(self.style.WARNING("Sincronizacion de benchmarks completada con fallos parciales"))

@@ -13,6 +13,7 @@ from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrity
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
+from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.core.services.security_audit import record_sensitive_action
 from apps.dashboard.selectors import (
     get_analytics_mensual,
@@ -113,6 +114,11 @@ class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def test_func(self):
         return bool(self.request.user and self.request.user.is_staff)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['benchmark_status'] = BenchmarkSeriesService().get_status_summary()
+        return context
+
 
 class SetPreferencesView(LoginRequiredMixin, TemplateView):
     http_method_names = ['post']
@@ -194,3 +200,31 @@ class GenerateSnapshotView(StaffRequiredMixin, View):
         else:
             messages.error(request, "No fue posible generar el snapshot.")
         return redirect('dashboard:resumen')
+
+
+class SyncBenchmarksView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        try:
+            result = BenchmarkSeriesService().sync_all(outputsize='compact')
+            record_sensitive_action(
+                request,
+                action='sync_benchmarks',
+                status='success',
+                details={'result': result},
+            )
+            completed = ", ".join(
+                f"{key}: {payload['rows_received']} rows"
+                for key, payload in result.items()
+            )
+            messages.success(request, f"Benchmarks sincronizados. {completed}.")
+        except Exception as exc:
+            record_sensitive_action(
+                request,
+                action='sync_benchmarks',
+                status='failed',
+                details={'reason': 'exception', 'message': str(exc)},
+            )
+            messages.error(request, "No fue posible sincronizar benchmarks historicos.")
+        return redirect('dashboard:ops')

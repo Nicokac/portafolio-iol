@@ -72,6 +72,7 @@ class TestDashboardView:
         assert denied.status_code == 403
         allowed = staff_client.get(url)
         assert allowed.status_code == 200
+        assert 'Estado de benchmarks historicos' in allowed.content.decode()
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')
@@ -149,5 +150,30 @@ class TestDashboardView:
         messages = list(get_messages(response.wsgi_request))
         assert any('Snapshot disponible' in str(message) for message in messages)
         audit = SensitiveActionAudit.objects.get(action='generate_snapshot')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
+
+    @pytest.mark.django_db
+    def test_sync_benchmarks_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:sync_benchmarks'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
+    def test_sync_benchmarks_view_success_message(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_all(self, outputsize='compact'):
+                assert outputsize == 'compact'
+                return {
+                    'cedear_usa': {'rows_received': 100},
+                    'bonos_ar': {'rows_received': 100},
+                    'liquidez': {'rows_received': 100},
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.BenchmarkSeriesService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_benchmarks'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Benchmarks sincronizados' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='sync_benchmarks')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
