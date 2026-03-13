@@ -22,7 +22,7 @@ from apps.dashboard.selectors import get_dashboard_kpis
 from apps.core.models import PortfolioParameters
 
 
-def test_portfolio_simulator():
+def run_portfolio_simulator():
     """Test del simulador de portafolio."""
     print("🧪 Testing Portfolio Simulator...")
 
@@ -39,7 +39,7 @@ def test_portfolio_simulator():
     return True
 
 
-def test_portfolio_optimizer():
+def run_portfolio_optimizer():
     """Test del optimizador de portafolio."""
     print("🧪 Testing Portfolio Optimizer...")
 
@@ -56,7 +56,7 @@ def test_portfolio_optimizer():
     return True
 
 
-def test_recommendation_engine():
+def run_recommendation_engine():
     """Test del motor de recomendaciones."""
     print("🧪 Testing Recommendation Engine...")
 
@@ -71,7 +71,7 @@ def test_recommendation_engine():
         return False
 
 
-def test_monthly_planner():
+def run_monthly_planner():
     """Test del planificador mensual."""
     print("🧪 Testing Monthly Investment Planner...")
 
@@ -86,7 +86,7 @@ def test_monthly_planner():
     return True
 
 
-def test_portfolio_parameters():
+def run_portfolio_parameters():
     """Test del modelo de parámetros."""
     print("🧪 Testing Portfolio Parameters...")
 
@@ -109,7 +109,7 @@ def test_portfolio_parameters():
         return False
 
 
-def test_api_endpoints():
+def run_api_endpoints():
     """Test básico de endpoints de API."""
     print("🧪 Testing API Endpoints...")
 
@@ -143,12 +143,12 @@ def main():
     print("=" * 60)
 
     tests = [
-        test_portfolio_simulator,
-        test_portfolio_optimizer,
-        test_recommendation_engine,
-        test_monthly_planner,
-        test_portfolio_parameters,
-        test_api_endpoints
+        run_portfolio_simulator,
+        run_portfolio_optimizer,
+        run_recommendation_engine,
+        run_monthly_planner,
+        run_portfolio_parameters,
+        run_api_endpoints
     ]
 
     passed = 0

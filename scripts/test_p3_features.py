@@ -20,7 +20,7 @@ from apps.core.services.temporal_metrics_service import TemporalMetricsService
 from apps.dashboard.selectors import get_dashboard_kpis
 
 
-def test_snapshot_service():
+def run_snapshot_service():
     """Probar servicio de snapshots."""
     print("=== Testing PortfolioSnapshotService ===")
 
@@ -37,7 +37,7 @@ def test_snapshot_service():
     print(f"Result: {result}")
 
 
-def test_alerts_engine():
+def run_alerts_engine():
     """Probar motor de alertas."""
     print("\n=== Testing AlertsEngine ===")
 
@@ -58,7 +58,7 @@ def test_alerts_engine():
         print(f"  {alert['mensaje']}")
 
 
-def test_rebalance_engine():
+def run_rebalance_engine():
     """Probar motor de rebalanceo."""
     print("\n=== Testing RebalanceEngine ===")
 
@@ -79,7 +79,7 @@ def test_rebalance_engine():
         print(f"  {action}")
 
 
-def test_temporal_metrics():
+def run_temporal_metrics():
     """Probar métricas temporales."""
     print("\n=== Testing TemporalMetricsService ===")
 
@@ -101,7 +101,7 @@ def test_temporal_metrics():
     print(f"Metrics keys: {list(metrics.keys())}")
 
 
-def test_dashboard_kpis():
+def run_dashboard_kpis():
     """Probar KPIs del dashboard."""
     print("\n=== Testing Dashboard KPIs ===")
 
@@ -120,11 +120,11 @@ def main():
     print("=" * 50)
 
     try:
-        test_dashboard_kpis()
-        test_snapshot_service()
-        test_alerts_engine()
-        test_rebalance_engine()
-        test_temporal_metrics()
+        run_dashboard_kpis()
+        run_snapshot_service()
+        run_alerts_engine()
+        run_rebalance_engine()
+        run_temporal_metrics()
 
         print("\n" + "=" * 50)
         print("All tests completed successfully!")

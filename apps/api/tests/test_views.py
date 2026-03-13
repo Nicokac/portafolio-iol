@@ -182,6 +182,47 @@ class TestAPIErrorHandling:
             assert response.status_code == 500
             assert response.json()['error'] == 'Internal server error'
 
+    @pytest.mark.parametrize('url_name,patch_target,patch_method', [
+        ('alerts-by-severity', 'apps.api.views.AlertsEngine', 'get_alerts_by_severity'),
+        ('rebalance-critical', 'apps.api.views.RebalanceEngine', 'get_critical_actions'),
+        ('rebalance-opportunity', 'apps.api.views.RebalanceEngine', 'get_opportunity_actions'),
+        ('metrics-returns', 'apps.api.views.TemporalMetricsService', 'get_portfolio_returns'),
+        ('metrics-volatility', 'apps.api.views.TemporalMetricsService', 'get_portfolio_volatility'),
+        ('metrics-performance', 'apps.api.views.TemporalMetricsService', 'get_performance_metrics'),
+        ('metrics-historical-comparison', 'apps.api.views.TemporalMetricsService', 'get_historical_comparison'),
+        ('metrics-var', 'apps.api.views.VaRService', 'calculate_var_set'),
+        ('metrics-cvar', 'apps.api.views.CVaRService', 'calculate_cvar_set'),
+        ('metrics-stress-test', 'apps.api.views.StressTestService', 'run_all'),
+        ('metrics-attribution', 'apps.api.views.AttributionService', 'calculate_attribution'),
+        ('metrics-benchmarking', 'apps.api.views.TrackingErrorService', 'calculate'),
+        ('metrics-liquidity', 'apps.api.views.LiquidityService', 'analyze_portfolio_liquidity'),
+        ('metrics-data-quality', 'apps.api.views.MetadataAuditService', 'run_audit'),
+        ('metrics-snapshot-integrity', 'apps.api.views.SnapshotIntegrityService', 'run_checks'),
+        ('metrics-sync-audit', 'apps.api.views.IOLSyncAuditService', 'run_audit'),
+    ])
+    def test_metric_endpoints_sanitize_internal_errors(
+        self, auth_client, staff_auth_client, url_name, patch_target, patch_method
+    ):
+        client = staff_auth_client if url_name in STAFF_ONLY_GET_ENDPOINTS else auth_client
+        with patch(f'{patch_target}.{patch_method}', side_effect=Exception('forced error')):
+            response = client.get(reverse(url_name))
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
+
+    @patch('apps.api.views.PortfolioSnapshot.objects')
+    def test_historical_summary_sanitizes_internal_errors(self, mock_objects, auth_client):
+        mock_objects.order_by.side_effect = Exception('forced error')
+        response = auth_client.get(reverse('historical-summary'))
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
+
+    @patch('apps.api.views.PortfolioSnapshot.objects')
+    def test_historical_evolution_sanitizes_internal_errors(self, mock_objects, auth_client):
+        mock_objects.filter.side_effect = Exception('forced error')
+        response = auth_client.get(reverse('historical-evolution'))
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
+
 @pytest.mark.django_db
 class TestAPIInputValidation:
     """Verifica que los endpoints validan correctamente los parámetros de entrada."""
@@ -243,6 +284,11 @@ class TestAPIInputValidation:
     def test_metrics_sync_audit_invalid_hours(self, staff_auth_client):
         url = reverse('metrics-sync-audit') + '?hours=invalid'
         response = staff_auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
+    def test_historical_evolution_invalid_days(self, auth_client):
+        response = auth_client.get(reverse('historical-evolution') + '?days=invalid')
         assert response.status_code == 400
         assert 'error' in response.json()
 
@@ -373,8 +419,101 @@ class TestAPIPostEndpointsHappyPath:
         with p('apps.core.services.portfolio_simulator.PortfolioSimulator.simulate_rebalance',
                return_value={'resultado': 'ok'}):
             url = reverse('simulation-rebalance')
-            response = auth_client.post(url, {'target_allocation': {'AAPL': 50}}, format='json')
-            assert response.status_code in [200, 400, 500]
+            response = auth_client.post(url, {'target_weights': {'AAPL': 50}}, format='json')
+            assert response.status_code == 200
+            assert response.json() == {'resultado': 'ok'}
+
+    @pytest.mark.parametrize('url_name,payload,error_message', [
+        ('simulation-rebalance', {}, 'Se requieren pesos objetivo'),
+        ('optimizer-risk-parity', {}, 'Se requieren activos'),
+        ('optimizer-markowitz', {'activos': ['SPY']}, 'Se requieren activos y retorno objetivo'),
+        ('optimizer-target-allocation', {}, 'Se requieren asignaciones objetivo'),
+        ('monthly-plan-basic', {}, 'Se requiere monto mensual'),
+        ('monthly-plan-custom', {}, 'Se requiere monto mensual'),
+    ])
+    def test_post_endpoints_validate_required_payload(self, auth_client, url_name, payload, error_message):
+        response = auth_client.post(reverse(url_name), payload, format='json')
+        assert response.status_code == 400
+        assert response.json()['error'] == error_message
+
+    @pytest.mark.parametrize('url_name,patch_target,method_name,payload,expected_body', [
+        (
+            'simulation-purchase',
+            'apps.core.services.portfolio_simulator.PortfolioSimulator',
+            'simulate_purchase',
+            {'activo': 'SPY', 'capital': 1000},
+            {'ok': 'purchase'},
+        ),
+        (
+            'simulation-sale',
+            'apps.core.services.portfolio_simulator.PortfolioSimulator',
+            'simulate_sale',
+            {'activo': 'SPY', 'cantidad': 2},
+            {'ok': 'sale'},
+        ),
+        (
+            'optimizer-risk-parity',
+            'apps.core.services.portfolio_optimizer.PortfolioOptimizer',
+            'optimize_risk_parity',
+            {'activos': ['SPY', 'EEM'], 'target_return': 0.1},
+            {'ok': 'risk_parity'},
+        ),
+        (
+            'optimizer-markowitz',
+            'apps.core.services.portfolio_optimizer.PortfolioOptimizer',
+            'optimize_markowitz',
+            {'activos': ['SPY', 'EEM'], 'target_return': 0.1},
+            {'ok': 'markowitz'},
+        ),
+        (
+            'optimizer-target-allocation',
+            'apps.core.services.portfolio_optimizer.PortfolioOptimizer',
+            'optimize_target_allocation',
+            {'target_allocations': {'SPY': 60, 'EEM': 40}},
+            {'ok': 'target_allocation'},
+        ),
+        (
+            'monthly-plan-basic',
+            'apps.core.services.monthly_investment_planner.MonthlyInvestmentPlanner',
+            'plan_monthly_investment',
+            {'monthly_amount': 100000},
+            {'ok': 'basic_plan'},
+        ),
+        (
+            'monthly-plan-custom',
+            'apps.core.services.monthly_investment_planner.MonthlyInvestmentPlanner',
+            'create_custom_plan',
+            {'monthly_amount': 100000, 'risk_profile': 'moderado', 'investment_horizon': 'medio'},
+            {'ok': 'custom_plan'},
+        ),
+    ])
+    @patch('apps.api.views.get_dashboard_kpis', return_value={'total_iol': 10000})
+    def test_post_endpoints_return_service_payload(
+        self, mock_kpis, auth_client, url_name, patch_target, method_name, payload, expected_body
+    ):
+        with patch.object(__import__(patch_target.rsplit('.', 1)[0], fromlist=[patch_target.rsplit('.', 1)[1]]).__dict__[patch_target.rsplit('.', 1)[1]], method_name, return_value=expected_body):
+            response = auth_client.post(reverse(url_name), payload, format='json')
+        assert response.status_code == 200
+        assert response.json() == expected_body
+
+    @pytest.mark.parametrize('url_name,patch_target,method_name,payload', [
+        ('simulation-purchase', 'apps.core.services.portfolio_simulator.PortfolioSimulator', 'simulate_purchase', {'activo': 'SPY', 'capital': 1000}),
+        ('simulation-sale', 'apps.core.services.portfolio_simulator.PortfolioSimulator', 'simulate_sale', {'activo': 'SPY', 'cantidad': 2}),
+        ('simulation-rebalance', 'apps.core.services.portfolio_simulator.PortfolioSimulator', 'simulate_rebalance', {'target_weights': {'SPY': 100}}),
+        ('optimizer-risk-parity', 'apps.core.services.portfolio_optimizer.PortfolioOptimizer', 'optimize_risk_parity', {'activos': ['SPY']}),
+        ('optimizer-markowitz', 'apps.core.services.portfolio_optimizer.PortfolioOptimizer', 'optimize_markowitz', {'activos': ['SPY'], 'target_return': 0.1}),
+        ('optimizer-target-allocation', 'apps.core.services.portfolio_optimizer.PortfolioOptimizer', 'optimize_target_allocation', {'target_allocations': {'SPY': 100}}),
+        ('monthly-plan-basic', 'apps.core.services.monthly_investment_planner.MonthlyInvestmentPlanner', 'plan_monthly_investment', {'monthly_amount': 100000}),
+        ('monthly-plan-custom', 'apps.core.services.monthly_investment_planner.MonthlyInvestmentPlanner', 'create_custom_plan', {'monthly_amount': 100000}),
+    ])
+    @patch('apps.api.views.get_dashboard_kpis', return_value={'total_iol': 10000})
+    def test_post_endpoints_sanitize_internal_errors(
+        self, mock_kpis, auth_client, url_name, patch_target, method_name, payload
+    ):
+        with patch.object(__import__(patch_target.rsplit('.', 1)[0], fromlist=[patch_target.rsplit('.', 1)[1]]).__dict__[patch_target.rsplit('.', 1)[1]], method_name, side_effect=Exception('forced error')):
+            response = auth_client.post(reverse(url_name), payload, format='json')
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
 
     def test_portfolio_parameters_update_forbidden_non_staff(self, auth_client):
         url = reverse('portfolio-parameters-update')
@@ -442,3 +581,93 @@ class TestHistoricalEvolutionFallback:
         assert len(body) == 2
         assert body[0]["total_iol"] == 1000
         assert "fecha" in body[0]
+
+    @patch("apps.api.views.get_evolucion_historica", return_value={"tiene_datos": False})
+    @patch("apps.api.views.PortfolioSnapshot.objects")
+    def test_historical_evolution_returns_empty_when_no_fallback_data(
+        self, mock_objects, mock_evolution, auth_client
+    ):
+        mock_values = mock_objects.filter.return_value.order_by.return_value.values.return_value
+        mock_values.__iter__.return_value = iter([])
+        response = auth_client.get(reverse("historical-evolution") + "?days=365")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    @patch("apps.api.views.PortfolioSnapshot.objects")
+    def test_historical_summary_returns_empty_when_no_snapshot(self, mock_objects, auth_client):
+        mock_objects.order_by.return_value.first.return_value = None
+        response = auth_client.get(reverse("historical-summary"))
+        assert response.status_code == 200
+        assert response.json() == {}
+
+    @patch("apps.api.views.PortfolioSnapshot.objects")
+    def test_historical_evolution_returns_direct_snapshots_when_available(self, mock_objects, auth_client):
+        mock_values = mock_objects.filter.return_value.order_by.return_value.values.return_value
+        mock_values.__iter__.return_value = iter([
+            {'fecha': '2026-03-12', 'total_iol': 1000, 'portafolio_invertido': 700, 'rendimiento_total': 1, 'liquidez_operativa': 300},
+            {'fecha': '2026-03-13', 'total_iol': 1100, 'portafolio_invertido': 750, 'rendimiento_total': 2, 'liquidez_operativa': 350},
+        ])
+        response = auth_client.get(reverse("historical-evolution") + "?days=365")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+        assert response.json()[1]['total_iol'] == 1100
+
+
+@pytest.mark.django_db
+class TestPortfolioParametersGet:
+    def test_portfolio_parameters_get_returns_404_without_active_params(self, auth_client):
+        response = auth_client.get(reverse('portfolio-parameters-get'))
+        assert response.status_code == 404
+        assert response.json()['error'] == 'No hay parámetros activos'
+
+    def test_portfolio_parameters_get_returns_active_params(self, auth_client):
+        from apps.core.models import PortfolioParameters
+
+        params = PortfolioParameters.objects.create(
+            name='Principal',
+            liquidez_target=20,
+            usa_target=40,
+            argentina_target=30,
+            emerging_target=10,
+        )
+        response = auth_client.get(reverse('portfolio-parameters-get'))
+        assert response.status_code == 200
+        body = response.json()
+        assert body['id'] == params.id
+        assert body['is_valid'] is True
+        assert body['total_allocation'] == 100.0
+
+    def test_portfolio_parameters_get_sanitizes_internal_errors(self, auth_client):
+        with patch('apps.core.models.PortfolioParameters.get_active_parameters', side_effect=Exception('forced error')):
+            response = auth_client.get(reverse('portfolio-parameters-get'))
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
+
+
+@pytest.mark.django_db
+class TestRecommendationsFiltering:
+    @patch('apps.core.services.recommendation_engine.RecommendationEngine.generate_recommendations')
+    def test_recommendations_by_priority_filters_results(self, mock_generate, auth_client):
+        mock_generate.return_value = [
+            {'tipo': 'a', 'prioridad': 'alta'},
+            {'tipo': 'b', 'prioridad': 'media'},
+            {'tipo': 'c', 'prioridad': 'alta'},
+        ]
+        response = auth_client.get(reverse('recommendations-by-priority') + '?priority=alta')
+        assert response.status_code == 200
+        assert response.json() == [
+            {'tipo': 'a', 'prioridad': 'alta'},
+            {'tipo': 'c', 'prioridad': 'alta'},
+        ]
+
+    @patch('apps.core.services.recommendation_engine.RecommendationEngine.generate_recommendations', side_effect=Exception('forced error'))
+    def test_recommendations_all_sanitizes_internal_errors(self, mock_generate, auth_client):
+        response = auth_client.get(reverse('recommendations-all'))
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
+
+    @patch('apps.core.services.recommendation_engine.RecommendationEngine.generate_recommendations', side_effect=Exception('forced error'))
+    def test_recommendations_by_priority_sanitizes_internal_errors(self, mock_generate, auth_client):
+        response = auth_client.get(reverse('recommendations-by-priority') + '?priority=alta')
+        assert response.status_code == 500
+        assert response.json()['error'] == 'Internal server error'
