@@ -1,6 +1,7 @@
 from .base import *
 from decouple import config
 from urllib.parse import urlparse
+from config.settings.security import validate_production_security
 
 DEBUG = False
 JSON_LOGS = str(config('JSON_LOGS', default='True')).strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -81,3 +82,5 @@ for setting in required_settings:
 # En produccion priorizamos logs estructurados
 if 'handlers' in LOGGING and 'console' in LOGGING['handlers']:
     LOGGING['handlers']['console']['formatter'] = 'json' if JSON_LOGS else 'simple'
+
+validate_production_security(globals())
