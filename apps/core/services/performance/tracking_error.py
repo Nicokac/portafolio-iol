@@ -1,4 +1,5 @@
 from datetime import timedelta
+import math
 from typing import Dict
 
 import pandas as pd
@@ -19,7 +20,11 @@ class TrackingErrorService:
     def calculate(self, days: int = 90) -> Dict[str, float]:
         portfolio_returns = self._get_portfolio_returns(days=days)
         if portfolio_returns.empty:
-            return {}
+            return {
+                "warning": "insufficient_history",
+                "observations": 0,
+                "requested_days": days,
+            }
 
         benchmark_daily_return = self._get_composite_benchmark_daily_return()
         benchmark_returns = pd.Series(
@@ -28,7 +33,11 @@ class TrackingErrorService:
 
         active_returns = portfolio_returns - benchmark_returns
         if active_returns.empty:
-            return {}
+            return {
+                "warning": "insufficient_history",
+                "observations": int(len(portfolio_returns)),
+                "requested_days": days,
+            }
 
         tracking_error = float(active_returns.std()) * (self.TRADING_DAYS_PER_YEAR ** 0.5) * 100
 
@@ -37,15 +46,22 @@ class TrackingErrorService:
         excess_return = portfolio_total_return - benchmark_total_return
 
         information_ratio = None
-        if tracking_error > 0:
+        if math.isfinite(tracking_error) and tracking_error > 0:
             information_ratio = excess_return / tracking_error
+        else:
+            tracking_error = None
 
         result = {
             "portfolio_return_period": round(portfolio_total_return, 2),
             "benchmark_return_period": round(benchmark_total_return, 2),
             "excess_return_period": round(excess_return, 2),
-            "tracking_error_annualized": round(tracking_error, 2),
+            "observations": int(len(portfolio_returns)),
+            "requested_days": days,
         }
+        if tracking_error is not None:
+            result["tracking_error_annualized"] = round(tracking_error, 2)
+        else:
+            result["warning"] = "insufficient_history"
         if information_ratio is not None:
             result["information_ratio"] = round(information_ratio, 2)
         return result

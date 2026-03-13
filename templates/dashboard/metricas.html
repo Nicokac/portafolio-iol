@@ -26,6 +26,9 @@
 </section>
 
 <section class="row g-3">
+    <div class="col-12 d-none" id="metrics-warning-wrap">
+        <div class="alert alert-warning mb-0" id="metrics-warning-text"></div>
+    </div>
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-transparent"><h5 class="mb-0">Detalle de metricas</h5></div>
@@ -57,19 +60,39 @@ function formatNumOrNA(value) {
     if (value === undefined || value === null || Number.isNaN(Number(value))) return 'N/D';
     return formatNum(Number(value));
 }
+function hasInsufficientHistory(payload) {
+    return payload && payload.warning === 'insufficient_history';
+}
+function formatPctMetric(payload, key) {
+    if (hasInsufficientHistory(payload)) return 'Historico insuficiente';
+    return formatPctOrNA(payload ? payload[key] : null);
+}
+function formatNumMetric(payload, key) {
+    if (hasInsufficientHistory(payload)) return 'Historico insuficiente';
+    return formatNumOrNA(payload ? payload[key] : null);
+}
 
 Promise.all([
     fetch('/api/metrics/volatility/?days=365').then(r => r.json()),
     fetch('/api/metrics/benchmarking/?days=365').then(r => r.json()),
     fetch('/api/metrics/returns/?days=365').then(r => r.json())
 ]).then(([vol, bench, ret]) => {
-    document.getElementById('m-vol').textContent = formatPctOrNA(vol.annualized_volatility);
-    document.getElementById('m-sharpe').textContent = formatNumOrNA(vol.sharpe_ratio);
-    document.getElementById('m-sortino').textContent = formatNumOrNA(vol.sortino_ratio);
-    document.getElementById('m-te').textContent = formatPctOrNA(bench.tracking_error_annualized);
-    document.getElementById('m-ir').textContent = formatNumOrNA(bench.information_ratio);
+    document.getElementById('m-vol').textContent = formatPctMetric(vol, 'annualized_volatility');
+    document.getElementById('m-sharpe').textContent = formatNumMetric(vol, 'sharpe_ratio');
+    document.getElementById('m-sortino').textContent = formatNumMetric(vol, 'sortino_ratio');
+    document.getElementById('m-te').textContent = formatPctMetric(bench, 'tracking_error_annualized');
+    document.getElementById('m-ir').textContent = formatNumMetric(bench, 'information_ratio');
     document.getElementById('m-ret').textContent = formatPctOrNA(ret.total_period_return);
     document.getElementById('m-excess').textContent = formatPctOrNA(bench.excess_return_period);
+
+    const warningTexts = [];
+    if (hasInsufficientHistory(vol)) warningTexts.push('Volatilidad y ratios');
+    if (hasInsufficientHistory(bench)) warningTexts.push('Benchmarking');
+    if (warningTexts.length) {
+        document.getElementById('metrics-warning-wrap').classList.remove('d-none');
+        document.getElementById('metrics-warning-text').textContent =
+            `Historico insuficiente para calcular con robustez: ${warningTexts.join(', ')}.`;
+    }
 
     const detail = [
         ['Retorno diario', formatPctOrNA(ret.daily_return)],
@@ -79,6 +102,8 @@ Promise.all([
         ['TWR anualizado', formatPctOrNA(ret.twr_annualized_return)],
         ['Portfolio return period', formatPctOrNA(bench.portfolio_return_period)],
         ['Benchmark return period', formatPctOrNA(bench.benchmark_return_period)],
+        ['Tracking error', formatPctMetric(bench, 'tracking_error_annualized')],
+        ['Information ratio', formatNumMetric(bench, 'information_ratio')],
     ];
     document.getElementById('metrics-detail-body').innerHTML = detail.map(([k,v]) => `<tr><td>${k}</td><td class="text-end">${v}</td></tr>`).join('');
 }).catch(() => {

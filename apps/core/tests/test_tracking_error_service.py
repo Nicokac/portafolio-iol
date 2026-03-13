@@ -100,3 +100,75 @@ def test_tracking_error_service_returns_tracking_and_information_ratio():
     assert "portfolio_return_period" in result
     assert "benchmark_return_period" in result
     assert "excess_return_period" in result
+
+
+@pytest.mark.django_db
+def test_tracking_error_service_returns_warning_for_insufficient_history():
+    now = timezone.now()
+    today = now.date()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="TecnologÃ­a",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today - timedelta(days=1),
+        total_iol=1000,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=700,
+        rendimiento_total=0.0,
+        exposicion_usa=50.0,
+        exposicion_argentina=50.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today,
+        total_iol=980,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=680,
+        rendimiento_total=0.0,
+        exposicion_usa=50.0,
+        exposicion_argentina=50.0,
+    )
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion=now,
+        pais_consulta="argentina",
+        simbolo="AAPL",
+        descripcion="Apple",
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=100,
+        ppc=90,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=1200,
+        pais_titulo="USA",
+        mercado="NASDAQ",
+        tipo="CEDEARS",
+        moneda="dolar_Estadounidense",
+    )
+    ResumenCuentaSnapshot.objects.create(
+        fecha_extraccion=now,
+        numero_cuenta="123",
+        tipo_cuenta="CA",
+        moneda="ARS",
+        disponible=300,
+        comprometido=0,
+        saldo=300,
+        titulos_valorizados=0,
+        total=300,
+        estado="activa",
+    )
+
+    result = TrackingErrorService().calculate(days=365)
+
+    assert result["warning"] == "insufficient_history"
+    assert result["observations"] == 1
+    assert "tracking_error_annualized" not in result

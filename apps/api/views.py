@@ -1,4 +1,5 @@
 import logging
+import math
 from datetime import timedelta
 
 from django.db.models import Avg
@@ -62,6 +63,18 @@ def internal_error_response(exc: Exception, endpoint: str) -> Response:
         {"error": "Internal server error"},
         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
+
+
+def sanitize_json_payload(value):
+    if isinstance(value, dict):
+        return {key: sanitize_json_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [sanitize_json_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return [sanitize_json_payload(item) for item in value]
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    return value
 
 
 # Dashboard API
@@ -391,7 +404,7 @@ def metrics_benchmarking(request):
         )
 
     try:
-        result = TrackingErrorService().calculate(days=days)
+        result = sanitize_json_payload(TrackingErrorService().calculate(days=days))
         result['metadata'] = build_metric_metadata(
             methodology='Tracking Error as annualized std(active return) and Information Ratio as active return / tracking error',
             data_basis='Portfolio returns from snapshots and benchmark configuration',

@@ -328,6 +328,20 @@ class TestAPIInputValidation:
             assert 'metadata' in body
             assert 'methodology' in body['metadata']
 
+    @patch('apps.api.views.TrackingErrorService')
+    def test_metrics_benchmarking_sanitizes_non_finite_numbers(self, MockService, auth_client):
+        MockService.return_value.calculate.return_value = {
+            'tracking_error_annualized': float('nan'),
+            'information_ratio': float('inf'),
+        }
+
+        response = auth_client.get(reverse('metrics-benchmarking'))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['tracking_error_annualized'] is None
+        assert body['information_ratio'] is None
+
     def test_metrics_liquidity_includes_metadata(self, auth_client):
         url = reverse('metrics-liquidity')
         response = auth_client.get(url)

@@ -68,6 +68,12 @@ function formatPctOrNA(value) {
     if (value === undefined || value === null || Number.isNaN(Number(value))) return '<span class="text-muted">N/D</span>';
     return formatPct(Number(value));
 }
+function formatHistoryWarning() {
+    return '<span class="text-warning-emphasis">Historico insuficiente</span>';
+}
+function hasInsufficientTwr(returns) {
+    return returns && ((returns.warning === 'insufficient_history') || Number(returns.twr_periods || 0) < 2);
+}
 
 function computeDrawdownSeries(values) {
     let runningMax = -Infinity;
@@ -85,8 +91,12 @@ function loadPerformanceData() {
         fetch('/api/historical/evolution/?days=365').then(r => r.json())
     ]).then(([returns, comparison, evolution]) => {
         document.getElementById('ret-total').innerHTML = formatPctOrNA(returns.total_period_return);
-        document.getElementById('ret-twr-total').innerHTML = formatPctOrNA(returns.twr_total_return);
-        document.getElementById('ret-twr-anual').innerHTML = formatPctOrNA(returns.twr_annualized_return);
+        document.getElementById('ret-twr-total').innerHTML = hasInsufficientTwr(returns)
+            ? formatHistoryWarning()
+            : formatPctOrNA(returns.twr_total_return);
+        document.getElementById('ret-twr-anual').innerHTML = hasInsufficientTwr(returns)
+            ? formatHistoryWarning()
+            : formatPctOrNA(returns.twr_annualized_return);
         document.getElementById('ret-max-dd').innerHTML = formatPctOrNA(returns.max_drawdown);
 
         const comparisonBody = document.getElementById('comparison-body');
@@ -94,7 +104,8 @@ function loadPerformanceData() {
         comparisonBody.innerHTML = keys.map(k => {
             const row = comparison[k] || {};
             const note = row.is_partial_window ? `<div class="small text-muted">Base real: ${row.available_history_days || 0}d</div>` : '';
-            return `<tr><td>${k}${note}</td><td class="text-end">${formatPctOrNA(row.total_return)}</td><td class="text-end">${formatPctOrNA(row.volatility)}</td></tr>`;
+            const volatilityCell = row.is_partial_window ? formatHistoryWarning() : formatPctOrNA(row.volatility);
+            return `<tr><td>${k}${note}</td><td class="text-end">${formatPctOrNA(row.total_return)}</td><td class="text-end">${volatilityCell}</td></tr>`;
         }).join('');
 
         if (evolution && evolution.length > 2) {
