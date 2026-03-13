@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from django.db.models import Avg
@@ -28,6 +29,8 @@ from apps.dashboard.selectors import (
 )
 from apps.portafolio_iol.models import PortfolioSnapshot
 
+logger = logging.getLogger(__name__)
+
 METRIC_BASES = {
     'total_portfolio': 'Total IOL (activos + cash)',
     'invested_capital': 'Capital invertido en activos',
@@ -51,6 +54,14 @@ def build_metric_metadata(
     return metadata
 
 
+def internal_error_response(exc: Exception, endpoint: str) -> Response:
+    logger.exception("API error in %s: %s", endpoint, exc)
+    return Response(
+        {"error": "Internal server error"},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
 # Dashboard API
 @api_view(['GET'])
 def dashboard_kpis(request):
@@ -69,10 +80,7 @@ def dashboard_kpis(request):
         }
         return Response(kpis, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_returns")
 
 @api_view(['GET'])
 def dashboard_concentracion_pais(request):
@@ -81,10 +89,7 @@ def dashboard_concentracion_pais(request):
         data = get_concentracion_pais()
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_volatility")
 
 @api_view(['GET'])
 def dashboard_concentracion_sector(request):
@@ -93,10 +98,7 @@ def dashboard_concentracion_sector(request):
         data = get_concentracion_sector()
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_performance")
 
 @api_view(['GET'])
 def dashboard_senales_rebalanceo(request):
@@ -105,10 +107,7 @@ def dashboard_senales_rebalanceo(request):
         data = get_senales_rebalanceo()
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_historical_comparison")
 
 # Alerts API
 @api_view(['GET'])
@@ -119,10 +118,7 @@ def alerts_active(request):
         alerts = engine.generate_alerts()
         return Response(alerts, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_var")
 
 @api_view(['GET'])
 def alerts_by_severity(request):
@@ -133,10 +129,7 @@ def alerts_by_severity(request):
         alerts = engine.get_alerts_by_severity(severity)
         return Response(alerts, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_cvar")
 
 # Rebalance API
 @api_view(['GET'])
@@ -147,10 +140,7 @@ def rebalance_suggestions(request):
         suggestions = engine.generate_rebalance_suggestions()
         return Response(suggestions, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_stress_test")
 
 @api_view(['GET'])
 def rebalance_critical_actions(request):
@@ -160,10 +150,7 @@ def rebalance_critical_actions(request):
         actions = engine.get_critical_actions()
         return Response(actions, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_attribution")
 
 @api_view(['GET'])
 def rebalance_opportunity_actions(request):
@@ -173,10 +160,7 @@ def rebalance_opportunity_actions(request):
         actions = engine.get_opportunity_actions()
         return Response(actions, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "metrics_benchmarking")
 
 # Temporal Metrics API
 @api_view(['GET'])
@@ -212,10 +196,7 @@ def metrics_returns(request):
         )
         return Response(returns, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "simulation_purchase")
 
 @api_view(['GET'])
 def metrics_volatility(request):
@@ -247,10 +228,7 @@ def metrics_volatility(request):
         )
         return Response(volatility, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "simulation_sale")
 
 @api_view(['GET'])
 def metrics_performance(request):
@@ -274,10 +252,7 @@ def metrics_performance(request):
         )
         return Response(metrics, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "simulation_rebalance")
 
 @api_view(['GET'])
 def metrics_historical_comparison(request):
@@ -301,10 +276,7 @@ def metrics_historical_comparison(request):
         )
         return Response(comparison, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "optimizer_risk_parity")
 
 
 @api_view(['GET'])
@@ -328,10 +300,7 @@ def metrics_var(request):
         )
         return Response(var_metrics, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "dashboard_kpis")
 
 
 @api_view(['GET'])
@@ -355,10 +324,7 @@ def metrics_cvar(request):
         )
         return Response(cvar_metrics, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "dashboard_concentracion_pais")
 
 
 @api_view(['GET'])
@@ -378,10 +344,7 @@ def metrics_stress_test(request):
             status=status.HTTP_200_OK
         )
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "dashboard_concentracion_sector")
 
 
 @api_view(['GET'])
@@ -411,10 +374,7 @@ def metrics_attribution(request):
         )
         return Response(attribution, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "dashboard_senales_rebalanceo")
 
 
 @api_view(['GET'])
@@ -444,10 +404,7 @@ def metrics_benchmarking(request):
         )
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "alerts_active")
 
 
 @api_view(['GET'])
@@ -468,10 +425,7 @@ def metrics_liquidity(request):
         )
         return Response(liquidity, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return internal_error_response(e, "metrics_liquidity")
 
 
 @api_view(['GET'])
@@ -492,10 +446,7 @@ def metrics_data_quality(request):
         )
         return Response(report, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return internal_error_response(e, "metrics_data_quality")
 
 @api_view(['GET'])
 def metrics_snapshot_integrity(request):
@@ -517,10 +468,7 @@ def metrics_snapshot_integrity(request):
         )
         return Response(report, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return internal_error_response(e, "metrics_snapshot_integrity")
 
 
 @api_view(['GET'])
@@ -543,10 +491,7 @@ def metrics_sync_audit(request):
         )
         return Response(report, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return internal_error_response(e, "metrics_sync_audit")
 
 
 @api_view(['GET'])
@@ -628,10 +573,7 @@ def historical_portfolio_evolution(request):
             )
         return Response(normalized, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "alerts_by_severity")
 
 @api_view(['GET'])
 def historical_portfolio_summary(request):
@@ -666,10 +608,7 @@ def historical_portfolio_summary(request):
 
         return Response(summary, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "rebalance_suggestions")
 
 # P4 - Strategy & Optimization API
 
@@ -694,10 +633,7 @@ def simulation_purchase(request):
         result = simulator.simulate_purchase(activo_symbol, capital, current_portfolio)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "rebalance_critical_actions")
 
 @api_view(['POST'])
 def simulation_sale(request):
@@ -719,10 +655,7 @@ def simulation_sale(request):
         result = simulator.simulate_sale(activo_symbol, cantidad, current_portfolio)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "rebalance_opportunity_actions")
 
 @api_view(['POST'])
 def simulation_rebalance(request):
@@ -743,10 +676,7 @@ def simulation_rebalance(request):
         result = simulator.simulate_rebalance(target_weights, current_portfolio)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "historical_portfolio_evolution")
 
 # Optimization API
 @api_view(['POST'])
@@ -768,10 +698,7 @@ def optimizer_risk_parity(request):
         result = optimizer.optimize_risk_parity(activos, target_return)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "historical_portfolio_summary")
 
 @api_view(['POST'])
 def optimizer_markowitz(request):
@@ -792,10 +719,7 @@ def optimizer_markowitz(request):
         result = optimizer.optimize_markowitz(activos, target_return)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "optimizer_markowitz")
 
 @api_view(['POST'])
 def optimizer_target_allocation(request):
@@ -815,10 +739,7 @@ def optimizer_target_allocation(request):
         result = optimizer.optimize_target_allocation(target_allocations)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "optimizer_target_allocation")
 
 # Recommendations API
 @api_view(['GET'])
@@ -831,10 +752,7 @@ def recommendations_all(request):
         recommendations = engine.generate_recommendations()
         return Response(recommendations, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "recommendations_all")
 
 @api_view(['GET'])
 def recommendations_by_priority(request):
@@ -849,10 +767,7 @@ def recommendations_by_priority(request):
         filtered = [r for r in all_recommendations if r.get('prioridad') == priority]
         return Response(filtered, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "recommendations_by_priority")
 
 # Monthly Investment Planner API
 @api_view(['POST'])
@@ -874,10 +789,7 @@ def monthly_plan_basic(request):
         result = planner.plan_monthly_investment(monthly_amount, current_portfolio)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "monthly_plan_basic")
 
 @api_view(['POST'])
 def monthly_plan_custom(request):
@@ -902,10 +814,7 @@ def monthly_plan_custom(request):
         )
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "monthly_plan_custom")
 
 # Portfolio Parameters API
 @api_view(['GET'])
@@ -936,10 +845,7 @@ def portfolio_parameters_get(request):
         }
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return internal_error_response(e, "portfolio_parameters_get")
 
 @api_view(['POST'])
 def portfolio_parameters_update(request):
@@ -986,8 +892,5 @@ def portfolio_parameters_update(request):
             status=status.HTTP_200_OK
         )
     except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return internal_error_response(e, "portfolio_parameters_update")
 

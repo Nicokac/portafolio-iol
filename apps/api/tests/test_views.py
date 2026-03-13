@@ -135,6 +135,15 @@ class TestAPIErrorHandling:
             response = auth_client.get(url)
             assert response.status_code == 500
             assert 'error' in response.json()
+            assert response.json()['error'] == 'Internal server error'
+            assert 'forced error' not in response.json()['error']
+
+    def test_portfolio_parameters_update_does_not_expose_internal_errors(self, staff_auth_client):
+        url = reverse('portfolio-parameters-update')
+        with patch('apps.core.models.PortfolioParameters.get_active_parameters', side_effect=Exception('forced error')):
+            response = staff_auth_client.post(url, {}, format='json')
+            assert response.status_code == 500
+            assert response.json()['error'] == 'Internal server error'
 
 @pytest.mark.django_db
 class TestAPIInputValidation:
