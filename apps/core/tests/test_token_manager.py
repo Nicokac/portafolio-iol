@@ -41,9 +41,20 @@ class TestIOLTokenManager:
             refresh_token='new_refresh',
             expires_in=3600,
         )
-        assert token.access_token == 'new_token'
+        assert token.access_token != 'new_token'
+        assert token.get_access_token() == 'new_token'
+        assert token.get_refresh_token() == 'new_refresh'
         assert manager._current_token == token
         assert IOLToken.objects.count() == 1
+
+    def test_get_valid_token_supports_legacy_plaintext_tokens(self):
+        IOLToken.objects.create(
+            access_token='legacy_plain_token',
+            refresh_token='legacy_refresh',
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        manager = IOLTokenManager()
+        assert manager.get_valid_token() == 'legacy_plain_token'
 
     def test_refresh_token_returns_none(self):
         manager = IOLTokenManager()

@@ -21,7 +21,7 @@ class IOLTokenManager:
 
         if token_obj:
             self._current_token = token_obj
-            return token_obj.access_token
+            return token_obj.get_access_token()
 
         # No hay token válido
         return None

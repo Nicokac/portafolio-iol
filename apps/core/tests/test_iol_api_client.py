@@ -55,7 +55,7 @@ class TestIOLAPIClient:
     @patch('apps.core.services.iol_api_client.requests.post')
     def test_refresh_access_token_success(self, mock_post, client):
         mock_token = MagicMock()
-        mock_token.refresh_token = 'old_refresh'
+        mock_token.get_refresh_token.return_value = 'old_refresh'
         client.token_manager._current_token = mock_token
 
         mock_response = Mock()
@@ -72,7 +72,7 @@ class TestIOLAPIClient:
     @patch('apps.core.services.iol_api_client.requests.post')
     def test_refresh_access_token_failure(self, mock_post, client):
         mock_token = MagicMock()
-        mock_token.refresh_token = 'old_refresh'
+        mock_token.get_refresh_token.return_value = 'old_refresh'
         client.token_manager._current_token = mock_token
         mock_post.side_effect = Exception('Network error')
 

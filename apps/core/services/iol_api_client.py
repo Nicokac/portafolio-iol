@@ -199,13 +199,14 @@ class IOLAPIClient:
     def refresh_access_token(self) -> bool:
         """Renueva el access token usando refresh token."""
         current_token = self.token_manager._current_token
-        if not current_token or not current_token.refresh_token:
+        refresh_token = current_token.get_refresh_token() if current_token else None
+        if not current_token or not refresh_token:
             logger.warning("No refresh token available")
             return False
 
         url = f"{self.base_url}/token"
         data = {
-            'refresh_token': current_token.refresh_token,
+            'refresh_token': refresh_token,
             'grant_type': 'refresh_token',
         }
         try:

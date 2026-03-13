@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
+from apps.core.utils.token_crypto import decrypt_token, encrypt_token
+
 
 class IOLToken(models.Model):
     """Modelo para almacenar tokens de acceso a la API de IOL."""
@@ -28,6 +30,12 @@ class IOLToken(models.Model):
         """Obtiene el token más reciente que no haya expirado."""
         return cls.objects.filter(expires_at__gt=timezone.now()).first()
 
+    def get_access_token(self):
+        return decrypt_token(self.access_token)
+
+    def get_refresh_token(self):
+        return decrypt_token(self.refresh_token)
+
     @classmethod
     def save_token(cls, access_token: str, refresh_token: str = None, expires_in: int = 3600):
         """Guarda un nuevo token, eliminando tokens anteriores."""
@@ -37,8 +45,8 @@ class IOLToken(models.Model):
         # Crear nuevo token
         expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
         return cls.objects.create(
-            access_token=access_token,
-            refresh_token=refresh_token,
+            access_token=encrypt_token(access_token),
+            refresh_token=encrypt_token(refresh_token),
             expires_at=expires_at
         )
 
