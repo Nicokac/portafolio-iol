@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
+from django.contrib.auth.views import redirect_to_login
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 from django.views import View
@@ -39,18 +40,8 @@ ALLOWED_RISK_PROFILES = {'conservador', 'moderado', 'agresivo'}
 class DashboardContextMixin:
     active_section = 'estrategia'
 
-    def _save_preferences(self, request: HttpRequest) -> None:
-        ui_mode = request.GET.get('ui_mode')
-        risk_profile = request.GET.get('risk_profile')
-
-        if ui_mode in ALLOWED_UI_MODES:
-            request.session['ui_mode'] = ui_mode
-        if risk_profile in ALLOWED_RISK_PROFILES:
-            request.session['risk_profile'] = risk_profile
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        self._save_preferences(self.request)
 
         context['active_section'] = self.active_section
         context['ui_mode'] = self.request.session.get('ui_mode', 'compacto')
@@ -119,17 +110,16 @@ class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     active_section = 'analisis'
 
     def test_func(self):
-        # Perfil experto: staff o modo denso.
-        return self.request.user.is_staff or self.request.session.get('ui_mode') == 'denso'
+        return bool(self.request.user and self.request.user.is_staff)
 
 
 class SetPreferencesView(LoginRequiredMixin, TemplateView):
-    http_method_names = ['get']
+    http_method_names = ['post']
 
-    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        ui_mode = request.GET.get('ui_mode')
-        risk_profile = request.GET.get('risk_profile')
-        next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or '/'
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        ui_mode = request.POST.get('ui_mode')
+        risk_profile = request.POST.get('risk_profile')
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/'
 
         if ui_mode in ALLOWED_UI_MODES:
             request.session['ui_mode'] = ui_mode
@@ -146,7 +136,23 @@ class SetPreferencesView(LoginRequiredMixin, TemplateView):
         return redirect(next_url)
 
 
-class RunSyncView(LoginRequiredMixin, View):
+class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    raise_exception = True
+
+    def test_func(self):
+        return bool(self.request.user and self.request.user.is_staff)
+
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return redirect_to_login(
+                self.request.get_full_path(),
+                self.get_login_url(),
+                self.get_redirect_field_name(),
+            )
+        return UserPassesTestMixin.handle_no_permission(self)
+
+
+class RunSyncView(StaffRequiredMixin, View):
     http_method_names = ['post']
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
@@ -165,7 +171,7 @@ class RunSyncView(LoginRequiredMixin, View):
         return redirect('dashboard:resumen')
 
 
-class GenerateSnapshotView(LoginRequiredMixin, View):
+class GenerateSnapshotView(StaffRequiredMixin, View):
     http_method_names = ['post']
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:

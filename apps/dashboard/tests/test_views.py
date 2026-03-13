@@ -18,6 +18,16 @@ class TestDashboardView:
         client.force_login(user)
         return client
 
+    @pytest.fixture
+    def staff_user(self):
+        return User.objects.create_user(username='staffuser', password='testpass123', is_staff=True)
+
+    @pytest.fixture
+    def staff_client(self, staff_user):
+        client = Client(raise_request_exception=False)
+        client.force_login(staff_user)
+        return client
+
     def test_dashboard_redirects_anonymous(self, client):
         url = reverse('dashboard:dashboard')
         response = client.get(url)
@@ -54,24 +64,23 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
-    def test_ops_requires_expert_profile_or_staff(self, auth_client):
+    def test_ops_requires_staff(self, auth_client, staff_client):
         url = reverse('dashboard:ops')
         denied = auth_client.get(url)
         assert denied.status_code == 403
-        auth_client.get(reverse('dashboard:set_preferences'), {'ui_mode': 'denso', 'next': '/'})
-        allowed = auth_client.get(url)
+        allowed = staff_client.get(url)
         assert allowed.status_code == 200
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')
-        response = auth_client.get(url, {'ui_mode': 'denso', 'risk_profile': 'agresivo', 'next': '/'})
+        response = auth_client.post(url, {'ui_mode': 'denso', 'risk_profile': 'agresivo', 'next': '/'})
         assert response.status_code == 302
         assert auth_client.session['ui_mode'] == 'denso'
         assert auth_client.session['risk_profile'] == 'agresivo'
 
     def test_preferences_rejects_external_next_url(self, auth_client):
         url = reverse('dashboard:set_preferences')
-        response = auth_client.get(
+        response = auth_client.post(
             url,
             {'ui_mode': 'compacto', 'risk_profile': 'moderado', 'next': 'https://evil.example/phishing'}
         )
@@ -94,8 +103,17 @@ class TestDashboardView:
         assert '/accounts/login/' in response['Location']
 
     @pytest.mark.django_db
-    @pytest.mark.usefixtures("auth_client")
-    def test_run_sync_view_success_message(self, auth_client, monkeypatch):
+    def test_run_sync_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:run_sync'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
+    def test_generate_snapshot_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:generate_snapshot'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
+    def test_run_sync_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_all(self):
                 return {
@@ -106,14 +124,13 @@ class TestDashboardView:
                 }
 
         monkeypatch.setattr('apps.dashboard.views.IOLSyncService', lambda: DummyService())
-        response = auth_client.post(reverse('dashboard:run_sync'))
+        response = staff_client.post(reverse('dashboard:run_sync'))
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
         assert any('Sincronizacion completada' in str(message) for message in messages)
 
     @pytest.mark.django_db
-    @pytest.mark.usefixtures("auth_client")
-    def test_generate_snapshot_view_success_message(self, auth_client, monkeypatch):
+    def test_generate_snapshot_view_success_message(self, staff_client, monkeypatch):
         class DummySnapshot:
             fecha = '2026-03-12'
 
@@ -122,7 +139,7 @@ class TestDashboardView:
                 return DummySnapshot()
 
         monkeypatch.setattr('apps.dashboard.views.PortfolioSnapshotService', lambda: DummyService())
-        response = auth_client.post(reverse('dashboard:generate_snapshot'))
+        response = staff_client.post(reverse('dashboard:generate_snapshot'))
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
         assert any('Snapshot disponible' in str(message) for message in messages)

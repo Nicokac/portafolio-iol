@@ -18,6 +18,18 @@ def auth_client(user):
 
 
 @pytest.fixture
+def staff_user(db):
+    return User.objects.create_user(username='staffuser', password='testpass123', is_staff=True)
+
+
+@pytest.fixture
+def staff_auth_client(staff_user):
+    client = APIClient(raise_request_exception=False)
+    client.force_authenticate(user=staff_user)
+    return client
+
+
+@pytest.fixture
 def anon_client():
     return APIClient(raise_request_exception=False)
 
@@ -100,7 +112,7 @@ class TestAPIResponseFormat:
     def test_post_endpoints_return_json(self, auth_client, url_name):
         url = reverse(url_name)
         response = auth_client.post(url, {}, format='json')
-        assert response.status_code in [200, 400, 404, 500]
+        assert response.status_code in [200, 400, 403, 404, 500]
         if response.status_code != 500:
             assert response['Content-Type'] == 'application/json'
 
@@ -304,12 +316,17 @@ class TestAPIPostEndpointsHappyPath:
             response = auth_client.post(url, {'target_allocation': {'AAPL': 50}}, format='json')
             assert response.status_code in [200, 400, 500]
 
-    def test_portfolio_parameters_update_missing_params(self, auth_client):
+    def test_portfolio_parameters_update_forbidden_non_staff(self, auth_client):
         url = reverse('portfolio-parameters-update')
         response = auth_client.post(url, {}, format='json')
+        assert response.status_code == 403
+
+    def test_portfolio_parameters_update_missing_params(self, staff_auth_client):
+        url = reverse('portfolio-parameters-update')
+        response = staff_auth_client.post(url, {}, format='json')
         assert response.status_code in [200, 400, 500]
 
-    def test_portfolio_parameters_update_invalid_allocation(self, auth_client):
+    def test_portfolio_parameters_update_invalid_allocation(self, staff_auth_client):
         """Verifica que no se permita guardar asignaciones que no sumen 100%."""
         url = reverse('portfolio-parameters-update')
         # Asignación que suma más de 100%
@@ -319,12 +336,12 @@ class TestAPIPostEndpointsHappyPath:
             'argentina_target': 40,
             'emerging_target': 20
         }
-        response = auth_client.post(url, invalid_data, format='json')
+        response = staff_auth_client.post(url, invalid_data, format='json')
         assert response.status_code == 400
         assert 'error' in response.json()
         assert '100%' in response.json()['error']
 
-    def test_portfolio_parameters_update_valid_allocation(self, auth_client):
+    def test_portfolio_parameters_update_valid_allocation(self, staff_auth_client):
         """Verifica que se permita guardar asignaciones válidas."""
         url = reverse('portfolio-parameters-update')
         # Asignación que suma exactamente 100%
@@ -334,7 +351,7 @@ class TestAPIPostEndpointsHappyPath:
             'argentina_target': 30,
             'emerging_target': 10
         }
-        response = auth_client.post(url, valid_data, format='json')
+        response = staff_auth_client.post(url, valid_data, format='json')
         assert response.status_code == 200
         assert 'message' in response.json()
 

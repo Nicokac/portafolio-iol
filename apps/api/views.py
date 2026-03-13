@@ -948,6 +948,12 @@ def portfolio_parameters_update(request):
     from decimal import Decimal
 
     try:
+        if not request.user or not request.user.is_staff:
+            return Response(
+                {'error': 'No autorizado para modificar parametros globales'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Obtener parámetros actuales o crear nuevos
         params = PortfolioParameters.get_active_parameters()
         if not params:
