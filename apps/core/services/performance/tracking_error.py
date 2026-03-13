@@ -7,6 +7,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.core.config.parametros_benchmark import ParametrosBenchmark
+from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
@@ -17,6 +18,9 @@ class TrackingErrorService:
 
     TRADING_DAYS_PER_YEAR = 252
 
+    def __init__(self, benchmark_service: BenchmarkSeriesService | None = None):
+        self.benchmark_service = benchmark_service or BenchmarkSeriesService()
+
     def calculate(self, days: int = 90) -> Dict[str, float]:
         portfolio_returns = self._get_portfolio_returns(days=days)
         if portfolio_returns.empty:
@@ -26,10 +30,7 @@ class TrackingErrorService:
                 "requested_days": days,
             }
 
-        benchmark_daily_return = self._get_composite_benchmark_daily_return()
-        benchmark_returns = pd.Series(
-            benchmark_daily_return, index=portfolio_returns.index, dtype=float
-        )
+        benchmark_returns = self._get_composite_benchmark_returns(portfolio_returns.index)
 
         active_returns = portfolio_returns - benchmark_returns
         if active_returns.empty:
@@ -85,17 +86,28 @@ class TrackingErrorService:
         df = df.set_index("fecha").sort_index()
         return df["total_iol"].pct_change().dropna()
 
-    def _get_composite_benchmark_daily_return(self) -> float:
+    def _get_composite_benchmark_returns(self, index) -> pd.Series:
         weights = self._infer_weights_from_portfolio()
         annual_returns = ParametrosBenchmark.ANNUAL_RETURNS
         mappings = ParametrosBenchmark.BENCHMARK_MAPPINGS
+        benchmark_returns = pd.Series(0.0, index=index, dtype=float)
 
-        annual_composite = (
-            weights["cedear_usa"] * annual_returns[mappings["cedear_usa"]]
-            + weights["bonos_ar"] * annual_returns[mappings["bonos_ar"]]
-            + weights["liquidez"] * annual_returns[mappings["liquidez"]]
-        )
-        return annual_composite / self.TRADING_DAYS_PER_YEAR
+        for key, weight in weights.items():
+            if weight <= 0:
+                continue
+            historical_returns = self.benchmark_service.build_daily_returns(key, index)
+            if historical_returns.empty:
+                benchmark_returns = benchmark_returns.add(
+                    weight * (annual_returns[mappings[key]] / self.TRADING_DAYS_PER_YEAR),
+                    fill_value=0.0,
+                )
+            else:
+                benchmark_returns = benchmark_returns.add(
+                    historical_returns.fillna(annual_returns[mappings[key]] / self.TRADING_DAYS_PER_YEAR) * weight,
+                    fill_value=0.0,
+                )
+
+        return benchmark_returns.astype(float)
 
     def _infer_weights_from_portfolio(self):
         latest_port = ActivoPortafolioSnapshot.objects.aggregate(

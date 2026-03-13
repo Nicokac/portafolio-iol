@@ -221,3 +221,33 @@ class SensitiveActionAudit(models.Model):
     def __str__(self):
         username = self.user.username if self.user else "anonymous"
         return f"{self.action} [{self.status}] by {username}"
+
+
+class BenchmarkSnapshot(models.Model):
+    """Serie historica de benchmarks externos persistida localmente."""
+
+    benchmark_key = models.CharField(max_length=50)
+    symbol = models.CharField(max_length=20)
+    source = models.CharField(max_length=32, default="alpha_vantage")
+    fecha = models.DateField()
+    close = models.DecimalField(max_digits=18, decimal_places=6)
+    adjusted_close = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    volume = models.BigIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "benchmark_key"]
+        indexes = [
+            models.Index(fields=["benchmark_key", "fecha"]),
+            models.Index(fields=["symbol", "fecha"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["benchmark_key", "source", "fecha"],
+                name="unique_benchmark_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.benchmark_key} {self.fecha} ({self.source})"

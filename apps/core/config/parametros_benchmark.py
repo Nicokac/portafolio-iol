@@ -21,3 +21,11 @@ class ParametrosBenchmark:
         "bonos_ar": 0.35,
         "liquidez": 0.25,
     }
+
+    HISTORICAL_SERIES = {
+        "cedear_usa": {
+            "symbol": "SPY",
+            "provider": "alpha_vantage",
+            "field": "adjusted_close",
+        },
+    }

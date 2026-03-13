@@ -1,6 +1,8 @@
 from datetime import timedelta
+from unittest.mock import Mock
 
 import pytest
+import pandas as pd
 from django.utils import timezone
 
 from apps.core.services.performance.tracking_error import TrackingErrorService
@@ -172,3 +174,33 @@ def test_tracking_error_service_returns_warning_for_insufficient_history():
     assert result["warning"] == "insufficient_history"
     assert result["observations"] == 1
     assert "tracking_error_annualized" not in result
+
+
+@pytest.mark.django_db
+def test_tracking_error_service_uses_historical_benchmark_when_available():
+    now = timezone.now()
+    today = now.date()
+
+    for offset, total in enumerate([1000, 1010, 1030, 1020][::-1]):
+        PortfolioSnapshot.objects.create(
+            fecha=today - timedelta(days=offset),
+            total_iol=total,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=700,
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+
+    benchmark_service = Mock()
+    benchmark_service.build_daily_returns.side_effect = lambda key, index: (
+        pd.Series([0.01, 0.015, -0.005], index=index, dtype=float)
+        if key == "cedear_usa"
+        else pd.Series(dtype=float)
+    )
+
+    result = TrackingErrorService(benchmark_service=benchmark_service).calculate(days=90)
+
+    assert "benchmark_return_period" in result
+    assert benchmark_service.build_daily_returns.called

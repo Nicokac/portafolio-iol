@@ -171,6 +171,7 @@ IOL_USERNAME = config('IOL_USERNAME', default='')
 IOL_PASSWORD = config('IOL_PASSWORD', default='')
 IOL_ACCESS_TOKEN = config('IOL_ACCESS_TOKEN', default='')
 IOL_BASE_URL = config('IOL_BASE_URL', default='https://api.invertironline.com')
+ALPHA_VANTAGE_API_KEY = config('ALPHA_VANTAGE_API_KEY', default='')
 
 # Logging
 LOGGING = {
