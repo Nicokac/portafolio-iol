@@ -31,17 +31,6 @@
                     <li class="nav-item">
                         <a class="nav-link {% if active_section == 'analisis' %}active{% endif %}" href="{% url 'dashboard:analisis' %}">Análisis</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_section == 'metricas' %}active{% endif %}" href="{% url 'dashboard:metricas' %}">Métricas</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_section == 'performance' %}active{% endif %}" href="{% url 'dashboard:performance' %}">Performance</a>
-                    </li>
-                    {% if user.is_staff %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Ops</a>
-                    </li>
-                    {% endif %}
                     <li class="nav-item d-flex align-items-center mx-2 text-white-50">|</li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'resumen_iol:resumen_list' %}">Resumen IOL</a>
@@ -77,8 +66,18 @@
                 {% endif %}
                 <ul class="navbar-nav align-items-center">
                     {% if user.is_authenticated %}
-                        <li class="nav-item me-2">
-                            <span class="user-avatar" title="{{ user.username }}">{{ user.username|slice:":1"|upper }}</span>
+                        <li class="nav-item dropdown me-2">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center p-0 border-0 bg-transparent {% if active_section == 'ops' %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="user-avatar" title="{{ user.username }}">{{ user.username|slice:":1"|upper }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><h6 class="dropdown-header">{{ user.username }}</h6></li>
+                                {% if user.is_staff %}
+                                <li>
+                                    <a class="dropdown-item {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Ops / Observabilidad</a>
+                                </li>
+                                {% endif %}
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'users:logout' %}">Salir</a>
