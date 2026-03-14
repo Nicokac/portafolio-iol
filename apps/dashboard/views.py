@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django_celery_beat.models import PeriodicTask
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.contrib.auth.views import redirect_to_login
@@ -133,6 +134,8 @@ class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['benchmark_status'] = BenchmarkSeriesService().get_status_summary()
+        context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
+        context['periodic_tasks_count'] = PeriodicTask.objects.count()
         return context
 
 

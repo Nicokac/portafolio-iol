@@ -151,7 +151,7 @@
     <div class="col-12">
         <h3>Señales de Rebalanceo</h3>
         <div class="row">
-            <div class="col-md-3"><div class="card border-primary h-100"><div class="card-header bg-primary text-white"><h6 class="mb-0">Patrimonial</h6></div><div class="card-body">{% for item in senales_rebalanceo.patrimonial_sobreponderado %}<div class="mb-2"><strong>{{ item.sector }}</strong><br><small class="text-danger">{{ item.porcentaje|floatformat:1 }}%</small></div>{% empty %}<small class="text-muted">Sin alertas</small>{% endfor %}</div></div></div>
+            <div class="col-md-3"><div class="card border-primary h-100"><div class="card-header bg-primary text-white"><h6 class="mb-0">Patrimonial</h6></div><div class="card-body">{% for item in senales_rebalanceo.patrimonial_sobreponderado %}<div class="mb-2"><strong>{{ item.categoria }}</strong><br><small class="text-danger">{{ item.porcentaje|floatformat:1 }}%</small></div>{% empty %}<small class="text-muted">Sin alertas</small>{% endfor %}</div></div></div>
             <div class="col-md-3"><div class="card border-success h-100"><div class="card-header bg-success text-white"><h6 class="mb-0">Sectorial</h6></div><div class="card-body">{% for item in senales_rebalanceo.sectorial_sobreponderado %}<div class="mb-2"><strong>{{ item.sector }}</strong><br><small class="text-danger">{{ item.porcentaje|floatformat:1 }}%</small></div>{% empty %}<small class="text-muted">Sin alertas</small>{% endfor %}</div></div></div>
             <div class="col-md-3"><div class="card border-danger h-100"><div class="card-header bg-danger text-white"><h6 class="mb-0">Sin Metadata</h6></div><div class="card-body">{% for activo in senales_rebalanceo.activos_sin_metadata %}<div class="mb-2"><strong>{{ activo.simbolo }}</strong><br><small class="text-muted">{{ activo.valorizado|currency:0 }}</small></div>{% empty %}<small class="text-success">Completo</small>{% endfor %}</div></div></div>
             <div class="col-md-3"><div class="card border-warning h-100"><div class="card-header bg-warning text-white"><h6 class="mb-0">Alto Peso</h6></div><div class="card-body">{% for posicion in senales_rebalanceo.posiciones_mayor_peso %}<div class="mb-2"><strong>{{ posicion.simbolo }}</strong><br><small class="text-primary">{{ posicion.peso|floatformat:1 }}%</small></div>{% empty %}<small class="text-muted">Sin excesos</small>{% endfor %}</div></div></div>
@@ -227,11 +227,18 @@ function renderDistributionTable(bodyId, data) {
         .map(([label, value]) => `
             <tr>
                 <td>${label}</td>
-                <td class="text-end">${window.formatNumberAr(value, 1)}%</td>
+                <td class="text-end">${formatPercentageLabel(value)}</td>
             </tr>
         `)
         .join('');
     body.innerHTML = rows;
+}
+
+function formatPercentageLabel(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return '-';
+    if (numericValue > 0 && numericValue < 0.1) return '&lt; 0,1%';
+    return `${window.formatNumberAr(numericValue, 1)}%`;
 }
 
 function createEvolutionChart() {

@@ -15,6 +15,21 @@
     </div>
 </section>
 
+{% if snapshot_coverage.status != 'ok' or periodic_tasks_count == 0 %}
+<section class="mb-4">
+    <div class="alert alert-warning mb-0">
+        <strong>Cobertura operativa incompleta.</strong>
+        Faltan snapshots diarios para métricas de riesgo robustas. Verificá que `celery worker`
+        y `celery beat` estén activos y que se haya ejecutado
+        <code>python manage.py setup_periodic_tasks</code>.
+        <div class="small mt-2 text-muted">
+            Snapshots recientes: {{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }} días.
+            Tareas periódicas registradas: {{ periodic_tasks_count }}.
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <section class="mb-4">
     <div class="card border-0 shadow-sm">
         <div class="card-body py-3">
@@ -81,8 +96,45 @@
 </section>
 
 <section class="row g-3">
-    <div class="col-12">
-        <div class="card">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de snapshots</h5></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td><strong>Snapshots recientes</strong></td>
+                            <td class="text-end {% if snapshot_coverage.status == 'ok' %}text-success{% else %}text-warning{% endif %}">
+                                {{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Último snapshot</strong></td>
+                            <td class="text-end">{{ snapshot_coverage.latest_snapshot_date|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gap máximo</strong></td>
+                            <td class="text-end">
+                                {% if snapshot_coverage.max_gap_days is not None %}
+                                {{ snapshot_coverage.max_gap_days }} días
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tareas periódicas</strong></td>
+                            <td class="text-end {% if periodic_tasks_count > 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ periodic_tasks_count }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
             <div class="card-header bg-transparent"><h5 class="mb-0">Metricas internas</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover">
