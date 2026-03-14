@@ -207,6 +207,7 @@ def metrics_returns(request):
                     'twr_total_return': 'total_portfolio',
                     'twr_annualized_return': 'total_portfolio',
                     'max_drawdown': 'total_portfolio',
+                    'max_drawdown_real': 'total_portfolio',
                     'portfolio_return_ytd_nominal': 'total_portfolio',
                     'portfolio_return_ytd_real': 'total_portfolio',
                     'ipc_ytd': 'total_portfolio',
@@ -304,7 +305,7 @@ def metrics_historical_comparison(request):
 
 @api_view(['GET'])
 def metrics_macro_comparison(request):
-    """Obtiene comparacion historica normalizada entre portafolio, dolar oficial e IPC."""
+    """Obtiene comparacion historica normalizada entre portafolio nominal/real, dolar oficial e IPC."""
     try:
         days = int(request.query_params.get('days', 365))
     except ValueError:
@@ -316,9 +317,9 @@ def metrics_macro_comparison(request):
     try:
         result = LocalMacroSeriesService().build_macro_comparison(days=days)
         result['metadata'] = build_metric_metadata(
-            methodology='Normalized level comparison rebased to 100 for portfolio total value, USDARS official and IPC index',
+            methodology='Normalized level comparison rebased to 100 for nominal portfolio, inflation-adjusted portfolio, USDARS official and IPC index',
             data_basis='PortfolioSnapshot.total_iol + BCRA + datos.gob.ar/INDEC snapshots',
-            limitations='IPC is monthly and forward-filled across daily observations; sparse portfolio history may reduce overlap',
+            limitations='IPC is monthly and forward-filled across daily observations; real portfolio is deflated using that monthly series and sparse portfolio history may reduce overlap',
         )
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:

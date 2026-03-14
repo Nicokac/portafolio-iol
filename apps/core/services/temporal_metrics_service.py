@@ -155,6 +155,7 @@ class TemporalMetricsService:
 
     def _get_real_ytd_metrics(self) -> Dict:
         macro_context = self.local_macro_service.get_context_summary()
+        real_history = self.local_macro_service.get_real_historical_metrics(days=365)
         return {
             'portfolio_return_ytd_nominal': macro_context.get('portfolio_return_ytd_nominal'),
             'portfolio_return_ytd_real': macro_context.get('portfolio_return_ytd_real'),
@@ -168,6 +169,7 @@ class TemporalMetricsService:
             'badlar_privada': macro_context.get('badlar_privada'),
             'badlar_ytd': macro_context.get('badlar_ytd'),
             'portfolio_excess_ytd_vs_badlar': macro_context.get('portfolio_excess_ytd_vs_badlar'),
+            'max_drawdown_real': real_history.get('max_drawdown_real'),
             'badlar_privada_date': (
                 macro_context.get('badlar_privada_date').isoformat()
                 if macro_context.get('badlar_privada_date')

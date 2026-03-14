@@ -106,24 +106,13 @@ class LocalMacroSeriesService:
         }
 
     def build_macro_comparison(self, days: int = 365, base_value: float = 100.0) -> dict:
-        portfolio_df = self._build_portfolio_history(days=days)
-        if portfolio_df.empty or len(portfolio_df.index) < 2:
-            return {"series": [], "warning": "insufficient_history", "requested_days": days}
-
-        usdars_df = self._build_macro_series_frame("usdars_oficial", days=days, extra_days=7)
-        ipc_df = self._build_macro_series_frame("ipc_nacional", days=days, extra_days=45)
-        if not usdars_df.empty:
-            usdars_df = usdars_df.reindex(portfolio_df.index.union(usdars_df.index)).sort_index().ffill().reindex(portfolio_df.index)
-        if not ipc_df.empty:
-            ipc_df = ipc_df.reindex(portfolio_df.index.union(ipc_df.index)).sort_index().ffill().reindex(portfolio_df.index)
-
-        df = portfolio_df.join(usdars_df, how="left").join(ipc_df, how="left")
-        df = df.sort_index().ffill().dropna(subset=["portfolio", "usdars_oficial", "ipc_nacional"])
-        if len(df.index) < 2:
+        df = self._build_real_portfolio_frame(days=days)
+        if df.empty or len(df.index) < 2:
             return {"series": [], "warning": "insufficient_history", "requested_days": days}
 
         normalized = pd.DataFrame(index=df.index)
         normalized["portfolio"] = self._normalize_series(df["portfolio"], base_value)
+        normalized["portfolio_real"] = self._normalize_series(df["portfolio_real"], base_value)
         normalized["usdars_oficial"] = self._normalize_series(df["usdars_oficial"], base_value)
         normalized["ipc_nacional"] = self._normalize_series(df["ipc_nacional"], base_value)
 
@@ -131,6 +120,7 @@ class LocalMacroSeriesService:
             {
                 "fecha": idx.date().isoformat(),
                 "portfolio": round(float(row["portfolio"]), 2),
+                "portfolio_real": round(float(row["portfolio_real"]), 2),
                 "usdars_oficial": round(float(row["usdars_oficial"]), 2),
                 "ipc_nacional": round(float(row["ipc_nacional"]), 2),
             }
@@ -141,6 +131,22 @@ class LocalMacroSeriesService:
             "base_value": base_value,
             "requested_days": days,
             "observations": len(series),
+            "max_drawdown_nominal": round(self._calculate_max_drawdown(normalized["portfolio"]), 2),
+            "max_drawdown_real": round(self._calculate_max_drawdown(normalized["portfolio_real"]), 2),
+        }
+
+    def get_real_historical_metrics(self, days: int = 365) -> dict:
+        df = self._build_real_portfolio_frame(days=days)
+        if df.empty or len(df.index) < 2:
+            return {
+                "max_drawdown_real": None,
+                "real_history_observations": 0,
+            }
+
+        normalized_real = self._normalize_series(df["portfolio_real"], 100.0)
+        return {
+            "max_drawdown_real": round(self._calculate_max_drawdown(normalized_real), 2),
+            "real_history_observations": int(len(df.index)),
         }
 
     def build_rate_returns(self, series_key: str, dates, periods_per_year: int) -> pd.Series:
@@ -304,6 +310,47 @@ class LocalMacroSeriesService:
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["value"] = pd.to_numeric(df["value"], errors="coerce")
         return df.dropna(subset=["value"]).set_index("fecha").rename(columns={"value": series_key})
+
+    def _build_real_portfolio_frame(self, days: int) -> pd.DataFrame:
+        portfolio_df = self._build_portfolio_history(days=days)
+        if portfolio_df.empty or len(portfolio_df.index) < 2:
+            return pd.DataFrame()
+
+        usdars_df = self._build_macro_series_frame("usdars_oficial", days=days, extra_days=7)
+        ipc_df = self._build_macro_series_frame("ipc_nacional", days=days, extra_days=45)
+        if usdars_df.empty or ipc_df.empty:
+            return pd.DataFrame()
+        if not usdars_df.empty:
+            usdars_df = (
+                usdars_df.reindex(portfolio_df.index.union(usdars_df.index))
+                .sort_index()
+                .ffill()
+                .reindex(portfolio_df.index)
+            )
+        if not ipc_df.empty:
+            ipc_df = (
+                ipc_df.reindex(portfolio_df.index.union(ipc_df.index))
+                .sort_index()
+                .ffill()
+                .reindex(portfolio_df.index)
+            )
+
+        df = portfolio_df.join(usdars_df, how="left").join(ipc_df, how="left")
+        df = df.sort_index().ffill().dropna(subset=["portfolio", "usdars_oficial", "ipc_nacional"])
+        if len(df.index) < 2:
+            return pd.DataFrame()
+
+        initial_ipc = float(df["ipc_nacional"].iloc[0])
+        if initial_ipc <= 0:
+            return pd.DataFrame()
+        df["portfolio_real"] = df["portfolio"].astype(float) / (df["ipc_nacional"].astype(float) / initial_ipc)
+        return df
+
+    @staticmethod
+    def _calculate_max_drawdown(series: pd.Series) -> float:
+        running_max = series.astype(float).cummax()
+        drawdown = (series.astype(float) / running_max - 1.0) * 100.0
+        return float(drawdown.min())
 
     @staticmethod
     def _normalize_series(series: pd.Series, base_value: float) -> pd.Series:

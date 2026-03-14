@@ -46,6 +46,9 @@ class TestTemporalMetricsService:
                 "portfolio_return_ytd_base_date": today - timedelta(days=60),
                 "ipc_nacional_variation_ytd": 5.77,
             },
+        ), patch(
+            "apps.core.services.temporal_metrics_service.LocalMacroSeriesService.get_real_historical_metrics",
+            return_value={"max_drawdown_real": -3.25, "real_history_observations": 20},
         ):
             service = TemporalMetricsService()
             returns = service.get_portfolio_returns(days=30)
@@ -55,6 +58,7 @@ class TestTemporalMetricsService:
         assert "max_drawdown" in returns
         assert returns["portfolio_return_ytd_real"] == 4.0
         assert returns["ipc_ytd"] == 5.77
+        assert returns["max_drawdown_real"] == -3.25
         assert returns["portfolio_return_ytd_base_date"] == (today - timedelta(days=60)).isoformat()
 
     @patch("apps.dashboard.selectors.get_evolucion_historica")

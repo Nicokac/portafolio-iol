@@ -317,6 +317,7 @@ class TestAPIInputValidation:
             assert 'metadata' in body
             assert 'fields_basis' in body['metadata']
             assert 'portfolio_return_ytd_real' in body['metadata']['fields_basis']
+            assert 'max_drawdown_real' in body['metadata']['fields_basis']
             assert 'badlar_ytd' in body['metadata']['fields_basis']
             assert 'portfolio_excess_ytd_vs_badlar' in body['metadata']['fields_basis']
 

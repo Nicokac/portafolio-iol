@@ -221,8 +221,60 @@ def test_local_macro_series_service_builds_macro_comparison():
 
     assert result["observations"] == 3
     assert result["series"][0]["portfolio"] == 100.0
+    assert result["series"][0]["portfolio_real"] == 100.0
     assert result["series"][0]["usdars_oficial"] == 100.0
     assert result["series"][0]["ipc_nacional"] == 100.0
+    assert "max_drawdown_real" in result
+    assert result["max_drawdown_real"] <= 0
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_builds_real_historical_metrics():
+    for current_date, total_iol in [
+        (date(2026, 3, 10), 1000),
+        (date(2026, 3, 11), 950),
+        (date(2026, 3, 12), 1100),
+    ]:
+        PortfolioSnapshot.objects.create(
+            fecha=current_date,
+            total_iol=total_iol,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=700,
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+    for current_date, value in [
+        (date(2026, 3, 10), 1000.0),
+        (date(2026, 3, 11), 1005.0),
+        (date(2026, 3, 12), 1010.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="usdars_oficial",
+            source="bcra",
+            external_id="5",
+            frequency="daily",
+            fecha=current_date,
+            value=value,
+        )
+    for current_date, value in [
+        (date(2026, 2, 1), 200.0),
+        (date(2026, 3, 1), 210.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="ipc_nacional",
+            source="datos_gob_ar",
+            external_id="145.3_INGNACNAL_DICI_M_15",
+            frequency="monthly",
+            fecha=current_date,
+            value=value,
+        )
+
+    result = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_real_historical_metrics(days=30)
+
+    assert result["real_history_observations"] == 3
+    assert result["max_drawdown_real"] < 0
 
 
 @pytest.mark.django_db

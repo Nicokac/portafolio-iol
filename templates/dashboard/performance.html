@@ -18,7 +18,7 @@
     <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR anualizado</div><div class="h4 mb-0" id="ret-twr-anual">-</div></div></div></div>
     <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h4 mb-0" id="ret-real-ytd">-</div><div class="small text-muted" id="ret-real-ytd-note">-</div></div></div></div>
     <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">IPC YTD</div><div class="h4 mb-0 text-warning-emphasis" id="ret-ipc-ytd">-</div></div></div></div>
-    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h4 mb-0 text-danger" id="ret-max-dd">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h4 mb-0 text-danger" id="ret-max-dd">-</div><div class="small text-muted" id="ret-max-dd-real">-</div></div></div></div>
 </section>
 
 <section class="row g-3 mb-4">
@@ -130,6 +130,11 @@ function loadPerformanceData() {
         document.getElementById('ret-real-ytd').innerHTML = formatPctOrNA(returns.portfolio_return_ytd_real);
         document.getElementById('ret-ipc-ytd').innerHTML = formatPctOrNA(returns.ipc_ytd);
         document.getElementById('ret-max-dd').innerHTML = formatPctOrNA(returns.max_drawdown);
+        document.getElementById('ret-max-dd-real').innerHTML = formatInlineNote(
+            returns.max_drawdown_real !== undefined && returns.max_drawdown_real !== null
+                ? `Real: ${window.formatNumberAr(returns.max_drawdown_real, 2)}%`
+                : 'Real: N/D'
+        );
         const ytdNote = returns.portfolio_return_ytd_nominal !== undefined && returns.portfolio_return_ytd_nominal !== null
             ? `Nominal YTD: ${window.formatNumberAr(returns.portfolio_return_ytd_nominal, 2)}%`
             : 'Nominal YTD: N/D';
@@ -166,6 +171,7 @@ function loadPerformanceData() {
                     labels,
                     datasets: [
                         { label: 'Portafolio', data: macroComparison.series.map(x => x.portfolio), borderColor: '#2563EB', tension: 0.25, pointRadius: 0 },
+                        { label: 'Portafolio real', data: macroComparison.series.map(x => x.portfolio_real), borderColor: '#7C3AED', tension: 0.25, pointRadius: 0 },
                         { label: 'USDARS oficial', data: macroComparison.series.map(x => x.usdars_oficial), borderColor: '#059669', tension: 0.25, pointRadius: 0 },
                         { label: 'IPC', data: macroComparison.series.map(x => x.ipc_nacional), borderColor: '#D97706', tension: 0.25, pointRadius: 0 },
                     ],
