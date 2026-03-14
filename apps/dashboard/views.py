@@ -208,17 +208,21 @@ class SyncBenchmarksView(StaffRequiredMixin, View):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         try:
             result = BenchmarkSeriesService().sync_all(outputsize='compact')
+            has_failures = any(not payload.get('success', True) for payload in result.values())
             record_sensitive_action(
                 request,
                 action='sync_benchmarks',
-                status='success',
+                status='failed' if has_failures else 'success',
                 details={'result': result},
             )
             completed = ", ".join(
                 f"{key}: {payload['rows_received']} rows"
                 for key, payload in result.items()
             )
-            messages.success(request, f"Benchmarks sincronizados. {completed}.")
+            if has_failures:
+                messages.warning(request, f"Benchmarks sincronizados con fallos parciales. {completed}.")
+            else:
+                messages.success(request, f"Benchmarks sincronizados. {completed}.")
         except Exception as exc:
             record_sensitive_action(
                 request,

@@ -10,23 +10,48 @@ logger = logging.getLogger(__name__)
 
 class AlphaVantageClient:
     BASE_URL = "https://www.alphavantage.co/query"
-    FUNCTION = "TIME_SERIES_DAILY"
+    DAILY_FUNCTION = "TIME_SERIES_DAILY"
+    WEEKLY_ADJUSTED_FUNCTION = "TIME_SERIES_WEEKLY_ADJUSTED"
 
     def __init__(self):
         self.api_key = settings.ALPHA_VANTAGE_API_KEY
 
     def fetch_daily_adjusted(self, symbol: str, outputsize: str = "compact") -> list[dict]:
+        return self._fetch_time_series(
+            symbol=symbol,
+            function=self.DAILY_FUNCTION,
+            outputsize=outputsize,
+            payload_key="Time Series (Daily)",
+        )
+
+    def fetch_weekly_adjusted(self, symbol: str) -> list[dict]:
+        return self._fetch_time_series(
+            symbol=symbol,
+            function=self.WEEKLY_ADJUSTED_FUNCTION,
+            payload_key="Weekly Adjusted Time Series",
+        )
+
+    def _fetch_time_series(
+        self,
+        symbol: str,
+        function: str,
+        payload_key: str,
+        outputsize: str | None = None,
+    ) -> list[dict]:
         if not self.api_key:
             raise ValueError("ALPHA_VANTAGE_API_KEY is required")
 
+        params = {
+            "function": function,
+            "symbol": symbol,
+            "apikey": self.api_key,
+        }
+        if outputsize:
+            params["outputsize"] = outputsize
+
         response = requests.get(
             self.BASE_URL,
-            params={
-                "function": self.FUNCTION,
-                "symbol": symbol,
-                "outputsize": outputsize,
-                "apikey": self.api_key,
-            },
+            params=params,
             timeout=30,
         )
         response.raise_for_status()
@@ -39,7 +64,7 @@ class AlphaVantageClient:
         if "Information" in payload:
             raise ValueError(payload["Information"])
 
-        raw_series = payload.get("Time Series (Daily)", {})
+        raw_series = payload.get(payload_key, {})
         rows = []
         for raw_date, values in raw_series.items():
             rows.append(

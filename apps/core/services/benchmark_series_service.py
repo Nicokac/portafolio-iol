@@ -15,6 +15,11 @@ from apps.core.services.market_data.alpha_vantage_client import AlphaVantageClie
 
 
 class BenchmarkSeriesService:
+    INTERVAL_FETCHERS = {
+        "daily": "fetch_daily_adjusted",
+        "weekly_adjusted": "fetch_weekly_adjusted",
+    }
+
     def __init__(self, client: AlphaVantageClient | None = None):
         self.client = client or AlphaVantageClient()
 
@@ -43,39 +48,73 @@ class BenchmarkSeriesService:
         if not config:
             raise ValueError(f"Unknown historical benchmark key: {benchmark_key}")
 
-        rows = self.client.fetch_daily_adjusted(config["symbol"], outputsize=outputsize)
+        interval_results = {}
         created = 0
         updated = 0
+        rows_received = 0
+        success = True
 
-        with transaction.atomic():
-            for row in rows:
-                _, was_created = BenchmarkSnapshot.objects.update_or_create(
-                    benchmark_key=benchmark_key,
-                    source=config["provider"],
-                    fecha=row["fecha"],
-                    defaults={
-                        "symbol": config["symbol"],
-                        "close": Decimal(str(row["close"])),
-                        "adjusted_close": Decimal(str(row["adjusted_close"])),
-                        "volume": row["volume"],
-                    },
-                )
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
+        for interval in config.get("intervals", ["daily"]):
+            try:
+                rows = self._fetch_rows(config["symbol"], interval, outputsize=outputsize)
+                created_for_interval = 0
+                updated_for_interval = 0
+
+                with transaction.atomic():
+                    for row in rows:
+                        _, was_created = BenchmarkSnapshot.objects.update_or_create(
+                            benchmark_key=benchmark_key,
+                            source=config["provider"],
+                            interval=interval,
+                            fecha=row["fecha"],
+                            defaults={
+                                "symbol": config["symbol"],
+                                "close": Decimal(str(row["close"])),
+                                "adjusted_close": Decimal(str(row["adjusted_close"])),
+                                "volume": row["volume"],
+                            },
+                        )
+                        if was_created:
+                            created_for_interval += 1
+                        else:
+                            updated_for_interval += 1
+
+                interval_results[interval] = {
+                    "success": True,
+                    "rows_received": len(rows),
+                    "created": created_for_interval,
+                    "updated": updated_for_interval,
+                }
+                created += created_for_interval
+                updated += updated_for_interval
+                rows_received += len(rows)
+            except Exception as exc:
+                success = False
+                interval_results[interval] = {
+                    "success": False,
+                    "rows_received": 0,
+                    "created": 0,
+                    "updated": 0,
+                    "error": str(exc),
+                }
 
         return {
-            "success": True,
+            "success": success,
             "benchmark_key": benchmark_key,
             "symbol": config["symbol"],
             "provider": config["provider"],
-            "rows_received": len(rows),
+            "rows_received": rows_received,
             "created": created,
             "updated": updated,
+            "intervals": interval_results,
+            "error": "; ".join(
+                f"{interval}: {payload['error']}"
+                for interval, payload in interval_results.items()
+                if not payload.get("success", True)
+            ),
         }
 
-    def build_daily_returns(self, benchmark_key: str, dates: Iterable[pd.Timestamp]) -> pd.Series:
+    def build_returns(self, benchmark_key: str, dates: Iterable[pd.Timestamp], interval: str = "daily") -> pd.Series:
         normalized_dates = pd.to_datetime(list(dates))
         if len(normalized_dates) == 0:
             return pd.Series(dtype=float)
@@ -87,8 +126,12 @@ class BenchmarkSeriesService:
         snapshots = BenchmarkSnapshot.objects.filter(
             benchmark_key=benchmark_key,
             source=config["provider"],
+            interval=interval,
             fecha__range=(
-                (normalized_dates.min() - timedelta(days=1)).date(),
+                (
+                    normalized_dates.min() -
+                    timedelta(days=7 if interval == "weekly_adjusted" else 1)
+                ).date(),
                 normalized_dates.max().date(),
             ),
         ).order_by("fecha")
@@ -112,25 +155,55 @@ class BenchmarkSeriesService:
 
         return returns.reindex(normalized_dates).ffill()
 
+    def build_daily_returns(self, benchmark_key: str, dates: Iterable[pd.Timestamp]) -> pd.Series:
+        return self.build_returns(benchmark_key, dates, interval="daily")
+
+    def build_weekly_returns(self, benchmark_key: str, dates: Iterable[pd.Timestamp]) -> pd.Series:
+        return self.build_returns(benchmark_key, dates, interval="weekly_adjusted")
+
     def get_status_summary(self) -> list[dict]:
         rows = []
         aggregated = {
-            row["benchmark_key"]: row
-            for row in BenchmarkSnapshot.objects.values("benchmark_key").annotate(
+            (row["benchmark_key"], row["interval"]): row
+            for row in BenchmarkSnapshot.objects.values("benchmark_key", "interval").annotate(
                 latest_date=Max("fecha"),
                 rows_count=Count("id"),
             )
         }
         for benchmark_key, config in ParametrosBenchmark.HISTORICAL_SERIES.items():
-            summary = aggregated.get(benchmark_key)
+            daily = aggregated.get((benchmark_key, "daily"))
+            weekly = aggregated.get((benchmark_key, "weekly_adjusted"))
+            rows_count = (daily["rows_count"] if daily else 0) + (weekly["rows_count"] if weekly else 0)
+            latest_date = max(
+                date_value
+                for date_value in [daily["latest_date"] if daily else None, weekly["latest_date"] if weekly else None]
+                if date_value is not None
+            ) if (daily or weekly) else None
             rows.append(
                 {
                     "benchmark_key": benchmark_key,
                     "symbol": config["symbol"],
                     "provider": config["provider"],
-                    "latest_date": summary["latest_date"] if summary else None,
-                    "rows_count": summary["rows_count"] if summary else 0,
-                    "is_ready": bool(summary and summary["rows_count"] >= 2),
+                    "latest_date": latest_date,
+                    "rows_count": rows_count,
+                    "daily_rows_count": daily["rows_count"] if daily else 0,
+                    "daily_latest_date": daily["latest_date"] if daily else None,
+                    "weekly_rows_count": weekly["rows_count"] if weekly else 0,
+                    "weekly_latest_date": weekly["latest_date"] if weekly else None,
+                    "is_ready": bool(
+                        (daily and daily["rows_count"] >= 2) or
+                        (weekly and weekly["rows_count"] >= 2)
+                    ),
                 }
             )
         return rows
+
+    def _fetch_rows(self, symbol: str, interval: str, outputsize: str = "compact") -> list[dict]:
+        fetcher_name = self.INTERVAL_FETCHERS.get(interval)
+        if not fetcher_name:
+            raise ValueError(f"Unsupported benchmark interval: {interval}")
+
+        fetcher = getattr(self.client, fetcher_name)
+        if interval == "daily":
+            return fetcher(symbol, outputsize=outputsize)
+        return fetcher(symbol)

@@ -1,8 +1,8 @@
 from datetime import timedelta
 from unittest.mock import Mock
 
-import pytest
 import pandas as pd
+import pytest
 from django.utils import timezone
 
 from apps.core.services.performance.tracking_error import TrackingErrorService
@@ -18,7 +18,7 @@ def test_tracking_error_service_returns_tracking_and_information_ratio():
 
     ParametroActivo.objects.create(
         simbolo="AAPL",
-        sector="Tecnología",
+        sector="Tecnologia",
         bloque_estrategico="Growth",
         pais_exposicion="USA",
         tipo_patrimonial="Equity",
@@ -102,6 +102,7 @@ def test_tracking_error_service_returns_tracking_and_information_ratio():
     assert "portfolio_return_period" in result
     assert "benchmark_return_period" in result
     assert "excess_return_period" in result
+    assert result["benchmark_frequency_used"] == "daily"
 
 
 @pytest.mark.django_db
@@ -111,7 +112,7 @@ def test_tracking_error_service_returns_warning_for_insufficient_history():
 
     ParametroActivo.objects.create(
         simbolo="AAPL",
-        sector="TecnologÃ­a",
+        sector="Tecnologia",
         bloque_estrategico="Growth",
         pais_exposicion="USA",
         tipo_patrimonial="Equity",
@@ -177,7 +178,7 @@ def test_tracking_error_service_returns_warning_for_insufficient_history():
 
 
 @pytest.mark.django_db
-def test_tracking_error_service_uses_historical_benchmark_when_available():
+def test_tracking_error_service_uses_historical_daily_benchmark_when_available():
     now = timezone.now()
     today = now.date()
 
@@ -199,8 +200,82 @@ def test_tracking_error_service_uses_historical_benchmark_when_available():
         if key == "cedear_usa"
         else pd.Series(dtype=float)
     )
+    benchmark_service.build_weekly_returns.return_value = pd.Series(dtype=float)
 
     result = TrackingErrorService(benchmark_service=benchmark_service).calculate(days=90)
 
     assert "benchmark_return_period" in result
+    assert result["benchmark_frequency_used"] == "daily"
     assert benchmark_service.build_daily_returns.called
+
+
+@pytest.mark.django_db
+def test_tracking_error_service_falls_back_to_weekly_benchmark_when_daily_is_short():
+    now = timezone.now()
+    base_date = today = now.date()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion=now,
+        pais_consulta="argentina",
+        simbolo="AAPL",
+        descripcion="Apple",
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=100,
+        ppc=90,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=1200,
+        pais_titulo="USA",
+        mercado="NASDAQ",
+        tipo="CEDEARS",
+        moneda="dolar_Estadounidense",
+    )
+    ResumenCuentaSnapshot.objects.create(
+        fecha_extraccion=now,
+        numero_cuenta="123",
+        tipo_cuenta="CA",
+        moneda="ARS",
+        disponible=300,
+        comprometido=0,
+        saldo=300,
+        titulos_valorizados=0,
+        total=300,
+        estado="activa",
+    )
+
+    for offset, total in enumerate([1000, 1010, 1020, 1030, 1040, 1050, 1060, 1070][::-1]):
+        PortfolioSnapshot.objects.create(
+            fecha=base_date - timedelta(days=offset * 7),
+            total_iol=total,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=700,
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+
+    benchmark_service = Mock()
+    benchmark_service.build_daily_returns.return_value = pd.Series(dtype=float)
+    benchmark_service.build_weekly_returns.side_effect = lambda key, index: (
+        pd.Series([0.01] * len(index), index=index, dtype=float)
+        if key == "cedear_usa"
+        else pd.Series(dtype=float)
+    )
+
+    result = TrackingErrorService(benchmark_service=benchmark_service).calculate(days=365)
+
+    assert "tracking_error_annualized" in result
+    assert result["benchmark_frequency_used"] == "weekly"
+    assert benchmark_service.build_weekly_returns.called

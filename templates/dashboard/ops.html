@@ -22,7 +22,7 @@
             <div class="card-body table-responsive">
                 <table class="table table-hover">
                     <thead>
-                        <tr><th>Bucket</th><th>Symbol</th><th>Provider</th><th class="text-end">Rows</th><th>Ultima fecha</th><th>Estado</th></tr>
+                        <tr><th>Bucket</th><th>Symbol</th><th>Provider</th><th class="text-end">Daily</th><th class="text-end">Weekly</th><th>Ultima fecha</th><th>Estado</th></tr>
                     </thead>
                     <tbody>
                         {% for row in benchmark_status %}
@@ -30,7 +30,8 @@
                             <td>{{ row.benchmark_key }}</td>
                             <td>{{ row.symbol }}</td>
                             <td>{{ row.provider }}</td>
-                            <td class="text-end">{{ row.rows_count }}</td>
+                            <td class="text-end">{{ row.daily_rows_count }}</td>
+                            <td class="text-end">{{ row.weekly_rows_count }}</td>
                             <td>{{ row.latest_date|default:"-" }}</td>
                             <td>
                                 {% if row.is_ready %}

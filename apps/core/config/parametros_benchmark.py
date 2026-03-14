@@ -27,15 +27,18 @@ class ParametrosBenchmark:
             "symbol": "SPY",
             "provider": "alpha_vantage",
             "field": "adjusted_close",
+            "intervals": ["daily", "weekly_adjusted"],
         },
         "bonos_ar": {
             "symbol": "EMB",
             "provider": "alpha_vantage",
             "field": "adjusted_close",
+            "intervals": ["daily", "weekly_adjusted"],
         },
         "liquidez": {
             "symbol": "BIL",
             "provider": "alpha_vantage",
             "field": "adjusted_close",
+            "intervals": ["daily", "weekly_adjusted"],
         },
     }

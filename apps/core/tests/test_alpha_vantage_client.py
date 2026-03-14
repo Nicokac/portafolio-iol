@@ -33,6 +33,33 @@ def test_alpha_vantage_client_parses_daily_adjusted_series(mock_get):
     assert rows[1]["adjusted_close"] == 501.9
 
 
+@override_settings(ALPHA_VANTAGE_API_KEY="demo-key")
+@patch("apps.core.services.market_data.alpha_vantage_client.requests.get")
+def test_alpha_vantage_client_parses_weekly_adjusted_series(mock_get):
+    mock_response = Mock()
+    mock_response.json.return_value = {
+        "Weekly Adjusted Time Series": {
+            "2026-03-13": {
+                "4. close": "505.00",
+                "5. adjusted close": "504.75",
+                "6. volume": "1000",
+            },
+            "2026-03-06": {
+                "4. close": "500.00",
+                "5. adjusted close": "499.50",
+                "6. volume": "900",
+            },
+        }
+    }
+    mock_get.return_value = mock_response
+
+    rows = AlphaVantageClient().fetch_weekly_adjusted("SPY")
+
+    assert len(rows) == 2
+    assert rows[0]["fecha"].isoformat() == "2026-03-06"
+    assert rows[1]["adjusted_close"] == 504.75
+
+
 @override_settings(ALPHA_VANTAGE_API_KEY="")
 def test_alpha_vantage_client_requires_api_key():
     with pytest.raises(ValueError, match="ALPHA_VANTAGE_API_KEY"):

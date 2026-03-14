@@ -14,23 +14,23 @@ from apps.resumen_iol.models import ResumenCuentaSnapshot
 
 
 class TrackingErrorService:
-    """Cálculo de Tracking Error e Information Ratio contra benchmark compuesto."""
+    """Calculo de Tracking Error e Information Ratio contra benchmark compuesto."""
 
     TRADING_DAYS_PER_YEAR = 252
+    TRADING_WEEKS_PER_YEAR = 52
 
     def __init__(self, benchmark_service: BenchmarkSeriesService | None = None):
         self.benchmark_service = benchmark_service or BenchmarkSeriesService()
 
     def calculate(self, days: int = 90) -> Dict[str, float]:
-        portfolio_returns = self._get_portfolio_returns(days=days)
-        if portfolio_returns.empty:
+        portfolio_returns, benchmark_returns, frequency_used = self._resolve_return_series(days=days)
+        if portfolio_returns.empty or benchmark_returns.empty:
+            observations = int(len(portfolio_returns)) if not portfolio_returns.empty else 0
             return {
                 "warning": "insufficient_history",
-                "observations": 0,
+                "observations": observations,
                 "requested_days": days,
             }
-
-        benchmark_returns = self._get_composite_benchmark_returns(portfolio_returns.index)
 
         active_returns = portfolio_returns - benchmark_returns
         if active_returns.empty:
@@ -40,7 +40,8 @@ class TrackingErrorService:
                 "requested_days": days,
             }
 
-        tracking_error = float(active_returns.std()) * (self.TRADING_DAYS_PER_YEAR ** 0.5) * 100
+        annualization_factor = self.TRADING_DAYS_PER_YEAR if frequency_used == "daily" else self.TRADING_WEEKS_PER_YEAR
+        tracking_error = float(active_returns.std()) * (annualization_factor ** 0.5) * 100
 
         portfolio_total_return = float((1 + portfolio_returns).prod() - 1) * 100
         benchmark_total_return = float((1 + benchmark_returns).prod() - 1) * 100
@@ -58,6 +59,7 @@ class TrackingErrorService:
             "excess_return_period": round(excess_return, 2),
             "observations": int(len(portfolio_returns)),
             "requested_days": days,
+            "benchmark_frequency_used": frequency_used,
         }
         if tracking_error is not None:
             result["tracking_error_annualized"] = round(tracking_error, 2)
@@ -83,31 +85,111 @@ class TrackingErrorService:
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
-        df = df.set_index("fecha").sort_index()
+        df = df.dropna(subset=["total_iol"]).set_index("fecha").sort_index()
+        if len(df.index) < 2:
+            return pd.Series(dtype=float)
         return df["total_iol"].pct_change().dropna()
 
-    def _get_composite_benchmark_returns(self, index) -> pd.Series:
+    def _get_portfolio_weekly_returns(self, days: int) -> pd.Series:
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days)
+
+        snapshots = PortfolioSnapshot.objects.filter(
+            fecha__range=(start_date, end_date)
+        ).order_by("fecha")
+        if snapshots.count() < 2:
+            return pd.Series(dtype=float)
+
+        df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
+        if df.empty:
+            return pd.Series(dtype=float)
+
+        df["fecha"] = pd.to_datetime(df["fecha"])
+        df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
+        df = df.dropna(subset=["total_iol"]).set_index("fecha").sort_index()
+        if df.empty:
+            return pd.Series(dtype=float)
+
+        weekly = df["total_iol"].resample("W-FRI").last().dropna()
+        if len(weekly.index) < 2:
+            return pd.Series(dtype=float)
+        return weekly.pct_change().dropna()
+
+    def _get_composite_benchmark_returns(self, index, frequency: str = "daily") -> pd.Series:
         weights = self._infer_weights_from_portfolio()
         annual_returns = ParametrosBenchmark.ANNUAL_RETURNS
         mappings = ParametrosBenchmark.BENCHMARK_MAPPINGS
         benchmark_returns = pd.Series(0.0, index=index, dtype=float)
+        period_factor = self.TRADING_DAYS_PER_YEAR if frequency == "daily" else self.TRADING_WEEKS_PER_YEAR
 
         for key, weight in weights.items():
             if weight <= 0:
                 continue
-            historical_returns = self.benchmark_service.build_daily_returns(key, index)
+
+            if frequency == "daily":
+                historical_returns = self.benchmark_service.build_daily_returns(key, index)
+            else:
+                historical_returns = self.benchmark_service.build_weekly_returns(key, index)
+
+            fallback_period_return = annual_returns[mappings[key]] / period_factor
             if historical_returns.empty:
                 benchmark_returns = benchmark_returns.add(
-                    weight * (annual_returns[mappings[key]] / self.TRADING_DAYS_PER_YEAR),
+                    weight * fallback_period_return,
                     fill_value=0.0,
                 )
             else:
                 benchmark_returns = benchmark_returns.add(
-                    historical_returns.fillna(annual_returns[mappings[key]] / self.TRADING_DAYS_PER_YEAR) * weight,
+                    historical_returns.fillna(fallback_period_return) * weight,
                     fill_value=0.0,
                 )
 
         return benchmark_returns.astype(float)
+
+    def _resolve_return_series(self, days: int):
+        daily_portfolio_returns = self._get_portfolio_returns(days=days)
+        weekly_portfolio_returns = self._get_portfolio_weekly_returns(days=days)
+
+        daily_historical_observations = self._count_historical_observations(
+            daily_portfolio_returns.index,
+            frequency="daily",
+        ) if not daily_portfolio_returns.empty else 0
+        weekly_historical_observations = self._count_historical_observations(
+            weekly_portfolio_returns.index,
+            frequency="weekly",
+        ) if not weekly_portfolio_returns.empty else 0
+
+        if daily_historical_observations >= max(2, weekly_historical_observations):
+            daily_benchmark_returns = self._get_composite_benchmark_returns(
+                daily_portfolio_returns.index,
+                frequency="daily",
+            )
+            return daily_portfolio_returns, daily_benchmark_returns, "daily"
+        if weekly_historical_observations >= 2:
+            weekly_benchmark_returns = self._get_composite_benchmark_returns(
+                weekly_portfolio_returns.index,
+                frequency="weekly",
+            )
+            return weekly_portfolio_returns, weekly_benchmark_returns, "weekly"
+        daily_benchmark_returns = self._get_composite_benchmark_returns(
+            daily_portfolio_returns.index,
+            frequency="daily",
+        ) if not daily_portfolio_returns.empty else pd.Series(dtype=float)
+        return daily_portfolio_returns, daily_benchmark_returns, "daily"
+
+    def _count_historical_observations(self, index, frequency: str) -> int:
+        weights = self._infer_weights_from_portfolio()
+        observations = 0
+
+        for key, weight in weights.items():
+            if weight <= 0:
+                continue
+            if frequency == "daily":
+                series = self.benchmark_service.build_daily_returns(key, index)
+            else:
+                series = self.benchmark_service.build_weekly_returns(key, index)
+            observations = max(observations, int(len(series.dropna())))
+
+        return observations
 
     def _infer_weights_from_portfolio(self):
         latest_port = ActivoPortafolioSnapshot.objects.aggregate(

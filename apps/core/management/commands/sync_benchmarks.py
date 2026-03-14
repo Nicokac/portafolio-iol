@@ -19,13 +19,19 @@ class Command(BaseCommand):
         result = BenchmarkSeriesService().sync_all(outputsize=options["outputsize"])
         for benchmark_key, payload in result.items():
             if payload.get("success", True):
+                interval_text = ", ".join(
+                    f"{interval}={details['rows_received']}"
+                    for interval, details in payload.get("intervals", {}).items()
+                    if details.get("success", True)
+                )
                 self.stdout.write(
                     f"  {benchmark_key}: created={payload['created']} updated={payload['updated']} rows={payload['rows_received']}"
+                    + (f" ({interval_text})" if interval_text else "")
                 )
             else:
                 self.stdout.write(
                     self.style.WARNING(
-                        f"  {benchmark_key}: error={payload.get('error', 'unknown')} rows=0"
+                        f"  {benchmark_key}: error={payload.get('error', 'unknown')} rows={payload.get('rows_received', 0)}"
                     )
                 )
 

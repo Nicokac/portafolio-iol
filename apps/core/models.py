@@ -226,9 +226,15 @@ class SensitiveActionAudit(models.Model):
 class BenchmarkSnapshot(models.Model):
     """Serie historica de benchmarks externos persistida localmente."""
 
+    INTERVAL_CHOICES = [
+        ("daily", "Daily"),
+        ("weekly_adjusted", "Weekly Adjusted"),
+    ]
+
     benchmark_key = models.CharField(max_length=50)
     symbol = models.CharField(max_length=20)
     source = models.CharField(max_length=32, default="alpha_vantage")
+    interval = models.CharField(max_length=24, choices=INTERVAL_CHOICES, default="daily")
     fecha = models.DateField()
     close = models.DecimalField(max_digits=18, decimal_places=6)
     adjusted_close = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
@@ -239,15 +245,15 @@ class BenchmarkSnapshot(models.Model):
     class Meta:
         ordering = ["-fecha", "benchmark_key"]
         indexes = [
-            models.Index(fields=["benchmark_key", "fecha"]),
-            models.Index(fields=["symbol", "fecha"]),
+            models.Index(fields=["benchmark_key", "interval", "fecha"]),
+            models.Index(fields=["symbol", "interval", "fecha"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["benchmark_key", "source", "fecha"],
-                name="unique_benchmark_snapshot_per_day",
+                fields=["benchmark_key", "source", "interval", "fecha"],
+                name="unique_benchmark_snapshot_per_interval",
             )
         ]
 
     def __str__(self):
-        return f"{self.benchmark_key} {self.fecha} ({self.source})"
+        return f"{self.benchmark_key} {self.interval} {self.fecha} ({self.source})"
