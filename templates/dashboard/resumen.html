@@ -96,6 +96,24 @@
                     {% endif %}
                 </div>
                 <div class="text-body-secondary small">Ultimo dato {% if macro_local.ipc_nacional_date %}{{ macro_local.ipc_nacional_date }}{% else %}-{% endif %}</div>
+                <div class="small mt-2">
+                    <div class="text-body-secondary">
+                        Interanual:
+                        {% if macro_local.ipc_nacional_variation_yoy is not None %}
+                        <strong>{{ macro_local.ipc_nacional_variation_yoy|floatformat:2 }}%</strong>
+                        {% else %}
+                        <strong>N/D</strong>
+                        {% endif %}
+                    </div>
+                    <div class="text-body-secondary">
+                        Acum. anual:
+                        {% if macro_local.ipc_nacional_variation_ytd is not None %}
+                        <strong>{{ macro_local.ipc_nacional_variation_ytd|floatformat:2 }}%</strong>
+                        {% else %}
+                        <strong>N/D</strong>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>

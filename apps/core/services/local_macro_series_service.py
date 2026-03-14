@@ -71,6 +71,8 @@ class LocalMacroSeriesService:
         ipc_variation = None
         if len(ipc_snapshots) >= 2 and float(ipc_snapshots[1].value) != 0:
             ipc_variation = ((float(ipc_snapshots[0].value) / float(ipc_snapshots[1].value)) - 1) * 100
+        ipc_variation_yoy = self._calculate_ipc_variation_yoy(ipc_latest)
+        ipc_variation_ytd = self._calculate_ipc_variation_ytd(ipc_latest)
 
         total_iol_usd = None
         if total_iol and usdars_latest and float(usdars_latest.value) > 0:
@@ -82,11 +84,38 @@ class LocalMacroSeriesService:
             "ipc_nacional_index": float(ipc_latest.value) if ipc_latest else None,
             "ipc_nacional_date": ipc_latest.fecha if ipc_latest else None,
             "ipc_nacional_variation_mom": round(ipc_variation, 2) if ipc_variation is not None else None,
+            "ipc_nacional_variation_yoy": round(ipc_variation_yoy, 2) if ipc_variation_yoy is not None else None,
+            "ipc_nacional_variation_ytd": round(ipc_variation_ytd, 2) if ipc_variation_ytd is not None else None,
             "total_iol_usd_oficial": round(total_iol_usd, 2) if total_iol_usd is not None else None,
         }
 
     def _get_latest_snapshot(self, series_key: str):
         return MacroSeriesSnapshot.objects.filter(series_key=series_key).order_by("-fecha").first()
+
+    def _calculate_ipc_variation_yoy(self, ipc_latest):
+        if ipc_latest is None:
+            return None
+
+        previous_year = MacroSeriesSnapshot.objects.filter(
+            series_key="ipc_nacional",
+            fecha=ipc_latest.fecha.replace(year=ipc_latest.fecha.year - 1),
+        ).first()
+        if previous_year is None or float(previous_year.value) == 0:
+            return None
+        return ((float(ipc_latest.value) / float(previous_year.value)) - 1) * 100
+
+    def _calculate_ipc_variation_ytd(self, ipc_latest):
+        if ipc_latest is None:
+            return None
+
+        previous_december = MacroSeriesSnapshot.objects.filter(
+            series_key="ipc_nacional",
+            fecha__year=ipc_latest.fecha.year - 1,
+            fecha__month=12,
+        ).first()
+        if previous_december is None or float(previous_december.value) == 0:
+            return None
+        return ((float(ipc_latest.value) / float(previous_december.value)) - 1) * 100
 
     def _fetch_rows(self, config: dict) -> list[dict]:
         if config["source"] == "bcra":

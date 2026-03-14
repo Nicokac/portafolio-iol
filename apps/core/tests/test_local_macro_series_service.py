@@ -39,6 +39,22 @@ def test_local_macro_series_service_builds_context_summary():
         source="datos_gob_ar",
         external_id="145.3_INGNACNAL_DICI_M_15",
         frequency="monthly",
+        fecha=date(2025, 2, 1),
+        value=150.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="ipc_nacional",
+        source="datos_gob_ar",
+        external_id="145.3_INGNACNAL_DICI_M_15",
+        frequency="monthly",
+        fecha=date(2025, 12, 1),
+        value=200.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="ipc_nacional",
+        source="datos_gob_ar",
+        external_id="145.3_INGNACNAL_DICI_M_15",
+        frequency="monthly",
         fecha=date(2026, 1, 1),
         value=210.0,
     )
@@ -56,3 +72,5 @@ def test_local_macro_series_service_builds_context_summary():
     assert context["usdars_oficial"] == 1392.99
     assert context["total_iol_usd_oficial"] == 1000.0
     assert context["ipc_nacional_variation_mom"] == 2.0
+    assert context["ipc_nacional_variation_ytd"] == 7.1
+    assert context["ipc_nacional_variation_yoy"] == 42.8
