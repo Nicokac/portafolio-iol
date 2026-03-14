@@ -19,6 +19,8 @@
         <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="text-muted small me-2">Navegación rápida:</span>
             <a class="btn btn-sm btn-outline-primary" href="#lectura-portafolio">Lectura del portafolio</a>
+            <a class="btn btn-sm btn-outline-success" href="#lectura-ejecutiva">Resumen ejecutivo</a>
+            <a class="btn btn-sm btn-outline-warning" href="#lectura-riesgo">Riesgo y calidad</a>
             <a class="btn btn-sm btn-outline-dark" href="#posiciones-portafolio">Posiciones completas</a>
             <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:planeacion' %}">Ir a Planeación</a>
         </div>
@@ -31,6 +33,18 @@
         <p class="text-muted mb-0">Composición, riesgo, concentración, señales de rebalanceo y evolución histórica para entender el estado actual de la cartera.</p>
     </div>
 </section>
+
+<div class="card border-0 bg-primary-subtle mb-4" id="lectura-ejecutiva">
+    <div class="card-body py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h3 class="h5 mb-1">Resumen ejecutivo</h3>
+                <p class="text-muted mb-0">Primero lectura rápida del tamaño, liquidez, retorno y concentración antes de bajar al detalle operativo.</p>
+            </div>
+            <span class="badge text-bg-primary">Vista analítica</span>
+        </div>
+    </div>
+</div>
 
 <div class="row mb-4">
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Total IOL</h6><h4 class="card-text text-primary">{{ kpis.total_iol|currency:0 }}</h4><small class="text-muted">Activos + Cash</small></div></div></div>
@@ -64,6 +78,7 @@
 
 <div class="row mb-4">
     <div class="col-md-6">
+        <div id="lectura-riesgo" class="mb-2"></div>
         <h3>Riesgo del Portafolio</h3>
         <div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>
             <tr><td><strong>% USA</strong></td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|floatformat:1 }}%</td></tr>
@@ -128,7 +143,23 @@
 </div>
 
 <div id="posiciones-portafolio"></div>
-<section class="mt-5 mb-4"><div class="border-start border-4 border-info ps-3"><h2 class="mb-1">Posiciones completas</h2><p class="text-muted mb-0">Detalle operativo de liquidez, cash management, top posiciones y portafolio invertido completo.</p></div></section>
+<section class="mt-5 mb-4">
+    <div class="border-start border-4 border-info ps-3 mb-3">
+        <h2 class="mb-1">Posiciones completas</h2>
+        <p class="text-muted mb-0">Detalle operativo de liquidez, cash management, top posiciones y portafolio invertido completo.</p>
+    </div>
+    <div class="card border-0 bg-info-subtle">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h3 class="h5 mb-1">Capa operativa</h3>
+                    <p class="text-muted mb-0">Esta sección ya no intenta explicar la cartera: expone inventario y disponibilidad para auditoría y ejecución.</p>
+                </div>
+                <span class="badge text-bg-info">Vista de detalle</span>
+            </div>
+        </div>
+    </div>
+</section>
 <div class="card border-0 bg-light mb-4"><div class="card-body py-2"><div class="d-flex flex-wrap gap-2"><a class="btn btn-sm btn-outline-success" href="#posiciones-liquidez">Liquidez</a><a class="btn btn-sm btn-outline-info" href="#posiciones-fci">FCI / Cash</a><a class="btn btn-sm btn-outline-primary" href="#posiciones-top">Top 5</a><a class="btn btn-sm btn-outline-dark" href="#posiciones-inversion">Portafolio invertido</a></div></div></div>
 
 <div id="posiciones-liquidez"></div>

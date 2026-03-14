@@ -23,6 +23,24 @@
     </div>
 </div>
 
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h2 class="h5 mb-1">Mapa de trabajo</h2>
+                <p class="text-muted mb-0">Separamos la hoja en módulos internos para evitar scroll ciego: diagnóstico, simulación, aportes, optimización y parámetros.</p>
+            </div>
+            <ul class="nav nav-pills gap-2">
+                <li class="nav-item"><a class="nav-link active" href="#recomendaciones">Diagnóstico</a></li>
+                <li class="nav-item"><a class="nav-link" href="#simulacion">Simulación</a></li>
+                <li class="nav-item"><a class="nav-link" href="#planeacion-aportes">Aportes</a></li>
+                <li class="nav-item"><a class="nav-link" href="#optimizacion">Optimización</a></li>
+                <li class="nav-item"><a class="nav-link" href="#parametros-estrategia">Parámetros</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
 <section id="recomendaciones" class="mb-4">
     <div class="border-start border-4 border-primary ps-3 mb-4">
         <h2 class="mb-1">Diagnóstico y recomendaciones</h2>
@@ -153,6 +171,20 @@
             </div>
         </div>
     </div>
+    <div class="col-md-6">
+        <div class="card h-100 border-info-subtle">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Uso recomendado</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 text-muted">
+                    <li>Usá este bloque cuando entra capital nuevo y no querés rebalancear toda la cartera.</li>
+                    <li>Compará el plan sugerido contra el bloque de optimización antes de ejecutar cambios estructurales.</li>
+                    <li>Si la liquidez es baja, priorizá aportes sobre ventas.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
 
 <section id="optimizacion" class="mt-5 mb-4">
@@ -180,6 +212,20 @@
                     <h6>Resultado de Optimización</h6>
                     <div id="optimization-details"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 border-warning-subtle">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Criterio de uso</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 text-muted">
+                    <li><strong>Risk parity:</strong> para balancear riesgo entre bloques.</li>
+                    <li><strong>Markowitz:</strong> para explorar eficiencia teórica, no para ejecutar ciegamente.</li>
+                    <li><strong>Asignación objetivo:</strong> para contrastar contra tu política deseada.</li>
+                </ul>
             </div>
         </div>
     </div>
