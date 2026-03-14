@@ -1,5 +1,6 @@
 from django.test import TestCase
 from decimal import Decimal
+from datetime import timedelta
 from django.core.cache import cache
 from django.db import connection
 from django.test import override_settings
@@ -22,6 +23,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_portafolio_enriquecido_actual,
     get_riesgo_portafolio,
+    get_snapshot_coverage_summary,
     get_riesgo_portafolio_detallado,
     get_senales_rebalanceo,
 )
@@ -507,3 +509,25 @@ class TestDashboardSelectors(TestCase):
 
         assert len(first_call_queries) > 0
         assert len(second_call_queries) < len(first_call_queries)
+
+    def test_snapshot_coverage_summary_with_sparse_history(self):
+        fecha = timezone.now().date()
+
+        from apps.portafolio_iol.models import PortfolioSnapshot
+
+        for offset, total in [(5, 1000), (1, 1100), (0, 1200)]:
+            PortfolioSnapshot.objects.create(
+                fecha=fecha - timedelta(days=offset),
+                total_iol=total,
+                liquidez_operativa=200,
+                cash_management=100,
+                portafolio_invertido=700,
+                rendimiento_total=0,
+                exposicion_usa=50,
+                exposicion_argentina=50,
+            )
+
+        summary = get_snapshot_coverage_summary(days=30)
+        assert summary['snapshots_count'] == 3
+        assert summary['status'] == 'insufficient_history'
+        assert summary['max_gap_days'] >= 1

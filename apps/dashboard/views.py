@@ -34,6 +34,7 @@ from apps.dashboard.selectors import (
     get_portafolio_enriquecido_actual,
     get_riesgo_portafolio,
     get_riesgo_portafolio_detallado,
+    get_snapshot_coverage_summary,
     get_senales_rebalanceo,
 )
 
@@ -82,6 +83,7 @@ class DashboardContextMixin:
 
         context['senales_rebalanceo'] = get_senales_rebalanceo()
         context['snapshot_integrity'] = SnapshotIntegrityService().run_checks(days=120)
+        context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
         context['sync_audit'] = IOLSyncAuditService().run_audit(freshness_hours=24)
 
         alerts = get_active_alerts()

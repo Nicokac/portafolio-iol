@@ -1,11 +1,12 @@
 from typing import Dict, List
+from datetime import timedelta
 import hashlib
 from django.core.cache import cache
 from django.db.models import Max, Sum
 from django.utils import timezone
 
 from apps.parametros.models import ParametroActivo
-from apps.portafolio_iol.models import ActivoPortafolioSnapshot
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
 from apps.core.services.risk.cvar_service import CVaRService
@@ -686,7 +687,7 @@ def get_portafolio_clasificado_fecha(portafolio_fecha) -> Dict[str, List[Dict]]:
 def get_evolucion_historica(days: int = 30, max_points: int = 14) -> Dict[str, list]:
     """Obtiene evolución histórica consolidada por día calendario."""
     from collections import defaultdict
-    from apps.portafolio_iol.models import ActivoPortafolioSnapshot
+    from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
     from apps.resumen_iol.models import ResumenCuentaSnapshot
     from django.utils import timezone
     from dateutil.relativedelta import relativedelta
@@ -927,6 +928,53 @@ def get_senales_rebalanceo() -> Dict[str, list]:
         'sectorial_subponderado': sectorial_subponderado,
         'activos_sin_metadata': activos_sin_metadata,
         'posiciones_mayor_peso': posiciones_altas,
+    }
+
+
+def get_snapshot_coverage_summary(days: int = 90) -> Dict[str, float | int | str | bool | None]:
+    """Resume la cobertura reciente de snapshots para diagnosticar metricas temporales."""
+    end_date = timezone.now().date()
+    start_date = end_date - timedelta(days=days)
+
+    snapshots = list(
+        PortfolioSnapshot.objects.filter(fecha__range=(start_date, end_date)).order_by("fecha")
+    )
+
+    count = len(snapshots)
+    if count == 0:
+        return {
+            "requested_days": days,
+            "snapshots_count": 0,
+            "latest_snapshot_date": None,
+            "history_span_days": 0,
+            "missing_days_estimate": days,
+            "max_gap_days": None,
+            "is_sufficient_for_volatility": False,
+            "status": "insufficient_history",
+        }
+
+    latest_snapshot = snapshots[-1]
+    earliest_snapshot = snapshots[0]
+    history_span_days = (latest_snapshot.fecha - earliest_snapshot.fecha).days if count >= 2 else 0
+
+    max_gap_days = 0
+    for prev, curr in zip(snapshots, snapshots[1:]):
+        gap_days = (curr.fecha - prev.fecha).days
+        if gap_days > max_gap_days:
+            max_gap_days = gap_days
+
+    missing_days_estimate = max(days - count, 0)
+    is_sufficient = count >= 5 and history_span_days >= 7
+
+    return {
+        "requested_days": days,
+        "snapshots_count": count,
+        "latest_snapshot_date": latest_snapshot.fecha.isoformat() if latest_snapshot else None,
+        "history_span_days": history_span_days,
+        "missing_days_estimate": missing_days_estimate,
+        "max_gap_days": max_gap_days if count >= 2 else None,
+        "is_sufficient_for_volatility": is_sufficient,
+        "status": "ok" if is_sufficient else "insufficient_history",
     }
 
 

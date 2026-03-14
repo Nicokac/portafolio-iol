@@ -50,13 +50,14 @@
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Total IOL</h6><h4 class="card-text text-primary">{{ kpis.total_iol|currency:0 }}</h4><small class="text-muted">Activos + Cash</small></div></div></div>
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Top 10 Concentración</h6><h4 class="card-text text-danger">{{ kpis.top_10_concentracion|floatformat:1 }}%</h4><small class="text-muted">Base: Total Invertido</small></div></div></div>
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Rendimiento Total</h6><h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|floatformat:2 }}%</h4><small class="text-muted">Total IOL</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Desvio estandar anualizado de retornos diarios sobre patrimonio total.">Proxy de Volatilidad</h6><h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|floatformat:1 }}%</h4><small class="text-muted">Base: Total Invertido</small></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Desvio estandar anualizado sobre retornos diarios netos de flujos.">Proxy de Volatilidad</h6><h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|floatformat:1 }}%</h4><small class="text-muted">Retornos netos de flujos</small>{% if snapshot_coverage.status != 'ok' %}<div class="small text-warning-emphasis mt-2">Cobertura insuficiente: {{ snapshot_coverage.snapshots_count }} snapshots / {{ snapshot_coverage.requested_days }} días</div>{% endif %}</div></div></div>
 </div>
 
 <div class="mb-4">
     {% if kpis.top_10_concentracion > 70 %}<span class="badge bg-danger me-2">Riesgo alto: concentración Top 10 > 70%</span>{% endif %}
     {% if riesgo_portafolio_detallado.pct_liquidez < 10 %}<span class="badge bg-warning text-dark me-2">Liquidez baja: menor al 10%</span>{% endif %}
     {% if riesgo_portafolio.stress_worst_case_pct and riesgo_portafolio.stress_worst_case_pct < -10 %}<span class="badge bg-danger me-2">Stress severo: escenario peor a -10%</span>{% endif %}
+    {% if snapshot_coverage.status != 'ok' %}<span class="badge bg-warning text-dark me-2">Historia de snapshots insuficiente para riesgo robusto</span>{% endif %}
 </div>
 
 <div class="row mb-4">
@@ -116,6 +117,9 @@
             <tr><td><strong>Activos sin clasificación</strong></td><td class="text-end {% if riesgo_portafolio.metadata_unclassified_count > 0 %}text-warning{% else %}text-success{% endif %}">{{ riesgo_portafolio.metadata_unclassified_count|default:0 }}</td></tr>
             <tr><td><strong>Activos inconsistentes</strong></td><td class="text-end {% if riesgo_portafolio.metadata_inconsistent_count > 0 %}text-danger{% else %}text-success{% endif %}">{{ riesgo_portafolio.metadata_inconsistent_count|default:0 }}</td></tr>
             <tr><td><strong>Issues integridad snapshots</strong></td><td class="text-end {% if snapshot_integrity.issues_count > 0 %}text-danger{% else %}text-success{% endif %}">{{ snapshot_integrity.issues_count|default:0 }}</td></tr>
+            <tr><td><strong>Snapshots recientes</strong></td><td class="text-end {% if snapshot_coverage.status == 'ok' %}text-success{% else %}text-warning{% endif %}">{{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}</td></tr>
+            <tr><td><strong>Último snapshot</strong></td><td class="text-end">{{ snapshot_coverage.latest_snapshot_date|default:"-" }}</td></tr>
+            <tr><td><strong>Gap máximo</strong></td><td class="text-end">{% if snapshot_coverage.max_gap_days is not None %}{{ snapshot_coverage.max_gap_days }} días{% else %}-{% endif %}</td></tr>
             <tr><td><strong>Estado sync IOL</strong></td><td class="text-end"><span class="badge {% if sync_audit.status == 'ok' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ sync_audit.status|default:"unknown" }}</span></td></tr>
         </tbody></table></div></div>
     </div>
