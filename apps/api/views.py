@@ -210,6 +210,7 @@ def metrics_returns(request):
                     'portfolio_return_ytd_nominal': 'total_portfolio',
                     'portfolio_return_ytd_real': 'total_portfolio',
                     'ipc_ytd': 'total_portfolio',
+                    'badlar_privada': 'total_portfolio',
                 },
             },
         )

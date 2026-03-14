@@ -134,6 +134,22 @@ class LocalMacroSeriesService:
             "observations": len(series),
         }
 
+    def build_rate_returns(self, series_key: str, dates, periods_per_year: int) -> pd.Series:
+        normalized_dates = pd.to_datetime(list(dates))
+        if len(normalized_dates) == 0:
+            return pd.Series(dtype=float)
+
+        series_df = self._build_macro_series_frame(series_key, days=int((normalized_dates.max() - normalized_dates.min()).days) + 30, extra_days=30)
+        if series_df.empty:
+            return pd.Series(dtype=float)
+
+        series_df = series_df.reindex(normalized_dates.union(series_df.index)).sort_index().ffill().reindex(normalized_dates)
+        if series_df.empty or series_key not in series_df:
+            return pd.Series(dtype=float)
+
+        rate_series = pd.to_numeric(series_df[series_key], errors="coerce") / 100.0
+        return rate_series / periods_per_year
+
     def _get_latest_snapshot(self, series_key: str):
         return MacroSeriesSnapshot.objects.filter(series_key=series_key).order_by("-fecha").first()
 

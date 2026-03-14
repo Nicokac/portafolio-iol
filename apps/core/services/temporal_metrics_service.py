@@ -165,6 +165,12 @@ class TemporalMetricsService:
                 else None
             ),
             'ipc_ytd': macro_context.get('ipc_nacional_variation_ytd'),
+            'badlar_privada': macro_context.get('badlar_privada'),
+            'badlar_privada_date': (
+                macro_context.get('badlar_privada_date').isoformat()
+                if macro_context.get('badlar_privada_date')
+                else None
+            ),
         }
 
     def get_portfolio_volatility(self, days: int = 30) -> Dict:

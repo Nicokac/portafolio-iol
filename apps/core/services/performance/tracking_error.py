@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from apps.core.config.parametros_benchmark import ParametrosBenchmark
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
+from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
@@ -19,8 +20,13 @@ class TrackingErrorService:
     TRADING_DAYS_PER_YEAR = 252
     TRADING_WEEKS_PER_YEAR = 52
 
-    def __init__(self, benchmark_service: BenchmarkSeriesService | None = None):
+    def __init__(
+        self,
+        benchmark_service: BenchmarkSeriesService | None = None,
+        local_macro_service: LocalMacroSeriesService | None = None,
+    ):
         self.benchmark_service = benchmark_service or BenchmarkSeriesService()
+        self.local_macro_service = local_macro_service or LocalMacroSeriesService()
 
     def calculate(self, days: int = 90) -> Dict[str, float]:
         portfolio_returns, benchmark_returns, frequency_used = self._resolve_return_series(days=days)
@@ -131,6 +137,16 @@ class TrackingErrorService:
             else:
                 historical_returns = self.benchmark_service.build_weekly_returns(key, index)
 
+            if key == "liquidez":
+                periods_per_year = self.TRADING_DAYS_PER_YEAR if frequency == "daily" else self.TRADING_WEEKS_PER_YEAR
+                local_rate_returns = self.local_macro_service.build_rate_returns(
+                    "badlar_privada",
+                    index,
+                    periods_per_year=periods_per_year,
+                )
+                if not local_rate_returns.empty:
+                    historical_returns = local_rate_returns
+
             fallback_period_return = annual_returns[mappings[key]] / period_factor
             if historical_returns.empty:
                 benchmark_returns = benchmark_returns.add(
@@ -187,6 +203,15 @@ class TrackingErrorService:
                 series = self.benchmark_service.build_daily_returns(key, index)
             else:
                 series = self.benchmark_service.build_weekly_returns(key, index)
+            if key == "liquidez":
+                periods_per_year = self.TRADING_DAYS_PER_YEAR if frequency == "daily" else self.TRADING_WEEKS_PER_YEAR
+                local_rate_returns = self.local_macro_service.build_rate_returns(
+                    "badlar_privada",
+                    index,
+                    periods_per_year=periods_per_year,
+                )
+                if not local_rate_returns.empty:
+                    series = local_rate_returns
             observations = max(observations, int(len(series.dropna())))
 
         return observations

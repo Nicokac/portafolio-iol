@@ -20,9 +20,15 @@
 </section>
 
 <section class="row g-3 mb-4">
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso vs benchmark</div><div class="h3 mb-0" id="m-excess">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h3 mb-0" id="m-real-ytd">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">BADLAR</div><div class="h3 mb-0" id="m-badlar">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso vs benchmark</div><div class="h3 mb-0" id="m-excess">-</div></div></div></div>
+    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">IPC YTD</div><div class="h3 mb-0" id="m-ipc-ytd">-</div></div></div></div>
 </section>
 
 <section class="row g-3">
@@ -83,7 +89,10 @@ Promise.all([
     document.getElementById('m-te').textContent = formatPctMetric(bench, 'tracking_error_annualized');
     document.getElementById('m-ir').textContent = formatNumMetric(bench, 'information_ratio');
     document.getElementById('m-ret').textContent = formatPctOrNA(ret.total_period_return);
+    document.getElementById('m-real-ytd').textContent = formatPctOrNA(ret.portfolio_return_ytd_real);
+    document.getElementById('m-badlar').textContent = formatPctOrNA(ret.badlar_privada);
     document.getElementById('m-excess').textContent = formatPctOrNA(bench.excess_return_period);
+    document.getElementById('m-ipc-ytd').textContent = formatPctOrNA(ret.ipc_ytd);
 
     const warningTexts = [];
     if (hasInsufficientHistory(vol)) warningTexts.push('Volatilidad y ratios');
@@ -100,6 +109,10 @@ Promise.all([
         ['Retorno mensual', formatPctOrNA(ret.monthly_return)],
         ['TWR total', formatPctOrNA(ret.twr_total_return)],
         ['TWR anualizado', formatPctOrNA(ret.twr_annualized_return)],
+        ['Real YTD', formatPctOrNA(ret.portfolio_return_ytd_real)],
+        ['Nominal YTD', formatPctOrNA(ret.portfolio_return_ytd_nominal)],
+        ['IPC YTD', formatPctOrNA(ret.ipc_ytd)],
+        ['BADLAR', formatPctOrNA(ret.badlar_privada)],
         ['Portfolio return period', formatPctOrNA(bench.portfolio_return_period)],
         ['Benchmark return period', formatPctOrNA(bench.benchmark_return_period)],
         ['Tracking error', formatPctMetric(bench, 'tracking_error_annualized')],

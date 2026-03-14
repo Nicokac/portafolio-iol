@@ -1,6 +1,7 @@
 from datetime import date
 from unittest.mock import Mock
 
+import pandas as pd
 import pytest
 
 from apps.core.models import MacroSeriesSnapshot
@@ -220,3 +221,29 @@ def test_local_macro_series_service_builds_macro_comparison():
     assert result["series"][0]["portfolio"] == 100.0
     assert result["series"][0]["usdars_oficial"] == 100.0
     assert result["series"][0]["ipc_nacional"] == 100.0
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_builds_rate_returns_from_badlar():
+    for current_date, value in [
+        (date(2026, 3, 10), 30.0),
+        (date(2026, 3, 11), 30.0),
+        (date(2026, 3, 12), 30.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="badlar_privada",
+            source="bcra",
+            external_id="7",
+            frequency="daily",
+            fecha=current_date,
+            value=value,
+        )
+
+    returns = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).build_rate_returns(
+        "badlar_privada",
+        pd.to_datetime(["2026-03-11", "2026-03-12"]),
+        periods_per_year=252,
+    )
+
+    assert len(returns) == 2
+    assert round(float(returns.iloc[0]), 6) == round(0.30 / 252, 6)

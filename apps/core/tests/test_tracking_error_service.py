@@ -279,3 +279,71 @@ def test_tracking_error_service_falls_back_to_weekly_benchmark_when_daily_is_sho
     assert "tracking_error_annualized" in result
     assert result["benchmark_frequency_used"] == "weekly"
     assert benchmark_service.build_weekly_returns.called
+
+
+@pytest.mark.django_db
+def test_tracking_error_service_uses_badlar_for_liquidity_bucket():
+    now = timezone.now()
+    today = now.date()
+
+    PortfolioSnapshot.objects.create(
+        fecha=today - timedelta(days=2),
+        total_iol=1000,
+        liquidez_operativa=1000,
+        cash_management=0,
+        portafolio_invertido=0,
+        rendimiento_total=0.0,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today - timedelta(days=1),
+        total_iol=1002,
+        liquidez_operativa=1002,
+        cash_management=0,
+        portafolio_invertido=0,
+        rendimiento_total=0.2,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today,
+        total_iol=1004,
+        liquidez_operativa=1004,
+        cash_management=0,
+        portafolio_invertido=0,
+        rendimiento_total=0.4,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    ResumenCuentaSnapshot.objects.create(
+        fecha_extraccion=now,
+        numero_cuenta="123",
+        tipo_cuenta="CA",
+        moneda="ARS",
+        disponible=1000,
+        comprometido=0,
+        saldo=1000,
+        titulos_valorizados=0,
+        total=1000,
+        estado="activa",
+    )
+
+    benchmark_service = Mock()
+    benchmark_service.build_daily_returns.return_value = pd.Series(dtype=float)
+    benchmark_service.build_weekly_returns.return_value = pd.Series(dtype=float)
+
+    local_macro_service = Mock()
+    local_macro_service.build_rate_returns.return_value = pd.Series(
+        [0.0005, 0.0005],
+        index=pd.to_datetime([today - timedelta(days=1), today]),
+        dtype=float,
+    )
+
+    result = TrackingErrorService(
+        benchmark_service=benchmark_service,
+        local_macro_service=local_macro_service,
+    ).calculate(days=30)
+
+    assert "benchmark_return_period" in result
+    assert local_macro_service.build_rate_returns.called
