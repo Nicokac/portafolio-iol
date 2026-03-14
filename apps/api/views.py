@@ -211,6 +211,8 @@ def metrics_returns(request):
                     'portfolio_return_ytd_real': 'total_portfolio',
                     'ipc_ytd': 'total_portfolio',
                     'badlar_privada': 'total_portfolio',
+                    'badlar_ytd': 'total_portfolio',
+                    'portfolio_excess_ytd_vs_badlar': 'total_portfolio',
                 },
             },
         )
@@ -242,6 +244,7 @@ def metrics_volatility(request):
                     'daily_volatility': 'total_portfolio',
                     'annualized_volatility': 'total_portfolio',
                     'sharpe_ratio': 'total_portfolio',
+                    'sharpe_ratio_badlar': 'total_portfolio',
                     'sortino_ratio': 'total_portfolio',
                 },
             },
@@ -448,6 +451,29 @@ def metrics_benchmarking(request):
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "alerts_active")
+
+
+@api_view(['GET'])
+def metrics_benchmark_curve(request):
+    """Obtiene curva normalizada portafolio vs benchmark compuesto."""
+    try:
+        days = int(request.query_params.get('days', 365))
+    except ValueError:
+        return Response(
+            {'error': 'Parametro days debe ser un numero entero valido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        result = sanitize_json_payload(TrackingErrorService().build_comparison_curve(days=days))
+        result['metadata'] = build_metric_metadata(
+            methodology='Normalized cumulative comparison between portfolio returns and composite benchmark returns',
+            data_basis='PortfolioSnapshot.total_iol returns + benchmark configuration + local macro liquidity reference',
+            limitations='Curve requires overlapping history and may downgrade to weekly frequency when daily benchmark depth is insufficient',
+        )
+        return Response(result, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "metrics_benchmark_curve")
 
 
 @api_view(['GET'])

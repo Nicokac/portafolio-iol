@@ -29,6 +29,7 @@ urlpatterns = [
     path('metrics/stress-test/', views.metrics_stress_test, name='metrics-stress-test'),
     path('metrics/attribution/', views.metrics_attribution, name='metrics-attribution'),
     path('metrics/benchmarking/', views.metrics_benchmarking, name='metrics-benchmarking'),
+    path('metrics/benchmark-curve/', views.metrics_benchmark_curve, name='metrics-benchmark-curve'),
     path('metrics/liquidity/', views.metrics_liquidity, name='metrics-liquidity'),
     path('metrics/data-quality/', views.metrics_data_quality, name='metrics-data-quality'),
     path('metrics/snapshot-integrity/', views.metrics_snapshot_integrity, name='metrics-snapshot-integrity'),

@@ -347,3 +347,80 @@ def test_tracking_error_service_uses_badlar_for_liquidity_bucket():
 
     assert "benchmark_return_period" in result
     assert local_macro_service.build_rate_returns.called
+
+
+@pytest.mark.django_db
+def test_tracking_error_service_builds_comparison_curve():
+    now = timezone.now()
+    today = now.date()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion=now,
+        pais_consulta="argentina",
+        simbolo="AAPL",
+        descripcion="Apple",
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=100,
+        ppc=90,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=1200,
+        pais_titulo="USA",
+        mercado="NASDAQ",
+        tipo="CEDEARS",
+        moneda="dolar_Estadounidense",
+    )
+    ResumenCuentaSnapshot.objects.create(
+        fecha_extraccion=now,
+        numero_cuenta="123",
+        tipo_cuenta="CA",
+        moneda="ARS",
+        disponible=300,
+        comprometido=0,
+        saldo=300,
+        titulos_valorizados=0,
+        total=300,
+        estado="activa",
+    )
+    for offset, total in enumerate([1000, 1010, 1030, 1020][::-1]):
+        PortfolioSnapshot.objects.create(
+            fecha=today - timedelta(days=offset),
+            total_iol=total,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=700,
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+
+    benchmark_service = Mock()
+    benchmark_service.build_daily_returns.side_effect = lambda key, index: (
+        pd.Series([0.01, 0.015, -0.005], index=index, dtype=float)
+        if key == "cedear_usa"
+        else pd.Series(dtype=float)
+    )
+    benchmark_service.build_weekly_returns.return_value = pd.Series(dtype=float)
+    local_macro_service = Mock()
+    local_macro_service.build_rate_returns.return_value = pd.Series(dtype=float)
+
+    result = TrackingErrorService(
+        benchmark_service=benchmark_service,
+        local_macro_service=local_macro_service,
+    ).build_comparison_curve(days=90)
+
+    assert result["observations"] == 3
+    assert result["benchmark_frequency_used"] == "daily"
+    assert result["series"][0]["portfolio"] > 0
+    assert result["series"][0]["benchmark"] > 0

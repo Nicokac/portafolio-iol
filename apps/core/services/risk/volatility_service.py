@@ -4,6 +4,7 @@ from typing import Dict
 import pandas as pd
 from django.utils import timezone
 
+from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.portafolio_iol.models import PortfolioSnapshot
 
 
@@ -12,6 +13,9 @@ class VolatilityService:
 
     TRADING_DAYS_PER_YEAR = 252
     MIN_OBSERVATIONS = 5
+
+    def __init__(self, local_macro_service: LocalMacroSeriesService | None = None):
+        self.local_macro_service = local_macro_service or LocalMacroSeriesService()
 
     def calculate_volatility(self, days: int = 30) -> Dict[str, float]:
         end_date = timezone.now().date()
@@ -103,6 +107,16 @@ class VolatilityService:
         if daily_vol > 0:
             sharpe = mean_return / daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)
             result["sharpe_ratio"] = round(sharpe, 2)
+
+            badlar_returns = self.local_macro_service.build_rate_returns(
+                "badlar_privada",
+                returns.index,
+                periods_per_year=self.TRADING_DAYS_PER_YEAR,
+            )
+            if not badlar_returns.empty:
+                excess_returns = returns.sub(badlar_returns.fillna(0.0), fill_value=0.0)
+                sharpe_badlar = float(excess_returns.mean()) / daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)
+                result["sharpe_ratio_badlar"] = round(sharpe_badlar, 2)
 
         downside = returns[returns < 0]
         if not downside.empty:

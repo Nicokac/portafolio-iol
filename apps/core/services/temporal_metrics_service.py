@@ -166,6 +166,8 @@ class TemporalMetricsService:
             ),
             'ipc_ytd': macro_context.get('ipc_nacional_variation_ytd'),
             'badlar_privada': macro_context.get('badlar_privada'),
+            'badlar_ytd': macro_context.get('badlar_ytd'),
+            'portfolio_excess_ytd_vs_badlar': macro_context.get('portfolio_excess_ytd_vs_badlar'),
             'badlar_privada_date': (
                 macro_context.get('badlar_privada_date').isoformat()
                 if macro_context.get('badlar_privada_date')

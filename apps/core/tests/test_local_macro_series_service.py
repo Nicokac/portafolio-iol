@@ -101,12 +101,14 @@ def test_local_macro_series_service_builds_context_summary():
 
     assert context["usdars_oficial"] == 1392.99
     assert context["badlar_privada"] == 29.5
+    assert context["badlar_ytd"] is not None
     assert context["total_iol_usd_oficial"] == 1000.0
     assert context["ipc_nacional_variation_mom"] == 2.0
     assert context["ipc_nacional_variation_ytd"] == 7.1
     assert context["ipc_nacional_variation_yoy"] == 42.8
     assert context["portfolio_return_ytd_nominal"] == 8.0
     assert context["portfolio_return_ytd_real"] == 0.84
+    assert context["portfolio_excess_ytd_vs_badlar"] is not None
     assert context["portfolio_return_ytd_is_partial"] is False
     assert context["portfolio_return_ytd_base_date"].isoformat() == "2025-12-31"
 

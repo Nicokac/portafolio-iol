@@ -52,6 +52,7 @@ GET_ENDPOINTS = [
     'metrics-performance',
     'metrics-historical-comparison',
     'metrics-macro-comparison',
+    'metrics-benchmark-curve',
     'metrics-var',
     'metrics-cvar',
     'metrics-stress-test',
@@ -192,6 +193,7 @@ class TestAPIErrorHandling:
         ('metrics-performance', 'apps.api.views.TemporalMetricsService', 'get_performance_metrics'),
         ('metrics-historical-comparison', 'apps.api.views.TemporalMetricsService', 'get_historical_comparison'),
         ('metrics-macro-comparison', 'apps.api.views.LocalMacroSeriesService', 'build_macro_comparison'),
+        ('metrics-benchmark-curve', 'apps.api.views.TrackingErrorService', 'build_comparison_curve'),
         ('metrics-var', 'apps.api.views.VaRService', 'calculate_var_set'),
         ('metrics-cvar', 'apps.api.views.CVaRService', 'calculate_cvar_set'),
         ('metrics-stress-test', 'apps.api.views.StressTestService', 'run_all'),
@@ -265,6 +267,12 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
+    def test_metrics_benchmark_curve_invalid_days(self, auth_client):
+        url = reverse('metrics-benchmark-curve') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
     def test_metrics_cvar_invalid_confidence(self, auth_client):
         url = reverse('metrics-cvar') + '?confidence=invalid'
         response = auth_client.get(url)
@@ -307,8 +315,10 @@ class TestAPIInputValidation:
         if response.status_code == 200:
             body = response.json()
             assert 'metadata' in body
-            assert 'bases' in body['metadata']
+            assert 'fields_basis' in body['metadata']
             assert 'portfolio_return_ytd_real' in body['metadata']['fields_basis']
+            assert 'badlar_ytd' in body['metadata']['fields_basis']
+            assert 'portfolio_excess_ytd_vs_badlar' in body['metadata']['fields_basis']
 
     def test_metrics_volatility_includes_basis_metadata(self, auth_client):
         url = reverse('metrics-volatility')
@@ -318,6 +328,7 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'fields_basis' in body['metadata']
+            assert 'sharpe_ratio_badlar' in body['metadata']['fields_basis']
 
     def test_metrics_attribution_includes_metadata(self, auth_client):
         url = reverse('metrics-attribution')
@@ -330,6 +341,15 @@ class TestAPIInputValidation:
 
     def test_metrics_macro_comparison_includes_metadata(self, auth_client):
         url = reverse('metrics-macro-comparison')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'methodology' in body['metadata']
+
+    def test_metrics_benchmark_curve_includes_metadata(self, auth_client):
+        url = reverse('metrics-benchmark-curve')
         response = auth_client.get(url)
         assert response.status_code in [200, 500]
         if response.status_code == 200:
@@ -383,6 +403,7 @@ class TestAPIInputValidation:
         'metrics-cvar',
         'metrics-attribution',
         'metrics-macro-comparison',
+        'metrics-benchmark-curve',
         'metrics-benchmarking',
         'metrics-liquidity',
         'metrics-data-quality',

@@ -81,18 +81,27 @@ class LocalMacroSeriesService:
         if total_iol and usdars_latest and float(usdars_latest.value) > 0:
             total_iol_usd = float(total_iol) / float(usdars_latest.value)
         portfolio_ytd = self._calculate_portfolio_ytd(ipc_variation_ytd)
+        badlar_ytd = self._calculate_badlar_ytd()
+        portfolio_excess_ytd_vs_badlar = None
+        if (
+            portfolio_ytd.get("portfolio_return_ytd_nominal") is not None and
+            badlar_ytd is not None
+        ):
+            portfolio_excess_ytd_vs_badlar = portfolio_ytd["portfolio_return_ytd_nominal"] - badlar_ytd
 
         return {
             "usdars_oficial": float(usdars_latest.value) if usdars_latest else None,
             "usdars_oficial_date": usdars_latest.fecha if usdars_latest else None,
             "badlar_privada": float(badlar_latest.value) if badlar_latest else None,
             "badlar_privada_date": badlar_latest.fecha if badlar_latest else None,
+            "badlar_ytd": round(badlar_ytd, 2) if badlar_ytd is not None else None,
             "ipc_nacional_index": float(ipc_latest.value) if ipc_latest else None,
             "ipc_nacional_date": ipc_latest.fecha if ipc_latest else None,
             "ipc_nacional_variation_mom": round(ipc_variation, 2) if ipc_variation is not None else None,
             "ipc_nacional_variation_yoy": round(ipc_variation_yoy, 2) if ipc_variation_yoy is not None else None,
             "ipc_nacional_variation_ytd": round(ipc_variation_ytd, 2) if ipc_variation_ytd is not None else None,
             "total_iol_usd_oficial": round(total_iol_usd, 2) if total_iol_usd is not None else None,
+            "portfolio_excess_ytd_vs_badlar": round(portfolio_excess_ytd_vs_badlar, 2) if portfolio_excess_ytd_vs_badlar is not None else None,
             **portfolio_ytd,
         }
 
@@ -221,6 +230,33 @@ class LocalMacroSeriesService:
             "portfolio_return_ytd_is_partial": is_partial,
             "portfolio_return_ytd_base_date": baseline_snapshot.fecha,
         }
+
+    def _calculate_badlar_ytd(self):
+        latest_snapshot = self._get_latest_snapshot("badlar_privada")
+        if latest_snapshot is None:
+            return None
+
+        start_of_year = latest_snapshot.fecha.replace(month=1, day=1)
+        qs = MacroSeriesSnapshot.objects.filter(
+            series_key="badlar_privada",
+            fecha__gte=start_of_year,
+            fecha__lte=latest_snapshot.fecha,
+        ).order_by("fecha")
+        if not qs.exists():
+            return None
+
+        df = pd.DataFrame(list(qs.values("fecha", "value")))
+        if df.empty:
+            return None
+
+        df["value"] = pd.to_numeric(df["value"], errors="coerce")
+        df = df.dropna(subset=["value"])
+        if df.empty:
+            return None
+
+        period_returns = (df["value"].astype(float) / 100.0) / 252.0
+        cumulative = (1 + period_returns).prod() - 1
+        return cumulative * 100
 
     def _fetch_rows(self, config: dict) -> list[dict]:
         if config["source"] == "bcra":

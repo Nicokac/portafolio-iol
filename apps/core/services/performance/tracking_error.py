@@ -75,6 +75,37 @@ class TrackingErrorService:
             result["information_ratio"] = round(information_ratio, 2)
         return result
 
+    def build_comparison_curve(self, days: int = 365, base_value: float = 100.0) -> Dict[str, object]:
+        portfolio_returns, benchmark_returns, frequency_used = self._resolve_return_series(days=days)
+        if portfolio_returns.empty or benchmark_returns.empty:
+            observations = int(len(portfolio_returns)) if not portfolio_returns.empty else 0
+            return {
+                "warning": "insufficient_history",
+                "requested_days": days,
+                "observations": observations,
+                "series": [],
+            }
+
+        portfolio_curve = (1 + portfolio_returns).cumprod() * base_value
+        benchmark_curve = (1 + benchmark_returns).cumprod() * base_value
+
+        series = [
+            {
+                "fecha": idx.date().isoformat(),
+                "portfolio": round(float(portfolio_curve.loc[idx]), 2),
+                "benchmark": round(float(benchmark_curve.loc[idx]), 2),
+            }
+            for idx in portfolio_curve.index
+            if idx in benchmark_curve.index
+        ]
+        return {
+            "requested_days": days,
+            "observations": len(series),
+            "benchmark_frequency_used": frequency_used,
+            "base_value": base_value,
+            "series": series,
+        }
+
     def _get_portfolio_returns(self, days: int) -> pd.Series:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
