@@ -129,6 +129,14 @@
                     {% endif %}
                 </div>
                 <div class="text-body-secondary small">Estimado con TC mayorista BCRA</div>
+                <div class="text-body-secondary small">
+                    BADLAR:
+                    {% if macro_local.badlar_privada is not None %}
+                    {{ macro_local.badlar_privada|floatformat:2 }}%
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

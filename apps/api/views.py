@@ -23,6 +23,7 @@ from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
 from apps.core.services.temporal_metrics_service import TemporalMetricsService
+from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.dashboard.selectors import (
     get_concentracion_pais,
     get_concentracion_sector,
@@ -295,6 +296,29 @@ def metrics_historical_comparison(request):
         return Response(comparison, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "optimizer_risk_parity")
+
+
+@api_view(['GET'])
+def metrics_macro_comparison(request):
+    """Obtiene comparacion historica normalizada entre portafolio, dolar oficial e IPC."""
+    try:
+        days = int(request.query_params.get('days', 365))
+    except ValueError:
+        return Response(
+            {'error': 'Parametro days debe ser un numero entero valido'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        result = LocalMacroSeriesService().build_macro_comparison(days=days)
+        result['metadata'] = build_metric_metadata(
+            methodology='Normalized level comparison rebased to 100 for portfolio total value, USDARS official and IPC index',
+            data_basis='PortfolioSnapshot.total_iol + BCRA + datos.gob.ar/INDEC snapshots',
+            limitations='IPC is monthly and forward-filled across daily observations; sparse portfolio history may reduce overlap',
+        )
+        return Response(result, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "metrics_macro_comparison")
 
 
 @api_view(['GET'])

@@ -51,6 +51,7 @@ GET_ENDPOINTS = [
     'metrics-volatility',
     'metrics-performance',
     'metrics-historical-comparison',
+    'metrics-macro-comparison',
     'metrics-var',
     'metrics-cvar',
     'metrics-stress-test',
@@ -190,6 +191,7 @@ class TestAPIErrorHandling:
         ('metrics-volatility', 'apps.api.views.TemporalMetricsService', 'get_portfolio_volatility'),
         ('metrics-performance', 'apps.api.views.TemporalMetricsService', 'get_performance_metrics'),
         ('metrics-historical-comparison', 'apps.api.views.TemporalMetricsService', 'get_historical_comparison'),
+        ('metrics-macro-comparison', 'apps.api.views.LocalMacroSeriesService', 'build_macro_comparison'),
         ('metrics-var', 'apps.api.views.VaRService', 'calculate_var_set'),
         ('metrics-cvar', 'apps.api.views.CVaRService', 'calculate_cvar_set'),
         ('metrics-stress-test', 'apps.api.views.StressTestService', 'run_all'),
@@ -257,6 +259,12 @@ class TestAPIInputValidation:
         assert response.status_code == 400
         assert 'error' in response.json()
 
+    def test_metrics_macro_comparison_invalid_days(self, auth_client):
+        url = reverse('metrics-macro-comparison') + '?days=invalid'
+        response = auth_client.get(url)
+        assert response.status_code == 400
+        assert 'error' in response.json()
+
     def test_metrics_cvar_invalid_confidence(self, auth_client):
         url = reverse('metrics-cvar') + '?confidence=invalid'
         response = auth_client.get(url)
@@ -320,6 +328,15 @@ class TestAPIInputValidation:
             assert 'metadata' in body
             assert 'methodology' in body['metadata']
 
+    def test_metrics_macro_comparison_includes_metadata(self, auth_client):
+        url = reverse('metrics-macro-comparison')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert 'methodology' in body['metadata']
+
     def test_metrics_benchmarking_includes_metadata(self, auth_client):
         url = reverse('metrics-benchmarking')
         response = auth_client.get(url)
@@ -365,6 +382,7 @@ class TestAPIInputValidation:
         'metrics-var',
         'metrics-cvar',
         'metrics-attribution',
+        'metrics-macro-comparison',
         'metrics-benchmarking',
         'metrics-liquidity',
         'metrics-data-quality',

@@ -56,6 +56,14 @@ def test_local_macro_series_service_builds_context_summary():
         value=1392.99,
     )
     MacroSeriesSnapshot.objects.create(
+        series_key="badlar_privada",
+        source="bcra",
+        external_id="7",
+        frequency="daily",
+        fecha=date(2026, 3, 13),
+        value=29.5,
+    )
+    MacroSeriesSnapshot.objects.create(
         series_key="ipc_nacional",
         source="datos_gob_ar",
         external_id="145.3_INGNACNAL_DICI_M_15",
@@ -91,6 +99,7 @@ def test_local_macro_series_service_builds_context_summary():
     context = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_context_summary(total_iol=1392990)
 
     assert context["usdars_oficial"] == 1392.99
+    assert context["badlar_privada"] == 29.5
     assert context["total_iol_usd_oficial"] == 1000.0
     assert context["ipc_nacional_variation_mom"] == 2.0
     assert context["ipc_nacional_variation_ytd"] == 7.1
@@ -145,3 +154,69 @@ def test_local_macro_series_service_marks_partial_portfolio_ytd_when_prior_year_
     assert context["portfolio_return_ytd_nominal"] == 5.0
     assert context["portfolio_return_ytd_is_partial"] is True
     assert context["portfolio_return_ytd_base_date"].isoformat() == "2026-01-10"
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_builds_macro_comparison():
+    PortfolioSnapshot.objects.create(
+        fecha=date(2026, 3, 10),
+        total_iol=1000,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=700,
+        rendimiento_total=0.0,
+        exposicion_usa=50.0,
+        exposicion_argentina=50.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=date(2026, 3, 11),
+        total_iol=1050,
+        liquidez_operativa=210,
+        cash_management=100,
+        portafolio_invertido=740,
+        rendimiento_total=5.0,
+        exposicion_usa=50.0,
+        exposicion_argentina=50.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=date(2026, 3, 12),
+        total_iol=1100,
+        liquidez_operativa=220,
+        cash_management=100,
+        portafolio_invertido=780,
+        rendimiento_total=10.0,
+        exposicion_usa=50.0,
+        exposicion_argentina=50.0,
+    )
+    for current_date, value in [
+        (date(2026, 3, 10), 1000.0),
+        (date(2026, 3, 11), 1010.0),
+        (date(2026, 3, 12), 1020.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="usdars_oficial",
+            source="bcra",
+            external_id="5",
+            frequency="daily",
+            fecha=current_date,
+            value=value,
+        )
+    for current_date, value in [
+        (date(2026, 2, 1), 200.0),
+        (date(2026, 3, 1), 204.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="ipc_nacional",
+            source="datos_gob_ar",
+            external_id="145.3_INGNACNAL_DICI_M_15",
+            frequency="monthly",
+            fecha=current_date,
+            value=value,
+        )
+
+    result = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).build_macro_comparison(days=30)
+
+    assert result["observations"] == 3
+    assert result["series"][0]["portfolio"] == 100.0
+    assert result["series"][0]["usdars_oficial"] == 100.0
+    assert result["series"][0]["ipc_nacional"] == 100.0

@@ -42,6 +42,17 @@
 <section class="row g-3 mb-4">
     <div class="col-12">
         <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Portafolio vs inflacion vs dolar</h5></div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="macroComparisonChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header bg-transparent"><h5 class="mb-0">Comparacion de retornos por ventana</h5></div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -94,8 +105,9 @@ function loadPerformanceData() {
     Promise.all([
         fetch('/api/metrics/returns/?days=365').then(r => r.json()),
         fetch('/api/metrics/historical-comparison/?periods=7,30,90,180,365').then(r => r.json()),
-        fetch('/api/historical/evolution/?days=365').then(r => r.json())
-    ]).then(([returns, comparison, evolution]) => {
+        fetch('/api/historical/evolution/?days=365').then(r => r.json()),
+        fetch('/api/metrics/macro-comparison/?days=365').then(r => r.json())
+    ]).then(([returns, comparison, evolution, macroComparison]) => {
         document.getElementById('ret-total').innerHTML = formatPctOrNA(returns.total_period_return);
         document.getElementById('ret-twr-total').innerHTML = hasInsufficientTwr(returns)
             ? formatHistoryWarning()
@@ -131,6 +143,27 @@ function loadPerformanceData() {
                 type: 'line',
                 data: { labels, datasets: [{ label: 'Drawdown %', data: dd, borderColor: '#EF4444', fill: false, tension: 0.25 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        if (macroComparison && Array.isArray(macroComparison.series) && macroComparison.series.length > 1) {
+            const labels = macroComparison.series.map(x => x.fecha);
+            new Chart(document.getElementById('macroComparisonChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        { label: 'Portafolio', data: macroComparison.series.map(x => x.portfolio), borderColor: '#2563EB', tension: 0.25, pointRadius: 0 },
+                        { label: 'USDARS oficial', data: macroComparison.series.map(x => x.usdars_oficial), borderColor: '#059669', tension: 0.25, pointRadius: 0 },
+                        { label: 'IPC', data: macroComparison.series.map(x => x.ipc_nacional), borderColor: '#D97706', tension: 0.25, pointRadius: 0 },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: true } },
+                },
             });
         }
     }).catch(() => {

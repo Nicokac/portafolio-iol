@@ -11,6 +11,11 @@ def test_sync_local_macro_command_runs_service(MockService):
             "updated": 0,
             "rows_received": 2,
         },
+        "badlar_privada": {
+            "created": 2,
+            "updated": 0,
+            "rows_received": 2,
+        },
         "ipc_nacional": {
             "created": 2,
             "updated": 0,

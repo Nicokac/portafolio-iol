@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pandas as pd
 from django.db import transaction
 
 from apps.core.config.parametros_macro_local import ParametrosMacroLocal
@@ -65,6 +66,7 @@ class LocalMacroSeriesService:
 
     def get_context_summary(self, total_iol: float | None = None) -> dict:
         usdars_latest = self._get_latest_snapshot("usdars_oficial")
+        badlar_latest = self._get_latest_snapshot("badlar_privada")
         ipc_snapshots = list(
             MacroSeriesSnapshot.objects.filter(series_key="ipc_nacional").order_by("-fecha")[:2]
         )
@@ -83,6 +85,8 @@ class LocalMacroSeriesService:
         return {
             "usdars_oficial": float(usdars_latest.value) if usdars_latest else None,
             "usdars_oficial_date": usdars_latest.fecha if usdars_latest else None,
+            "badlar_privada": float(badlar_latest.value) if badlar_latest else None,
+            "badlar_privada_date": badlar_latest.fecha if badlar_latest else None,
             "ipc_nacional_index": float(ipc_latest.value) if ipc_latest else None,
             "ipc_nacional_date": ipc_latest.fecha if ipc_latest else None,
             "ipc_nacional_variation_mom": round(ipc_variation, 2) if ipc_variation is not None else None,
@@ -90,6 +94,44 @@ class LocalMacroSeriesService:
             "ipc_nacional_variation_ytd": round(ipc_variation_ytd, 2) if ipc_variation_ytd is not None else None,
             "total_iol_usd_oficial": round(total_iol_usd, 2) if total_iol_usd is not None else None,
             **portfolio_ytd,
+        }
+
+    def build_macro_comparison(self, days: int = 365, base_value: float = 100.0) -> dict:
+        portfolio_df = self._build_portfolio_history(days=days)
+        if portfolio_df.empty or len(portfolio_df.index) < 2:
+            return {"series": [], "warning": "insufficient_history", "requested_days": days}
+
+        usdars_df = self._build_macro_series_frame("usdars_oficial", days=days, extra_days=7)
+        ipc_df = self._build_macro_series_frame("ipc_nacional", days=days, extra_days=45)
+        if not usdars_df.empty:
+            usdars_df = usdars_df.reindex(portfolio_df.index.union(usdars_df.index)).sort_index().ffill().reindex(portfolio_df.index)
+        if not ipc_df.empty:
+            ipc_df = ipc_df.reindex(portfolio_df.index.union(ipc_df.index)).sort_index().ffill().reindex(portfolio_df.index)
+
+        df = portfolio_df.join(usdars_df, how="left").join(ipc_df, how="left")
+        df = df.sort_index().ffill().dropna(subset=["portfolio", "usdars_oficial", "ipc_nacional"])
+        if len(df.index) < 2:
+            return {"series": [], "warning": "insufficient_history", "requested_days": days}
+
+        normalized = pd.DataFrame(index=df.index)
+        normalized["portfolio"] = self._normalize_series(df["portfolio"], base_value)
+        normalized["usdars_oficial"] = self._normalize_series(df["usdars_oficial"], base_value)
+        normalized["ipc_nacional"] = self._normalize_series(df["ipc_nacional"], base_value)
+
+        series = [
+            {
+                "fecha": idx.date().isoformat(),
+                "portfolio": round(float(row["portfolio"]), 2),
+                "usdars_oficial": round(float(row["usdars_oficial"]), 2),
+                "ipc_nacional": round(float(row["ipc_nacional"]), 2),
+            }
+            for idx, row in normalized.iterrows()
+        ]
+        return {
+            "series": series,
+            "base_value": base_value,
+            "requested_days": days,
+            "observations": len(series),
         }
 
     def _get_latest_snapshot(self, series_key: str):
@@ -170,3 +212,50 @@ class LocalMacroSeriesService:
         if config["source"] == "datos_gob_ar":
             return self.datos_client.fetch_series(config["external_id"])
         raise ValueError(f"Unsupported macro source: {config['source']}")
+
+    def _build_portfolio_history(self, days: int) -> pd.DataFrame:
+        end_date = PortfolioSnapshot.objects.order_by("-fecha").first()
+        if end_date is None:
+            return pd.DataFrame()
+
+        latest_date = end_date.fecha
+        start_date = latest_date - pd.Timedelta(days=days)
+        snapshots = PortfolioSnapshot.objects.filter(fecha__range=(start_date, latest_date)).order_by("fecha")
+        if snapshots.count() >= 2:
+            df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
+            df["fecha"] = pd.to_datetime(df["fecha"])
+            df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
+            return df.dropna(subset=["total_iol"]).set_index("fecha").rename(columns={"total_iol": "portfolio"})
+
+        from apps.dashboard.selectors import get_evolucion_historica
+
+        evolution = get_evolucion_historica(days=days, max_points=days)
+        if not evolution or not evolution.get("tiene_datos"):
+            return pd.DataFrame()
+        df = pd.DataFrame({"fecha": evolution.get("fechas", []), "portfolio": evolution.get("total_iol", [])})
+        if df.empty:
+            return pd.DataFrame()
+        df["fecha"] = pd.to_datetime(df["fecha"])
+        df["portfolio"] = pd.to_numeric(df["portfolio"], errors="coerce")
+        return df.dropna(subset=["portfolio"]).set_index("fecha")
+
+    def _build_macro_series_frame(self, series_key: str, days: int, extra_days: int) -> pd.DataFrame:
+        latest = self._get_latest_snapshot(series_key)
+        if latest is None:
+            return pd.DataFrame()
+
+        start_date = latest.fecha - pd.Timedelta(days=days + extra_days)
+        qs = MacroSeriesSnapshot.objects.filter(series_key=series_key, fecha__gte=start_date).order_by("fecha")
+        df = pd.DataFrame(list(qs.values("fecha", "value")))
+        if df.empty:
+            return pd.DataFrame()
+        df["fecha"] = pd.to_datetime(df["fecha"])
+        df["value"] = pd.to_numeric(df["value"], errors="coerce")
+        return df.dropna(subset=["value"]).set_index("fecha").rename(columns={"value": series_key})
+
+    @staticmethod
+    def _normalize_series(series: pd.Series, base_value: float) -> pd.Series:
+        initial_value = float(series.iloc[0])
+        if initial_value <= 0:
+            return pd.Series([base_value] * len(series.index), index=series.index, dtype=float)
+        return (series.astype(float) / initial_value) * base_value

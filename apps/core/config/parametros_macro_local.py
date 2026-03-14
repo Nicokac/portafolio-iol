@@ -8,6 +8,12 @@ class ParametrosMacroLocal:
             "external_id": "5",
             "frequency": "daily",
         },
+        "badlar_privada": {
+            "title": "BADLAR bancos privados",
+            "source": "bcra",
+            "external_id": "7",
+            "frequency": "daily",
+        },
         "ipc_nacional": {
             "title": "IPC nacional mensual",
             "source": "datos_gob_ar",
