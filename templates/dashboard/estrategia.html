@@ -201,11 +201,11 @@
 
 {% block extra_js %}
 <script>
-const sectorData = {{ distribucion_sector|safe }};
-const paisData = {{ distribucion_pais|safe }};
-const tipoData = {{ distribucion_tipo|safe }};
-const monedaData = {{ distribucion_moneda|safe }};
-const monedaOperativaData = {{ distribucion_moneda_operativa|safe }};
+const sectorData = {{ concentracion_sector_json|safe }};
+const paisData = {{ concentracion_pais_json|safe }};
+const tipoData = {{ concentracion_tipo_json|safe }};
+const monedaData = {{ concentracion_moneda_json|safe }};
+const monedaOperativaData = {{ concentracion_moneda_operativa_json|safe }};
 const evolucionData = {{ evolucion_historica|safe }};
 
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));

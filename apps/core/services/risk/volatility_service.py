@@ -13,6 +13,7 @@ class VolatilityService:
 
     TRADING_DAYS_PER_YEAR = 252
     MIN_OBSERVATIONS = 5
+    MAX_ABS_DAILY_RETURN = 0.50
 
     def __init__(self, local_macro_service: LocalMacroSeriesService | None = None):
         self.local_macro_service = local_macro_service or LocalMacroSeriesService()
@@ -84,7 +85,9 @@ class VolatilityService:
 
     def _build_volatility_result(self, df: pd.DataFrame) -> Dict[str, float]:
         returns = df["total_iol"].pct_change().dropna()
-        if returns.empty or len(df.index) < self.MIN_OBSERVATIONS:
+        raw_observations = int(len(returns))
+        returns = returns[returns.abs() <= self.MAX_ABS_DAILY_RETURN]
+        if returns.empty or len(returns) < 2 or len(df.index) < self.MIN_OBSERVATIONS:
             return {
                 "warning": "insufficient_history",
                 "required_min_observations": self.MIN_OBSERVATIONS,
@@ -99,6 +102,7 @@ class VolatilityService:
             "daily_volatility": round(daily_vol * 100, 2),
             "annualized_volatility": round(annualized_vol * 100, 2),
             "sample_size": int(len(returns)),
+            "outlier_returns_filtered": raw_observations - int(len(returns)),
             "history_span_days": history_span_days,
             "observations": int(len(df.index)),
         }
@@ -108,11 +112,14 @@ class VolatilityService:
             sharpe = mean_return / daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)
             result["sharpe_ratio"] = round(sharpe, 2)
 
-            badlar_returns = self.local_macro_service.build_rate_returns(
-                "badlar_privada",
-                returns.index,
-                periods_per_year=self.TRADING_DAYS_PER_YEAR,
-            )
+            try:
+                badlar_returns = self.local_macro_service.build_rate_returns(
+                    "badlar_privada",
+                    returns.index,
+                    periods_per_year=self.TRADING_DAYS_PER_YEAR,
+                )
+            except Exception:
+                badlar_returns = pd.Series(dtype=float)
             if not badlar_returns.empty:
                 excess_returns = returns.sub(badlar_returns.fillna(0.0), fill_value=0.0)
                 sharpe_badlar = float(excess_returns.mean()) / daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)

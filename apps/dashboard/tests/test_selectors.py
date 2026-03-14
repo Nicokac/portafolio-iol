@@ -9,6 +9,8 @@ from django.utils import timezone
 from apps.dashboard.selectors import (
     get_analytics_mensual,
     get_concentracion_pais,
+    get_concentracion_moneda,
+    get_concentracion_moneda_operativa,
     get_concentracion_sector,
     get_concentracion_tipo_patrimonial,
     get_dashboard_kpis,
@@ -266,6 +268,11 @@ class TestDashboardSelectors(TestCase):
         # Moneda operativa (cotización)
         distribucion_operativa = get_distribucion_moneda_operativa()
         assert distribucion_operativa['ARS'] == 1000.00  # Cotiza en ARS
+
+        concentracion_economica = get_concentracion_moneda()
+        concentracion_operativa = get_concentracion_moneda_operativa()
+        assert concentracion_economica['USD'] == 100.0
+        assert concentracion_operativa['ARS'] == 100.0
 
     def test_senales_rebalanceo_objetivos(self):
         """Test señales de rebalanceo basadas en objetivos."""

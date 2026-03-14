@@ -21,6 +21,8 @@ from apps.dashboard.selectors import (
     get_concentracion_pais,
     get_concentracion_sector,
     get_concentracion_tipo_patrimonial,
+    get_concentracion_moneda,
+    get_concentracion_moneda_operativa,
     get_dashboard_kpis,
     get_distribucion_moneda,
     get_distribucion_moneda_operativa,
@@ -67,6 +69,11 @@ class DashboardContextMixin:
         context['concentracion_sector'] = get_concentracion_sector()
         context['concentracion_pais'] = get_concentracion_pais()
         context['concentracion_tipo'] = get_concentracion_tipo_patrimonial()
+        context['concentracion_sector_json'] = to_json(get_concentracion_sector())
+        context['concentracion_pais_json'] = to_json(get_concentracion_pais())
+        context['concentracion_tipo_json'] = to_json(get_concentracion_tipo_patrimonial())
+        context['concentracion_moneda_json'] = to_json(get_concentracion_moneda())
+        context['concentracion_moneda_operativa_json'] = to_json(get_concentracion_moneda_operativa())
         context['analytics_mensual'] = get_analytics_mensual()
 
         evolucion_historica_obj = get_evolucion_historica()

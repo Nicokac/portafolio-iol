@@ -97,3 +97,27 @@ def test_volatility_service_handles_fallback_exception(mock_evolution):
     result = VolatilityService().calculate_volatility(days=30)
 
     assert result["warning"] == "insufficient_history"
+
+
+@pytest.mark.django_db
+def test_volatility_service_filters_extreme_daily_jumps():
+    today = timezone.now().date()
+    values = [1000, 1020, 5000, 1030, 1040, 1050]
+
+    for offset, value in enumerate(values[::-1]):
+        PortfolioSnapshot.objects.create(
+            fecha=today - timedelta(days=offset),
+            total_iol=value,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=max(value - 300, 0),
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+
+    result = VolatilityService().calculate_volatility(days=30)
+
+    assert "annualized_volatility" in result
+    assert result["annualized_volatility"] < 500
+    assert result["outlier_returns_filtered"] >= 1

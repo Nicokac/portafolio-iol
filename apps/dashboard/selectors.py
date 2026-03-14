@@ -393,6 +393,25 @@ def get_concentracion_tipo_patrimonial() -> Dict[str, float]:
 
     return {tipo: (valor / total * 100) for tipo, valor in distribucion.items()}
 
+def get_concentracion_moneda() -> Dict[str, float]:
+    """Calcula la concentracion por moneda economica en porcentajes."""
+    distribucion = get_distribucion_moneda()
+    total = sum(distribucion.values())
+    if total == 0:
+        return {}
+
+    return {moneda: (valor / total * 100) for moneda, valor in distribucion.items()}
+
+
+def get_concentracion_moneda_operativa() -> Dict[str, float]:
+    """Calcula la concentracion por moneda operativa en porcentajes."""
+    distribucion = get_distribucion_moneda_operativa()
+    total = sum(distribucion.values())
+    if total == 0:
+        return {}
+
+    return {moneda: (valor / total * 100) for moneda, valor in distribucion.items()}
+
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     """Calcula métricas detalladas de riesgo del portafolio."""
