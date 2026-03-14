@@ -19,6 +19,32 @@
     </div>
 </section>
 
+<section class="mb-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Mapa analítico</h2>
+                    <p class="text-muted mb-0">Primero ratios núcleo. Después retorno real y drawdown. Al final detalle completo y trazabilidad del benchmark.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="#metricas-ratios">Ratios</a>
+                    <a class="btn btn-sm btn-outline-warning" href="#metricas-reales">Retorno real</a>
+                    <a class="btn btn-sm btn-outline-danger" href="#metricas-drawdown">Drawdown</a>
+                    <a class="btn btn-sm btn-outline-dark" href="#metricas-trace">Benchmark</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="metricas-ratios" class="mb-3">
+    <div class="border-start border-4 border-primary ps-3 mb-3">
+        <h2 class="mb-1">Ratios núcleo</h2>
+        <p class="text-muted mb-0">Volatilidad, Sharpe, tracking error e information ratio como primera lectura cuantitativa.</p>
+    </div>
+</section>
+
 <section class="row g-3 mb-4">
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Volatilidad anualizada</div><div class="h4 mb-0" id="m-vol">-</div></div></div></div>
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sharpe ratio</div><div class="h4 mb-0" id="m-sharpe">-</div></div></div></div>
@@ -26,11 +52,25 @@
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
 </section>
 
+<section id="metricas-reales" class="mb-3">
+    <div class="border-start border-4 border-warning ps-3 mb-3">
+        <h2 class="mb-1">Retorno real y referencia local</h2>
+        <p class="text-muted mb-0">Lectura de rendimiento deflactado por IPC y exceso frente a BADLAR.</p>
+    </div>
+</section>
+
 <section class="row g-3 mb-4">
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h3 mb-0" id="m-real-ytd">-</div></div></div></div>
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">BADLAR</div><div class="h3 mb-0" id="m-badlar">-</div></div></div></div>
+</section>
+
+<section id="metricas-drawdown" class="mb-3">
+    <div class="border-start border-4 border-danger ps-3 mb-3">
+        <h2 class="mb-1">Riesgo de caída</h2>
+        <p class="text-muted mb-0">Comparación entre drawdown nominal y drawdown real.</p>
+    </div>
 </section>
 
 <section class="row g-3 mb-4">
@@ -44,7 +84,7 @@
     <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown real</div><div class="h3 mb-0" id="m-max-dd-real">-</div></div></div></div>
 </section>
 
-<section class="row g-3">
+<section id="metricas-trace" class="row g-3">
     <div class="col-12 d-none" id="metrics-warning-wrap">
         <div class="alert alert-warning mb-0" id="metrics-warning-text"></div>
     </div>
