@@ -90,7 +90,7 @@ class DashboardView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
 
 
 class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
-    template_name = 'dashboard/dashboard.html'
+    template_name = 'dashboard/planeacion.html'
     active_section = 'planeacion'
 
 
