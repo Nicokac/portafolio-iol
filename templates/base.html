@@ -1,4 +1,4 @@
-{% load static %}
+﻿{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -23,14 +23,26 @@
                         <a class="nav-link {% if active_section == 'resumen' %}active{% endif %}" href="{% url 'dashboard:resumen' %}">Resumen</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_section == 'analisis' %}active{% endif %}" href="{% url 'dashboard:analisis' %}">Análisis</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link {% if active_section == 'estrategia' %}active{% endif %}" href="{% url 'dashboard:estrategia' %}">Estrategia</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active_section == 'planeacion' %}active{% endif %}" href="{% url 'dashboard:planeacion' %}">Planeación</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_section == 'analisis' %}active{% endif %}" href="{% url 'dashboard:analisis' %}">Análisis</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_section == 'metricas' %}active{% endif %}" href="{% url 'dashboard:metricas' %}">Métricas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_section == 'performance' %}active{% endif %}" href="{% url 'dashboard:performance' %}">Performance</a>
+                    </li>
+                    {% if user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Ops</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item d-flex align-items-center mx-2 text-white-50">|</li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'resumen_iol:resumen_list' %}">Resumen IOL</a>
                     </li>
