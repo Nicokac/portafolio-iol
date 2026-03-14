@@ -69,6 +69,54 @@
 </section>
 
 <section class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">USDARS BCRA</div>
+                <div class="kpi-value text-primary">
+                    {% if macro_local.usdars_oficial %}
+                    {{ macro_local.usdars_oficial|floatformat:2 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">Mayorista ref. {% if macro_local.usdars_oficial_date %}{{ macro_local.usdars_oficial_date }}{% else %}-{% endif %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">IPC Mensual</div>
+                <div class="kpi-value text-warning-emphasis">
+                    {% if macro_local.ipc_nacional_variation_mom is not None %}
+                    {{ macro_local.ipc_nacional_variation_mom|floatformat:2 }}%
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">Ultimo dato {% if macro_local.ipc_nacional_date %}{{ macro_local.ipc_nacional_date }}{% else %}-{% endif %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Total IOL USD oficial</div>
+                <div class="kpi-value text-success">
+                    {% if macro_local.total_iol_usd_oficial %}
+                    {{ macro_local.total_iol_usd_oficial|floatformat:2 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">Estimado con TC mayorista BCRA</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
     <div class="col-lg-8">
         <div class="card h-100">
             <div class="card-header bg-transparent">

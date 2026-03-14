@@ -28,6 +28,7 @@ from apps.dashboard.selectors import (
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
+    get_macro_local_context,
     get_portafolio_enriquecido_actual,
     get_riesgo_portafolio,
     get_riesgo_portafolio_detallado,
@@ -50,6 +51,7 @@ class DashboardContextMixin:
         context['risk_profile'] = self.request.session.get('risk_profile', 'moderado')
 
         context['kpis'] = get_dashboard_kpis()
+        context['macro_local'] = get_macro_local_context(context['kpis'].get('total_iol'))
         context['portafolio'] = get_portafolio_enriquecido_actual()
 
         def to_json(data):

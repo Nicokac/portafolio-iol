@@ -257,3 +257,33 @@ class BenchmarkSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.benchmark_key} {self.interval} {self.fecha} ({self.source})"
+
+
+class MacroSeriesSnapshot(models.Model):
+    """Serie macro local persistida para contexto analitico del portafolio."""
+
+    series_key = models.CharField(max_length=50)
+    source = models.CharField(max_length=32)
+    external_id = models.CharField(max_length=64)
+    frequency = models.CharField(max_length=16)
+    fecha = models.DateField()
+    value = models.DecimalField(max_digits=18, decimal_places=6)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "series_key"]
+        indexes = [
+            models.Index(fields=["series_key", "fecha"]),
+            models.Index(fields=["source", "external_id", "fecha"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["series_key", "source", "fecha"],
+                name="unique_macro_series_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.series_key} {self.fecha} ({self.source})"

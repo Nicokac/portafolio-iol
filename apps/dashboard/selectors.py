@@ -15,6 +15,7 @@ from apps.core.services.risk.volatility_service import VolatilityService
 from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
+from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -216,6 +217,16 @@ def get_dashboard_kpis() -> Dict:
         }
 
     return _get_cached_selector_result("dashboard_kpis", build)
+
+
+def get_macro_local_context(total_iol: float | None = None) -> Dict:
+    """Obtiene contexto macro local persistido para enriquecer el analisis."""
+
+    def build():
+        return LocalMacroSeriesService().get_context_summary(total_iol=total_iol)
+
+    total_stamp = round(float(total_iol), 2) if total_iol is not None else "none"
+    return _get_cached_selector_result(f"macro_local_context:{total_stamp}", build)
 
 
 def get_distribucion_sector() -> Dict[str, float]:
