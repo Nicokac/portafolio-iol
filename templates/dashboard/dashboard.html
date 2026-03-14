@@ -574,8 +574,29 @@
 </div>
 
 <!-- Tablas de Posiciones -->
-<h2 class="mt-5">Liquidez Operativa</h2>
-<div class="table-responsive">
+<div id="posiciones-portafolio"></div>
+
+<section class="mt-5 mb-4">
+    <div class="border-start border-4 border-info ps-3">
+        <h2 class="mb-1">Posiciones completas</h2>
+        <p class="text-muted mb-0">Detalle operativo de liquidez, cash management, top posiciones y portafolio invertido completo.</p>
+    </div>
+</section>
+
+<div class="card border-0 bg-light mb-4">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-success" href="#posiciones-liquidez">Liquidez</a>
+            <a class="btn btn-sm btn-outline-info" href="#posiciones-fci">FCI / Cash</a>
+            <a class="btn btn-sm btn-outline-primary" href="#posiciones-top">Top 5</a>
+            <a class="btn btn-sm btn-outline-dark" href="#posiciones-inversion">Portafolio invertido</a>
+        </div>
+    </div>
+</div>
+
+<div id="posiciones-liquidez"></div>
+<h3 class="mt-4">Liquidez Operativa</h3>
+<div class="table-responsive mb-5">
     <table class="table table-striped">
         <thead>
             <tr>
@@ -634,8 +655,9 @@
     </table>
 </div>
 
-<h2 class="mt-5">FCI / Cash Management</h2>
-<div class="table-responsive">
+<div id="posiciones-fci"></div>
+<h3 class="mt-5">FCI / Cash Management</h3>
+<div class="table-responsive mb-5">
     <table class="table table-striped">
         <thead>
             <tr>
@@ -680,17 +702,9 @@
     </table>
 </div>
 
-<div id="posiciones-portafolio"></div>
-
-<section class="mt-5 mb-4">
-    <div class="border-start border-4 border-info ps-3">
-        <h2 class="mb-1">Posiciones completas</h2>
-        <p class="text-muted mb-0">Detalle operativo de liquidez, cash management, top posiciones y portafolio invertido completo.</p>
-    </div>
-</section>
-
+<div id="posiciones-top"></div>
 <h3 class="mt-4">Top 5 Posiciones</h3>
-<div class="table-responsive">
+<div class="table-responsive mb-5">
     <table class="table table-striped">
         <thead>
             <tr>
@@ -723,8 +737,9 @@
     </table>
 </div>
 
+<div id="posiciones-inversion"></div>
 <h3 class="mt-5">Portafolio Invertido Completo</h3>
-<div class="table-responsive">
+<div class="table-responsive mb-5">
     <table class="table table-striped">
         <thead>
             <tr>
