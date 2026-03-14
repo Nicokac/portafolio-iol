@@ -56,6 +56,11 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
+    def test_planeacion_route_accessible_authenticated(self, auth_client):
+        url = reverse('dashboard:planeacion')
+        response = auth_client.get(url)
+        assert response.status_code == 200
+
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')
         response = auth_client.get(url)

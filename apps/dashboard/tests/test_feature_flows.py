@@ -19,7 +19,8 @@ class TestDashboardFeatureFlows:
             ("dashboard:dashboard", "dashboard/resumen.html", ["kpis", "portafolio", "senales_rebalanceo"]),
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
-            ("dashboard:estrategia", "dashboard/dashboard.html", ["kpis", "portafolio", "senales_rebalanceo"]),
+            ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo"]),
+            ("dashboard:planeacion", "dashboard/dashboard.html", ["kpis", "portafolio", "senales_rebalanceo"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
             ("dashboard:metricas", "dashboard/metricas.html", ["kpis", "riesgo_portafolio"]),
         ],
@@ -34,8 +35,19 @@ class TestDashboardFeatureFlows:
         for key in required_context_keys:
             assert key in response.context
 
-    def test_strategy_page_contains_critical_modules(self, auth_client):
+    def test_strategy_page_excludes_operational_modules(self, auth_client):
         response = auth_client.get(reverse("dashboard:estrategia"))
+        content = response.content.decode("utf-8")
+
+        assert response.status_code == 200
+        assert "recommendations-container" not in content
+        assert "simulation-activo" not in content
+        assert "monthly-plan-result" not in content
+        assert "optimization-result" not in content
+        assert "Posiciones completas" in content
+
+    def test_planeacion_page_contains_critical_modules(self, auth_client):
+        response = auth_client.get(reverse("dashboard:planeacion"))
         content = response.content.decode("utf-8")
 
         assert response.status_code == 200

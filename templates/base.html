@@ -29,6 +29,9 @@
                         <a class="nav-link {% if active_section == 'estrategia' %}active{% endif %}" href="{% url 'dashboard:estrategia' %}">Estrategia</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if active_section == 'planeacion' %}active{% endif %}" href="{% url 'dashboard:planeacion' %}">Planeación</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'resumen_iol:resumen_list' %}">Resumen IOL</a>
                     </li>
                     <li class="nav-item">

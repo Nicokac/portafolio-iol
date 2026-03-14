@@ -85,8 +85,13 @@ class DashboardContextMixin:
 
 
 class DashboardView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
-    template_name = 'dashboard/dashboard.html'
+    template_name = 'dashboard/estrategia.html'
     active_section = 'estrategia'
+
+
+class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/dashboard.html'
+    active_section = 'planeacion'
 
 
 class ResumenView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
