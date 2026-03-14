@@ -206,6 +206,9 @@ def metrics_returns(request):
                     'twr_total_return': 'total_portfolio',
                     'twr_annualized_return': 'total_portfolio',
                     'max_drawdown': 'total_portfolio',
+                    'portfolio_return_ytd_nominal': 'total_portfolio',
+                    'portfolio_return_ytd_real': 'total_portfolio',
+                    'ipc_ytd': 'total_portfolio',
                 },
             },
         )

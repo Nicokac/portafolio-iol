@@ -13,10 +13,12 @@
 </section>
 
 <section class="row g-3 mb-4" id="performance-kpis">
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno total</div><div class="h4 mb-0" id="ret-total">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR total</div><div class="h4 mb-0" id="ret-twr-total" data-bs-toggle="tooltip" title="Time Weighted Return: neutraliza flujos externos.">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR anualizado</div><div class="h4 mb-0" id="ret-twr-anual">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h4 mb-0 text-danger" id="ret-max-dd">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno total</div><div class="h4 mb-0" id="ret-total">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR total</div><div class="h4 mb-0" id="ret-twr-total" data-bs-toggle="tooltip" title="Time Weighted Return: neutraliza flujos externos.">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR anualizado</div><div class="h4 mb-0" id="ret-twr-anual">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h4 mb-0" id="ret-real-ytd">-</div><div class="small text-muted" id="ret-real-ytd-note">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">IPC YTD</div><div class="h4 mb-0 text-warning-emphasis" id="ret-ipc-ytd">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h4 mb-0 text-danger" id="ret-max-dd">-</div></div></div></div>
 </section>
 
 <section class="row g-3 mb-4">
@@ -74,6 +76,10 @@ function formatHistoryWarning() {
 function hasInsufficientTwr(returns) {
     return returns && ((returns.warning === 'insufficient_history') || Number(returns.twr_periods || 0) < 2);
 }
+function formatInlineNote(text, isWarning=false) {
+    if (!text) return '<span class="text-muted">-</span>';
+    return `<span class="${isWarning ? 'text-warning-emphasis' : 'text-muted'}">${text}</span>`;
+}
 
 function computeDrawdownSeries(values) {
     let runningMax = -Infinity;
@@ -97,7 +103,14 @@ function loadPerformanceData() {
         document.getElementById('ret-twr-anual').innerHTML = hasInsufficientTwr(returns)
             ? formatHistoryWarning()
             : formatPctOrNA(returns.twr_annualized_return);
+        document.getElementById('ret-real-ytd').innerHTML = formatPctOrNA(returns.portfolio_return_ytd_real);
+        document.getElementById('ret-ipc-ytd').innerHTML = formatPctOrNA(returns.ipc_ytd);
         document.getElementById('ret-max-dd').innerHTML = formatPctOrNA(returns.max_drawdown);
+        const ytdNote = returns.portfolio_return_ytd_nominal !== undefined && returns.portfolio_return_ytd_nominal !== null
+            ? `Nominal YTD: ${window.formatNumberAr(returns.portfolio_return_ytd_nominal, 2)}%`
+            : 'Nominal YTD: N/D';
+        const partialSuffix = returns.portfolio_return_ytd_is_partial ? ' | Base parcial' : '';
+        document.getElementById('ret-real-ytd-note').innerHTML = formatInlineNote(`${ytdNote}${partialSuffix}`, !!returns.portfolio_return_ytd_is_partial);
 
         const comparisonBody = document.getElementById('comparison-body');
         const keys = ['7d', '30d', '90d', '180d', '365d'];

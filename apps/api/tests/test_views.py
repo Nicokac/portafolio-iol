@@ -300,6 +300,7 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'bases' in body['metadata']
+            assert 'portfolio_return_ytd_real' in body['metadata']['fields_basis']
 
     def test_metrics_volatility_includes_basis_metadata(self, auth_client):
         url = reverse('metrics-volatility')

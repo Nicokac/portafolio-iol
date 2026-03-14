@@ -37,12 +37,25 @@ class TestTemporalMetricsService:
             exposicion_argentina=50.0,
         )
 
-        service = TemporalMetricsService()
-        returns = service.get_portfolio_returns(days=30)
+        with patch(
+            "apps.core.services.temporal_metrics_service.LocalMacroSeriesService.get_context_summary",
+            return_value={
+                "portfolio_return_ytd_nominal": 10.0,
+                "portfolio_return_ytd_real": 4.0,
+                "portfolio_return_ytd_is_partial": False,
+                "portfolio_return_ytd_base_date": today - timedelta(days=60),
+                "ipc_nacional_variation_ytd": 5.77,
+            },
+        ):
+            service = TemporalMetricsService()
+            returns = service.get_portfolio_returns(days=30)
 
         assert returns["total_period_return"] == 10.0
         assert returns["daily_return"] == 10.0
         assert "max_drawdown" in returns
+        assert returns["portfolio_return_ytd_real"] == 4.0
+        assert returns["ipc_ytd"] == 5.77
+        assert returns["portfolio_return_ytd_base_date"] == (today - timedelta(days=60)).isoformat()
 
     @patch("apps.dashboard.selectors.get_evolucion_historica")
     def test_returns_fallback_when_single_snapshot(self, mock_evolution):
