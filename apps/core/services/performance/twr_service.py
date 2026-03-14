@@ -1,4 +1,4 @@
-from datetime import timedelta
+﻿from datetime import timedelta
 from decimal import Decimal
 from typing import Dict
 
@@ -13,16 +13,16 @@ from apps.portafolio_iol.models import PortfolioSnapshot
 
 class TWRService:
     """
-    Cálculo de Time-Weighted Return.
+    Calculo de Time-Weighted Return.
 
-    Fórmula diaria:
+    Formula diaria:
     r_t = (V_t - V_{t-1} - CF_t) / V_{t-1}
     TWR = Π(1 + r_t) - 1
     """
 
     TRADING_DAYS_PER_YEAR = 252
 
-    def calculate_twr(self, days: int = 30) -> Dict[str, float]:
+    def build_daily_return_series(self, days: int = 30) -> pd.Series:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
 
@@ -31,32 +31,20 @@ class TWRService:
         ).order_by("fecha")
 
         if snapshots.count() < 2:
-            return {}
+            return pd.Series(dtype=float)
 
         df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
         if df.empty:
-            return {}
+            return pd.Series(dtype=float)
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
         df = df.set_index("fecha").sort_index()
+        return self._build_return_series_from_frame(df, start_date, end_date)
 
-        daily_flows = self._get_daily_cash_flows(start_date, end_date)
-        returns = []
-
-        for idx in range(1, len(df)):
-            prev_date = df.index[idx - 1].date()
-            curr_date = df.index[idx].date()
-
-            start_value = float(df["total_iol"].iloc[idx - 1])
-            end_value = float(df["total_iol"].iloc[idx])
-            if start_value == 0:
-                continue
-
-            # Se descuenta flujo del día final del subperíodo.
-            flow = float(daily_flows.get(curr_date, Decimal("0")))
-            period_return = (end_value - start_value - flow) / start_value
-            returns.append(period_return)
+    def calculate_twr(self, days: int = 30) -> Dict[str, float]:
+        returns_series = self.build_daily_return_series(days=days)
+        returns = returns_series.tolist()
 
         if not returns:
             return {}
@@ -74,6 +62,31 @@ class TWRService:
             "twr_annualized_return": round(annualized_twr * 100, 2),
             "twr_periods": periods,
         }
+
+    def _build_return_series_from_frame(self, df: pd.DataFrame, start_date, end_date) -> pd.Series:
+        daily_flows = self._get_daily_cash_flows(start_date, end_date)
+        returns = []
+        index = []
+
+        for idx in range(1, len(df)):
+            curr_timestamp = df.index[idx]
+            curr_date = curr_timestamp.date()
+
+            start_value = float(df["total_iol"].iloc[idx - 1])
+            end_value = float(df["total_iol"].iloc[idx])
+            if start_value == 0:
+                continue
+
+            # Se descuenta flujo del dia final del subperiodo.
+            flow = float(daily_flows.get(curr_date, Decimal("0")))
+            period_return = (end_value - start_value - flow) / start_value
+            returns.append(period_return)
+            index.append(curr_timestamp)
+
+        if not returns:
+            return pd.Series(dtype=float)
+
+        return pd.Series(returns, index=pd.to_datetime(index), dtype=float).sort_index()
 
     def _get_daily_cash_flows(self, start_date, end_date):
         """
