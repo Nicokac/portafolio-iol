@@ -45,6 +45,12 @@
             <div class="card-header bg-transparent"><h5 class="mb-0">Portafolio vs benchmark compuesto</h5></div>
             <div class="card-body">
                 <div class="chart-container"><canvas id="benchmarkComparisonChart"></canvas></div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Bucket</th><th class="text-end">Peso</th><th>Referencia</th><th>Fuente</th><th>Frecuencia</th></tr></thead>
+                        <tbody id="benchmark-trace-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -204,8 +210,22 @@ function loadPerformanceData() {
                 },
             });
         }
+
+        const benchmarkTrace = benchmarkCurve && Array.isArray(benchmarkCurve.benchmark_trace)
+            ? benchmarkCurve.benchmark_trace
+            : [];
+        document.getElementById('benchmark-trace-body').innerHTML = benchmarkTrace.length
+            ? benchmarkTrace.map(row => `<tr>
+                <td>${row.bucket}</td>
+                <td class="text-end">${window.formatNumberAr(row.weight, 2)}%</td>
+                <td>${row.reference || row.fallback_reference || 'N/D'}</td>
+                <td>${row.source || 'N/D'}</td>
+                <td>${row.frequency_used || 'N/D'}</td>
+            </tr>`).join('')
+            : '<tr><td colspan="5" class="text-muted">Sin trazabilidad disponible</td></tr>';
     }).catch(() => {
         document.getElementById('comparison-body').innerHTML = '<tr><td colspan="3" class="text-danger">Error cargando performance</td></tr>';
+        document.getElementById('benchmark-trace-body').innerHTML = '<tr><td colspan="5" class="text-danger">Error cargando benchmark</td></tr>';
     });
 }
 

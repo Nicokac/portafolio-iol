@@ -36,6 +36,7 @@ class TrackingErrorService:
                 "warning": "insufficient_history",
                 "observations": observations,
                 "requested_days": days,
+                "benchmark_trace": self._build_benchmark_trace(frequency_used),
             }
 
         active_returns = portfolio_returns - benchmark_returns
@@ -44,6 +45,7 @@ class TrackingErrorService:
                 "warning": "insufficient_history",
                 "observations": int(len(portfolio_returns)),
                 "requested_days": days,
+                "benchmark_trace": self._build_benchmark_trace(frequency_used),
             }
 
         annualization_factor = self.TRADING_DAYS_PER_YEAR if frequency_used == "daily" else self.TRADING_WEEKS_PER_YEAR
@@ -66,6 +68,7 @@ class TrackingErrorService:
             "observations": int(len(portfolio_returns)),
             "requested_days": days,
             "benchmark_frequency_used": frequency_used,
+            "benchmark_trace": self._build_benchmark_trace(frequency_used),
         }
         if tracking_error is not None:
             result["tracking_error_annualized"] = round(tracking_error, 2)
@@ -83,6 +86,7 @@ class TrackingErrorService:
                 "warning": "insufficient_history",
                 "requested_days": days,
                 "observations": observations,
+                "benchmark_trace": self._build_benchmark_trace(frequency_used),
                 "series": [],
             }
 
@@ -102,6 +106,7 @@ class TrackingErrorService:
             "requested_days": days,
             "observations": len(series),
             "benchmark_frequency_used": frequency_used,
+            "benchmark_trace": self._build_benchmark_trace(frequency_used),
             "base_value": base_value,
             "series": series,
         }
@@ -302,3 +307,26 @@ class TrackingErrorService:
         if residual > 0:
             weights["cedear_usa"] += residual
         return weights
+
+    def _build_benchmark_trace(self, frequency: str) -> list[dict]:
+        weights = self._infer_weights_from_portfolio()
+        trace = []
+        for key, weight in weights.items():
+            mapping_key = ParametrosBenchmark.BENCHMARK_MAPPINGS.get(key)
+            historical_cfg = ParametrosBenchmark.HISTORICAL_SERIES.get(key, {})
+            uses_local_rate = key == "liquidez"
+            source = "local_macro" if uses_local_rate else historical_cfg.get("provider", "synthetic")
+            reference = "badlar_privada" if uses_local_rate else historical_cfg.get("symbol", mapping_key)
+            interval = "daily" if frequency == "daily" else "weekly_adjusted"
+            trace.append(
+                {
+                    "bucket": key,
+                    "weight": round(weight * 100, 2),
+                    "source": source,
+                    "reference": reference,
+                    "fallback_reference": mapping_key,
+                    "frequency_used": frequency,
+                    "historical_interval": interval,
+                }
+            )
+        return trace

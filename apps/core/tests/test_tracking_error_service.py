@@ -103,6 +103,8 @@ def test_tracking_error_service_returns_tracking_and_information_ratio():
     assert "benchmark_return_period" in result
     assert "excess_return_period" in result
     assert result["benchmark_frequency_used"] == "daily"
+    assert isinstance(result["benchmark_trace"], list)
+    assert result["benchmark_trace"][0]["bucket"] in {"cedear_usa", "bonos_ar", "liquidez"}
 
 
 @pytest.mark.django_db
@@ -422,5 +424,6 @@ def test_tracking_error_service_builds_comparison_curve():
 
     assert result["observations"] == 3
     assert result["benchmark_frequency_used"] == "daily"
+    assert isinstance(result["benchmark_trace"], list)
     assert result["series"][0]["portfolio"] > 0
     assert result["series"][0]["benchmark"] > 0

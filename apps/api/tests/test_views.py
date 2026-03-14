@@ -357,6 +357,7 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'methodology' in body['metadata']
+            assert 'benchmark_trace' in body
 
     def test_metrics_benchmarking_includes_metadata(self, auth_client):
         url = reverse('metrics-benchmarking')
@@ -366,6 +367,7 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'methodology' in body['metadata']
+            assert 'benchmark_trace' in body
 
     @patch('apps.api.views.TrackingErrorService')
     def test_metrics_benchmarking_sanitizes_non_finite_numbers(self, MockService, auth_client):
