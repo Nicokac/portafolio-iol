@@ -8,6 +8,7 @@ from apps.core.config.parametros_macro_local import ParametrosMacroLocal
 from apps.core.models import MacroSeriesSnapshot
 from apps.core.services.market_data.bcra_client import BCRAClient
 from apps.core.services.market_data.datos_gob_client import DatosGobSeriesClient
+from apps.portafolio_iol.models import PortfolioSnapshot
 
 
 class LocalMacroSeriesService:
@@ -77,6 +78,7 @@ class LocalMacroSeriesService:
         total_iol_usd = None
         if total_iol and usdars_latest and float(usdars_latest.value) > 0:
             total_iol_usd = float(total_iol) / float(usdars_latest.value)
+        portfolio_ytd = self._calculate_portfolio_ytd(ipc_variation_ytd)
 
         return {
             "usdars_oficial": float(usdars_latest.value) if usdars_latest else None,
@@ -87,6 +89,7 @@ class LocalMacroSeriesService:
             "ipc_nacional_variation_yoy": round(ipc_variation_yoy, 2) if ipc_variation_yoy is not None else None,
             "ipc_nacional_variation_ytd": round(ipc_variation_ytd, 2) if ipc_variation_ytd is not None else None,
             "total_iol_usd_oficial": round(total_iol_usd, 2) if total_iol_usd is not None else None,
+            **portfolio_ytd,
         }
 
     def _get_latest_snapshot(self, series_key: str):
@@ -116,6 +119,50 @@ class LocalMacroSeriesService:
         if previous_december is None or float(previous_december.value) == 0:
             return None
         return ((float(ipc_latest.value) / float(previous_december.value)) - 1) * 100
+
+    def _calculate_portfolio_ytd(self, ipc_variation_ytd: float | None) -> dict:
+        latest_snapshot = PortfolioSnapshot.objects.order_by("-fecha").first()
+        if latest_snapshot is None:
+            return {
+                "portfolio_return_ytd_nominal": None,
+                "portfolio_return_ytd_real": None,
+                "portfolio_return_ytd_is_partial": False,
+                "portfolio_return_ytd_base_date": None,
+            }
+
+        previous_year_end = latest_snapshot.fecha.replace(year=latest_snapshot.fecha.year - 1, month=12, day=31)
+        baseline_snapshot = PortfolioSnapshot.objects.filter(fecha__lte=previous_year_end).order_by("-fecha").first()
+        is_partial = False
+
+        if baseline_snapshot is None:
+            baseline_snapshot = PortfolioSnapshot.objects.filter(
+                fecha__year=latest_snapshot.fecha.year
+            ).order_by("fecha").first()
+            is_partial = True
+
+        if (
+            baseline_snapshot is None or
+            baseline_snapshot.fecha == latest_snapshot.fecha or
+            float(baseline_snapshot.total_iol) <= 0
+        ):
+            return {
+                "portfolio_return_ytd_nominal": None,
+                "portfolio_return_ytd_real": None,
+                "portfolio_return_ytd_is_partial": is_partial,
+                "portfolio_return_ytd_base_date": baseline_snapshot.fecha if baseline_snapshot else None,
+            }
+
+        nominal_return = ((float(latest_snapshot.total_iol) / float(baseline_snapshot.total_iol)) - 1) * 100
+        real_return = None
+        if ipc_variation_ytd is not None:
+            real_return = (((1 + (nominal_return / 100)) / (1 + (ipc_variation_ytd / 100))) - 1) * 100
+
+        return {
+            "portfolio_return_ytd_nominal": round(nominal_return, 2),
+            "portfolio_return_ytd_real": round(real_return, 2) if real_return is not None else None,
+            "portfolio_return_ytd_is_partial": is_partial,
+            "portfolio_return_ytd_base_date": baseline_snapshot.fecha,
+        }
 
     def _fetch_rows(self, config: dict) -> list[dict]:
         if config["source"] == "bcra":

@@ -69,7 +69,7 @@
 </section>
 
 <section class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
                 <div class="text-muted small">USDARS BCRA</div>
@@ -84,7 +84,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
                 <div class="text-muted small">IPC Mensual</div>
@@ -117,7 +117,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
                 <div class="text-muted small">Total IOL USD oficial</div>
@@ -129,6 +129,34 @@
                     {% endif %}
                 </div>
                 <div class="text-body-secondary small">Estimado con TC mayorista BCRA</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small">Rendimiento real YTD</div>
+                <div class="kpi-value {% if macro_local.portfolio_return_ytd_real is not None and macro_local.portfolio_return_ytd_real >= 0 %}text-success{% elif macro_local.portfolio_return_ytd_real is not None %}text-danger{% else %}text-muted{% endif %}">
+                    {% if macro_local.portfolio_return_ytd_real is not None %}
+                    {{ macro_local.portfolio_return_ytd_real|floatformat:2 }}%
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">
+                    Nominal YTD:
+                    {% if macro_local.portfolio_return_ytd_nominal is not None %}
+                    {{ macro_local.portfolio_return_ytd_nominal|floatformat:2 }}%
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">
+                    Base: {% if macro_local.portfolio_return_ytd_base_date %}{{ macro_local.portfolio_return_ytd_base_date }}{% else %}-{% endif %}
+                    {% if macro_local.portfolio_return_ytd_is_partial %}
+                    <span class="badge text-bg-warning ms-1">Parcial</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
