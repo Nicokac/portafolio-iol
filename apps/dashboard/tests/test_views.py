@@ -110,6 +110,7 @@ class TestDashboardView:
         allowed = staff_client.get(url)
         assert allowed.status_code == 200
         assert 'Estado de benchmarks historicos' in allowed.content.decode()
+        assert 'Activacion modelo de riesgo' in allowed.content.decode()
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')

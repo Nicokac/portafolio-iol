@@ -147,6 +147,22 @@
         </div>
     </div>
 </section>
+
+<section class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Activacion modelo de riesgo</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>State Metric</th><th class="text-end">Count</th><th>Distribucion</th><th>Ultimo estado</th><th>Ultimo detalle</th></tr>
+                    </thead>
+                    <tbody id="ops-states-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
@@ -162,10 +178,29 @@ fetch('/api/metrics/internal-observability/')
         <td class="text-end">${m.max_ms || '-'}</td>
       </tr>
     `).join('');
+    const stateRows = (data.states || []).map(s => {
+      const distribution = Object.entries(s.states || {}).map(([key, value]) => `${key}: ${value}`).join(' · ');
+      const extra = s.latest_extra || {};
+      const detailParts = [];
+      if (extra.observations !== undefined) detailParts.push(`obs ${extra.observations}`);
+      if (extra.coverage_pct !== undefined) detailParts.push(`coverage ${extra.coverage_pct}%`);
+      if (extra.reason) detailParts.push(extra.reason);
+      return `
+      <tr>
+        <td>${s.metric_name}</td>
+        <td class="text-end">${s.count || 0}</td>
+        <td>${distribution || '-'}</td>
+        <td>${s.latest_state || '-'}</td>
+        <td>${detailParts.join(' · ') || '-'}</td>
+      </tr>
+    `;
+    }).join('');
     document.getElementById('ops-metrics-body').innerHTML = rows || '<tr><td colspan="4" class="text-muted">Sin datos</td></tr>';
+    document.getElementById('ops-states-body').innerHTML = stateRows || '<tr><td colspan="5" class="text-muted">Sin datos</td></tr>';
   })
   .catch(() => {
     document.getElementById('ops-metrics-body').innerHTML = '<tr><td colspan="4" class="text-danger">Error cargando datos de observabilidad</td></tr>';
+    document.getElementById('ops-states-body').innerHTML = '<tr><td colspan="5" class="text-danger">Error cargando estados de observabilidad</td></tr>';
   });
 </script>
 {% endblock %}
