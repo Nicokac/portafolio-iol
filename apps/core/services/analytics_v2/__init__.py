@@ -15,6 +15,7 @@ from .helpers import (
 from .factor_catalog import FACTOR_CATALOG, FactorCatalogService
 from .factor_classifier_service import FactorClassifierService
 from .factor_exposure_service import FactorExposureService
+from .expected_return_service import ExpectedReturnService
 from .risk_contribution_service import RiskContributionService
 from .scenario_analysis_service import ScenarioAnalysisService
 from .scenario_sensitivity_service import ScenarioSensitivityService
@@ -58,6 +59,7 @@ __all__ = [
     "derive_confidence",
     "ExpectedReturnBucketItem",
     "ExpectedReturnResult",
+    "ExpectedReturnService",
     "FACTOR_CATALOG",
     "FactorClassification",
     "FactorCatalogService",
