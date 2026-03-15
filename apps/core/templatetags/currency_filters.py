@@ -35,3 +35,11 @@ def pct(value, decimals=1):
         return f"> -{formatted_threshold}%"
 
     return f"{numeric_value:.{decimals}f}".replace(".", ",") + "%"
+
+
+@register.filter(name="abs_value")
+def abs_value(value):
+    try:
+        return abs(float(value))
+    except (TypeError, ValueError):
+        return value

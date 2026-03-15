@@ -450,9 +450,10 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     portafolio = [item['activo'] for item in _get_activos_invertidos()]
     resumen = get_latest_resumen_data()
     portafolio_clasificado = get_portafolio_enriquecido_actual()
+    kpis = get_dashboard_kpis()
 
     total_portafolio = sum(activo.valorizado for activo in portafolio)
-    total_iol = total_portafolio + sum(cuenta.disponible for cuenta in resumen)
+    total_iol = kpis.get('total_iol', 0)
 
     simbolos = [activo.simbolo for activo in portafolio]
     parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
@@ -469,31 +470,31 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
 
     # Exposición por tipo
     exposicion_tech = 0
-    exposicion_bonos_soberanos = 0
+    exposicion_renta_fija_ar = 0
     exposicion_defensivo = 0
     exposicion_growth = 0
 
     for activo in portafolio:
         parametro = parametros.get(activo.simbolo)
         if parametro:
-            if parametro.sector == 'Tecnología':
+            if parametro.sector == 'Tecnolog?a':
                 exposicion_tech += activo.valorizado
-            if parametro.tipo_patrimonial == 'Bond' and parametro.bloque_estrategico == 'Argentina':
-                exposicion_bonos_soberanos += activo.valorizado
+            if parametro.tipo_patrimonial == 'Bond' and parametro.pais_exposicion == 'Argentina':
+                exposicion_renta_fija_ar += activo.valorizado
             if parametro.bloque_estrategico == 'Defensivo':
                 exposicion_defensivo += activo.valorizado
             if parametro.bloque_estrategico == 'Growth':
                 exposicion_growth += activo.valorizado
 
     # Liquidez total
-    liquidez_total = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'])
-    liquidez_total += sum(cuenta.disponible for cuenta in resumen)
+    liquidez_total = kpis.get('liquidez_operativa', 0)
+
 
     # Calcular porcentajes
     pct_usa = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_argentina = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_tech = (exposicion_tech / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_bonos_soberanos = (exposicion_bonos_soberanos / total_portafolio * 100) if total_portafolio > 0 else 0
+    pct_renta_fija_ar = (exposicion_renta_fija_ar / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_defensivo = (exposicion_defensivo / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_growth = (exposicion_growth / total_portafolio * 100) if total_portafolio > 0 else 0
     pct_liquidez = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
@@ -502,10 +503,15 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
         'pct_usa': pct_usa,
         'pct_argentina': pct_argentina,
         'pct_tech': pct_tech,
-        'pct_bonos_soberanos': pct_bonos_soberanos,
+        'pct_bonos_soberanos': pct_renta_fija_ar,
+        'pct_renta_fija_ar': pct_renta_fija_ar,
         'pct_defensivo': pct_defensivo,
         'pct_growth': pct_growth,
         'pct_liquidez': pct_liquidez,
+        'methodology': {
+            'pct_renta_fija_ar': 'Bonos argentinos (soberanos, CER y corporativos) / portafolio invertido',
+            'pct_liquidez': 'liquidez operativa / total iol',
+        },
     }
 
 
@@ -514,9 +520,10 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     portafolio = [item['activo'] for item in _get_activos_invertidos()]
     resumen = get_latest_resumen_data()
     portafolio_clasificado = get_portafolio_enriquecido_actual()
+    kpis = get_dashboard_kpis()
 
     total_portafolio = sum(activo.valorizado for activo in portafolio)
-    total_iol = total_portafolio + sum(cuenta.disponible for cuenta in resumen)
+    total_iol = kpis.get('total_iol', 0)
 
     simbolos = [activo.simbolo for activo in portafolio]
     parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
@@ -538,8 +545,8 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     exposicion_argentina_pct = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
 
     # Liquidez total
-    liquidez_total = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'])
-    liquidez_total += sum(cuenta.disponible for cuenta in resumen)
+    liquidez_total = kpis.get('liquidez_operativa', 0)
+
     liquidez_pct = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
 
     volatility_metrics = VolatilityService().calculate_volatility(days=90)

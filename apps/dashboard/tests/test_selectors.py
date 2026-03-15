@@ -183,6 +183,38 @@ class TestDashboardSelectors(TestCase):
         assert kpis['pct_fci_cash_management'] == 0.0
         assert kpis['pct_portafolio_invertido'] == 50.0
 
+    def test_pct_liquidez_usa_total_iol_como_base(self):
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(simbolo='AAPL', sector='Tecnolog?a', bloque_estrategico='Growth', pais_exposicion='USA', tipo_patrimonial='Growth')
+        ParametroActivo.objects.create(simbolo='CAU1', sector='Liquidez', bloque_estrategico='Liquidez', pais_exposicion='Argentina', tipo_patrimonial='Cash')
+        ParametroActivo.objects.create(simbolo='ADBAICA', sector='Cash Mgmt', bloque_estrategico='Liquidez', pais_exposicion='Argentina', tipo_patrimonial='FCI')
+        make_activo(fecha, 'AAPL', valorizado=1300.00, tipo='ACCIONES', moneda='USD')
+        make_activo(fecha, 'CAU1', valorizado=1000.00, tipo='CAUCIONESPESOS')
+        make_activo(fecha, 'ADBAICA', valorizado=500.00, tipo='FondoComundeInversion')
+        make_resumen(fecha, disponible=200.00)
+
+        riesgo = get_riesgo_portafolio_detallado()
+
+        assert abs(float(riesgo['pct_liquidez']) - 40.0) < 0.01
+
+    def test_pct_renta_fija_ar_incluye_bonos_argentinos(self):
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(simbolo='GD30', sector='Soberano', bloque_estrategico='Argentina', pais_exposicion='Argentina', tipo_patrimonial='Bond')
+        ParametroActivo.objects.create(simbolo='TZX26', sector='CER', bloque_estrategico='Argentina', pais_exposicion='Argentina', tipo_patrimonial='Bond')
+        ParametroActivo.objects.create(simbolo='BPOC7', sector='Corporativo', bloque_estrategico='Argentina', pais_exposicion='Argentina', tipo_patrimonial='Bond')
+        ParametroActivo.objects.create(simbolo='AAPL', sector='Tecnolog?a', bloque_estrategico='Growth', pais_exposicion='USA', tipo_patrimonial='Growth')
+        make_activo(fecha, 'GD30', valorizado=100.00, tipo='TitulosPublicos')
+        make_activo(fecha, 'TZX26', valorizado=100.00, tipo='TitulosPublicos')
+        make_activo(fecha, 'BPOC7', valorizado=100.00, tipo='TitulosPublicos')
+        make_activo(fecha, 'AAPL', valorizado=700.00, tipo='ACCIONES', moneda='USD')
+
+        riesgo = get_riesgo_portafolio_detallado()
+
+        assert abs(float(riesgo['pct_renta_fija_ar']) - 30.0) < 0.01
+        assert abs(float(riesgo['pct_bonos_soberanos']) - 30.0) < 0.01
+
     def test_top_10_concentracion(self):
         """Top 10 debe usar solo portafolio invertido, no liquidez ni cash management."""
         fecha = timezone.now()

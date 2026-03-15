@@ -56,6 +56,12 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
+    def test_estrategia_uses_updated_liquidity_and_fixed_income_labels(self, auth_client):
+        response = auth_client.get(reverse('dashboard:estrategia'))
+        body = response.content.decode()
+        assert 'Fondos de liquidez / cash management' in body
+        assert '% Renta fija AR' in body
+
     def test_planeacion_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:planeacion')
         response = auth_client.get(url)
