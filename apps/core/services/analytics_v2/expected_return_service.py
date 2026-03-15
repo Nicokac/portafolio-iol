@@ -12,6 +12,7 @@ from apps.core.services.analytics_v2.schemas import (
     ExpectedReturnBucketItem,
     ExpectedReturnResult,
     NormalizedPosition,
+    RecommendationSignal,
 )
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
@@ -32,6 +33,10 @@ class ExpectedReturnService:
     WEEKLY_LOOKBACK_PERIODS = 52
     MIN_DAILY_OBSERVATIONS = 30
     MIN_WEEKLY_OBSERVATIONS = 8
+    LOW_REAL_EXPECTED_RETURN_THRESHOLD = 0.0
+    LOW_NOMINAL_EXPECTED_RETURN_THRESHOLD = 12.0
+    HIGH_LIQUIDITY_WEIGHT_THRESHOLD = 30.0
+    LIQUIDITY_GAP_THRESHOLD = 5.0
 
     BUCKETS = {
         "equity_beta": _BucketConfig(
@@ -149,6 +154,74 @@ class ExpectedReturnService:
                 warnings=list(dict.fromkeys(warnings)),
             ),
         ).to_dict()
+
+    def build_recommendation_signals(self) -> list[dict]:
+        result = self.calculate()
+        if not result.get("by_bucket"):
+            return []
+
+        signals: list[RecommendationSignal] = []
+        buckets = {item["bucket_key"]: item for item in result.get("by_bucket", [])}
+        expected_return_pct = result.get("expected_return_pct")
+        real_expected_return_pct = result.get("real_expected_return_pct")
+
+        liquidity_bucket = buckets.get("liquidity_ars", {})
+        liquidity_weight = float(liquidity_bucket.get("weight_pct", 0.0) or 0.0)
+        liquidity_expected = liquidity_bucket.get("expected_return_pct")
+        equity_bucket = buckets.get("equity_beta", {})
+        equity_expected = equity_bucket.get("expected_return_pct")
+
+        if real_expected_return_pct is not None and float(real_expected_return_pct) <= self.LOW_REAL_EXPECTED_RETURN_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="expected_return_real_weak",
+                    severity="high" if float(real_expected_return_pct) < -2.0 else "medium",
+                    title="Retorno real esperado débil",
+                    description="La referencia real esperada del portafolio queda en zona baja o negativa frente a inflación.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "real_expected_return_pct": round(float(real_expected_return_pct), 2),
+                        "expected_return_pct": round(float(expected_return_pct or 0.0), 2),
+                    },
+                )
+            )
+        elif expected_return_pct is not None and float(expected_return_pct) <= self.LOW_NOMINAL_EXPECTED_RETURN_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="expected_return_nominal_weak",
+                    severity="medium",
+                    title="Retorno esperado nominal moderado",
+                    description="La referencia nominal del portafolio luce acotada para la composición actual.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "expected_return_pct": round(float(expected_return_pct), 2),
+                        "threshold_pct": self.LOW_NOMINAL_EXPECTED_RETURN_THRESHOLD,
+                    },
+                )
+            )
+
+        if (
+            liquidity_weight >= self.HIGH_LIQUIDITY_WEIGHT_THRESHOLD
+            and liquidity_expected is not None
+            and equity_expected is not None
+            and (float(equity_expected) - float(liquidity_expected)) >= self.LIQUIDITY_GAP_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="expected_return_liquidity_drag",
+                    severity="medium",
+                    title="Liquidez excedente con retorno esperado menor",
+                    description="La liquidez y el cash management pesan demasiado frente a buckets con mejor referencia estructural de retorno.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "liquidity_weight_pct": round(liquidity_weight, 2),
+                        "liquidity_expected_return_pct": round(float(liquidity_expected), 2),
+                        "equity_expected_return_pct": round(float(equity_expected), 2),
+                    },
+                )
+            )
+
+        return [signal.to_dict() for signal in signals]
 
     def _load_current_positions(self) -> list[NormalizedPosition]:
         return self.positions_loader._load_current_positions()
