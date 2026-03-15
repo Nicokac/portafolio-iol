@@ -87,6 +87,27 @@ def test_scenario_analysis_calculates_total_and_group_impacts():
 
 
 @pytest.mark.django_db
+def test_scenario_analysis_stronger_spy_shock_produces_larger_loss():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="SPY",
+        sector="Indice",
+        bloque_estrategico="Core",
+        pais_exposicion="USA",
+        tipo_patrimonial="ETF",
+    )
+
+    _make_asset_snapshot(now, "SPY", 1000, tipo="CEDEARS", moneda="dolar_Estadounidense")
+
+    mild = ScenarioAnalysisService().analyze("spy_down_10")
+    severe = ScenarioAnalysisService().analyze("spy_down_20")
+
+    assert severe["total_impact_money"] < mild["total_impact_money"]
+    assert severe["total_impact_pct"] < mild["total_impact_pct"]
+
+
+@pytest.mark.django_db
 def test_scenario_analysis_top_negative_contributors_are_sorted():
     now = timezone.now()
 
@@ -122,6 +143,46 @@ def test_scenario_analysis_top_negative_contributors_are_sorted():
     top = result["top_negative_contributors"]
     assert top[0]["estimated_impact_money"] <= top[1]["estimated_impact_money"]
     assert top[0]["symbol"] == "AAPL"
+
+
+@pytest.mark.django_db
+def test_scenario_analysis_em_stress_hits_emerging_exposure():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="EWZ",
+        sector="Indice",
+        bloque_estrategico="Brasil",
+        pais_exposicion="Brasil",
+        tipo_patrimonial="ETF",
+    )
+    ParametroActivo.objects.create(
+        simbolo="EEM",
+        sector="Indice",
+        bloque_estrategico="Emergentes",
+        pais_exposicion="EM",
+        tipo_patrimonial="ETF",
+    )
+    ParametroActivo.objects.create(
+        simbolo="KO",
+        sector="Consumo defensivo",
+        bloque_estrategico="Dividendos",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+
+    _make_asset_snapshot(now, "EWZ", 800, tipo="CEDEARS", moneda="dolar_Estadounidense")
+    _make_asset_snapshot(now, "EEM", 700, tipo="CEDEARS", moneda="dolar_Estadounidense")
+    _make_asset_snapshot(now, "KO", 500, tipo="ACCIONES", moneda="dolar_Estadounidense")
+
+    result = ScenarioAnalysisService().analyze("em_stress")
+    impacts = {item["symbol"]: item for item in result["by_asset"]}
+
+    assert impacts["EWZ"]["estimated_impact_money"] < 0
+    assert impacts["EEM"]["estimated_impact_money"] < 0
+    assert impacts["KO"]["estimated_impact_money"] == 0.0
+    assert any(group["key"] == "Brasil" for group in result["by_country"])
+    assert any(group["key"] == "EM" for group in result["by_country"])
 
 
 @pytest.mark.django_db
@@ -163,6 +224,48 @@ def test_scenario_analysis_marks_missing_metadata_warning():
 
     assert "missing_metadata:UNKNOWN" in result["metadata"]["warnings"]
     assert result["metadata"]["confidence"] == "medium"
+
+
+@pytest.mark.django_db
+def test_scenario_analysis_returns_expected_contract_keys():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    _make_asset_snapshot(now, "AAPL", 1000, tipo="ACCIONES", moneda="dolar_Estadounidense")
+
+    result = ScenarioAnalysisService().analyze("tech_shock")
+
+    assert set(result.keys()) == {
+        "scenario_key",
+        "total_impact_pct",
+        "total_impact_money",
+        "by_asset",
+        "by_sector",
+        "by_country",
+        "top_negative_contributors",
+        "metadata",
+        "scenario",
+    }
+    assert set(result["by_asset"][0].keys()) == {
+        "symbol",
+        "market_value",
+        "estimated_impact_pct",
+        "estimated_impact_money",
+        "transmission_channel",
+    }
+    assert set(result["metadata"].keys()) == {
+        "methodology",
+        "data_basis",
+        "limitations",
+        "confidence",
+        "warnings",
+    }
 
 
 @pytest.mark.django_db
