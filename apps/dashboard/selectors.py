@@ -147,6 +147,36 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
     return _get_cached_selector_result("portafolio_enriquecido_actual", build)
 
 
+def _get_activos_invertidos() -> List[Dict]:
+    return get_portafolio_enriquecido_actual()['inversion']
+
+
+def _get_activos_valorizados_con_metadata() -> List[Dict]:
+    portafolio = get_portafolio_enriquecido_actual()
+    return portafolio['liquidez'] + portafolio['fci_cash_management'] + portafolio['inversion']
+
+
+def _build_distribution_from_items(items: List[Dict], field: str) -> Dict[str, float]:
+    distribucion: Dict[str, float] = {}
+    for item in items:
+        key = item.get(field) or 'Sin clasificar'
+        if field == 'pais_exposicion' and key in {'Estados Unidos', 'USA'}:
+            key = 'USA'
+        distribucion[key] = distribucion.get(key, 0) + float(item['activo'].valorizado)
+    return distribucion
+
+
+def _get_resumen_cash_distribution_by_country() -> Dict[str, float]:
+    distribucion: Dict[str, float] = {}
+    for cuenta in get_latest_resumen_data():
+        monto = float(cuenta.disponible)
+        if monto <= 0:
+            continue
+        pais = 'USA' if cuenta.moneda == 'USD' else 'Argentina'
+        distribucion[pais] = distribucion.get(pais, 0) + monto
+    return distribucion
+
+
 def get_dashboard_kpis() -> Dict:
     """Calcula los KPIs principales del dashboard con métricas separadas por categoría."""
     def build():
@@ -182,19 +212,26 @@ def get_dashboard_kpis() -> Dict:
         )
         capital_invertido_real = total_iol - liquidez_operativa - fci_cash_valor
 
-        # Rendimiento
-        rendimiento_total_dinero = sum(activo.ganancia_dinero for activo in portafolio)
-        total_invertido = sum(activo.valorizado for activo in portafolio)
-        rendimiento_total_porcentaje = (rendimiento_total_dinero / total_invertido * 100) if total_invertido else 0
+        # Rendimiento simple sobre costo estimado del capital realmente invertido.
+        inversion = portafolio_clasificado['inversion']
+        rendimiento_total_dinero = sum(item['activo'].ganancia_dinero for item in inversion)
+        costo_estimado_invertido = portafolio_invertido - rendimiento_total_dinero
+        rendimiento_total_porcentaje = (
+            rendimiento_total_dinero / costo_estimado_invertido * 100
+        ) if costo_estimado_invertido > 0 else 0
 
-        # Concentración
-        portafolio_ordenado = sorted(portafolio, key=lambda x: x.valorizado, reverse=True)
+        # Concentraci?n de posiciones sobre portafolio invertido.
+        portafolio_ordenado = sorted(
+            (item['activo'] for item in inversion),
+            key=lambda activo: activo.valorizado,
+            reverse=True,
+        )
         top_5_valor = sum(activo.valorizado for activo in portafolio_ordenado[:5])
-        top_5_concentracion = (top_5_valor / total_invertido * 100) if total_invertido else 0
+        top_5_concentracion = (top_5_valor / portafolio_invertido * 100) if portafolio_invertido else 0
 
-        # Top 10 concentración
+        # Top 10 concentraci?n
         top_10_valor = sum(activo.valorizado for activo in portafolio_ordenado[:10])
-        top_10_concentracion = (top_10_valor / total_invertido * 100) if total_invertido else 0
+        top_10_concentracion = (top_10_valor / portafolio_invertido * 100) if portafolio_invertido else 0
 
         # Porcentajes de los bloques patrimoniales
         pct_fci_cash_management = (fci_cash_valor / total_iol * 100) if total_iol else 0
@@ -211,10 +248,18 @@ def get_dashboard_kpis() -> Dict:
             'capital_invertido_real': capital_invertido_real,
             'rendimiento_total_porcentaje': rendimiento_total_porcentaje,
             'rendimiento_total_dinero': rendimiento_total_dinero,
+            'rendimiento_total_cost_basis': costo_estimado_invertido,
             'top_5_concentracion': top_5_concentracion,
             'top_10_concentracion': top_10_concentracion,
             'pct_fci_cash_management': pct_fci_cash_management,
             'pct_portafolio_invertido': pct_portafolio_invertido,
+            'methodology': {
+                'top_5_concentracion': 'sum(top_5 valorizado del portafolio invertido) / portafolio invertido',
+                'top_10_concentracion': 'sum(top_10 valorizado del portafolio invertido) / portafolio invertido',
+                'top_positions_basis': 'portafolio_invertido',
+                'rendimiento_total_porcentaje': 'ganancia acumulada / costo estimado del portafolio invertido',
+                'rendimiento_total_basis': 'portafolio_invertido_costo_estimado',
+            },
         }
 
     return _get_cached_selector_result("dashboard_kpis", build)
@@ -230,43 +275,28 @@ def get_macro_local_context(total_iol: float | None = None) -> Dict:
     return _get_cached_selector_result(f"macro_local_context:{total_stamp}", build)
 
 
-def get_distribucion_sector() -> Dict[str, float]:
-    """Obtiene la distribución por sector."""
-    portafolio = get_latest_portafolio_data()
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-    distribucion = {}
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        sector = parametro.sector if parametro else 'Sin clasificar'
-        distribucion[sector] = distribucion.get(sector, 0) + float(activo.valorizado)
-    return distribucion
+def get_distribucion_sector(base: str = 'total_activos') -> Dict[str, float]:
+    """Obtiene la distribuci?n por sector o bloque patrimonial seg?n la base."""
+    if base == 'portafolio_invertido':
+        return _build_distribution_from_items(_get_activos_invertidos(), 'sector')
+    return _build_distribution_from_items(_get_activos_valorizados_con_metadata(), 'sector')
 
 
-def get_distribucion_pais() -> Dict[str, float]:
-    """Obtiene la distribución por país de exposición real."""
-    portafolio = get_latest_portafolio_data()
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-    distribucion = {}
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        pais = parametro.pais_exposicion if parametro else 'Sin clasificar'
-        distribucion[pais] = distribucion.get(pais, 0) + float(activo.valorizado)
-    return distribucion
+def get_distribucion_pais(base: str = 'portafolio_invertido') -> Dict[str, float]:
+    """Obtiene la distribuci?n por pa?s de exposici?n real."""
+    if base == 'total_iol':
+        distribucion = _build_distribution_from_items(_get_activos_valorizados_con_metadata(), 'pais_exposicion')
+        for pais, monto in _get_resumen_cash_distribution_by_country().items():
+            distribucion[pais] = distribucion.get(pais, 0) + monto
+        return distribucion
+    return _build_distribution_from_items(_get_activos_invertidos(), 'pais_exposicion')
 
 
-def get_distribucion_tipo_patrimonial() -> Dict[str, float]:
-    """Obtiene la distribución por tipo patrimonial."""
-    portafolio = get_latest_portafolio_data()
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-    distribucion = {}
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        tipo = parametro.tipo_patrimonial if parametro else 'Sin clasificar'
-        distribucion[tipo] = distribucion.get(tipo, 0) + float(activo.valorizado)
-    return distribucion
+def get_distribucion_tipo_patrimonial(base: str = 'total_activos') -> Dict[str, float]:
+    """Obtiene la distribuci?n por tipo patrimonial."""
+    if base == 'portafolio_invertido':
+        return _build_distribution_from_items(_get_activos_invertidos(), 'tipo_patrimonial')
+    return _build_distribution_from_items(_get_activos_valorizados_con_metadata(), 'tipo_patrimonial')
 
 
 def get_distribucion_moneda() -> Dict[str, float]:
@@ -366,8 +396,8 @@ def get_concentracion_sectorial() -> Dict[str, float]:
 
 
 def get_concentracion_sector() -> Dict[str, float]:
-    """Calcula la concentración por sector en porcentajes."""
-    distribucion = get_distribucion_sector()
+    """Calcula la concentraci?n sectorial pura del capital invertido."""
+    distribucion = get_distribucion_sector(base='portafolio_invertido')
     total = sum(distribucion.values())
     if total == 0:
         return {}
@@ -375,9 +405,9 @@ def get_concentracion_sector() -> Dict[str, float]:
     return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
 
 
-def get_concentracion_pais() -> Dict[str, float]:
-    """Calcula la concentración por país en porcentajes."""
-    distribucion = get_distribucion_pais()
+def get_concentracion_pais(base: str = 'portafolio_invertido') -> Dict[str, float]:
+    """Calcula la concentraci?n por pa?s en porcentajes."""
+    distribucion = get_distribucion_pais(base=base)
     total = sum(distribucion.values())
     if total == 0:
         return {}
@@ -385,14 +415,15 @@ def get_concentracion_pais() -> Dict[str, float]:
     return {pais: (valor / total * 100) for pais, valor in distribucion.items()}
 
 
-def get_concentracion_tipo_patrimonial() -> Dict[str, float]:
-    """Calcula la concentración por tipo patrimonial en porcentajes."""
-    distribucion = get_distribucion_tipo_patrimonial()
+def get_concentracion_tipo_patrimonial(base: str = 'total_activos') -> Dict[str, float]:
+    """Calcula la concentraci?n por tipo patrimonial en porcentajes."""
+    distribucion = get_distribucion_tipo_patrimonial(base=base)
     total = sum(distribucion.values())
     if total == 0:
         return {}
 
     return {tipo: (valor / total * 100) for tipo, valor in distribucion.items()}
+
 
 def get_concentracion_moneda() -> Dict[str, float]:
     """Calcula la concentracion por moneda economica en porcentajes."""
@@ -416,7 +447,7 @@ def get_concentracion_moneda_operativa() -> Dict[str, float]:
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     """Calcula métricas detalladas de riesgo del portafolio."""
-    portafolio = get_latest_portafolio_data()
+    portafolio = [item['activo'] for item in _get_activos_invertidos()]
     resumen = get_latest_resumen_data()
     portafolio_clasificado = get_portafolio_enriquecido_actual()
 
@@ -480,7 +511,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
 
 def get_riesgo_portafolio() -> Dict[str, float]:
     """Calcula métricas de riesgo del portafolio (versión simplificada para compatibilidad)."""
-    portafolio = get_latest_portafolio_data()
+    portafolio = [item['activo'] for item in _get_activos_invertidos()]
     resumen = get_latest_resumen_data()
     portafolio_clasificado = get_portafolio_enriquecido_actual()
 
@@ -520,32 +551,12 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     metadata_quality = MetadataAuditService().run_audit()
     volatilidad_pct = volatility_metrics.get('annualized_volatility')
 
-    # Fallback: proxy si no hay histórico suficiente
-    if volatilidad_pct is None:
-        volatilidad_ponderada = 0
-        for activo in portafolio:
-            parametro = parametros.get(activo.simbolo)
-            pct_portafolio = float(activo.valorizado) / float(total_portafolio) if total_portafolio > 0 else 0
-
-            if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-                volatilidad_activo = 0.28
-            elif parametro and parametro.tipo_patrimonial == 'Hard Assets':
-                volatilidad_activo = 0.22
-            elif parametro and parametro.pais_exposicion == 'Argentina':
-                if parametro.tipo_patrimonial in ['Bond', 'FCI']:
-                    volatilidad_activo = 0.25
-                elif parametro.tipo_patrimonial == 'Cash':
-                    volatilidad_activo = 0.03
-                else:
-                    volatilidad_activo = 0.35
-            else:
-                volatilidad_activo = 0.20
-
-            volatilidad_ponderada += pct_portafolio * volatilidad_activo
-        volatilidad_pct = volatilidad_ponderada * 100
-
     result = {
         'volatilidad_estimada': volatilidad_pct,
+        'volatilidad_status': 'ok' if volatilidad_pct is not None else 'insufficient_history',
+        'volatilidad_warning': volatility_metrics.get('warning'),
+        'volatilidad_observations': volatility_metrics.get('observations'),
+        'volatilidad_required_min_observations': volatility_metrics.get('required_min_observations'),
         'exposicion_usa': exposicion_usa_pct,
         'exposicion_argentina': exposicion_argentina_pct,
         'liquidez': liquidez_pct,
@@ -999,3 +1010,5 @@ def get_active_alerts() -> list:
         'id', 'tipo', 'mensaje', 'severidad', 'valor',
         'simbolo', 'sector', 'pais', 'created_at', 'is_acknowledged'
     ))
+
+

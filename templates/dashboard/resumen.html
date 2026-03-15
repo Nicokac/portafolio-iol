@@ -73,11 +73,11 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Ganancia o pérdida acumulada de la cartera sobre el valor total actual.">Rendimiento Total</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Rendimiento simple del portafolio invertido calculado como ganancia acumulada sobre costo estimado. Puede diferir del simple de IOL.">Rendimiento simple invertido</div>
                 <div class="kpi-value {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">
                     {{ kpis.rendimiento_total_porcentaje|pct:2 }}
                 </div>
-                <div class="text-body-secondary small">Sobre total invertido</div>
+                <div class="text-body-secondary small">Sobre costo estimado del portafolio invertido</div>
             </div>
         </div>
     </div>

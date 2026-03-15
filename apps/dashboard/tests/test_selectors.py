@@ -82,22 +82,12 @@ class TestDashboardSelectors(TestCase):
 
     def test_get_dashboard_kpis_no_data(self):
         kpis = get_dashboard_kpis()
-        assert kpis == {
-            'total_iol': 0,
-            'titulos_valorizados': 0,
-            'cash_ars': 0,
-            'cash_usd': 0,
-            'liquidez_operativa': 0,
-            'fci_cash_management': 0,
-            'portafolio_invertido': 0,
-            'capital_invertido_real': 0,
-            'rendimiento_total_porcentaje': 0,
-            'rendimiento_total_dinero': 0,
-            'top_5_concentracion': 0,
-            'top_10_concentracion': 0,
-            'pct_fci_cash_management': 0,
-            'pct_portafolio_invertido': 0,
-        }
+        assert kpis['total_iol'] == 0
+        assert kpis['portafolio_invertido'] == 0
+        assert kpis['rendimiento_total_porcentaje'] == 0
+        assert kpis['rendimiento_total_cost_basis'] == 0
+        assert kpis['top_10_concentracion'] == 0
+        assert 'methodology' in kpis
 
     def test_get_dashboard_kpis_with_data(self):
         # Crear datos de prueba
@@ -143,7 +133,7 @@ class TestDashboardSelectors(TestCase):
         assert kpis['liquidez_operativa'] == Decimal('1000.00')  # solo cash ARS
         assert kpis['capital_invertido_real'] == Decimal('1000.00')  # total_iol - liquidez_operativa - fci_cash
         assert kpis['rendimiento_total_dinero'] == Decimal('111.10')  # ganancia_dinero del activo
-        assert abs(kpis['rendimiento_total_porcentaje'] - Decimal('11.11')) < Decimal('0.01')
+        assert abs(kpis['rendimiento_total_porcentaje'] - Decimal('12.50')) < Decimal('0.01')
 
     def test_get_dashboard_kpis_with_percentages(self):
         """Test que los KPIs incluyen los porcentajes de los bloques patrimoniales."""
@@ -194,44 +184,75 @@ class TestDashboardSelectors(TestCase):
         assert kpis['pct_portafolio_invertido'] == 50.0
 
     def test_top_10_concentracion(self):
-        """Test cálculo de concentración top 10."""
+        """Top 10 debe usar solo portafolio invertido, no liquidez ni cash management."""
         fecha = timezone.now()
 
         for i in range(12):
             make_activo(fecha, f'ACT{i}', valorizado=1000 - i * 50)
 
+        make_activo(fecha, 'CAU1', valorizado=10000, tipo='CAUCIONESPESOS')
+        make_activo(fecha, 'ADBAICA', valorizado=5000, tipo='FondoComundeInversion')
+
         kpis = get_dashboard_kpis()
 
-        # Top 10 deberían sumar: 1000+950+900+850+800+750+700+650+600+550 = 7750
-        # Total portafolio = suma de todos (12 activos) = 7750 + 500 + 450 = 8700
-        # Top 10 concentración = 7750/8700 ≈ 89.08%
         assert abs(float(kpis['top_10_concentracion']) - 89.08) < 0.01
 
     def test_concentracion_por_pais(self):
-        """Test cálculo de concentración por país."""
+        """Debe distinguir base invertida vs base total IOL."""
         fecha = timezone.now()
 
         ParametroActivo.objects.create(
             simbolo='AAPL',
-            sector='Tecnología',
-            bloque_estrategico='Inversión',
+            sector='Tecnolog?a',
+            bloque_estrategico='Inversi?n',
             pais_exposicion='Estados Unidos',
             tipo_patrimonial='Growth',
         )
         ParametroActivo.objects.create(
             simbolo='YPF',
-            sector='Energía',
-            bloque_estrategico='Inversión',
+            sector='Energ?a',
+            bloque_estrategico='Inversi?n',
             pais_exposicion='Argentina',
-            tipo_patrimonial='Bond',
+            tipo_patrimonial='Equity',
+        )
+        ParametroActivo.objects.create(
+            simbolo='ADBAICA',
+            sector='Cash Mgmt',
+            bloque_estrategico='Liquidez',
+            pais_exposicion='Argentina',
+            tipo_patrimonial='FCI',
+        )
+        ParametroActivo.objects.create(
+            simbolo='CAU1',
+            sector='Liquidez',
+            bloque_estrategico='Liquidez',
+            pais_exposicion='Argentina',
+            tipo_patrimonial='Cash',
         )
         make_activo(fecha, 'AAPL', valorizado=1000.00, moneda='USD')
         make_activo(fecha, 'YPF', valorizado=500.00)
+        make_activo(fecha, 'ADBAICA', valorizado=200.00, tipo='FondoComundeInversion')
+        make_activo(fecha, 'CAU1', valorizado=300.00, tipo='CAUCIONESPESOS')
+        make_resumen(fecha, disponible=400.00)
 
         concentracion = get_concentracion_pais()
+        concentracion_total_iol = get_concentracion_pais(base='total_iol')
 
-        assert abs(concentracion['Estados Unidos'] - 66.67) < 0.01
+        assert abs(concentracion['USA'] - 66.67) < 0.01
         assert abs(concentracion['Argentina'] - 33.33) < 0.01
+        assert abs(concentracion_total_iol['USA'] - 41.67) < 0.01
+        assert abs(concentracion_total_iol['Argentina'] - 58.33) < 0.01
+
+    def test_rendimiento_total_usa_solo_portafolio_invertido_sobre_costo_estimado(self):
+        fecha = timezone.now()
+
+        make_activo(fecha, 'AAPL', valorizado=1000.00, ganancia_dinero=200.00, tipo='ACCIONES', moneda='USD')
+        make_activo(fecha, 'ADBAICA', valorizado=500.00, ganancia_dinero=50.00, tipo='FondoComundeInversion')
+        make_activo(fecha, 'CAU1', valorizado=1500.00, ganancia_dinero=10.00, tipo='CAUCIONESPESOS')
+
+        kpis = get_dashboard_kpis()
+
+        assert abs(float(kpis['rendimiento_total_porcentaje']) - 25.0) < 0.01
 
     def test_concentracion_por_tipo_patrimonial(self):
         """Test cálculo de concentración por tipo patrimonial."""
@@ -392,6 +413,8 @@ class TestDashboardSelectors(TestCase):
         assert 'volatilidad_estimada' in riesgo
         assert 'exposicion_usa' in riesgo
         assert riesgo['exposicion_usa'] > 0
+        assert riesgo['volatilidad_status'] == 'insufficient_history'
+        assert riesgo['volatilidad_estimada'] is None
 
     def test_distribucion_sector_con_datos(self):
         """Test distribución por sector con ParametroActivo."""
@@ -445,7 +468,7 @@ class TestDashboardSelectors(TestCase):
         assert 'Hard Assets' in distribucion or 'ARS' in distribucion
 
     def test_riesgo_portafolio_ramas_volatilidad(self):
-        """Cubre ramas Hard Assets, bonos argentinos, cash y equities."""
+        """Sin snapshots suficientes no debe inventar una volatilidad robusta."""
         fecha = timezone.now()
 
         ParametroActivo.objects.create(
@@ -472,7 +495,8 @@ class TestDashboardSelectors(TestCase):
 
         riesgo = get_riesgo_portafolio()
         assert 'volatilidad_estimada' in riesgo
-        assert riesgo['volatilidad_estimada'] > 0
+        assert riesgo['volatilidad_estimada'] is None
+        assert riesgo['volatilidad_status'] == 'insufficient_history'
 
     def test_senales_rebalanceo_sin_metadata(self):
         """Cubre rama de activos sin metadata completa."""

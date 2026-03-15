@@ -34,45 +34,17 @@ def test_volatility_service_returns_annualized_volatility():
 
 @pytest.mark.django_db
 @patch("apps.dashboard.selectors.get_evolucion_historica")
-def test_volatility_service_fallbacks_to_evolution(mock_evolution):
+def test_volatility_service_returns_warning_when_history_is_insufficient(mock_evolution):
     mock_evolution.return_value = {
         "tiene_datos": True,
         "fechas": ["2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12"],
         "total_iol": [1000, 1100, 1210, 1180, 1250],
-        "liquidez_operativa": [200, 210, 220, 225, 230],
-        "portafolio_invertido": [700, 780, 860, 840, 900],
-        "cash_management": [100, 110, 130, 115, 120],
     }
-
-    result = VolatilityService().calculate_volatility(days=30)
-
-    assert result["fallback_source"] == "evolucion_historica"
-    assert result["annualized_volatility"] > 0
-
-
-@pytest.mark.django_db
-@patch("apps.dashboard.selectors.get_evolucion_historica")
-def test_volatility_service_returns_warning_when_history_is_insufficient(mock_evolution):
-    mock_evolution.return_value = {"tiene_datos": False}
 
     result = VolatilityService().calculate_volatility(days=30)
 
     assert result["warning"] == "insufficient_history"
     assert result["required_min_observations"] == VolatilityService.MIN_OBSERVATIONS
-
-
-@pytest.mark.django_db
-@patch("apps.dashboard.selectors.get_evolucion_historica")
-def test_volatility_service_returns_warning_when_fallback_also_lacks_points(mock_evolution):
-    mock_evolution.return_value = {
-        "tiene_datos": True,
-        "fechas": ["2026-03-10", "2026-03-11"],
-        "total_iol": [1000, 1100],
-    }
-
-    result = VolatilityService().calculate_volatility(days=30)
-
-    assert result["warning"] == "insufficient_history"
 
 
 def test_build_volatility_result_without_downside_sortino():
@@ -89,14 +61,6 @@ def test_build_volatility_result_without_downside_sortino():
 
     assert "sharpe_ratio" in result
     assert "sortino_ratio" not in result
-
-
-@pytest.mark.django_db
-@patch("apps.dashboard.selectors.get_evolucion_historica", side_effect=RuntimeError("boom"))
-def test_volatility_service_handles_fallback_exception(mock_evolution):
-    result = VolatilityService().calculate_volatility(days=30)
-
-    assert result["warning"] == "insufficient_history"
 
 
 @pytest.mark.django_db

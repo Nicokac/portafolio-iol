@@ -39,6 +39,9 @@ METRIC_BASES = {
     'total_portfolio': 'Total IOL (activos + cash)',
     'invested_capital': 'Capital invertido en activos',
     'portfolio_ex_cash': 'Portafolio excluyendo cash',
+    'invested_portfolio_market_value': 'Portafolio invertido a valor de mercado',
+    'invested_portfolio_estimated_cost': 'Costo estimado del portafolio invertido (valor actual menos ganancia acumulada)',
+    'total_iol_with_cash_country_mapping': 'Total IOL con cash y liquidez asignados por país económico',
 }
 
 
@@ -87,11 +90,16 @@ def dashboard_kpis(request):
         kpis['metadata'] = {
             'bases': METRIC_BASES,
             'fields_basis': {
-                'top_5_concentracion': 'invested_capital',
-                'top_10_concentracion': 'invested_capital',
+                'top_5_concentracion': 'invested_portfolio_market_value',
+                'top_10_concentracion': 'invested_portfolio_market_value',
                 'pct_fci_cash_management': 'total_portfolio',
                 'pct_portafolio_invertido': 'total_portfolio',
-                'rendimiento_total_porcentaje': 'invested_capital',
+                'rendimiento_total_porcentaje': 'invested_portfolio_estimated_cost',
+            },
+            'fields_methodology': {
+                'top_5_concentracion': 'sum(top_5 valorizado del portafolio invertido) / portafolio invertido',
+                'top_10_concentracion': 'sum(top_10 valorizado del portafolio invertido) / portafolio invertido',
+                'rendimiento_total_porcentaje': 'ganancia acumulada / costo estimado del portafolio invertido',
             },
         }
         return Response(kpis, status=status.HTTP_200_OK)
@@ -102,7 +110,13 @@ def dashboard_kpis(request):
 def dashboard_concentracion_pais(request):
     """Obtiene concentración por país."""
     try:
-        data = get_concentracion_pais()
+        basis = request.query_params.get('basis', 'portafolio_invertido')
+        if basis not in {'portafolio_invertido', 'total_iol'}:
+            return Response(
+                {'error': 'Par?metro basis inv?lido. Use portafolio_invertido o total_iol'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        data = get_concentracion_pais(base=basis)
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "metrics_volatility")
@@ -1009,4 +1023,5 @@ def portfolio_parameters_update(request):
             details={'reason': 'exception'},
         )
         return internal_error_response(e, "portfolio_parameters_update")
+
 

@@ -30,7 +30,11 @@ class VolatilityService:
 
         observations = snapshots.count()
         if observations < self.MIN_OBSERVATIONS:
-            return self._fallback_volatility_from_evolution(days, observations)
+            return {
+                "warning": "insufficient_history",
+                "required_min_observations": self.MIN_OBSERVATIONS,
+                "observations": observations,
+            }
 
         returns = self.twr_service.build_daily_return_series(days=days)
         history_span_days = int((snapshots.last().fecha - snapshots.first().fecha).days) if observations >= 2 else 0
@@ -39,8 +43,6 @@ class VolatilityService:
             observations=observations,
             history_span_days=history_span_days,
         )
-        if result.get("warning"):
-            return self._fallback_volatility_from_evolution(days, observations)
         return result
 
     def _fallback_volatility_from_evolution(self, days: int, observations: int) -> Dict[str, float]:

@@ -8,8 +8,8 @@
     <strong>Bases de Cálculo:</strong>
     <ul class="mb-0 mt-2">
         <li><strong>Total IOL:</strong> Activos invertidos + Cash disponible</li>
-        <li><strong>Total Invertido:</strong> Solo activos del portafolio (excluye cash)</li>
-        <li><strong>Métricas de composición:</strong> Porcentajes calculados sobre Total Invertido</li>
+        <li><strong>Portafolio Invertido:</strong> Solo activos de inversión; excluye liquidez operativa, cash disponible y cash management</li>
+        <li><strong>Métricas de composición:</strong> Porcentajes calculados sobre la base informada en cada bloque</li>
         <li><strong>Liquidez:</strong> Porcentaje calculado sobre Total IOL</li>
     </ul>
 </div>
@@ -48,9 +48,9 @@
 
 <div class="row mb-4">
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Valuación total de la cuenta: activos invertidos más cash disponible.">Total IOL</h6><h4 class="card-text text-primary">{{ kpis.total_iol|currency:0 }}</h4><small class="text-muted">Activos + Cash</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Porcentaje del total invertido explicado por las 10 posiciones más grandes. Mide concentración.">Top 10 Concentración</h6><h4 class="card-text text-danger">{{ kpis.top_10_concentracion|pct:1 }}</h4><small class="text-muted">Base: Total Invertido</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Ganancia o pérdida acumulada del portafolio sobre el valor total actual.">Rendimiento Total</h6><h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|pct:2 }}</h4><small class="text-muted">Total IOL</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Desvio estandar anualizado sobre retornos diarios netos de flujos.">Proxy de Volatilidad</h6><h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|pct:1 }}</h4><small class="text-muted">Retornos netos de flujos</small>{% if snapshot_coverage.status != 'ok' %}<div class="small text-warning-emphasis mt-2">Cobertura insuficiente: {{ snapshot_coverage.snapshots_count }} snapshots / {{ snapshot_coverage.requested_days }} días</div>{% endif %}</div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Porcentaje del portafolio invertido explicado por las 10 posiciones de inversión más grandes. Excluye liquidez operativa y cash management.">Top 10 Concentración</h6><h4 class="card-text text-danger">{{ kpis.top_10_concentracion|pct:1 }}</h4><small class="text-muted">Base: Portafolio Invertido</small></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Rendimiento simple del portafolio invertido calculado como ganancia acumulada sobre costo estimado. Puede diferir del rendimiento simple reportado por IOL.">Rendimiento simple invertido</h6><h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|pct:2 }}</h4><small class="text-muted">Base: costo estimado del portafolio invertido</small></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Desvío estándar anualizado sobre retornos diarios netos de flujos. Si la cobertura histórica no alcanza, el sistema no la presenta como métrica robusta.">Proxy preliminar de volatilidad</h6>{% if riesgo_portafolio.volatilidad_estimada is not None %}<h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|pct:1 }}</h4><small class="text-muted">Retornos netos de flujos</small>{% else %}<h4 class="card-text text-warning">Histórico insuficiente</h4><small class="text-muted">No confiable todavía</small>{% endif %}{% if snapshot_coverage.status != 'ok' %}<div class="small text-warning-emphasis mt-2">Cobertura insuficiente: {{ snapshot_coverage.snapshots_count }} snapshots / {{ snapshot_coverage.requested_days }} días</div>{% endif %}</div></div></div>
 </div>
 
 <div class="mb-4">
@@ -68,19 +68,27 @@
 
 <div class="row mb-4">
     <div class="col-md-4">
-        <h3 data-bs-toggle="tooltip" title="Agrupación del capital invertido por sector económico usando la metadata asignada a cada activo.">Distribución por Sector</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <h3 data-bs-toggle="tooltip" title="Agrupación sectorial pura del capital invertido. Excluye liquidez operativa, cash management y cash disponible.">Distribución sectorial del capital invertido</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Portafolio Invertido</small>
         <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="sector-distribution-body"></tbody></table></div></div>
     </div>
     <div class="col-md-4">
-        <h3 data-bs-toggle="tooltip" title="País o región económica subyacente del activo, no necesariamente la plaza donde cotiza.">Exposición Geográfica Real</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <h3 data-bs-toggle="tooltip" title="País o región económica subyacente del activo, no necesariamente la plaza donde cotiza. Esta vista usa solo el portafolio invertido.">Exposición geográfica real</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Portafolio Invertido</small>
         <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="pais-distribution-body"></tbody></table></div></div>
     </div>
     <div class="col-md-4">
-        <h3 data-bs-toggle="tooltip" title="Reparte la cartera entre cash, equity, bonos, ETF y FCI según la clasificación patrimonial interna.">Distribución por Tipo Patrimonial</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Total Portafolio Invertido</small>
+        <h3 data-bs-toggle="tooltip" title="Distribución patrimonial total del capital desplegado entre cash, equity, bonos, ETF y FCI.">Distribución patrimonial total</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Activos valorizados</small>
         <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="tipo-distribution-body"></tbody></table></div></div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h3 data-bs-toggle="tooltip" title="La misma exposición geográfica, pero sobre Total IOL. Incluye liquidez operativa, cash management y cash disponible asignados por país económico.">Exposición geográfica real</h3>
+        <small class="text-muted mb-3 d-block">Base de cálculo: Total IOL</small>
+        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="pais-total-iol-distribution-body"></tbody></table></div></div>
     </div>
 </div>
 
@@ -208,6 +216,7 @@
 const sectorData = {{ concentracion_sector_json|safe }};
 const paisData = {{ concentracion_pais_json|safe }};
 const tipoData = {{ concentracion_tipo_json|safe }};
+const paisTotalIolData = {{ concentracion_pais_total_iol_json|safe }};
 const monedaData = {{ concentracion_moneda_json|safe }};
 const monedaOperativaData = {{ concentracion_moneda_operativa_json|safe }};
 const evolucionData = {{ evolucion_historica|safe }};
@@ -282,6 +291,7 @@ function loadDataQualityDetails() {
 
 renderDistributionTable('sector-distribution-body', sectorData);
 renderDistributionTable('pais-distribution-body', paisData);
+renderDistributionTable('pais-total-iol-distribution-body', paisTotalIolData);
 renderDistributionTable('tipo-distribution-body', tipoData);
 renderDistributionTable('moneda-distribution-body', monedaData);
 renderDistributionTable('moneda-operativa-distribution-body', monedaOperativaData);
