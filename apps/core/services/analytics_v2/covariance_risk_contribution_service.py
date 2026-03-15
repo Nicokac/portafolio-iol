@@ -173,6 +173,10 @@ class CovarianceAwareRiskContributionService:
         )
         return result
 
+    def build_recommendation_signals(self, lookback_days: int = 252, top_n: int = 5) -> list[dict]:
+        result = self.calculate(lookback_days=lookback_days, top_n=top_n)
+        return self.base_service._build_recommendation_signals_from_result(result)  # noqa: SLF001
+
     def _fallback_result(
         self,
         *,

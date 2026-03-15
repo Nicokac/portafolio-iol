@@ -157,6 +157,9 @@ class RiskContributionService:
 
     def build_recommendation_signals(self, lookback_days: int = 90, top_n: int = 5) -> list[dict]:
         result = self.calculate(lookback_days=lookback_days, top_n=top_n)
+        return self._build_recommendation_signals_from_result(result)
+
+    def _build_recommendation_signals_from_result(self, result: dict) -> list[dict]:
         items = result.get("items", [])
         if not items:
             return []

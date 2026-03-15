@@ -9,6 +9,7 @@ from apps.core.services.analytics_v2.covariance_risk_contribution_service import
     CovarianceAwareRiskContributionService,
 )
 from apps.core.services.analytics_v2.risk_contribution_service import RiskContributionService
+from apps.core.services.portfolio.covariance_service import CovarianceService
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 
@@ -193,3 +194,92 @@ def test_covariance_aware_risk_contribution_falls_back_on_non_positive_portfolio
 
     assert result["model_variant"] == "mvp_proxy"
     assert "non_positive_portfolio_volatility" in result["metadata"]["warnings"]
+
+
+@pytest.mark.django_db
+def test_covariance_aware_risk_contribution_builds_signals_from_advanced_result(monkeypatch):
+    now = timezone.now()
+
+    fixtures = [
+        ("AAPL", "Tecnologia", "USA", "Equity", 1000),
+        ("MSFT", "Tecnologia", "USA", "Equity", 1000),
+        ("BOND", "Soberano", "Argentina", "Bond", 1000),
+    ]
+
+    for symbol, sector, country, patrimonial, _ in fixtures:
+        ParametroActivo.objects.create(
+            simbolo=symbol,
+            sector=sector,
+            bloque_estrategico="Test",
+            pais_exposicion=country,
+            tipo_patrimonial=patrimonial,
+        )
+
+    for symbol, _, _, _, value in fixtures:
+        _make_asset_snapshot(
+            now,
+            symbol,
+            value,
+            tipo="ACCIONES" if symbol != "BOND" else "TitulosPublicos",
+            moneda="dolar_Estadounidense" if symbol != "BOND" else "peso_Argentino",
+        )
+
+    covariance = pd.DataFrame(
+        [[0.09, 0.08, 0.0], [0.08, 0.09, 0.0], [0.0, 0.0, 0.02]],
+        index=["AAPL", "MSFT", "BOND"],
+        columns=["AAPL", "MSFT", "BOND"],
+    )
+    returns = pd.DataFrame(
+        {
+            "AAPL": [0.01] * 30,
+            "MSFT": [0.01] * 30,
+            "BOND": [0.002] * 30,
+        }
+    )
+    monkeypatch.setattr(
+        CovarianceService,
+        "build_model_inputs",
+        lambda self, activos, lookback_days=252: {
+            "returns": returns[activos],
+            "covariance_matrix": covariance.loc[activos, activos].to_numpy(),
+            "observations": 30,
+        },
+    )
+
+    service = CovarianceAwareRiskContributionService()
+    signals = service.build_recommendation_signals(top_n=3)
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert "risk_concentration_top_assets" in keyed
+    assert keyed["risk_concentration_top_assets"]["evidence"]["symbols"][:2] == ["AAPL", "MSFT"]
+    assert "risk_concentration_tech" in keyed
+
+
+@pytest.mark.django_db
+def test_covariance_aware_risk_contribution_reuses_mvp_signal_logic_when_falling_back():
+    now = timezone.now()
+
+    tech_assets = [
+        ("AAPL", [1000, 1120, 1040, 1180, 1210]),
+        ("MSFT", [900, 1005, 940, 1060, 1090]),
+        ("NVDA", [800, 930, 860, 1020, 1080]),
+    ]
+
+    for symbol, _ in tech_assets:
+        ParametroActivo.objects.create(
+            simbolo=symbol,
+            sector="Tecnologia",
+            bloque_estrategico="Growth",
+            pais_exposicion="USA",
+            tipo_patrimonial="Equity",
+        )
+
+    for i in range(5):
+        fecha = now - timedelta(days=4 - i)
+        for symbol, values in tech_assets:
+            _make_asset_snapshot(fecha, symbol, values[i], tipo="ACCIONES", moneda="dolar_Estadounidense")
+
+    base_signals = RiskContributionService().build_recommendation_signals(top_n=3)
+    advanced_signals = CovarianceAwareRiskContributionService().build_recommendation_signals(top_n=3)
+
+    assert {signal["signal_key"] for signal in advanced_signals} == {signal["signal_key"] for signal in base_signals}
