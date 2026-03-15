@@ -100,6 +100,59 @@ def test_expected_return_service_warns_when_inflation_reference_is_missing():
     assert result["metadata"]["confidence"] == "medium"
 
 
+def test_expected_return_service_uses_weekly_benchmark_when_daily_is_short():
+    positions = [_make_position("SPY", 1000, asset_type="equity")]
+    benchmark_service = SimpleNamespace(
+        build_daily_returns=lambda key, dates: pd.Series([0.001] * 10),
+        build_weekly_returns=lambda key, dates: pd.Series([0.01] * 12),
+    )
+    service = ExpectedReturnService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions),
+        benchmark_service=benchmark_service,
+        macro_service=SimpleNamespace(
+            get_context_summary=lambda: {
+                "ipc_nacional_variation_yoy": 20.0,
+            }
+        ),
+    )
+
+    result = service.calculate()
+
+    assert result["by_bucket"][0]["basis_reference"].startswith("benchmark:cedear_usa:weekly_trailing_12")
+    assert result["metadata"]["confidence"] == "high"
+
+
+def test_expected_return_service_returns_high_confidence_without_fallbacks():
+    positions = [
+        _make_position("AAPL", 700, asset_type="equity"),
+        _make_position("ADBAICA", 300, asset_type="fci", sector="Cash Mgmt", bucket="Liquidez", patrimonial_type="FCI"),
+    ]
+    benchmark_service = SimpleNamespace(
+        build_daily_returns=lambda key, dates: pd.Series([0.001] * 50),
+        build_weekly_returns=lambda key, dates: pd.Series(dtype=float),
+    )
+    macro_service = SimpleNamespace(
+        get_context_summary=lambda: {
+            "badlar_privada": 28.0,
+            "ipc_nacional_variation_yoy": 20.0,
+        }
+    )
+    service = ExpectedReturnService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions),
+        benchmark_service=benchmark_service,
+        macro_service=macro_service,
+    )
+
+    result = service.calculate()
+    buckets = {item["bucket_key"]: item for item in result["by_bucket"]}
+
+    assert buckets["equity_beta"]["basis_reference"].startswith("benchmark:cedear_usa:daily_trailing_50")
+    assert buckets["liquidity_ars"]["basis_reference"] == "macro:badlar_privada_latest_annual_rate"
+    assert sum(item["weight_pct"] for item in result["by_bucket"]) == 100.0
+    assert result["metadata"]["confidence"] == "high"
+    assert result["metadata"]["warnings"] == []
+
+
 def test_expected_return_service_build_recommendation_signals_detects_real_weak_and_liquidity_drag():
     service = ExpectedReturnService(
         positions_loader=SimpleNamespace(_load_current_positions=lambda: []),
@@ -171,5 +224,36 @@ def test_expected_return_service_build_recommendation_signals_returns_empty_for_
         macro_service=SimpleNamespace(get_context_summary=lambda: {}),
     )
     service.calculate = lambda: {"by_bucket": []}
+
+    assert service.build_recommendation_signals() == []
+
+
+def test_expected_return_service_build_recommendation_signals_skips_when_thresholds_are_not_met():
+    service = ExpectedReturnService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: []),
+        benchmark_service=SimpleNamespace(
+            build_daily_returns=lambda *args, **kwargs: pd.Series(dtype=float),
+            build_weekly_returns=lambda *args, **kwargs: pd.Series(dtype=float),
+        ),
+        macro_service=SimpleNamespace(get_context_summary=lambda: {}),
+    )
+    service.calculate = lambda: {
+        "expected_return_pct": 15.0,
+        "real_expected_return_pct": 2.0,
+        "by_bucket": [
+            {
+                "bucket_key": "equity_beta",
+                "weight_pct": 55.0,
+                "expected_return_pct": 16.0,
+                "basis_reference": "benchmark:cedear_usa:daily_trailing_60",
+            },
+            {
+                "bucket_key": "liquidity_ars",
+                "weight_pct": 20.0,
+                "expected_return_pct": 13.0,
+                "basis_reference": "macro:badlar_privada_latest_annual_rate",
+            },
+        ],
+    }
 
     assert service.build_recommendation_signals() == []
