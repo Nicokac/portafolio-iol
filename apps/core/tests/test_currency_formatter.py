@@ -1,7 +1,7 @@
 from django.template import Context, Template
 from django.test import SimpleTestCase
 
-from apps.core.templatetags.currency_filters import currency
+from apps.core.templatetags.currency_filters import currency, pct
 from apps.core.utils.currency_formatter import CurrencyFormatter
 
 
@@ -21,3 +21,9 @@ class TestCurrencyFormatter(SimpleTestCase):
 
     def test_currency_filter_falls_back_to_two_decimals_for_invalid_precision(self):
         assert currency(1234.5, "invalid") == "$1.234,50"
+
+    def test_pct_filter_formats_small_positive_values(self):
+        assert pct(0.004, 2) == "< 0,01%"
+
+    def test_pct_filter_formats_small_negative_values(self):
+        assert pct(-0.004, 2) == "> -0,01%"

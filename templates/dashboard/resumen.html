@@ -55,7 +55,7 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Total IOL</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Valuación consolidada de la cuenta: activos invertidos más cash disponible.">Total IOL</div>
                 <div class="kpi-value text-primary">{{ kpis.total_iol|currency:0 }}</div>
                 <div class="text-body-secondary small">Activos + cash</div>
             </div>
@@ -64,18 +64,18 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Liquidez Operativa</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Caja, caución y otras posiciones de disponibilidad inmediata o muy corta.">Liquidez Operativa</div>
                 <div class="kpi-value text-success">{{ kpis.liquidez_operativa|currency:0 }}</div>
-                <div class="text-body-secondary small">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}% del total</div>
+                <div class="text-body-secondary small">{{ riesgo_portafolio_detallado.pct_liquidez|pct:1 }} del total</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Rendimiento Total</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Ganancia o pérdida acumulada de la cartera sobre el valor total actual.">Rendimiento Total</div>
                 <div class="kpi-value {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">
-                    {{ kpis.rendimiento_total_porcentaje|floatformat:2 }}%
+                    {{ kpis.rendimiento_total_porcentaje|pct:2 }}
                 </div>
                 <div class="text-body-secondary small">Sobre total invertido</div>
             </div>
@@ -84,9 +84,9 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Riesgo Concentración</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Peso conjunto de las 10 posiciones más grandes. Sirve para detectar concentración excesiva.">Riesgo Concentración</div>
                 <div class="kpi-value {% if kpis.top_10_concentracion > 75 %}text-danger{% elif kpis.top_10_concentracion > 60 %}text-warning-emphasis{% else %}text-success{% endif %}">
-                    {{ kpis.top_10_concentracion|floatformat:1 }}%
+                    {{ kpis.top_10_concentracion|pct:1 }}
                 </div>
                 <div class="text-body-secondary small">Top 10 posiciones</div>
             </div>
@@ -105,7 +105,7 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">USDARS BCRA</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Tipo de cambio oficial/mayorista de referencia obtenido desde BCRA.">USDARS BCRA</div>
                 <div class="kpi-value text-primary">
                     {% if macro_local.usdars_oficial %}
                     {{ macro_local.usdars_oficial|floatformat:2 }}
@@ -120,10 +120,10 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">IPC Mensual</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Variación mensual del IPC nacional. También se muestra la inflación interanual y acumulada del año.">IPC Mensual</div>
                 <div class="kpi-value text-warning-emphasis">
                     {% if macro_local.ipc_nacional_variation_mom is not None %}
-                    {{ macro_local.ipc_nacional_variation_mom|floatformat:2 }}%
+                    {{ macro_local.ipc_nacional_variation_mom|pct:2 }}
                     {% else %}
                     N/D
                     {% endif %}
@@ -133,7 +133,7 @@
                     <div class="text-body-secondary">
                         Interanual:
                         {% if macro_local.ipc_nacional_variation_yoy is not None %}
-                        <strong>{{ macro_local.ipc_nacional_variation_yoy|floatformat:2 }}%</strong>
+                        <strong>{{ macro_local.ipc_nacional_variation_yoy|pct:2 }}</strong>
                         {% else %}
                         <strong>N/D</strong>
                         {% endif %}
@@ -141,7 +141,7 @@
                     <div class="text-body-secondary">
                         Acum. anual:
                         {% if macro_local.ipc_nacional_variation_ytd is not None %}
-                        <strong>{{ macro_local.ipc_nacional_variation_ytd|floatformat:2 }}%</strong>
+                        <strong>{{ macro_local.ipc_nacional_variation_ytd|pct:2 }}</strong>
                         {% else %}
                         <strong>N/D</strong>
                         {% endif %}
@@ -153,7 +153,7 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Total IOL USD oficial</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Estimación del patrimonio total expresado en USD usando el tipo de cambio mayorista BCRA.">Total IOL USD oficial</div>
                 <div class="kpi-value text-success">
                     {% if macro_local.total_iol_usd_oficial %}
                     {{ macro_local.total_iol_usd_oficial|floatformat:2 }}
@@ -165,7 +165,7 @@
                 <div class="text-body-secondary small">
                     BADLAR:
                     {% if macro_local.badlar_privada is not None %}
-                    {{ macro_local.badlar_privada|floatformat:2 }}%
+                    {{ macro_local.badlar_privada|pct:2 }}
                     {% else %}
                     N/D
                     {% endif %}
@@ -176,10 +176,10 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small">Rendimiento real YTD</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Rendimiento acumulado del año deflactado por inflación. Compara retorno nominal contra IPC YTD.">Rendimiento real YTD</div>
                 <div class="kpi-value {% if macro_local.portfolio_return_ytd_real is not None and macro_local.portfolio_return_ytd_real >= 0 %}text-success{% elif macro_local.portfolio_return_ytd_real is not None %}text-danger{% else %}text-muted{% endif %}">
                     {% if macro_local.portfolio_return_ytd_real is not None %}
-                    {{ macro_local.portfolio_return_ytd_real|floatformat:2 }}%
+                    {{ macro_local.portfolio_return_ytd_real|pct:2 }}
                     {% else %}
                     N/D
                     {% endif %}
@@ -187,7 +187,7 @@
                 <div class="text-body-secondary small">
                     Nominal YTD:
                     {% if macro_local.portfolio_return_ytd_nominal is not None %}
-                    {{ macro_local.portfolio_return_ytd_nominal|floatformat:2 }}%
+                    {{ macro_local.portfolio_return_ytd_nominal|pct:2 }}
                     {% else %}
                     N/D
                     {% endif %}
@@ -259,6 +259,8 @@
 {% block extra_js %}
 <script>
 const resumenEvolution = {{ evolucion_historica|safe }};
+
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 
 function createResumenEvolutionChart() {
     const canvas = document.getElementById('evolucionResumenChart');

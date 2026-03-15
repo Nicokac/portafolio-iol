@@ -44,19 +44,19 @@
 <section class="row g-3 mb-4">
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Sector</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Distribución del capital por sector económico usando la metadata asignada a cada activo.">Sector</h5></div>
             <div class="card-body"><div class="chart-container"><canvas id="sectorChart"></canvas></div></div>
         </div>
     </div>
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">País</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="País o región económica subyacente del activo, no necesariamente la plaza de cotización.">País</h5></div>
             <div class="card-body"><div class="chart-container"><canvas id="paisChart"></canvas></div></div>
         </div>
     </div>
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Tipo Patrimonial</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Clasificación patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</h5></div>
             <div class="card-body"><div class="chart-container"><canvas id="tipoChart"></canvas></div></div>
         </div>
     </div>
@@ -72,13 +72,13 @@
 <section class="row g-3 mb-4">
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Concentración por Sector</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Ranking de sectores por peso relativo dentro de la cartera.">Concentración por Sector</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
                             <th>Sector</th>
-                            <th class="text-end">Peso</th>
+                            <th class="text-end"><span data-bs-toggle="tooltip" title="Peso relativo del sector dentro del total de la cartera.">Peso</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -87,7 +87,7 @@
                             <td>{{ sector }}</td>
                             <td class="text-end">
                                 <span class="{% if porcentaje > 25 %}text-danger{% elif porcentaje > 15 %}text-warning-emphasis{% else %}text-success{% endif %}">
-                                    {{ porcentaje|floatformat:1 }}%
+                                    {{ porcentaje|pct:1 }}
                                 </span>
                             </td>
                         </tr>
@@ -99,17 +99,17 @@
     </div>
     <div class="col-lg-6" id="analisis-riesgo">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Riesgo Detallado</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Lectura resumida de exposición geográfica, estilo y sensibilidad de la cartera.">Riesgo Detallado</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover align-middle">
                     <tbody>
-                        <tr><td>% USA</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|floatformat:1 }}%</td></tr>
-                        <tr><td>% Argentina</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|floatformat:1 }}%</td></tr>
-                        <tr><td>% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|floatformat:1 }}%</td></tr>
-                        <tr><td>% Bonos Soberanos</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_bonos_soberanos|floatformat:1 }}%</td></tr>
-                        <tr><td>% Defensivo</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_defensivo|floatformat:1 }}%</td></tr>
-                        <tr><td>% Growth</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_growth|floatformat:1 }}%</td></tr>
-                        <tr><td>% Liquidez</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_liquidez|floatformat:1 }}%</td></tr>
+                        <tr><td>% USA</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|pct:1 }}</td></tr>
+                        <tr><td>% Argentina</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|pct:1 }}</td></tr>
+                        <tr><td>% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|pct:1 }}</td></tr>
+                        <tr><td>% Bonos Soberanos</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_bonos_soberanos|pct:1 }}</td></tr>
+                        <tr><td>% Defensivo</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_defensivo|pct:1 }}</td></tr>
+                        <tr><td>% Growth</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_growth|pct:1 }}</td></tr>
+                        <tr><td>% Liquidez</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_liquidez|pct:1 }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -120,6 +120,8 @@
 
 {% block extra_js %}
 <script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
 const sectorData = {{ distribucion_sector|safe }};
 const paisData = {{ distribucion_pais|safe }};
 const tipoData = {{ distribucion_tipo|safe }};

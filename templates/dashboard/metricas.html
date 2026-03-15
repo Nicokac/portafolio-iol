@@ -46,10 +46,10 @@
 </section>
 
 <section class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Volatilidad anualizada</div><div class="h4 mb-0" id="m-vol">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sharpe ratio</div><div class="h4 mb-0" id="m-sharpe">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sharpe vs BADLAR</div><div class="h4 mb-0" id="m-sharpe-badlar">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Desvío estándar anualizado de los retornos diarios netos de flujos.">Volatilidad anualizada</div><div class="h4 mb-0" id="m-vol">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Retorno excedente por unidad de volatilidad. Usa la referencia libre de riesgo configurada en el servicio.">Sharpe ratio</div><div class="h4 mb-0" id="m-sharpe">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Versión del Sharpe que usa BADLAR como costo de oportunidad local en ARS.">Sharpe vs BADLAR</div><div class="h4 mb-0" id="m-sharpe-badlar">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Desvío anualizado del retorno activo frente al benchmark compuesto.">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
 </section>
 
 <section id="metricas-reales" class="mb-3">
@@ -60,10 +60,10 @@
 </section>
 
 <section class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h3 mb-0" id="m-real-ytd">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">BADLAR</div><div class="h3 mb-0" id="m-badlar">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Retorno activo obtenido por unidad de tracking error frente al benchmark compuesto.">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Retorno total del período observado por la API de métricas temporales.">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Rendimiento acumulado del año ajustado por inflación.">Real YTD</div><div class="h3 mb-0" id="m-real-ytd">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Tasa BADLAR privada más reciente disponible desde BCRA.">BADLAR</div><div class="h3 mb-0" id="m-badlar">-</div></div></div></div>
 </section>
 
 <section id="metricas-drawdown" class="mb-3">
@@ -74,14 +74,14 @@
 </section>
 
 <section class="row g-3 mb-4">
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso vs benchmark</div><div class="h3 mb-0" id="m-excess">-</div></div></div></div>
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">IPC YTD</div><div class="h3 mb-0" id="m-ipc-ytd">-</div></div></div></div>
-    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso YTD vs BADLAR</div><div class="h3 mb-0" id="m-excess-badlar">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Diferencia entre el retorno del portafolio y el benchmark compuesto en la ventana analizada.">Exceso vs benchmark</div><div class="h3 mb-0" id="m-excess">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Inflación acumulada del año usada para calcular rendimiento real.">IPC YTD</div><div class="h3 mb-0" id="m-ipc-ytd">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Retorno real o nominal del portafolio medido contra la tasa BADLAR acumulada del año.">Exceso YTD vs BADLAR</div><div class="h3 mb-0" id="m-excess-badlar">-</div></div></div></div>
 </section>
 
 <section class="row g-3 mb-4">
-    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h3 mb-0" id="m-max-dd">-</div></div></div></div>
-    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown real</div><div class="h3 mb-0" id="m-max-dd-real">-</div></div></div></div>
+    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Caída máxima desde un pico hasta un valle en la serie nominal del portafolio.">Max Drawdown</div><div class="h3 mb-0" id="m-max-dd">-</div></div></div></div>
+    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Caída máxima del portafolio luego de deflactar la serie por IPC.">Max Drawdown real</div><div class="h3 mb-0" id="m-max-dd-real">-</div></div></div></div>
 </section>
 
 <section id="metricas-trace" class="row g-3">
@@ -90,7 +90,7 @@
     </div>
     <div class="col-12">
         <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Detalle de metricas</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Detalle tabular de retornos, ratios y métricas derivadas usadas en la lectura analítica.">Detalle de metricas</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover">
                     <tbody id="metrics-detail-body"></tbody>
@@ -100,10 +100,10 @@
     </div>
     <div class="col-12">
         <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Trazabilidad del benchmark</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Desglose del benchmark compuesto por bucket, peso, referencia, fuente y frecuencia usada.">Trazabilidad del benchmark</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover">
-                    <thead><tr><th>Bucket</th><th class="text-end">Peso</th><th>Referencia</th><th>Fuente</th><th>Frecuencia</th></tr></thead>
+                    <thead><tr><th><span data-bs-toggle="tooltip" title="Segmento o bucket estratégico de la cartera.">Bucket</span></th><th class="text-end"><span data-bs-toggle="tooltip" title="Peso del bucket dentro del benchmark compuesto.">Peso</span></th><th><span data-bs-toggle="tooltip" title="Ticker o referencia asignada al bucket.">Referencia</span></th><th><span data-bs-toggle="tooltip" title="Proveedor o serie utilizada para construir esa referencia.">Fuente</span></th><th><span data-bs-toggle="tooltip" title="Frecuencia efectiva usada en el cálculo: daily, weekly o fallback disponible.">Frecuencia</span></th></tr></thead>
                     <tbody id="benchmark-trace-body"></tbody>
                 </table>
             </div>
@@ -114,9 +114,16 @@
 
 {% block extra_js %}
 <script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
 function formatPct(value) {
     if (value === undefined || value === null) return '-';
-    return `${window.formatNumberAr(value, 2)}%`;
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return '-';
+    const threshold = 0.01;
+    if (numericValue > 0 && numericValue < threshold) return '&lt; 0,01%';
+    if (numericValue < 0 && numericValue > -threshold) return '&gt; -0,01%';
+    return `${window.formatNumberAr(numericValue, 2)}%`;
 }
 function formatNum(value) {
     if (value === undefined || value === null) return '-';

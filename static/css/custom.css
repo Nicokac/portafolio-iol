@@ -205,6 +205,36 @@ body {
   color: var(--brand-primary);
 }
 
+.tooltip-label {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: rgba(75, 85, 99, 0.45);
+  text-underline-offset: 0.14em;
+}
+
+.tooltip-label::after {
+  content: "?";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  color: var(--brand-primary);
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.tooltip-label:hover::after {
+  background-color: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
 /* Progress bars para concentración */
 .progress-custom {
   height: 8px;
