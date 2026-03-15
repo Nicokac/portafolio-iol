@@ -203,8 +203,9 @@ def test_analyze_performance_returns_static_recommendation(engine):
 
 def test_analyze_analytics_v2_maps_signals_to_recommendations(engine, monkeypatch):
     monkeypatch.setattr(
-        "apps.core.services.recommendation_engine.RiskContributionService",
-        lambda: type("DummyRisk", (), {"build_recommendation_signals": lambda self, top_n=5: [
+        engine,
+        "_build_risk_contribution_signals",
+        lambda: [
             {
                 "signal_key": "risk_concentration_top_assets",
                 "severity": "high",
@@ -212,8 +213,9 @@ def test_analyze_analytics_v2_maps_signals_to_recommendations(engine, monkeypatc
                 "description": "Tres activos dominan el riesgo proxy.",
                 "affected_scope": "portfolio",
                 "evidence": {"top_symbols": ["AAPL", "MSFT", "NVDA"]},
+                "risk_model_variant": "covariance_aware",
             }
-        ]})(),
+        ],
     )
     monkeypatch.setattr(
         "apps.core.services.recommendation_engine.ScenarioAnalysisService",
@@ -239,15 +241,84 @@ def test_analyze_analytics_v2_maps_signals_to_recommendations(engine, monkeypatc
     assert result[0]["prioridad"] == "alta"
     assert result[0]["origen"] == "analytics_v2"
     assert result[0]["activos_sugeridos"] == ["AAPL", "MSFT", "NVDA"]
+    assert result[0]["modelo_riesgo"] == "covariance_aware"
 
 
 def test_analyze_analytics_v2_returns_empty_on_exception(engine, monkeypatch):
     monkeypatch.setattr(
-        "apps.core.services.recommendation_engine.RiskContributionService",
-        lambda: type("DummyRisk", (), {"build_recommendation_signals": lambda self, top_n=5: (_ for _ in ()).throw(RuntimeError("boom"))})(),
+        engine,
+        "_build_risk_contribution_signals",
+        lambda: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 
     assert engine._analyze_analytics_v2() == []
+
+
+def test_build_risk_contribution_signals_prefers_covariance_when_active(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.CovarianceAwareRiskContributionService",
+        lambda: type(
+            "DummyCovarianceRisk",
+            (),
+            {
+                "calculate": lambda self, top_n=5: {"model_variant": "covariance_aware"},
+                "build_recommendation_signals": lambda self, top_n=5: [
+                    {
+                        "signal_key": "risk_concentration_top_assets",
+                        "severity": "high",
+                        "title": "Riesgo concentrado en pocos activos",
+                        "description": "Cluster correlacionado dominante.",
+                        "affected_scope": "portfolio",
+                        "evidence": {"top_symbols": ["AAPL", "MSFT"]},
+                    }
+                ],
+            },
+        )(),
+    )
+
+    result = engine._build_risk_contribution_signals()
+
+    assert len(result) == 1
+    assert result[0]["risk_model_variant"] == "covariance_aware"
+
+
+def test_build_risk_contribution_signals_falls_back_to_mvp_when_covariance_is_not_active(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.CovarianceAwareRiskContributionService",
+        lambda: type(
+            "DummyCovarianceRisk",
+            (),
+            {
+                "calculate": lambda self, top_n=5: {"model_variant": "mvp_proxy"},
+                "build_recommendation_signals": lambda self, top_n=5: [],
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.RiskContributionService",
+        lambda: type(
+            "DummyRisk",
+            (),
+            {
+                "build_recommendation_signals": lambda self, top_n=5: [
+                    {
+                        "signal_key": "risk_concentration_argentina",
+                        "severity": "high",
+                        "title": "Riesgo concentrado en Argentina",
+                        "description": "El riesgo local domina el portafolio.",
+                        "affected_scope": "country",
+                        "evidence": {"country": "Argentina"},
+                    }
+                ]
+            },
+        )(),
+    )
+
+    result = engine._build_risk_contribution_signals()
+
+    assert len(result) == 1
+    assert result[0]["signal_key"] == "risk_concentration_argentina"
+    assert result[0]["risk_model_variant"] == "mvp_proxy"
 
 
 def test_prioritize_recommendations_prefers_analytics_v2_for_overlapping_topics(engine):

@@ -2,6 +2,7 @@
 from typing import Dict, List, Optional
 
 from apps.core.services.analytics_v2 import (
+    CovarianceAwareRiskContributionService,
     ExpectedReturnService,
     FactorExposureService,
     RiskContributionService,
@@ -342,7 +343,7 @@ class RecommendationEngine:
     def _analyze_analytics_v2(self) -> List[Dict]:
         try:
             signals = (
-                RiskContributionService().build_recommendation_signals(top_n=5)
+                self._build_risk_contribution_signals()
                 + ScenarioAnalysisService().build_recommendation_signals()
                 + FactorExposureService().build_recommendation_signals()
                 + StressFragilityService().build_recommendation_signals()
@@ -359,6 +360,29 @@ class RecommendationEngine:
         except Exception as e:
             logger.error(f"Error analyzing analytics v2 signals: {str(e)}")
             return []
+
+    def _build_risk_contribution_signals(self) -> List[Dict]:
+        try:
+            covariance_service = CovarianceAwareRiskContributionService()
+            covariance_result = covariance_service.calculate(top_n=5)
+            if covariance_result.get("model_variant") == "covariance_aware":
+                return [
+                    {
+                        **signal,
+                        "risk_model_variant": "covariance_aware",
+                    }
+                    for signal in covariance_service.build_recommendation_signals(top_n=5)
+                ]
+        except Exception as e:
+            logger.error(f"Error evaluating covariance-aware risk contribution signals: {str(e)}")
+
+        return [
+            {
+                **signal,
+                "risk_model_variant": "mvp_proxy",
+            }
+            for signal in RiskContributionService().build_recommendation_signals(top_n=5)
+        ]
 
     def _prioritize_recommendations(self, recommendations: List[Dict]) -> List[Dict]:
         selected_by_topic = {}
@@ -416,6 +440,8 @@ class RecommendationEngine:
         suggested_assets = self._extract_signal_assets(evidence)
         if suggested_assets:
             recommendation["activos_sugeridos"] = suggested_assets
+        if signal.get("risk_model_variant"):
+            recommendation["modelo_riesgo"] = signal["risk_model_variant"]
         return recommendation
 
     @staticmethod
