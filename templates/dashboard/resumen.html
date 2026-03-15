@@ -47,7 +47,7 @@
 <section id="resumen-kpis" class="mb-3">
     <div class="border-start border-4 border-primary ps-3 mb-3">
         <h2 class="mb-1">Estado general</h2>
-        <p class="text-muted mb-0">Tamaño, liquidez, retorno y concentración para una lectura diaria rápida.</p>
+        <p class="text-muted mb-0">Tamaño, liquidez, retorno, exposición y concentración para una lectura diaria rápida.</p>
     </div>
 </section>
 
@@ -92,6 +92,42 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Exposición económica real a activos con subyacente USA. Base: portafolio invertido.">Exposición USA</div>
+                <div class="kpi-value text-primary">{{ riesgo_portafolio_detallado.pct_usa|pct:0 }}</div>
+                <div class="text-body-secondary small">Base: portafolio invertido</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Exposición económica real a activos argentinos. Base: portafolio invertido.">Exposición Argentina</div>
+                <div class="kpi-value text-warning-emphasis">{{ riesgo_portafolio_detallado.pct_argentina|pct:0 }}</div>
+                <div class="text-body-secondary small">Base: portafolio invertido</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Peso del capital invertido sobre el patrimonio total. Sirve para leer si la cartera está defensiva, neutra o agresiva.">Capital invertido</div>
+                <div class="kpi-value text-success">{{ kpis.pct_portafolio_invertido|pct:1 }}</div>
+                <div class="text-body-secondary small">Portafolio invertido / Total IOL</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Liquidez total = liquidez operativa + cash management. Mide el peso defensivo dentro del patrimonio total.">Liquidez total</div>
+                <div class="kpi-value text-info">{{ kpis.pct_liquidez_total|pct:1 }}</div>
+                <div class="text-body-secondary small">Liquidez total / Total IOL</div>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section id="resumen-macro" class="mb-3">
@@ -105,7 +141,7 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Tipo de cambio oficial/mayorista de referencia obtenido desde BCRA.">USDARS BCRA</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Tipo de cambio oficial mayorista de referencia obtenido desde BCRA.">USD oficial mayorista BCRA</div>
                 <div class="kpi-value text-primary">
                     {% if macro_local.usdars_oficial %}
                     {{ macro_local.usdars_oficial|floatformat:2 }}

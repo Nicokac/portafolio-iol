@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class TemporalMetricsService:
     """Servicio para calculo de metricas temporales del portafolio."""
 
+    ROBUST_HISTORY_DAYS = 60
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.volatility_service = VolatilityService()
@@ -62,6 +64,8 @@ class TemporalMetricsService:
             'history_span_days': int((df.index.max() - df.index.min()).days),
             'requested_days': int(days),
         }
+        returns['robust_history_min_days'] = self.ROBUST_HISTORY_DAYS
+        returns['robust_history_available'] = returns['history_span_days'] >= self.ROBUST_HISTORY_DAYS
 
         if len(df) >= 2:
             initial_value = df['total_iol'].iloc[0]
@@ -84,11 +88,7 @@ class TemporalMetricsService:
             returns['daily_return'] = round(daily_return, 2)
 
         if len(df) >= 2:
-            cumulative = (1 + df['total_iol'].pct_change()).cumprod()
-            running_max = cumulative.expanding().max()
-            drawdown = (cumulative - running_max) / running_max * 100
-            max_drawdown = drawdown.min()
-            returns['max_drawdown'] = round(max_drawdown, 2)
+            returns['max_drawdown'] = round(self._calculate_max_drawdown(df['total_iol']), 2)
 
         twr_metrics = self.twr_service.calculate_twr(days=days)
         returns.update(twr_metrics)
@@ -122,6 +122,8 @@ class TemporalMetricsService:
                 'history_span_days': int((df.index.max() - df.index.min()).days),
                 'requested_days': int(days),
             }
+            returns['robust_history_min_days'] = self.ROBUST_HISTORY_DAYS
+            returns['robust_history_available'] = returns['history_span_days'] >= self.ROBUST_HISTORY_DAYS
             initial_value = df['total_iol'].iloc[0]
             final_value = df['total_iol'].iloc[-1]
             total_return = (final_value - initial_value) / initial_value * 100 if initial_value else 0
@@ -141,10 +143,7 @@ class TemporalMetricsService:
                 monthly_return = (monthly_data['total_iol'].iloc[-1] - monthly_data['total_iol'].iloc[0]) / monthly_data['total_iol'].iloc[0] * 100
                 returns['monthly_return'] = round(monthly_return, 2)
 
-            cumulative = (1 + df['total_iol'].pct_change()).cumprod()
-            running_max = cumulative.expanding().max()
-            drawdown = (cumulative - running_max) / running_max * 100
-            returns['max_drawdown'] = round(drawdown.min(), 2)
+            returns['max_drawdown'] = round(self._calculate_max_drawdown(df['total_iol']), 2)
 
             returns['fallback_source'] = 'evolucion_historica'
             returns.update(self._get_real_ytd_metrics())
@@ -152,6 +151,17 @@ class TemporalMetricsService:
         except Exception as exc:
             logger.warning("Fallback returns from evolution failed: %s", exc)
             return {}
+
+    @staticmethod
+    def _calculate_max_drawdown(series: pd.Series) -> float:
+        values = pd.to_numeric(pd.Series(series), errors='coerce').dropna()
+        if len(values) < 2:
+            return 0.0
+
+        running_max = values.cummax()
+        drawdown = ((values - running_max) / running_max.replace(0, pd.NA)) * 100
+        drawdown = drawdown.fillna(0.0)
+        return float(drawdown.min())
 
     def _get_real_ytd_metrics(self) -> Dict:
         macro_context = self.local_macro_service.get_context_summary()

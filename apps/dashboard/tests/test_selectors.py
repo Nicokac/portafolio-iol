@@ -13,6 +13,7 @@ from apps.dashboard.selectors import (
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
     get_concentracion_sector,
+    get_concentracion_sector_agregado,
     get_concentracion_tipo_patrimonial,
     get_dashboard_kpis,
     get_distribucion_moneda,
@@ -176,12 +177,14 @@ class TestDashboardSelectors(TestCase):
         # Verificar que se incluyen los porcentajes
         assert 'pct_fci_cash_management' in kpis
         assert 'pct_portafolio_invertido' in kpis
+        assert 'pct_liquidez_total' in kpis
 
         # Total IOL = 2000, liquidez operativa = 1000, pct_liquidez ya estaba en riesgo_portafolio
         # pct_fci_cash_management debería ser 0% (no hay FCI cash)
         # pct_portafolio_invertido debería ser 50% (1000/2000)
         assert kpis['pct_fci_cash_management'] == 0.0
         assert kpis['pct_portafolio_invertido'] == 50.0
+        assert kpis['pct_liquidez_total'] == 50.0
 
     def test_pct_liquidez_usa_total_iol_como_base(self):
         fecha = timezone.now()
@@ -302,6 +305,47 @@ class TestDashboardSelectors(TestCase):
         concentracion = get_concentracion_tipo_patrimonial()
         assert 'Growth' in concentracion
         assert concentracion['Growth'] == 100.0
+
+    def test_concentracion_sector_agregado_unifica_subsectores_tecnologicos(self):
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(
+            simbolo='AAPL',
+            sector='Tecnología',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='MELI',
+            sector='Tecnología / E-commerce',
+            bloque_estrategico='Growth',
+            pais_exposicion='Latam',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='AMD',
+            sector='Tecnología / Semiconductores',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='KO',
+            sector='Consumo defensivo',
+            bloque_estrategico='Dividendos',
+            pais_exposicion='USA',
+            tipo_patrimonial='Equity',
+        )
+        make_activo(fecha, 'AAPL', valorizado=400.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'MELI', valorizado=300.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'AMD', valorizado=100.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'KO', valorizado=200.00, tipo='CEDEARS', moneda='USD')
+
+        concentracion = get_concentracion_sector_agregado()
+
+        assert abs(float(concentracion['Tecnologia Total']) - 80.0) < 0.01
+        assert abs(float(concentracion['Consumo defensivo']) - 20.0) < 0.01
 
     def test_distribucion_moneda_vs_moneda_operativa(self):
         """Test diferencia entre exposición económica vs operativa."""

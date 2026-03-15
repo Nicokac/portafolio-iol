@@ -60,6 +60,8 @@ class TestTemporalMetricsService:
         assert returns["ipc_ytd"] == 5.77
         assert returns["max_drawdown_real"] == -3.25
         assert returns["portfolio_return_ytd_base_date"] == (today - timedelta(days=60)).isoformat()
+        assert returns["robust_history_available"] is False
+        assert returns["robust_history_min_days"] == 60
 
     @patch("apps.dashboard.selectors.get_evolucion_historica")
     def test_returns_fallback_when_single_snapshot(self, mock_evolution):
@@ -89,6 +91,7 @@ class TestTemporalMetricsService:
         assert returns["total_period_return"] == 21.0
         assert returns["daily_return"] == 10.0
         assert returns["fallback_source"] == "evolucion_historica"
+        assert returns["robust_history_available"] is False
 
     def test_portfolio_volatility_with_snapshots(self):
         today = timezone.now().date()
@@ -110,6 +113,11 @@ class TestTemporalMetricsService:
         assert "daily_volatility" in volatility
         assert "annualized_volatility" in volatility
         assert volatility["daily_volatility"] > 0
+
+    def test_calculate_max_drawdown_uses_running_peak(self):
+        service = TemporalMetricsService()
+        result = service._calculate_max_drawdown([100, 120, 90, 110])
+        assert round(result, 2) == -25.0
 
     @patch("apps.core.services.temporal_metrics_service.TemporalMetricsService.get_portfolio_volatility")
     @patch("apps.dashboard.selectors.get_evolucion_historica")

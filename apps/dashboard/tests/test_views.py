@@ -46,10 +46,26 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
+    def test_resumen_shows_macro_exposure_and_liquidity_labels(self, auth_client):
+        response = auth_client.get(reverse('dashboard:resumen'))
+        body = response.content.decode()
+        assert 'Exposición USA' in body
+        assert 'Exposición Argentina' in body
+        assert 'Capital invertido' in body
+        assert 'Liquidez total' in body
+        assert 'USD oficial mayorista BCRA' in body
+
     def test_analisis_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:analisis')
         response = auth_client.get(url)
         assert response.status_code == 200
+
+    def test_analisis_shows_base_labels_and_aggregated_sector_view(self, auth_client):
+        response = auth_client.get(reverse('dashboard:analisis'))
+        body = response.content.decode()
+        assert 'Base: Portafolio Invertido' in body
+        assert 'Base: Total IOL' in body
+        assert 'Vista agregada opcional de sectores' in body
 
     def test_estrategia_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:estrategia')
@@ -66,6 +82,10 @@ class TestDashboardView:
         url = reverse('dashboard:planeacion')
         response = auth_client.get(url)
         assert response.status_code == 200
+
+    def test_planeacion_explains_total_liquidity_definition(self, auth_client):
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        assert 'Liquidez total = liquidez operativa + cash management' in response.content.decode()
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

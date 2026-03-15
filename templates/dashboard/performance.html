@@ -15,7 +15,13 @@
 <section class="mb-4">
     <div class="alert alert-light border mb-0">
         <strong>Metodologia breve.</strong>
-        <span class="text-muted">Portafolio real = Total IOL deflactado por IPC. BADLAR = referencia local de liquidez en ARS. Benchmark compuesto = combinacion por buckets del portafolio con referencias externas/locales segun disponibilidad historica.</span>
+        <span class="text-muted">
+            <span data-bs-toggle="tooltip" title="Portafolio real = Total IOL ajustado por IPC para medir la evolución en términos de poder adquisitivo.">Portafolio real</span>
+            = Total IOL deflactado por IPC.
+            BADLAR = referencia local de liquidez en ARS.
+            <span data-bs-toggle="tooltip" title="Benchmark compuesto = mezcla ponderada por buckets del portafolio con referencias externas y locales según disponibilidad histórica.">Benchmark compuesto</span>
+            = combinación por buckets del portafolio con referencias externas/locales según disponibilidad histórica.
+        </span>
     </div>
 </section>
 
@@ -163,7 +169,11 @@ function formatHistoryWarning() {
     return '<span class="text-warning-emphasis">Historico insuficiente</span>';
 }
 function hasInsufficientTwr(returns) {
-    return returns && ((returns.warning === 'insufficient_history') || Number(returns.twr_periods || 0) < 2);
+    return returns && (
+        (returns.warning === 'insufficient_history') ||
+        Number(returns.twr_periods || 0) < 2 ||
+        !returns.robust_history_available
+    );
 }
 function formatInlineNote(text, isWarning=false) {
     if (!text) return '<span class="text-muted">-</span>';
@@ -213,7 +223,9 @@ function loadPerformanceData() {
         comparisonBody.innerHTML = keys.map(k => {
             const row = comparison[k] || {};
             const note = row.is_partial_window ? `<div class="small text-muted">Base real: ${row.available_history_days || 0}d</div>` : '';
-            const volatilityCell = row.is_partial_window ? formatHistoryWarning() : formatPctOrNA(row.volatility);
+            const volatilityCell = row.is_partial_window || Number(row.available_history_days || 0) < 60
+                ? formatHistoryWarning()
+                : formatPctOrNA(row.volatility);
             return `<tr><td>${k}${note}</td><td class="text-end">${formatPctOrNA(row.total_return)}</td><td class="text-end">${volatilityCell}</td></tr>`;
         }).join('');
 

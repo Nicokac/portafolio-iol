@@ -14,6 +14,13 @@ logger = logging.getLogger(__name__)
 class RecommendationEngine:
     """Motor de recomendaciones de inversion basado en analisis del portafolio."""
 
+    DIVERSIFICATION_CANDIDATES = (
+        ("Healthcare", 8.0),
+        ("Industrials", 8.0),
+        ("Small Caps", 6.0),
+        ("Utilities", 6.0),
+    )
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
@@ -62,17 +69,21 @@ class RecommendationEngine:
             liquidity_percentage = ((liq_oper + fci_cash) / total_iol * 100) if total_iol > 0 else 0.0
 
             if liquidity_percentage > 30:
+                suggested_categories = self._build_diversification_categories()
                 return {
                     "tipo": "liquidez_excesiva",
                     "prioridad": "media",
                     "titulo": "Liquidez Excesiva",
-                    "descripcion": f"Tienes {liquidity_percentage:.1f}% en liquidez. Considera invertir parte para mejorar el retorno.",
+                    "descripcion": (
+                        f"Tienes {liquidity_percentage:.1f}% en liquidez total. "
+                        "Liquidez total = liquidez operativa + cash management."
+                    ),
                     "acciones_sugeridas": [
-                        "Invertir en ETFs globales (SPY, EEM)",
-                        "Aumentar exposicion a bonos corporativos",
-                        "Considerar fondos de inversion",
+                        "Dirigir nuevos flujos a sectores subrepresentados",
+                        "Usar diversificacion por sectores antes que sumar mas peso a posiciones dominantes",
+                        "Priorizar exposiciones complementarias al sesgo actual de la cartera",
                     ],
-                    "activos_sugeridos": ["SPY", "EEM", "QQQ"],
+                    "activos_sugeridos": suggested_categories,
                     "impacto_esperado": "Aumento de retorno esperado",
                 }
             if liquidity_percentage < 5:
@@ -187,6 +198,23 @@ class RecommendationEngine:
                     }
                 )
 
+            diversification_gaps = self._build_diversification_gaps(sector_dist)
+            if diversification_gaps:
+                recommendations.append(
+                    {
+                        "tipo": "diversificacion_sectorial",
+                        "prioridad": "media",
+                        "titulo": "Diversificacion Sectorial Pendiente",
+                        "descripcion": "La cartera sigue concentrada en pocos sectores. Conviene reforzar sectores subrepresentados antes que ampliar posiciones dominantes.",
+                        "acciones_sugeridas": [
+                            "Asignar nuevos flujos a sectores con menor peso relativo",
+                            "Evitar sumar capital a los sectores ya dominantes salvo conviccion tactica explicita",
+                        ],
+                        "activos_sugeridos": [gap["label"] for gap in diversification_gaps],
+                        "impacto_esperado": "Mejor diversificacion real del portafolio",
+                    }
+                )
+
             if financial_pct > 40:
                 recommendations.append(
                     {
@@ -214,7 +242,7 @@ class RecommendationEngine:
             concentracion = get_concentracion_patrimonial()
             herfindahl = sum(float(pct) ** 2 for pct in concentracion.values()) / 10000
 
-            if herfindahl > 0.3:
+            if herfindahl > 0.5:
                 return {
                     "tipo": "riesgo_concentracion_alto",
                     "prioridad": "alta",
@@ -226,6 +254,18 @@ class RecommendationEngine:
                         "Invertir en ETFs para mayor diversificacion",
                     ],
                     "impacto_esperado": "Reduccion de riesgo de concentracion",
+                }
+            if herfindahl > 0.3:
+                return {
+                    "tipo": "riesgo_concentracion_media",
+                    "prioridad": "media",
+                    "titulo": "Concentracion de Riesgo Media",
+                    "descripcion": f"Indice de concentracion en zona media ({herfindahl:.3f}). Conviene diversificar gradualmente sin forzar rebalanceos abruptos.",
+                    "acciones_sugeridas": [
+                        "Canalizar nuevos aportes a sectores o geografias subrepresentadas",
+                        "Reducir dependencia de uno o dos bloques dominantes",
+                    ],
+                    "impacto_esperado": "Mejor equilibrio de riesgo sin sobreoperar",
                 }
             if herfindahl < 0.1:
                 return {
@@ -244,6 +284,22 @@ class RecommendationEngine:
             logger.error(f"Error analyzing risk profile: {str(e)}")
 
         return None
+
+    def _build_diversification_gaps(self, sector_dist: Dict) -> List[Dict]:
+        normalized = {str(sector).lower(): float(pct) for sector, pct in sector_dist.items()}
+        gaps = []
+        for label, target in self.DIVERSIFICATION_CANDIDATES:
+            current = normalized.get(label.lower(), 0.0)
+            if current < target:
+                gaps.append({"label": label, "current": current, "target": target})
+        return gaps
+
+    def _build_diversification_categories(self) -> List[str]:
+        sector_dist = get_concentracion_sector()
+        gaps = self._build_diversification_gaps(sector_dist)
+        if gaps:
+            return [gap["label"] for gap in gaps]
+        return [label for label, _ in self.DIVERSIFICATION_CANDIDATES]
 
     def _analyze_performance(self, portfolio: Dict) -> Optional[Dict]:
         try:

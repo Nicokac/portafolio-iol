@@ -80,12 +80,20 @@ def test_generate_recommendations_returns_error_payload_on_exception(engine, mon
     ],
 )
 def test_analyze_liquidity_returns_expected_recommendations(
-    engine, portfolio, expected_type, expected_priority
+    engine, portfolio, expected_type, expected_priority, monkeypatch
 ):
+    monkeypatch.setattr(
+        engine,
+        "_build_diversification_categories",
+        lambda: ["Healthcare", "Industrials", "Small Caps", "Utilities"],
+    )
     result = engine._analyze_liquidity(portfolio)
 
     assert result["tipo"] == expected_type
     assert result["prioridad"] == expected_priority
+
+    if expected_type == "liquidez_excesiva":
+        assert "Liquidez total = liquidez operativa + cash management" in result["descripcion"]
 
 
 def test_analyze_liquidity_returns_none_on_safe_range(engine):
@@ -123,7 +131,7 @@ def test_analyze_geographic_concentration_returns_empty_on_exception(engine, mon
     assert result == []
 
 
-def test_analyze_sector_concentration_detects_tech_and_financial_cases(engine, monkeypatch):
+def test_analyze_sector_concentration_detects_diversification_and_financial_cases(engine, monkeypatch):
     monkeypatch.setattr(
         "apps.core.services.recommendation_engine.get_concentracion_sector",
         lambda: {
@@ -138,8 +146,13 @@ def test_analyze_sector_concentration_detects_tech_and_financial_cases(engine, m
 
     assert [item["tipo"] for item in result] == [
         "tecnologia_subponderada",
+        "diversificacion_sectorial",
         "financiero_sobreponderado",
     ]
+    diversification = result[1]
+    assert "Healthcare" in diversification["activos_sugeridos"]
+    assert "Industrials" in diversification["activos_sugeridos"]
+    assert "Small Caps" in diversification["activos_sugeridos"]
 
 
 def test_analyze_risk_profile_detects_high_concentration(engine, monkeypatch):
@@ -152,6 +165,18 @@ def test_analyze_risk_profile_detects_high_concentration(engine, monkeypatch):
 
     assert result["tipo"] == "riesgo_concentracion_alto"
     assert result["prioridad"] == "alta"
+
+
+def test_analyze_risk_profile_detects_medium_concentration(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.get_concentracion_patrimonial",
+        lambda: {"Cash": 50.0, "ETF": 30.0, "Bond": 20.0},
+    )
+
+    result = engine._analyze_risk_profile({})
+
+    assert result["tipo"] == "riesgo_concentracion_media"
+    assert result["prioridad"] == "media"
 
 
 def test_analyze_risk_profile_detects_excellent_diversification(engine, monkeypatch):

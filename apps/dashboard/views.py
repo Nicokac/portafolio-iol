@@ -21,6 +21,7 @@ from apps.dashboard.selectors import (
     get_active_alerts,
     get_concentracion_pais,
     get_concentracion_sector,
+    get_concentracion_sector_agregado,
     get_concentracion_tipo_patrimonial,
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
@@ -70,10 +71,12 @@ class DashboardContextMixin:
         context['riesgo_portafolio'] = get_riesgo_portafolio()
         context['riesgo_portafolio_detallado'] = get_riesgo_portafolio_detallado()
         context['concentracion_sector'] = get_concentracion_sector()
+        context['concentracion_sector_agregado'] = get_concentracion_sector_agregado()
         context['concentracion_pais'] = get_concentracion_pais(base='portafolio_invertido')
         context['concentracion_pais_total_iol'] = get_concentracion_pais(base='total_iol')
         context['concentracion_tipo'] = get_concentracion_tipo_patrimonial(base='total_activos')
         context['concentracion_sector_json'] = to_json(get_concentracion_sector())
+        context['concentracion_sector_agregado_json'] = to_json(get_concentracion_sector_agregado())
         context['concentracion_pais_json'] = to_json(get_concentracion_pais(base='portafolio_invertido'))
         context['concentracion_pais_total_iol_json'] = to_json(get_concentracion_pais(base='total_iol'))
         context['concentracion_tipo_json'] = to_json(get_concentracion_tipo_patrimonial(base='total_activos'))

@@ -173,6 +173,16 @@ def _is_technology_sector(sector: str | None) -> bool:
     return normalized.startswith('tecnolog')
 
 
+
+
+def _aggregate_sector_labels(distribucion: Dict[str, float]) -> Dict[str, float]:
+    aggregated: Dict[str, float] = {}
+    for sector, valor in distribucion.items():
+        label = 'Tecnologia Total' if _is_technology_sector(sector) else sector
+        aggregated[label] = aggregated.get(label, 0) + float(valor)
+    return aggregated
+
+
 def _get_resumen_cash_distribution_by_country() -> Dict[str, float]:
     distribucion: Dict[str, float] = {}
     for cuenta in get_latest_resumen_data():
@@ -243,6 +253,7 @@ def get_dashboard_kpis() -> Dict:
         # Porcentajes de los bloques patrimoniales
         pct_fci_cash_management = (fci_cash_valor / total_iol * 100) if total_iol else 0
         pct_portafolio_invertido = (portafolio_invertido / total_iol * 100) if total_iol else 0
+        pct_liquidez_total = ((liquidez_operativa + fci_cash_valor) / total_iol * 100) if total_iol else 0
 
         return {
             'total_iol': total_iol,
@@ -260,12 +271,15 @@ def get_dashboard_kpis() -> Dict:
             'top_10_concentracion': top_10_concentracion,
             'pct_fci_cash_management': pct_fci_cash_management,
             'pct_portafolio_invertido': pct_portafolio_invertido,
+            'pct_liquidez_total': pct_liquidez_total,
             'methodology': {
                 'top_5_concentracion': 'sum(top_5 valorizado del portafolio invertido) / portafolio invertido',
                 'top_10_concentracion': 'sum(top_10 valorizado del portafolio invertido) / portafolio invertido',
                 'top_positions_basis': 'portafolio_invertido',
                 'rendimiento_total_porcentaje': 'ganancia acumulada / costo estimado del portafolio invertido',
                 'rendimiento_total_basis': 'portafolio_invertido_costo_estimado',
+                'pct_liquidez_total': '(liquidez operativa + cash management) / total iol',
+                'pct_portafolio_invertido': 'portafolio invertido / total iol',
             },
         }
 
@@ -412,6 +426,18 @@ def get_concentracion_sector() -> Dict[str, float]:
     return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
 
 
+
+
+def get_concentracion_sector_agregado() -> Dict[str, float]:
+    """Calcula concentracion sectorial agregando subsectores tecnol?gicos."""
+    distribucion = _aggregate_sector_labels(get_distribucion_sector(base='portafolio_invertido'))
+    total = sum(distribucion.values())
+    if total == 0:
+        return {}
+
+    return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
+
+
 def get_concentracion_pais(base: str = 'portafolio_invertido') -> Dict[str, float]:
     """Calcula la concentraci?n por pa?s en porcentajes."""
     distribucion = get_distribucion_pais(base=base)
@@ -516,8 +542,12 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
         'pct_growth': pct_growth,
         'pct_liquidez': pct_liquidez,
         'methodology': {
+            'pct_usa': 'exposicion USA / portafolio invertido',
+            'pct_argentina': 'exposicion Argentina / portafolio invertido',
             'pct_tech': 'sectores que comienzan con Tecnología / portafolio invertido',
             'pct_renta_fija_ar': 'Bonos argentinos (soberanos, CER y corporativos) / portafolio invertido',
+            'pct_defensivo': 'bloque Defensivo / portafolio invertido',
+            'pct_growth': 'bloque Growth / portafolio invertido',
             'pct_liquidez': 'liquidez operativa / total iol',
         },
     }

@@ -15,7 +15,11 @@
 <section class="mb-4">
     <div class="alert alert-light border mb-0">
         <strong>Metodologia breve.</strong>
-        <span class="text-muted">Portafolio real = Total IOL ajustado por IPC. BADLAR = costo de oportunidad local para liquidez en ARS. Benchmark compuesto = mezcla de referencias por bucket segun pesos del portafolio y disponibilidad de historia.</span>
+        <span class="text-muted">
+            Portafolio real = Total IOL ajustado por IPC.
+            BADLAR = costo de oportunidad local para liquidez en ARS.
+            Benchmark compuesto = SPY (exposición CEDEAR USA), EMB (bonos emergentes USD) y BADLAR (liquidez en ARS), ponderados por buckets del portafolio y disponibilidad de historia.
+        </span>
     </div>
 </section>
 
@@ -49,7 +53,7 @@
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Desvío estándar anualizado de los retornos diarios netos de flujos.">Volatilidad anualizada</div><div class="h4 mb-0" id="m-vol">-</div></div></div></div>
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Retorno excedente por unidad de volatilidad. Usa la referencia libre de riesgo configurada en el servicio.">Sharpe ratio</div><div class="h4 mb-0" id="m-sharpe">-</div></div></div></div>
     <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Versión del Sharpe que usa BADLAR como costo de oportunidad local en ARS.">Sharpe vs BADLAR</div><div class="h4 mb-0" id="m-sharpe-badlar">-</div></div></div></div>
-    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Desvío anualizado del retorno activo frente al benchmark compuesto.">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small" data-bs-toggle="tooltip" title="Desvío anualizado del retorno activo frente al benchmark compuesto. Tracking error alto no implica problema si el portafolio no busca replicar el benchmark.">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
 </section>
 
 <section id="metricas-reales" class="mb-3">
@@ -140,6 +144,9 @@ function formatNumOrNA(value) {
 function hasInsufficientHistory(payload) {
     return payload && payload.warning === 'insufficient_history';
 }
+function hasRobustHistory(returns) {
+    return !!(returns && returns.robust_history_available);
+}
 function formatPctMetric(payload, key) {
     if (hasInsufficientHistory(payload)) return 'Historico insuficiente';
     return formatPctOrNA(payload ? payload[key] : null);
@@ -154,9 +161,10 @@ Promise.all([
     fetch('/api/metrics/benchmarking/?days=365').then(r => r.json()),
     fetch('/api/metrics/returns/?days=365').then(r => r.json())
 ]).then(([vol, bench, ret]) => {
-    document.getElementById('m-vol').textContent = formatPctMetric(vol, 'annualized_volatility');
-    document.getElementById('m-sharpe').textContent = formatNumMetric(vol, 'sharpe_ratio');
-    document.getElementById('m-sharpe-badlar').textContent = formatNumMetric(vol, 'sharpe_ratio_badlar');
+    const robustHistory = hasRobustHistory(ret);
+    document.getElementById('m-vol').textContent = robustHistory ? formatPctMetric(vol, 'annualized_volatility') : 'Historico insuficiente';
+    document.getElementById('m-sharpe').textContent = robustHistory ? formatNumMetric(vol, 'sharpe_ratio') : 'Historico insuficiente';
+    document.getElementById('m-sharpe-badlar').textContent = robustHistory ? formatNumMetric(vol, 'sharpe_ratio_badlar') : 'Historico insuficiente';
     document.getElementById('m-te').textContent = formatPctMetric(bench, 'tracking_error_annualized');
     document.getElementById('m-ir').textContent = formatNumMetric(bench, 'information_ratio');
     document.getElementById('m-ret').textContent = formatPctOrNA(ret.total_period_return);
@@ -169,7 +177,7 @@ Promise.all([
     document.getElementById('m-max-dd-real').textContent = formatPctOrNA(ret.max_drawdown_real);
 
     const warningTexts = [];
-    if (hasInsufficientHistory(vol)) warningTexts.push('Volatilidad y ratios');
+    if (hasInsufficientHistory(vol) || !robustHistory) warningTexts.push('Volatilidad y ratios');
     if (hasInsufficientHistory(bench)) warningTexts.push('Benchmarking');
     if (warningTexts.length) {
         document.getElementById('metrics-warning-wrap').classList.remove('d-none');
@@ -182,9 +190,9 @@ Promise.all([
         ['Retorno semanal', formatPctOrNA(ret.weekly_return)],
         ['Retorno mensual', formatPctOrNA(ret.monthly_return)],
         ['TWR total', formatPctOrNA(ret.twr_total_return)],
-        ['TWR anualizado', formatPctOrNA(ret.twr_annualized_return)],
-        ['Sharpe vs BADLAR', formatNumMetric(vol, 'sharpe_ratio_badlar')],
-        ['Sortino', formatNumMetric(vol, 'sortino_ratio')],
+        ['TWR anualizado', robustHistory ? formatPctOrNA(ret.twr_annualized_return) : 'Historico insuficiente'],
+        ['Sharpe vs BADLAR', robustHistory ? formatNumMetric(vol, 'sharpe_ratio_badlar') : 'Historico insuficiente'],
+        ['Sortino', robustHistory ? formatNumMetric(vol, 'sortino_ratio') : 'Historico insuficiente'],
         ['Real YTD', formatPctOrNA(ret.portfolio_return_ytd_real)],
         ['Nominal YTD', formatPctOrNA(ret.portfolio_return_ytd_nominal)],
         ['IPC YTD', formatPctOrNA(ret.ipc_ytd)],
