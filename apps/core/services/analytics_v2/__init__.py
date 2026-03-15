@@ -12,6 +12,7 @@ from .helpers import (
     rank_top_items,
     safe_percentage,
 )
+from .risk_contribution_service import RiskContributionService
 from .schemas import (
     AnalyticsMetadata,
     BenchmarkAvailability,
@@ -52,6 +53,7 @@ __all__ = [
     "NormalizedPortfolioSnapshot",
     "NormalizedPosition",
     "rank_top_items",
+    "RiskContributionService",
     "RiskContributionItem",
     "RiskContributionResult",
     "safe_percentage",
