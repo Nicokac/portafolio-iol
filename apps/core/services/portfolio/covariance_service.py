@@ -9,7 +9,7 @@ from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 
 
 class CovarianceService:
-    """Construcción de expected returns y matriz de covarianza por activos."""
+    """Construccion de expected returns y matriz de covarianza por activos."""
 
     TRADING_DAYS_PER_YEAR = 252
 
@@ -28,9 +28,25 @@ class CovarianceService:
 
         df["fecha_extraccion"] = pd.to_datetime(df["fecha_extraccion"])
         df["valorizado"] = pd.to_numeric(df["valorizado"], errors="coerce")
+        pivot = self._build_daily_price_matrix(df, activos)
+        if pivot.shape[0] < 2:
+            return pd.DataFrame()
+
+        returns = pivot.pct_change().dropna(how="any")
+        return returns.replace([np.inf, -np.inf], np.nan).dropna(how="any")
+
+    @staticmethod
+    def _build_daily_price_matrix(df: pd.DataFrame, activos: List[str]) -> pd.DataFrame:
+        normalized = df.copy()
+        normalized["fecha"] = normalized["fecha_extraccion"].dt.date
+        daily = (
+            normalized.sort_values("fecha_extraccion")
+            .dropna(subset=["valorizado"])
+            .drop_duplicates(subset=["fecha", "simbolo"], keep="last")
+        )
         pivot = (
-            df.pivot_table(
-                index="fecha_extraccion",
+            daily.pivot_table(
+                index="fecha",
                 columns="simbolo",
                 values="valorizado",
                 aggfunc="last",
@@ -38,15 +54,8 @@ class CovarianceService:
             .sort_index()
             .ffill()
         )
-
-        # Restringir a activos solicitados y con presencia real de datos
         pivot = pivot.reindex(columns=activos)
-        pivot = pivot.dropna(how="all")
-        if pivot.shape[0] < 2:
-            return pd.DataFrame()
-
-        returns = pivot.pct_change().dropna(how="any")
-        return returns.replace([np.inf, -np.inf], np.nan).dropna(how="any")
+        return pivot.dropna(how="all")
 
     def expected_returns_annualized(self, returns: pd.DataFrame) -> np.ndarray:
         if returns.empty:
@@ -57,7 +66,6 @@ class CovarianceService:
         if returns.empty:
             return np.array([[]])
         cov = returns.cov().values * self.TRADING_DAYS_PER_YEAR
-        # Regularización leve para estabilidad numérica
         cov += np.eye(cov.shape[0]) * 1e-8
         return cov
 
@@ -73,6 +81,7 @@ class CovarianceService:
                 "covariance_matrix": np.array([[]]),
             }
         return {
+            "observations": int(len(returns.index)),
             "returns": returns,
             "expected_returns": self.expected_returns_annualized(returns),
             "covariance_matrix": self.covariance_matrix_annualized(returns),

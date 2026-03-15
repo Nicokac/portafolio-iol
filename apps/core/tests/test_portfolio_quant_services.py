@@ -51,6 +51,52 @@ def test_covariance_service_builds_returns_and_covariance():
     assert cov.shape == (2, 2)
 
 
+@pytest.mark.django_db
+def test_covariance_service_collapses_intraday_snapshots_to_daily_observations():
+    now = timezone.now().replace(hour=12, minute=0, second=0, microsecond=0)
+    fixtures = [
+        (1000, 1000),
+        (1020, 1010),
+        (1010, 1030),
+    ]
+    for i, (aapl, spy) in enumerate(fixtures):
+        fecha = now - timedelta(days=2 - i)
+        _make_snapshot(fecha, "AAPL", aapl)
+        _make_snapshot(fecha + timedelta(hours=2), "AAPL", aapl)
+        _make_snapshot(fecha, "SPY", spy)
+        _make_snapshot(fecha + timedelta(hours=2), "SPY", spy)
+
+    service = CovarianceService()
+    returns = service.build_returns_matrix(["AAPL", "SPY"], lookback_days=30)
+
+    assert len(returns.index) == 2
+    assert list(returns.columns) == ["AAPL", "SPY"]
+
+
+@pytest.mark.django_db
+def test_covariance_service_uses_last_snapshot_of_day_for_each_asset():
+    now = timezone.now().replace(hour=12, minute=0, second=0, microsecond=0)
+    day_one = now - timedelta(days=1)
+    day_two = now
+
+    _make_snapshot(day_one, "AAPL", 1000)
+    _make_snapshot(day_one + timedelta(hours=4), "AAPL", 1050)
+    _make_snapshot(day_one, "SPY", 2000)
+    _make_snapshot(day_one + timedelta(hours=4), "SPY", 2100)
+
+    _make_snapshot(day_two, "AAPL", 1100)
+    _make_snapshot(day_two + timedelta(hours=4), "AAPL", 1200)
+    _make_snapshot(day_two, "SPY", 2200)
+    _make_snapshot(day_two + timedelta(hours=4), "SPY", 2310)
+
+    service = CovarianceService()
+    returns = service.build_returns_matrix(["AAPL", "SPY"], lookback_days=30)
+
+    assert len(returns.index) == 1
+    assert np.isclose(returns.iloc[0]["AAPL"], (1200 - 1050) / 1050)
+    assert np.isclose(returns.iloc[0]["SPY"], (2310 - 2100) / 2100)
+
+
 def test_markowitz_optimizer_returns_normalized_weights():
     expected_returns = np.array([0.10, 0.07, 0.05])
     covariance = np.array(
