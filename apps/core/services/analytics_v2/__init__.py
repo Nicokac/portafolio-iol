@@ -1,0 +1,41 @@
+"""Shared contracts for Portfolio Analytics v2."""
+
+from .schemas import (
+    AnalyticsMetadata,
+    BenchmarkAvailability,
+    ContributionGroupItem,
+    DataQualityFlags,
+    ExpectedReturnBucketItem,
+    ExpectedReturnResult,
+    FactorExposureItem,
+    FactorExposureResult,
+    NormalizedPortfolioSnapshot,
+    NormalizedPosition,
+    RiskContributionItem,
+    RiskContributionResult,
+    ScenarioAnalysisResult,
+    ScenarioAssetImpact,
+    ScenarioDefinition,
+    ScenarioGroupImpact,
+    StressFragilityResult,
+)
+
+__all__ = [
+    "AnalyticsMetadata",
+    "BenchmarkAvailability",
+    "ContributionGroupItem",
+    "DataQualityFlags",
+    "ExpectedReturnBucketItem",
+    "ExpectedReturnResult",
+    "FactorExposureItem",
+    "FactorExposureResult",
+    "NormalizedPortfolioSnapshot",
+    "NormalizedPosition",
+    "RiskContributionItem",
+    "RiskContributionResult",
+    "ScenarioAnalysisResult",
+    "ScenarioAssetImpact",
+    "ScenarioDefinition",
+    "ScenarioGroupImpact",
+    "StressFragilityResult",
+]
