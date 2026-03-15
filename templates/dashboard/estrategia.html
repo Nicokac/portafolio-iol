@@ -78,7 +78,7 @@
     <div class="col-md-4 col-xl mb-3">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Activo con mayor contribución relativa al riesgo proxy según peso y volatilidad estimada.">Risk Contribution</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Activo con mayor contribución relativa al riesgo. Usa el modelo proxy MVP por defecto y activa covarianza solo con al menos 20 observaciones diarias, 3 activos cubiertos y 80% de cobertura del portafolio invertido.">Risk Contribution</div>
                 <div class="h5 mb-1">{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</div>
                 <div class="small text-body-secondary">
                     {% if analytics_v2_summary.risk_contribution.top_asset %}
@@ -89,6 +89,13 @@
                 </div>
                 <div class="small mt-2">
                     <span class="badge {% if analytics_v2_summary.risk_contribution.confidence == 'high' %}bg-success{% elif analytics_v2_summary.risk_contribution.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.risk_contribution.confidence }}</span>
+                </div>
+                <div class="small text-body-secondary mt-2">
+                    {% if analytics_v2_summary.risk_contribution.model_variant == 'covariance_aware' %}
+                    Covarianza activa · {{ analytics_v2_summary.risk_contribution.covariance_observations }} obs · {{ analytics_v2_summary.risk_contribution.coverage_pct|floatformat:0 }}% cobertura
+                    {% else %}
+                    Proxy MVP · covarianza no activa ({{ analytics_v2_summary.risk_contribution.covariance_observations }} obs, {{ analytics_v2_summary.risk_contribution.coverage_pct|floatformat:0 }}% cobertura)
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -180,6 +187,10 @@
                         <tr>
                             <td><strong>Top sector por riesgo</strong></td>
                             <td class="text-end">{{ analytics_v2_summary.risk_contribution.top_sector.key|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Modelo de riesgo</strong></td>
+                            <td class="text-end">{% if analytics_v2_summary.risk_contribution.model_variant == 'covariance_aware' %}Covarianza activa{% else %}Proxy MVP{% endif %}</td>
                         </tr>
                         <tr>
                             <td><strong>Factor dominante</strong></td>

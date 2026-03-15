@@ -1,6 +1,7 @@
 from django.test import TestCase
 from decimal import Decimal
 from datetime import timedelta
+from unittest.mock import patch
 from django.core.cache import cache
 from django.db import connection
 from django.test import override_settings
@@ -9,6 +10,7 @@ from django.utils import timezone
 
 from apps.dashboard.selectors import (
     get_analytics_mensual,
+    get_analytics_v2_dashboard_summary,
     get_concentracion_pais,
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
@@ -231,6 +233,103 @@ class TestDashboardSelectors(TestCase):
         kpis = get_dashboard_kpis()
 
         assert abs(float(kpis['top_10_concentracion']) - 89.08) < 0.01
+
+    def test_analytics_v2_dashboard_summary_uses_covariance_model_when_available(self):
+        cache.clear()
+
+        covariance_result = {
+            "top_contributors": [
+                {"symbol": "MSFT", "contribution_pct": 41.2},
+            ],
+            "by_sector": [
+                {"key": "Tecnologia", "contribution_pct": 55.0},
+            ],
+            "metadata": {"confidence": "medium", "warnings": []},
+            "model_variant": "covariance_aware",
+            "covariance_observations": 64,
+            "coverage_pct": 96.5,
+        }
+        base_result = {
+            "top_contributors": [
+                {"symbol": "SPY", "contribution_pct": 25.0},
+            ],
+            "by_sector": [
+                {"key": "Indice", "contribution_pct": 25.0},
+            ],
+            "metadata": {"confidence": "high", "warnings": []},
+        }
+
+        class DummyRiskService:
+            def calculate(self):
+                return base_result
+
+            def build_recommendation_signals(self, top_n=5):
+                return []
+
+        class DummyCovarianceRiskService:
+            def __init__(self, base_service=None):
+                self.base_service = base_service
+
+            def calculate(self):
+                return covariance_result
+
+        class DummyScenarioService:
+            def analyze(self, scenario_key):
+                return {"total_impact_pct": -5.0, "metadata": {"confidence": "high"}}
+
+            def build_recommendation_signals(self):
+                return []
+
+        class DummyFactorService:
+            def calculate(self):
+                return {
+                    "dominant_factor": "growth",
+                    "factors": [{"factor": "growth", "exposure_pct": 62.0}],
+                    "unknown_assets": [],
+                    "metadata": {"confidence": "high"},
+                }
+
+            def build_recommendation_signals(self):
+                return []
+
+        class DummyStressService:
+            def calculate(self, scenario_key):
+                return {
+                    "scenario_key": scenario_key,
+                    "fragility_score": 21.0,
+                    "total_loss_pct": -1.2,
+                    "metadata": {"confidence": "medium"},
+                }
+
+            def build_recommendation_signals(self):
+                return []
+
+        class DummyExpectedReturnService:
+            def calculate(self):
+                return {
+                    "expected_return_pct": 8.0,
+                    "real_expected_return_pct": 1.0,
+                    "metadata": {"confidence": "medium", "warnings": []},
+                }
+
+            def build_recommendation_signals(self):
+                return []
+
+        with (
+            patch("apps.dashboard.selectors.RiskContributionService", DummyRiskService),
+            patch("apps.dashboard.selectors.CovarianceAwareRiskContributionService", DummyCovarianceRiskService),
+            patch("apps.dashboard.selectors.ScenarioAnalysisService", DummyScenarioService),
+            patch("apps.dashboard.selectors.FactorExposureService", DummyFactorService),
+            patch("apps.dashboard.selectors.StressFragilityService", DummyStressService),
+            patch("apps.dashboard.selectors.ExpectedReturnService", DummyExpectedReturnService),
+        ):
+            summary = get_analytics_v2_dashboard_summary()
+
+        assert summary["risk_contribution"]["top_asset"]["symbol"] == "MSFT"
+        assert summary["risk_contribution"]["top_sector"]["key"] == "Tecnologia"
+        assert summary["risk_contribution"]["model_variant"] == "covariance_aware"
+        assert summary["risk_contribution"]["covariance_observations"] == 64
+        assert summary["risk_contribution"]["coverage_pct"] == 96.5
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

@@ -18,6 +18,7 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.analytics_v2 import (
+    CovarianceAwareRiskContributionService,
     ExpectedReturnService,
     FactorExposureService,
     RiskContributionService,
@@ -1068,7 +1069,15 @@ def get_analytics_v2_dashboard_summary() -> Dict:
     """Resume Analytics v2 para consumo server-rendered en dashboard."""
 
     def build():
-        risk_result = RiskContributionService().calculate()
+        base_risk_service = RiskContributionService()
+        covariance_risk_service = CovarianceAwareRiskContributionService(base_service=base_risk_service)
+        base_risk_result = base_risk_service.calculate()
+        covariance_risk_result = covariance_risk_service.calculate()
+        risk_result = (
+            covariance_risk_result
+            if covariance_risk_result.get("model_variant") == "covariance_aware"
+            else base_risk_result
+        )
         scenario_service = ScenarioAnalysisService()
         factor_service = FactorExposureService()
         stress_service = StressFragilityService()
@@ -1081,7 +1090,7 @@ def get_analytics_v2_dashboard_summary() -> Dict:
         expected_return_result = expected_return_service.calculate()
 
         combined_signals = (
-            RiskContributionService().build_recommendation_signals(top_n=5)
+            base_risk_service.build_recommendation_signals(top_n=5)
             + scenario_service.build_recommendation_signals()
             + factor_service.build_recommendation_signals()
             + stress_service.build_recommendation_signals()
@@ -1099,6 +1108,13 @@ def get_analytics_v2_dashboard_summary() -> Dict:
             (item for item in factor_result.get("factors", []) if item.get("factor") == dominant_factor_key),
             None,
         )
+        covariance_variant = covariance_risk_result.get("model_variant", "mvp_proxy")
+        covariance_observations = int(covariance_risk_result.get("covariance_observations") or 0)
+        covariance_coverage_pct = float(covariance_risk_result.get("coverage_pct") or 0.0)
+        covariance_warning = next(
+            iter(covariance_risk_result.get("metadata", {}).get("warnings", [])),
+            None,
+        )
 
         return {
             "risk_contribution": {
@@ -1106,6 +1122,10 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                 "top_sector": top_risk_sector,
                 "confidence": risk_result["metadata"]["confidence"],
                 "warnings_count": len(risk_result["metadata"].get("warnings", [])),
+                "model_variant": covariance_variant,
+                "covariance_observations": covariance_observations,
+                "coverage_pct": covariance_coverage_pct,
+                "covariance_warning": covariance_warning,
             },
             "scenario_analysis": {
                 "argentina_stress_pct": argentina_stress.get("total_impact_pct"),
