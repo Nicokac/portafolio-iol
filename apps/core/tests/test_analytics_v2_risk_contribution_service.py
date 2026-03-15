@@ -138,6 +138,30 @@ def test_risk_contribution_falls_back_when_history_is_insufficient():
 
 
 @pytest.mark.django_db
+def test_risk_contribution_ignores_intraday_duplicates_for_asset_history():
+    now = timezone.now().replace(hour=15, minute=0, second=0, microsecond=0)
+
+    ParametroActivo.objects.create(
+        simbolo="SPY",
+        sector="Indice",
+        bloque_estrategico="Core",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+
+    daily_values = [1000, 1010, 1020]
+    for i, value in enumerate(daily_values):
+        fecha = now - timedelta(days=2 - i)
+        _make_asset_snapshot(fecha, "SPY", value, tipo="CEDEARS", moneda="dolar_Estadounidense")
+        _make_asset_snapshot(fecha + timedelta(hours=2), "SPY", value, tipo="CEDEARS", moneda="dolar_Estadounidense")
+
+    result = RiskContributionService().calculate()
+
+    assert result["items"][0]["used_volatility_fallback"] is True
+    assert "used_fallback:SPY:insufficient_history" in result["metadata"]["warnings"]
+
+
+@pytest.mark.django_db
 def test_risk_contribution_marks_missing_metadata_as_unknown():
     now = timezone.now()
 

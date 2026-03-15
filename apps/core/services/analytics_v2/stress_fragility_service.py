@@ -86,7 +86,7 @@ class StressFragilityService:
         vulnerable_sectors = sorted(combined_sectors, key=lambda item: item.impact_money)[:5]
         vulnerable_countries = sorted(combined_countries, key=lambda item: item.impact_money)[:5]
 
-        top3_loss_share = self._top3_loss_share(vulnerable_assets, total_loss_money)
+        top3_loss_share = self._top3_loss_share(combined_assets)
         liquidity_pct = self.scenario_analysis_service._get_cash_like_weight_pct(  # noqa: SLF001
             self.scenario_analysis_service._load_current_positions()  # noqa: SLF001
         )
@@ -270,11 +270,17 @@ class StressFragilityService:
         return groups
 
     @staticmethod
-    def _top3_loss_share(vulnerable_assets: list[ScenarioAssetImpact], total_loss_money: float) -> float:
-        if total_loss_money >= 0:
+    def _top3_loss_share(asset_impacts: list[ScenarioAssetImpact]) -> float:
+        negative_assets = [
+            item for item in sorted(asset_impacts, key=lambda asset: asset.estimated_impact_money)
+            if item.estimated_impact_money < 0
+        ]
+        if not negative_assets:
             return 0.0
-        top3_loss = sum(abs(item.estimated_impact_money) for item in vulnerable_assets[:3] if item.estimated_impact_money < 0)
-        return safe_percentage(top3_loss, abs(total_loss_money))
+
+        total_negative_loss = sum(abs(item.estimated_impact_money) for item in negative_assets)
+        top3_loss = sum(abs(item.estimated_impact_money) for item in negative_assets[:3])
+        return safe_percentage(top3_loss, total_negative_loss)
 
     def _calculate_fragility_score(self, *, total_loss_pct: float, top3_loss_share: float, liquidity_pct: float) -> float:
         loss_component = abs(min(total_loss_pct, 0.0)) * self.LOSS_WEIGHT

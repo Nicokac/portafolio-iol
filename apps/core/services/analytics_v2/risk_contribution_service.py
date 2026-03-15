@@ -312,11 +312,12 @@ class RiskContributionService:
 
         df["fecha_extraccion"] = pd.to_datetime(df["fecha_extraccion"])
         df["valorizado"] = pd.to_numeric(df["valorizado"], errors="coerce")
+        df["fecha"] = df["fecha_extraccion"].dt.date
         series = (
             df.sort_values("fecha_extraccion")
             .dropna(subset=["valorizado"])
-            .drop_duplicates(subset=["fecha_extraccion"], keep="last")
-            .set_index("fecha_extraccion")["valorizado"]
+            .drop_duplicates(subset=["fecha"], keep="last")
+            .set_index("fecha")["valorizado"]
         )
         if len(series.index) < self.MIN_ASSET_OBSERVATIONS:
             return None

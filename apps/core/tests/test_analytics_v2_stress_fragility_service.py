@@ -232,6 +232,86 @@ def test_stress_fragility_score_is_bounded_between_zero_and_hundred():
     assert 0.0 <= result["fragility_score"] <= 100.0
 
 
+def test_stress_fragility_top3_loss_share_uses_gross_negative_losses_not_net_loss():
+    catalog = SimpleNamespace(
+        require_stress=lambda key: {"stress_key": key, "scenario_keys": ["argentina_stress", "ars_devaluation"], "legacy_mapping_keys": []}
+    )
+    scenario_results = {
+        "argentina_stress": _scenario_result(
+            "argentina_stress",
+            total_impact_pct=-12.0,
+            total_impact_money=-1200.0,
+            by_asset=[
+                {
+                    "symbol": "GD30",
+                    "market_value": 1000.0,
+                    "estimated_impact_pct": -30.0,
+                    "estimated_impact_money": -300.0,
+                    "transmission_channel": "country_argentina",
+                },
+                {
+                    "symbol": "AL30",
+                    "market_value": 1000.0,
+                    "estimated_impact_pct": -25.0,
+                    "estimated_impact_money": -250.0,
+                    "transmission_channel": "country_argentina",
+                },
+                {
+                    "symbol": "SPY",
+                    "market_value": 1000.0,
+                    "estimated_impact_pct": 20.0,
+                    "estimated_impact_money": 200.0,
+                    "transmission_channel": "usd_buffer",
+                },
+            ],
+            by_sector=[],
+            by_country=[],
+            warnings=[],
+        ),
+        "ars_devaluation": _scenario_result(
+            "ars_devaluation",
+            total_impact_pct=8.0,
+            total_impact_money=800.0,
+            by_asset=[
+                {
+                    "symbol": "GD30",
+                    "market_value": 1000.0,
+                    "estimated_impact_pct": -5.0,
+                    "estimated_impact_money": -50.0,
+                    "transmission_channel": "fx_ars",
+                },
+                {
+                    "symbol": "AL30",
+                    "market_value": 1000.0,
+                    "estimated_impact_pct": -4.0,
+                    "estimated_impact_money": -40.0,
+                    "transmission_channel": "fx_ars",
+                },
+                {
+                    "symbol": "SPY",
+                    "market_value": 1000.0,
+                    "estimated_impact_pct": 25.0,
+                    "estimated_impact_money": 250.0,
+                    "transmission_channel": "usd_buffer",
+                },
+            ],
+            by_sector=[],
+            by_country=[],
+            warnings=[],
+        ),
+    }
+    scenario_service = SimpleNamespace(
+        analyze=lambda key: scenario_results[key],
+        _load_current_positions=lambda: [],
+        _get_cash_like_weight_pct=lambda positions: 30.0,
+    )
+    service = StressFragilityService(catalog, scenario_service)
+
+    result = service.calculate("local_crisis_severe")
+
+    assert result["fragility_score"] < 100.0
+
+
 def test_stress_fragility_builds_local_and_high_fragility_signals():
     service = StressFragilityService(
         stress_catalog_service=SimpleNamespace(),
