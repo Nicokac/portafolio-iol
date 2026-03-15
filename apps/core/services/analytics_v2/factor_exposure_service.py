@@ -6,6 +6,7 @@ from apps.core.services.analytics_v2.schemas import (
     AnalyticsMetadata,
     FactorExposureItem,
     FactorExposureResult,
+    RecommendationSignal,
 )
 from apps.core.services.analytics_v2.scenario_analysis_service import ScenarioAnalysisService
 from apps.core.services.analytics_v2.helpers import safe_percentage
@@ -15,6 +16,10 @@ class FactorExposureService:
     """Agrega exposicion factorial MVP sobre posiciones clasificadas."""
 
     UNDERREPRESENTED_THRESHOLD = 5.0
+    GROWTH_EXCESS_THRESHOLD = 45.0
+    DEFENSIVE_MIN_THRESHOLD = 8.0
+    DIVIDEND_MIN_THRESHOLD = 8.0
+    FACTOR_CONCENTRATION_THRESHOLD = 55.0
 
     def __init__(
         self,
@@ -116,6 +121,83 @@ class FactorExposureService:
                 warnings=warnings,
             ),
         ).to_dict()
+
+    def build_recommendation_signals(self) -> list[dict]:
+        result = self.calculate()
+        factors = {item["factor"]: item for item in result.get("factors", [])}
+        if not factors:
+            return []
+
+        signals: list[RecommendationSignal] = []
+
+        growth_pct = float(factors.get("growth", {}).get("exposure_pct", 0.0) or 0.0)
+        if growth_pct >= self.GROWTH_EXCESS_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="factor_growth_excess",
+                    severity="high" if growth_pct >= self.FACTOR_CONCENTRATION_THRESHOLD else "medium",
+                    title="Exceso de sesgo growth",
+                    description="La cartera muestra una exposicion growth elevada frente al resto de factores.",
+                    affected_scope="factor",
+                    evidence={
+                        "factor": "growth",
+                        "exposure_pct": round(growth_pct, 2),
+                    },
+                )
+            )
+
+        defensive_pct = float(factors.get("defensive", {}).get("exposure_pct", 0.0) or 0.0)
+        if defensive_pct < self.DEFENSIVE_MIN_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="factor_defensive_gap",
+                    severity="medium",
+                    title="Falta de factor defensivo",
+                    description="La exposicion defensiva es baja para amortiguar shocks o fases mas conservadoras del mercado.",
+                    affected_scope="factor",
+                    evidence={
+                        "factor": "defensive",
+                        "exposure_pct": round(defensive_pct, 2),
+                        "threshold_pct": self.DEFENSIVE_MIN_THRESHOLD,
+                    },
+                )
+            )
+
+        dividend_pct = float(factors.get("dividend", {}).get("exposure_pct", 0.0) or 0.0)
+        if dividend_pct < self.DIVIDEND_MIN_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="factor_dividend_gap",
+                    severity="medium",
+                    title="Falta de sesgo dividend",
+                    description="La cartera tiene poca exposicion a activos orientados a renta recurrente o dividendos.",
+                    affected_scope="factor",
+                    evidence={
+                        "factor": "dividend",
+                        "exposure_pct": round(dividend_pct, 2),
+                        "threshold_pct": self.DIVIDEND_MIN_THRESHOLD,
+                    },
+                )
+            )
+
+        dominant_factor = result.get("dominant_factor")
+        dominant_factor_pct = float(factors.get(dominant_factor, {}).get("exposure_pct", 0.0) or 0.0)
+        if dominant_factor and dominant_factor_pct >= self.FACTOR_CONCENTRATION_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="factor_concentration_excessive",
+                    severity="high",
+                    title="Concentracion factorial excesiva",
+                    description="Un solo factor domina una parte demasiado alta de la exposicion clasificada.",
+                    affected_scope="factor",
+                    evidence={
+                        "factor": dominant_factor,
+                        "exposure_pct": round(dominant_factor_pct, 2),
+                    },
+                )
+            )
+
+        return [signal.to_dict() for signal in signals]
 
     def _load_current_positions(self):
         return self.positions_loader._load_current_positions()

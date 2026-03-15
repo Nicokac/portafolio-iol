@@ -107,3 +107,43 @@ def test_factor_exposure_uses_high_confidence_when_no_unknown_assets_exist():
 
     assert result["metadata"]["confidence"] == "high"
     assert result["unknown_assets"] == []
+
+
+def test_factor_exposure_builds_growth_and_concentration_signals():
+    positions = [
+        _position(symbol="AAPL", market_value=1200.0),
+        _position(symbol="MSFT", market_value=1000.0),
+        _position(symbol="NVDA", market_value=800.0),
+        _position(symbol="KO", market_value=200.0, sector="Consumo defensivo", strategic_bucket="Dividendos"),
+    ]
+    service = FactorExposureService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions)
+    )
+
+    signals = service.build_recommendation_signals()
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert keyed["factor_growth_excess"]["evidence"]["factor"] == "growth"
+    assert keyed["factor_concentration_excessive"]["evidence"]["factor"] == "growth"
+
+
+def test_factor_exposure_builds_defensive_and_dividend_gap_signals():
+    positions = [
+        _position(symbol="AAPL", market_value=1000.0),
+        _position(symbol="MSFT", market_value=1000.0),
+    ]
+    service = FactorExposureService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions)
+    )
+
+    signals = service.build_recommendation_signals()
+    signal_keys = {signal["signal_key"] for signal in signals}
+
+    assert "factor_defensive_gap" in signal_keys
+    assert "factor_dividend_gap" in signal_keys
+
+
+def test_factor_exposure_build_recommendation_signals_returns_empty_for_empty_portfolio():
+    service = FactorExposureService(positions_loader=SimpleNamespace(_load_current_positions=lambda: []))
+
+    assert service.build_recommendation_signals() == []
