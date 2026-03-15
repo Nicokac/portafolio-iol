@@ -13,6 +13,7 @@ from .helpers import (
     safe_percentage,
 )
 from .risk_contribution_service import RiskContributionService
+from .scenario_analysis_service import ScenarioAnalysisService
 from .scenario_sensitivity_service import ScenarioSensitivityService
 from .scenario_catalog import SCENARIO_CATALOG, ScenarioCatalogService
 from .schemas import (
@@ -62,6 +63,7 @@ __all__ = [
     "RecommendationSignal",
     "SCENARIO_CATALOG",
     "safe_percentage",
+    "ScenarioAnalysisService",
     "ScenarioAnalysisResult",
     "ScenarioAssetImpact",
     "ScenarioCatalogService",

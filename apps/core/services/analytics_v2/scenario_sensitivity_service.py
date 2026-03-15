@@ -26,6 +26,8 @@ class ScenarioSensitivityService:
         return handlers[scenario_key](position)
 
     def _spy_down_10(self, position: NormalizedPosition) -> dict:
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         if self._is_us_equity(position):
             return self._response(-0.10, "equity_usa")
         if self._is_global_equity(position):
@@ -35,6 +37,8 @@ class ScenarioSensitivityService:
         return self._response(0.0, "cash_like")
 
     def _spy_down_20(self, position: NormalizedPosition) -> dict:
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         if self._is_us_equity(position):
             return self._response(-0.20, "equity_usa")
         if self._is_global_equity(position):
@@ -44,6 +48,8 @@ class ScenarioSensitivityService:
         return self._response(0.0, "cash_like")
 
     def _tech_shock(self, position: NormalizedPosition) -> dict:
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         if self._is_technology(position):
             return self._response(-0.18, "sector_technology")
         if self._is_us_equity(position):
@@ -51,6 +57,8 @@ class ScenarioSensitivityService:
         return self._response(0.0, "non_tech_or_cash")
 
     def _argentina_stress(self, position: NormalizedPosition) -> dict:
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         if normalize_country_label(position.country) == "Argentina":
             if self._is_bond(position):
                 return self._response(-0.30, "country_argentina_bond")
@@ -60,11 +68,15 @@ class ScenarioSensitivityService:
     def _ars_devaluation(self, position: NormalizedPosition) -> dict:
         if self._is_us_exposure(position):
             return self._response(0.20, "usd_exposure")
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         if normalize_country_label(position.country) == "Argentina":
             return self._response(-0.08, "ars_local_assets")
         return self._response(0.0, "neutral_fx")
 
     def _em_stress(self, position: NormalizedPosition) -> dict:
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         country = normalize_country_label(position.country)
         if country in {"Argentina", "Brasil", "EM"}:
             if self._is_bond(position):
@@ -73,6 +85,8 @@ class ScenarioSensitivityService:
         return self._response(0.0, "non_em")
 
     def _usa_rates_up_200bps(self, position: NormalizedPosition) -> dict:
+        if self._is_cash_like(position):
+            return self._response(0.0, "cash_like")
         if normalize_country_label(position.country) == "USA":
             if self._is_bond(position):
                 return self._response(-0.10, "rates_usa_bond")
@@ -115,3 +129,15 @@ class ScenarioSensitivityService:
         sector = (position.sector or "").strip().lower()
         bucket = (position.strategic_bucket or "").strip().lower()
         return "tecnolog" in sector or "tech" in sector or bucket == "growth"
+
+    @staticmethod
+    def _is_cash_like(position: NormalizedPosition) -> bool:
+        asset_type = (position.asset_type or "").strip().lower()
+        sector = (position.sector or "").strip().lower()
+        bucket = (position.strategic_bucket or "").strip().lower()
+        return (
+            asset_type == "cash" or
+            bucket == "liquidez" or
+            "liquidez" in sector or
+            "cash mgmt" in sector
+        )
