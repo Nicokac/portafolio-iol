@@ -285,3 +285,142 @@ def test_risk_contribution_builds_argentina_and_divergence_signals():
     assert "risk_concentration_argentina" in keyed
     assert keyed["risk_concentration_argentina"]["evidence"]["country"] == "Argentina"
     assert "risk_vs_weight_divergence" in keyed
+
+
+@pytest.mark.django_db
+def test_risk_contribution_single_position_returns_full_contribution_and_respects_top_n():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="SPY",
+        sector="Indice",
+        bloque_estrategico="Core",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+
+    for i, value in enumerate([1000, 1010, 1030, 1025, 1050]):
+        fecha = now - timedelta(days=4 - i)
+        _make_asset_snapshot(fecha, "SPY", value, tipo="CEDEARS", moneda="dolar_Estadounidense")
+
+    result = RiskContributionService().calculate(top_n=1)
+
+    assert len(result["items"]) == 1
+    assert len(result["top_contributors"]) == 1
+    assert result["items"][0]["symbol"] == "SPY"
+    assert result["items"][0]["contribution_pct"] == 100.0
+    assert result["top_contributors"][0]["symbol"] == "SPY"
+
+
+@pytest.mark.django_db
+def test_risk_contribution_top_contributors_are_sorted_and_limited():
+    now = timezone.now()
+
+    fixtures = [
+        ("AAPL", "Tecnologia", "USA", "Equity", [1000, 1100, 1010, 1140, 1200], "ACCIONES", "dolar_Estadounidense"),
+        ("AL30", "Soberano", "Argentina", "Bond", [1000, 1040, 990, 1050, 1070], "TitulosPublicos", "peso_Argentino"),
+        ("KO", "Consumo defensivo", "USA", "Equity", [1000, 1005, 1002, 1008, 1010], "ACCIONES", "dolar_Estadounidense"),
+    ]
+
+    for symbol, sector, country, patrimonial, _, _, _ in fixtures:
+        ParametroActivo.objects.create(
+            simbolo=symbol,
+            sector=sector,
+            bloque_estrategico="Test",
+            pais_exposicion=country,
+            tipo_patrimonial=patrimonial,
+        )
+
+    for i in range(5):
+        fecha = now - timedelta(days=4 - i)
+        for symbol, _, _, _, values, tipo, moneda in fixtures:
+            _make_asset_snapshot(fecha, symbol, values[i], tipo=tipo, moneda=moneda)
+
+    result = RiskContributionService().calculate(top_n=2)
+
+    top = result["top_contributors"]
+    assert len(top) == 2
+    assert top[0]["contribution_pct"] >= top[1]["contribution_pct"]
+    assert top[0]["symbol"] == "AAPL"
+
+
+@pytest.mark.django_db
+def test_risk_contribution_metadata_degrades_with_mixed_fallback_and_missing_metadata():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+
+    # AAPL con histórico suficiente
+    for i, value in enumerate([1000, 1060, 1020, 1090, 1120]):
+        fecha = now - timedelta(days=4 - i)
+        _make_asset_snapshot(fecha, "AAPL", value, tipo="ACCIONES", moneda="dolar_Estadounidense")
+
+    # UNKNOWN sin metadata y con histórico insuficiente
+    _make_asset_snapshot(now - timedelta(days=1), "UNKNOWN", 800, tipo="ACCIONES", moneda="dolar_Estadounidense")
+    _make_asset_snapshot(now, "UNKNOWN", 810, tipo="ACCIONES", moneda="dolar_Estadounidense")
+
+    result = RiskContributionService().calculate(top_n=3)
+
+    assert result["metadata"]["confidence"] == "low"
+    assert "missing_metadata:UNKNOWN" in result["metadata"]["warnings"]
+    assert "used_fallback:UNKNOWN:insufficient_history" in result["metadata"]["warnings"]
+
+
+@pytest.mark.django_db
+def test_risk_contribution_output_contract_contains_all_expected_keys():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    ParametroActivo.objects.create(
+        simbolo="AL30",
+        sector="Soberano",
+        bloque_estrategico="Argentina",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="Bond",
+    )
+
+    for i, (aapl, al30) in enumerate(zip([1000, 1040, 1020, 1060, 1090], [1000, 1004, 1002, 1006, 1008])):
+        fecha = now - timedelta(days=4 - i)
+        _make_asset_snapshot(fecha, "AAPL", aapl, tipo="ACCIONES", moneda="dolar_Estadounidense")
+        _make_asset_snapshot(fecha, "AL30", al30, tipo="TitulosPublicos")
+
+    result = RiskContributionService().calculate(top_n=2)
+
+    assert set(result.keys()) == {
+        "items",
+        "by_sector",
+        "by_country",
+        "by_asset_type",
+        "top_contributors",
+        "metadata",
+    }
+    assert set(result["items"][0].keys()) == {
+        "symbol",
+        "weight_pct",
+        "volatility_proxy",
+        "risk_score",
+        "contribution_pct",
+        "sector",
+        "country",
+        "asset_type",
+        "used_volatility_fallback",
+    }
+    assert set(result["metadata"].keys()) == {
+        "methodology",
+        "data_basis",
+        "limitations",
+        "confidence",
+        "warnings",
+    }
