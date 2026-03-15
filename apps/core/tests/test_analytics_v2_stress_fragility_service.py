@@ -130,6 +130,7 @@ def test_stress_fragility_combines_multiple_scenarios_and_groups():
 
     assert result["total_loss_money"] == -710.0
     assert result["vulnerable_assets"][0]["symbol"] == "AL30"
+    assert result["vulnerable_assets"][0]["transmission_channel"] == "country_argentina+fx_ars"
     assert result["vulnerable_countries"][0]["key"] == "Argentina"
     assert "legacy_mappings:argentina_crisis,usd_plus_20" in result["metadata"]["warnings"]
 
@@ -201,6 +202,36 @@ def test_stress_fragility_degrades_confidence_with_missing_metadata_warning():
     assert result["metadata"]["confidence"] == "medium"
 
 
+def test_stress_fragility_score_is_bounded_between_zero_and_hundred():
+    catalog = SimpleNamespace(require_stress=lambda key: {"stress_key": key, "scenario_keys": ["spy_down_20"], "legacy_mapping_keys": []})
+    scenario_service = SimpleNamespace(
+        analyze=lambda key: _scenario_result(
+            key,
+            total_impact_pct=-50.0,
+            total_impact_money=-5000.0,
+            by_asset=[
+                {
+                    "symbol": "SPY",
+                    "market_value": 5000.0,
+                    "estimated_impact_pct": -100.0,
+                    "estimated_impact_money": -5000.0,
+                    "transmission_channel": "equity_usa",
+                }
+            ],
+            by_sector=[{"key": "Indice", "impact_pct": -100.0, "impact_money": -5000.0}],
+            by_country=[{"key": "USA", "impact_pct": -100.0, "impact_money": -5000.0}],
+            warnings=[],
+        ),
+        _load_current_positions=lambda: [],
+        _get_cash_like_weight_pct=lambda positions: 0.0,
+    )
+    service = StressFragilityService(catalog, scenario_service)
+
+    result = service.calculate("usa_crash_severe")
+
+    assert 0.0 <= result["fragility_score"] <= 100.0
+
+
 def test_stress_fragility_builds_local_and_high_fragility_signals():
     service = StressFragilityService(
         stress_catalog_service=SimpleNamespace(),
@@ -267,6 +298,27 @@ def test_stress_fragility_builds_liquidity_buffer_signal_for_low_fragility_portf
     signal_keys = {signal["signal_key"] for signal in signals}
 
     assert "stress_liquidity_buffer" in signal_keys
+
+
+def test_stress_fragility_build_recommendation_signals_skips_high_fragility_signal_below_threshold():
+    service = StressFragilityService(
+        stress_catalog_service=SimpleNamespace(),
+        scenario_analysis_service=SimpleNamespace(),
+    )
+    service.calculate = lambda stress_key: {
+        "scenario_key": stress_key,
+        "fragility_score": 45.0,
+        "total_loss_pct": -6.0,
+        "total_loss_money": -600.0,
+        "vulnerable_assets": [{"symbol": "SPY"}],
+        "vulnerable_sectors": [{"key": "Indice", "impact_pct": -6.0, "impact_money": -600.0}],
+        "vulnerable_countries": [{"key": "USA", "impact_pct": -6.0, "impact_money": -600.0}],
+        "metadata": {"warnings": []},
+    }
+
+    signal_keys = {signal["signal_key"] for signal in service.build_recommendation_signals()}
+
+    assert "stress_fragility_high" not in signal_keys
 
 
 def test_stress_fragility_build_recommendation_signals_returns_empty_for_empty_portfolio():
