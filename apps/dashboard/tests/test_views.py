@@ -89,7 +89,9 @@ class TestDashboardView:
 
     def test_planeacion_explains_total_liquidity_definition(self, auth_client):
         response = auth_client.get(reverse('dashboard:planeacion'))
-        assert 'Liquidez total = liquidez operativa + cash management' in response.content.decode()
+        body = response.content.decode()
+        assert 'Liquidez total = liquidez operativa + cash management' in body
+        assert 'Modelo de riesgo:' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

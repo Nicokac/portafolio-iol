@@ -287,7 +287,18 @@ function loadRecommendedActions() {
     ]).then(([recommendations, alerts, rebalance]) => {
         const container = document.getElementById('recommendations-container');
         const items = [];
-        (recommendations || []).forEach(rec => items.push({ source: 'Recomendación', severity: (rec.prioridad || 'info').toUpperCase(), title: rec.titulo || rec.tipo || 'Recomendación', description: rec.descripcion || rec.mensaje || '', detail: rec.activos_sugeridos ? `Activos: ${rec.activos_sugeridos.join(', ')}` : '' }));
+        (recommendations || []).forEach(rec => {
+            const detailParts = [];
+            if (rec.activos_sugeridos) detailParts.push(`Activos: ${rec.activos_sugeridos.join(', ')}`);
+            if (rec.modelo_riesgo) detailParts.push(`Modelo de riesgo: ${rec.modelo_riesgo}`);
+            items.push({
+                source: 'Recomendación',
+                severity: (rec.prioridad || 'info').toUpperCase(),
+                title: rec.titulo || rec.tipo || 'Recomendación',
+                description: rec.descripcion || rec.mensaje || '',
+                detail: detailParts.join(' · '),
+            });
+        });
         (alerts || []).forEach(alert => items.push({ source: 'Alerta', severity: (alert.severidad || 'warning').toUpperCase(), title: alert.tipo || 'Alerta', description: alert.mensaje || '', detail: alert.valor !== undefined ? `Valor: ${window.formatNumberAr(alert.valor, 2)}` : '' }));
         (rebalance || []).forEach(action => items.push({ source: 'Rebalanceo', severity: 'WARNING', title: action.accion || action.razon || 'Acción de rebalanceo', description: action.razon || 'Sugerencia de ajuste de portafolio', detail: action.activo ? `Activo: ${action.activo}` : (action.sector ? `Sector: ${action.sector}` : '') }));
         if (!items.length) { container.innerHTML = '<div class="alert alert-info">No hay acciones recomendadas disponibles</div>'; return; }

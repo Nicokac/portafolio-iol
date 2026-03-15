@@ -706,14 +706,24 @@ class TestRecommendationsFiltering:
     @patch('apps.core.services.recommendation_engine.RecommendationEngine.generate_recommendations')
     def test_recommendations_all_preserves_prioritized_order(self, mock_generate, auth_client):
         mock_generate.return_value = [
-            {'tipo': 'analytics_v2_risk_concentration_argentina', 'prioridad': 'alta', 'origen': 'analytics_v2'},
+            {
+                'tipo': 'analytics_v2_risk_concentration_argentina',
+                'prioridad': 'alta',
+                'origen': 'analytics_v2',
+                'modelo_riesgo': 'covariance_aware',
+            },
             {'tipo': 'diversificacion_sectorial', 'prioridad': 'media'},
             {'tipo': 'revision_rendimiento', 'prioridad': 'baja'},
         ]
         response = auth_client.get(reverse('recommendations-all'))
         assert response.status_code == 200
         assert response.json() == [
-            {'tipo': 'analytics_v2_risk_concentration_argentina', 'prioridad': 'alta', 'origen': 'analytics_v2'},
+            {
+                'tipo': 'analytics_v2_risk_concentration_argentina',
+                'prioridad': 'alta',
+                'origen': 'analytics_v2',
+                'modelo_riesgo': 'covariance_aware',
+            },
             {'tipo': 'diversificacion_sectorial', 'prioridad': 'media'},
             {'tipo': 'revision_rendimiento', 'prioridad': 'baja'},
         ]
