@@ -11,6 +11,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 from django.views import View
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
+from apps.core.services.data_quality.daily_snapshot_continuity_service import DailySnapshotContinuityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
@@ -143,6 +144,7 @@ class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['benchmark_status'] = BenchmarkSeriesService().get_status_summary()
         context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
+        context['snapshot_continuity'] = DailySnapshotContinuityService().build_report(lookback_days=14)
         context['periodic_tasks_count'] = PeriodicTask.objects.count()
         return context
 

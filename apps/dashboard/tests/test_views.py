@@ -111,6 +111,35 @@ class TestDashboardView:
         assert allowed.status_code == 200
         assert 'Estado de benchmarks historicos' in allowed.content.decode()
         assert 'Activacion modelo de riesgo' in allowed.content.decode()
+        assert 'Continuidad diaria de snapshots' in allowed.content.decode()
+
+    def test_ops_shows_snapshot_continuity_status(self, staff_client, monkeypatch):
+        class DummyContinuityService:
+            def build_report(self, lookback_days=14):
+                assert lookback_days == 14
+                return {
+                    'overall_status': 'warning',
+                    'rows': [
+                        {
+                            'date': '2026-03-14',
+                            'raw_snapshots_present': True,
+                            'raw_assets_count': 33,
+                            'account_snapshot_present': True,
+                            'account_rows_count': 2,
+                            'portfolio_snapshot_present': False,
+                            'usable_for_covariance': False,
+                            'status': 'warning',
+                        }
+                    ],
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.DailySnapshotContinuityService', lambda: DummyContinuityService())
+        response = staff_client.get(reverse('dashboard:ops'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Continuidad diaria de snapshots' in body
+        assert '2026-03-14' in body
+        assert 'warning' in body
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')

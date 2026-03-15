@@ -151,6 +151,44 @@
 <section class="row g-3 mt-1">
     <div class="col-12">
         <div class="card">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Continuidad diaria de snapshots</h5>
+                <span class="badge {% if snapshot_continuity.overall_status == 'healthy' %}text-bg-success{% elif snapshot_continuity.overall_status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                    {{ snapshot_continuity.overall_status }}
+                </span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Fecha</th><th>Raw</th><th>Cuenta</th><th>Portfolio</th><th>Usable covarianza</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in snapshot_continuity.rows %}
+                        <tr>
+                            <td>{{ row.date }}</td>
+                            <td>{% if row.raw_snapshots_present %}{{ row.raw_assets_count }}{% else %}-{% endif %}</td>
+                            <td>{% if row.account_snapshot_present %}{{ row.account_rows_count }}{% else %}-{% endif %}</td>
+                            <td>{% if row.portfolio_snapshot_present %}si{% else %}no{% endif %}</td>
+                            <td>{% if row.usable_for_covariance %}si{% else %}no{% endif %}</td>
+                            <td>
+                                <span class="badge {% if row.status == 'healthy' %}text-bg-success{% elif row.status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                                    {{ row.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-muted">Sin datos recientes</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header bg-transparent"><h5 class="mb-0">Activacion modelo de riesgo</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover">
