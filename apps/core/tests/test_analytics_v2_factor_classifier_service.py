@@ -86,3 +86,12 @@ def test_factor_classifier_returns_unknown_when_no_proxy_is_reliable(service):
 
     assert result["factor"] is None
     assert result["source"] == "unknown"
+
+
+def test_factor_classifier_prioritizes_explicit_mapping_over_bucket_and_sector(service):
+    result = service.classify_position(
+        _position(symbol="KO", sector="Tecnologia", strategic_bucket="Growth")
+    )
+
+    assert result["factor"] == "dividend"
+    assert result["source"] == "explicit_symbol_map"

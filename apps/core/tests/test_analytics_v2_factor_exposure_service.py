@@ -109,6 +109,23 @@ def test_factor_exposure_uses_high_confidence_when_no_unknown_assets_exist():
     assert result["unknown_assets"] == []
 
 
+def test_factor_exposure_percentages_sum_to_100_over_classified_universe():
+    positions = [
+        _position(symbol="AAPL", market_value=1000.0),
+        _position(symbol="XLU", market_value=500.0, sector="Utilities", strategic_bucket="Defensivo", asset_type="etf"),
+        _position(symbol="KO", market_value=500.0, sector="Consumo defensivo", strategic_bucket="Dividendos"),
+        _position(symbol="AL30", market_value=800.0, sector="Soberano", country="Argentina", asset_type="bond", strategic_bucket="Argentina", currency="ARS"),
+    ]
+    service = FactorExposureService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions)
+    )
+
+    result = service.calculate()
+
+    assert round(sum(item["exposure_pct"] for item in result["factors"]), 2) == 100.0
+    assert result["unknown_assets"] == ["AL30"]
+
+
 def test_factor_exposure_builds_growth_and_concentration_signals():
     positions = [
         _position(symbol="AAPL", market_value=1200.0),
@@ -141,6 +158,22 @@ def test_factor_exposure_builds_defensive_and_dividend_gap_signals():
 
     assert "factor_defensive_gap" in signal_keys
     assert "factor_dividend_gap" in signal_keys
+
+
+def test_factor_exposure_does_not_emit_concentration_signal_below_threshold():
+    positions = [
+        _position(symbol="AAPL", market_value=1000.0),
+        _position(symbol="XLU", market_value=900.0, sector="Utilities", strategic_bucket="Defensivo", asset_type="etf"),
+        _position(symbol="KO", market_value=900.0, sector="Consumo defensivo", strategic_bucket="Dividendos"),
+    ]
+    service = FactorExposureService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions)
+    )
+
+    signals = service.build_recommendation_signals()
+    signal_keys = {signal["signal_key"] for signal in signals}
+
+    assert "factor_concentration_excessive" not in signal_keys
 
 
 def test_factor_exposure_build_recommendation_signals_returns_empty_for_empty_portfolio():
