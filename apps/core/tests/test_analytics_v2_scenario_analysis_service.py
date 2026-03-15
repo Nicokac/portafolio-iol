@@ -163,3 +163,80 @@ def test_scenario_analysis_marks_missing_metadata_warning():
 
     assert "missing_metadata:UNKNOWN" in result["metadata"]["warnings"]
     assert result["metadata"]["confidence"] == "medium"
+
+
+@pytest.mark.django_db
+def test_scenario_analysis_builds_recommendation_signals_for_tech_and_liquidity_buffer():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    ParametroActivo.objects.create(
+        simbolo="MSFT",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    ParametroActivo.objects.create(
+        simbolo="ADBAICA",
+        sector="Cash Mgmt",
+        bloque_estrategico="Liquidez",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="FCI",
+    )
+
+    fecha = now
+    _make_asset_snapshot(fecha, "AAPL", 1000, tipo="ACCIONES", moneda="dolar_Estadounidense")
+    _make_asset_snapshot(fecha, "MSFT", 1000, tipo="ACCIONES", moneda="dolar_Estadounidense")
+    _make_asset_snapshot(fecha, "ADBAICA", 800, tipo="FondoComundeInversion", moneda="peso_Argentino")
+
+    signals = ScenarioAnalysisService().build_recommendation_signals()
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert "scenario_vulnerability_tech" in keyed
+    assert keyed["scenario_vulnerability_tech"]["severity"] == "high"
+    assert "scenario_liquidity_buffer" in keyed
+    assert keyed["scenario_liquidity_buffer"]["evidence"]["cash_like_weight_pct"] == pytest.approx(28.57, abs=0.01)
+
+
+@pytest.mark.django_db
+def test_scenario_analysis_builds_argentina_and_ars_devaluation_signals():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="AL30",
+        sector="Soberano",
+        bloque_estrategico="Argentina",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="Bond",
+    )
+    ParametroActivo.objects.create(
+        simbolo="YPFD",
+        sector="Energia",
+        bloque_estrategico="Argentina",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="Equity",
+    )
+
+    fecha = now
+    _make_asset_snapshot(fecha, "AL30", 1200, tipo="TitulosPublicos", moneda="peso_Argentino")
+    _make_asset_snapshot(fecha, "YPFD", 800, tipo="ACCIONES", moneda="peso_Argentino")
+
+    signals = ScenarioAnalysisService().build_recommendation_signals()
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert keyed["scenario_vulnerability_argentina"]["severity"] == "high"
+    assert keyed["scenario_vulnerability_argentina"]["evidence"]["scenario_key"] == "argentina_stress"
+    assert keyed["scenario_vulnerability_ars_devaluation"]["severity"] == "high"
+    assert keyed["scenario_vulnerability_ars_devaluation"]["evidence"]["scenario_key"] == "ars_devaluation"
+
+
+@pytest.mark.django_db
+def test_scenario_analysis_build_recommendation_signals_returns_empty_for_empty_portfolio():
+    assert ScenarioAnalysisService().build_recommendation_signals() == []
