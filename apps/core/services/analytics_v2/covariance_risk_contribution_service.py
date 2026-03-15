@@ -6,6 +6,7 @@ import numpy as np
 
 from apps.core.services.analytics_v2.risk_contribution_service import RiskContributionService
 from apps.core.services.analytics_v2.schemas import AnalyticsMetadata, RiskContributionItem, RiskContributionResult
+from apps.core.services.observability import record_state
 from apps.core.services.portfolio.covariance_service import CovarianceService
 
 
@@ -171,6 +172,11 @@ class CovarianceAwareRiskContributionService:
                 "excluded_symbols": [position.simbolo for position in uncovered_positions],
             }
         )
+        self._record_model_variant(
+            model_variant="covariance_aware",
+            observations=observations,
+            coverage_pct=coverage_pct,
+        )
         return result
 
     def build_recommendation_signals(self, lookback_days: int = 252, top_n: int = 5) -> list[dict]:
@@ -206,4 +212,28 @@ class CovarianceAwareRiskContributionService:
                 "excluded_symbols": excluded_symbols or [],
             }
         )
+        self._record_model_variant(
+            model_variant="mvp_proxy",
+            observations=observations,
+            coverage_pct=coverage_pct,
+            reason=reason,
+        )
         return result
+
+    @staticmethod
+    def _record_model_variant(
+        *,
+        model_variant: str,
+        observations: int,
+        coverage_pct: float,
+        reason: str | None = None,
+    ) -> None:
+        record_state(
+            "analytics_v2.risk_contribution.model_variant",
+            model_variant,
+            extra={
+                "observations": int(observations),
+                "coverage_pct": round(float(coverage_pct), 2),
+                "reason": reason,
+            },
+        )

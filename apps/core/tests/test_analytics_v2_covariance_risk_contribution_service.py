@@ -3,6 +3,7 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import pytest
+from django.core.cache import cache
 from django.utils import timezone
 
 from apps.core.services.analytics_v2.covariance_risk_contribution_service import (
@@ -283,3 +284,34 @@ def test_covariance_aware_risk_contribution_reuses_mvp_signal_logic_when_falling
     advanced_signals = CovarianceAwareRiskContributionService().build_recommendation_signals(top_n=3)
 
     assert {signal["signal_key"] for signal in advanced_signals} == {signal["signal_key"] for signal in base_signals}
+
+
+@pytest.mark.django_db
+def test_covariance_aware_risk_contribution_records_model_variant_in_observability(monkeypatch):
+    cache.clear()
+    now = timezone.now()
+    _seed_position(now, "AAPL", "Tecnologia", "USA", "Equity", value=1000)
+    _seed_position(now, "SPY", "Indice", "USA", "Equity", value=900, strategic_bucket="Core", tipo="CEDEARS")
+    _seed_position(now, "GD30", "Soberano", "Argentina", "Bond", value=800, strategic_bucket="Argentina", tipo="TitulosPublicos")
+
+    service = CovarianceAwareRiskContributionService()
+    monkeypatch.setattr(
+        service.covariance_service,
+        "build_model_inputs",
+        lambda activos, lookback_days=252: {
+            "warning": "insufficient_history",
+            "observations": 5,
+            "returns": pd.DataFrame(),
+            "expected_returns": np.array([]),
+            "covariance_matrix": np.array([[]]),
+        },
+    )
+
+    service.calculate()
+
+    from apps.core.services.observability import get_state_summary
+
+    summary = get_state_summary("analytics_v2.risk_contribution.model_variant")
+    assert summary["count"] == 1
+    assert summary["latest_state"] == "mvp_proxy"
+    assert summary["latest_extra"]["reason"] == "insufficient_covariance_history"

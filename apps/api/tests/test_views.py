@@ -753,3 +753,26 @@ class TestRecommendationsFiltering:
         response = auth_client.get(reverse('recommendations-by-priority') + '?priority=alta')
         assert response.status_code == 500
         assert response.json()['error'] == 'Internal server error'
+
+    @patch('apps.api.views.get_state_summary')
+    @patch('apps.api.views.get_timing_summary')
+    def test_metrics_internal_observability_includes_state_metrics(
+        self, mock_timing, mock_state, staff_auth_client
+    ):
+        mock_timing.return_value = {'metric_name': 'metrics.returns.calc_ms', 'count': 3, 'mean_ms': 10.0, 'max_ms': 12.0}
+        mock_state.return_value = {
+            'metric_name': 'analytics_v2.risk_contribution.model_variant',
+            'count': 4,
+            'states': {'mvp_proxy': 3, 'covariance_aware': 1},
+            'latest_state': 'mvp_proxy',
+            'latest_extra': {'observations': 5, 'coverage_pct': 100.0, 'reason': 'insufficient_covariance_history'},
+        }
+
+        response = staff_auth_client.get(reverse('metrics-internal-observability'))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert 'metrics' in body
+        assert 'states' in body
+        assert body['states'][0]['metric_name'] == 'analytics_v2.risk_contribution.model_variant'
+        assert body['states'][0]['states']['mvp_proxy'] == 3

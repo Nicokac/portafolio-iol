@@ -16,7 +16,7 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
-from apps.core.services.observability import get_timing_summary
+from apps.core.services.observability import get_state_summary, get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.security_audit import record_sensitive_action
 from apps.core.services.risk.cvar_service import CVaRService
@@ -594,13 +594,18 @@ def metrics_internal_observability(request):
         "iol.api.portafolio.latency_ms",
         "iol.api.operaciones.latency_ms",
     ]
+    state_metric_names = [
+        "analytics_v2.risk_contribution.model_variant",
+    ]
     data = [get_timing_summary(name) for name in metric_names]
+    state_data = [get_state_summary(name) for name in state_metric_names]
     return Response(
         {
             "metrics": data,
+            "states": state_data,
             "metadata": build_metric_metadata(
-                methodology='In-memory rolling summaries of internal timing metrics',
-                data_basis='Django cache timing series',
+                methodology='In-memory rolling summaries of internal timing metrics and model state activations',
+                data_basis='Django cache timing/state series',
                 limitations='Non-persistent in default cache backend and reset after cache eviction',
             ),
         },
