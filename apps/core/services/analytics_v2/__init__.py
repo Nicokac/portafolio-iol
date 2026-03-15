@@ -1,5 +1,17 @@
 """Shared contracts for Portfolio Analytics v2."""
 
+from .helpers import (
+    aggregate_aliases,
+    aggregate_numeric_items,
+    aggregate_positions_by_field,
+    build_data_quality_flags,
+    build_group_items,
+    derive_confidence,
+    normalize_country_label,
+    normalize_percentage_allocation,
+    rank_top_items,
+    safe_percentage,
+)
 from .schemas import (
     AnalyticsMetadata,
     BenchmarkAvailability,
@@ -21,18 +33,28 @@ from .schemas import (
 )
 
 __all__ = [
+    "aggregate_aliases",
+    "aggregate_numeric_items",
+    "aggregate_positions_by_field",
     "AnalyticsMetadata",
     "BenchmarkAvailability",
+    "build_data_quality_flags",
+    "build_group_items",
     "ContributionGroupItem",
     "DataQualityFlags",
+    "derive_confidence",
     "ExpectedReturnBucketItem",
     "ExpectedReturnResult",
     "FactorExposureItem",
     "FactorExposureResult",
+    "normalize_country_label",
+    "normalize_percentage_allocation",
     "NormalizedPortfolioSnapshot",
     "NormalizedPosition",
+    "rank_top_items",
     "RiskContributionItem",
     "RiskContributionResult",
+    "safe_percentage",
     "ScenarioAnalysisResult",
     "ScenarioAssetImpact",
     "ScenarioDefinition",
