@@ -5,6 +5,7 @@ from apps.core.services.analytics_v2.schemas import (
     DataQualityFlags,
     ExpectedReturnBucketItem,
     ExpectedReturnResult,
+    FactorDefinition,
     FactorExposureItem,
     FactorExposureResult,
     NormalizedPosition,
@@ -201,4 +202,13 @@ def test_recommendation_signal_validates_required_fields():
             title="Signal",
             description="Desc",
             affected_scope="portfolio",
+        )
+
+
+def test_factor_definition_validates_required_fields():
+    with pytest.raises(ValueError, match="factor_key"):
+        FactorDefinition(
+            factor_key="",
+            label="Growth",
+            description="Desc",
         )

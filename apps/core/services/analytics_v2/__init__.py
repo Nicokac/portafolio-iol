@@ -12,6 +12,7 @@ from .helpers import (
     rank_top_items,
     safe_percentage,
 )
+from .factor_catalog import FACTOR_CATALOG, FactorCatalogService
 from .risk_contribution_service import RiskContributionService
 from .scenario_analysis_service import ScenarioAnalysisService
 from .scenario_sensitivity_service import ScenarioSensitivityService
@@ -23,6 +24,7 @@ from .schemas import (
     DataQualityFlags,
     ExpectedReturnBucketItem,
     ExpectedReturnResult,
+    FactorDefinition,
     FactorExposureItem,
     FactorExposureResult,
     NormalizedPortfolioSnapshot,
@@ -50,6 +52,9 @@ __all__ = [
     "derive_confidence",
     "ExpectedReturnBucketItem",
     "ExpectedReturnResult",
+    "FACTOR_CATALOG",
+    "FactorCatalogService",
+    "FactorDefinition",
     "FactorExposureItem",
     "FactorExposureResult",
     "normalize_country_label",

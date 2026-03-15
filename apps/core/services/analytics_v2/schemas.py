@@ -215,6 +215,22 @@ class FactorExposureItem(SerializableSchema):
 
 
 @dataclass(frozen=True)
+class FactorDefinition(SerializableSchema):
+    factor_key: str
+    label: str
+    description: str
+    classification_notes: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.factor_key.strip():
+            raise ValueError("factor_key cannot be empty")
+        if not self.label.strip():
+            raise ValueError("label cannot be empty")
+        if not self.description.strip():
+            raise ValueError("description cannot be empty")
+
+
+@dataclass(frozen=True)
 class FactorExposureResult(SerializableSchema):
     factors: list[FactorExposureItem]
     dominant_factor: str | None
