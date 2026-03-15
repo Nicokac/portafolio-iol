@@ -26,31 +26,31 @@ def test_generate_recommendations_uses_dashboard_kpis_when_portfolio_missing(eng
 
 
 def test_generate_recommendations_returns_combined_output(engine, monkeypatch):
-    monkeypatch.setattr(engine, "_analyze_liquidity", lambda portfolio: {"tipo": "liq"})
+    monkeypatch.setattr(engine, "_analyze_liquidity", lambda portfolio: {"tipo": "liq", "prioridad": "media"})
     monkeypatch.setattr(
         engine,
         "_analyze_geographic_concentration",
-        lambda portfolio: [{"tipo": "geo_1"}, {"tipo": "geo_2"}],
+        lambda portfolio: [{"tipo": "geo_1", "prioridad": "alta"}, {"tipo": "geo_2", "prioridad": "media"}],
     )
     monkeypatch.setattr(
         engine,
         "_analyze_sector_concentration",
-        lambda portfolio: [{"tipo": "sector"}],
+        lambda portfolio: [{"tipo": "sector", "prioridad": "media"}],
     )
-    monkeypatch.setattr(engine, "_analyze_risk_profile", lambda portfolio: {"tipo": "risk"})
-    monkeypatch.setattr(engine, "_analyze_performance", lambda portfolio: {"tipo": "perf"})
-    monkeypatch.setattr(engine, "_analyze_analytics_v2", lambda: [{"tipo": "v2"}])
+    monkeypatch.setattr(engine, "_analyze_risk_profile", lambda portfolio: {"tipo": "risk", "prioridad": "alta"})
+    monkeypatch.setattr(engine, "_analyze_performance", lambda portfolio: {"tipo": "perf", "prioridad": "baja"})
+    monkeypatch.setattr(engine, "_analyze_analytics_v2", lambda: [{"tipo": "v2", "prioridad": "alta", "origen": "analytics_v2"}])
 
     result = engine.generate_recommendations({"total_iol": 100})
 
-    assert result == [
-        {"tipo": "liq"},
-        {"tipo": "geo_1"},
-        {"tipo": "geo_2"},
-        {"tipo": "sector"},
-        {"tipo": "risk"},
-        {"tipo": "perf"},
-        {"tipo": "v2"},
+    assert [item["tipo"] for item in result] == [
+        "v2",
+        "geo_1",
+        "risk",
+        "liq",
+        "geo_2",
+        "sector",
+        "perf",
     ]
 
 
@@ -248,4 +248,60 @@ def test_analyze_analytics_v2_returns_empty_on_exception(engine, monkeypatch):
     )
 
     assert engine._analyze_analytics_v2() == []
+
+
+def test_prioritize_recommendations_prefers_analytics_v2_for_overlapping_topics(engine):
+    recommendations = [
+        {
+            "tipo": "liquidez_excesiva",
+            "prioridad": "media",
+            "titulo": "Liquidez Excesiva",
+        },
+        {
+            "tipo": "analytics_v2_expected_return_liquidity_drag",
+            "prioridad": "media",
+            "titulo": "Costo de oportunidad por liquidez",
+            "origen": "analytics_v2",
+            "activos_sugeridos": ["SPY"],
+        },
+        {
+            "tipo": "concentracion_argentina_alta",
+            "prioridad": "alta",
+            "titulo": "Alta Concentracion Argentina",
+        },
+        {
+            "tipo": "analytics_v2_risk_concentration_argentina",
+            "prioridad": "alta",
+            "titulo": "Riesgo concentrado en Argentina",
+            "origen": "analytics_v2",
+            "activos_sugeridos": ["GGAL", "AL30"],
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_risk_concentration_argentina",
+        "analytics_v2_expected_return_liquidity_drag",
+    ]
+
+
+def test_prioritize_recommendations_keeps_distinct_topics(engine):
+    recommendations = [
+        {"tipo": "diversificacion_sectorial", "prioridad": "media"},
+        {
+            "tipo": "analytics_v2_factor_defensive_gap",
+            "prioridad": "media",
+            "origen": "analytics_v2",
+        },
+        {"tipo": "revision_rendimiento", "prioridad": "baja"},
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_factor_defensive_gap",
+        "diversificacion_sectorial",
+        "revision_rendimiento",
+    ]
 

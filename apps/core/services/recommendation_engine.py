@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 class RecommendationEngine:
     """Motor de recomendaciones de inversion basado en analisis del portafolio."""
 
+    PRIORITY_RANK = {"alta": 0, "media": 1, "baja": 2}
+
     DIVERSIFICATION_CANDIDATES = (
         ("Healthcare", 8.0),
         ("Industrials", 8.0),
@@ -64,8 +66,13 @@ class RecommendationEngine:
             if analytics_v2_recs:
                 recommendations.extend(analytics_v2_recs)
 
-            logger.info(f"Generated {len(recommendations)} recommendations")
-            return recommendations
+            prioritized = self._prioritize_recommendations(recommendations)
+            logger.info(
+                "Generated %s recommendations (%s after prioritization)",
+                len(recommendations),
+                len(prioritized),
+            )
+            return prioritized
 
         except Exception as e:
             logger.error(f"Error generating recommendations: {str(e)}")
@@ -352,6 +359,44 @@ class RecommendationEngine:
         except Exception as e:
             logger.error(f"Error analyzing analytics v2 signals: {str(e)}")
             return []
+
+    def _prioritize_recommendations(self, recommendations: List[Dict]) -> List[Dict]:
+        selected_by_topic = {}
+
+        for index, recommendation in enumerate(recommendations):
+            topic_key = self._recommendation_topic_key(recommendation)
+            sort_key = self._recommendation_sort_key(recommendation, index)
+            current = selected_by_topic.get(topic_key)
+            if current is None or sort_key < current[0]:
+                selected_by_topic[topic_key] = (sort_key, recommendation)
+
+        return [
+            entry[1]
+            for entry in sorted(selected_by_topic.values(), key=lambda item: item[0])
+        ]
+
+    @staticmethod
+    def _recommendation_topic_key(recommendation: Dict) -> str:
+        recommendation_type = str(recommendation.get("tipo", "")).lower()
+        topic_aliases = {
+            "liquidez_excesiva": "liquidity_excess",
+            "analytics_v2_expected_return_liquidity_drag": "liquidity_excess",
+            "concentracion_argentina_alta": "argentina_concentration",
+            "analytics_v2_risk_concentration_argentina": "argentina_concentration",
+            "riesgo_concentracion_alto": "portfolio_concentration",
+            "riesgo_concentracion_media": "portfolio_concentration",
+            "analytics_v2_risk_concentration_top_assets": "portfolio_concentration",
+        }
+        return topic_aliases.get(recommendation_type, recommendation_type)
+
+    def _recommendation_sort_key(self, recommendation: Dict, index: int) -> tuple:
+        priority = self.PRIORITY_RANK.get(
+            str(recommendation.get("prioridad", "media")).lower(),
+            3,
+        )
+        origin = 0 if recommendation.get("origen") == "analytics_v2" else 1
+        has_assets = 0 if recommendation.get("activos_sugeridos") else 1
+        return (priority, origin, has_assets, index)
 
     def _map_signal_to_recommendation(self, signal: Dict) -> Dict:
         severity = str(signal.get("severity", "medium")).lower()
