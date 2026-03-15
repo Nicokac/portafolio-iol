@@ -12,6 +12,7 @@ from .helpers import (
     rank_top_items,
     safe_percentage,
 )
+from .covariance_risk_contribution_service import CovarianceAwareRiskContributionService
 from .factor_catalog import FACTOR_CATALOG, FactorCatalogService
 from .factor_classifier_service import FactorClassifierService
 from .factor_exposure_service import FactorExposureService
@@ -55,6 +56,7 @@ __all__ = [
     "build_data_quality_flags",
     "build_group_items",
     "ContributionGroupItem",
+    "CovarianceAwareRiskContributionService",
     "DataQualityFlags",
     "derive_confidence",
     "ExpectedReturnBucketItem",
