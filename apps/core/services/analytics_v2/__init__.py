@@ -20,6 +20,7 @@ from .scenario_analysis_service import ScenarioAnalysisService
 from .scenario_sensitivity_service import ScenarioSensitivityService
 from .scenario_catalog import SCENARIO_CATALOG, ScenarioCatalogService
 from .stress_catalog import STRESS_CATALOG, StressCatalogService
+from .stress_fragility_service import StressFragilityService
 from .schemas import (
     AnalyticsMetadata,
     BenchmarkAvailability,
@@ -86,5 +87,6 @@ __all__ = [
     "STRESS_CATALOG",
     "StressCatalogService",
     "StressDefinition",
+    "StressFragilityService",
     "StressFragilityResult",
 ]
