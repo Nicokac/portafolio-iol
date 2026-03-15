@@ -22,7 +22,22 @@ En esta etapa:
 - `by_country`
 - `by_asset_type`
 
-quedan presentes en el contrato, pero vacios, porque la agregacion se completa en `2.3`.
+quedaban presentes en el contrato, pero vacios.
+
+## Extension aplicada en 2.3
+
+Se completo la agregacion de la salida por:
+
+- sector
+- pais
+- tipo de activo
+
+Regla usada:
+
+- `contribution_pct` agregado = suma de `contribution_pct` de los items del bucket
+- `weight_pct` agregado = suma de `weight_pct` de los items del bucket
+
+Esto mantiene consistencia directa con el detalle por activo.
 
 ## Reglas MVP implementadas
 
@@ -44,8 +59,6 @@ quedan presentes en el contrato, pero vacios, porque la agregacion se completa e
 
 ## Extension inmediata prevista
 
-`2.3` debe completar:
+El siguiente paso natural queda en `2.4`:
 
-- agregacion por sector
-- agregacion por pais
-- agregacion por tipo de activo
+- senales reutilizables para recomendaciones

@@ -152,3 +152,61 @@ def test_risk_contribution_marks_missing_metadata_as_unknown():
     assert item["country"] == "unknown"
     assert item["asset_type"] == "equity"
     assert "missing_metadata:UNKNOWN" in result["metadata"]["warnings"]
+
+
+@pytest.mark.django_db
+def test_risk_contribution_populates_group_aggregations_consistently():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="Estados Unidos",
+        tipo_patrimonial="Equity",
+    )
+    ParametroActivo.objects.create(
+        simbolo="MSFT",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    ParametroActivo.objects.create(
+        simbolo="AL30",
+        sector="Soberano",
+        bloque_estrategico="Argentina",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="Bond",
+    )
+
+    aapl_values = [1000, 1040, 1020, 1060, 1090]
+    msft_values = [900, 945, 930, 970, 1000]
+    al30_values = [1000, 1003, 1001, 1004, 1006]
+
+    for i, (aapl, msft, al30) in enumerate(zip(aapl_values, msft_values, al30_values)):
+        fecha = now - timedelta(days=4 - i)
+        _make_asset_snapshot(fecha, "AAPL", aapl, tipo="ACCIONES", moneda="dolar_Estadounidense")
+        _make_asset_snapshot(fecha, "MSFT", msft, tipo="ACCIONES", moneda="dolar_Estadounidense")
+        _make_asset_snapshot(fecha, "AL30", al30, tipo="TitulosPublicos")
+
+    result = RiskContributionService().calculate(top_n=3)
+
+    assert [group["key"] for group in result["by_sector"]] == ["Tecnologia", "Soberano"]
+    assert [group["key"] for group in result["by_country"]] == ["USA", "Argentina"]
+    assert [group["key"] for group in result["by_asset_type"]] == ["equity", "bond"]
+
+    total_sector_contribution = round(sum(group["contribution_pct"] for group in result["by_sector"]), 2)
+    total_country_contribution = round(sum(group["contribution_pct"] for group in result["by_country"]), 2)
+    total_type_contribution = round(sum(group["contribution_pct"] for group in result["by_asset_type"]), 2)
+
+    assert total_sector_contribution == round(sum(item["contribution_pct"] for item in result["items"]), 2)
+    assert total_country_contribution == round(sum(item["contribution_pct"] for item in result["items"]), 2)
+    assert total_type_contribution == round(sum(item["contribution_pct"] for item in result["items"]), 2)
+
+    usa_group = result["by_country"][0]
+    assert usa_group["key"] == "USA"
+    assert round(usa_group["weight_pct"], 2) == round(
+        sum(item["weight_pct"] for item in result["items"] if item["country"] in {"USA", "Estados Unidos"}),
+        2,
+    )

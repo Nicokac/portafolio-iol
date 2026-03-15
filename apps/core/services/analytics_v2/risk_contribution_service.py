@@ -8,7 +8,10 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.core.services.analytics_v2.helpers import (
+    aggregate_numeric_items,
     build_data_quality_flags,
+    build_group_items,
+    normalize_country_label,
     rank_top_items,
 )
 from apps.core.services.analytics_v2.schemas import (
@@ -129,16 +132,16 @@ class RiskContributionService:
 
         result = RiskContributionResult(
             items=items,
-            by_sector=[],
-            by_country=[],
-            by_asset_type=[],
+            by_sector=self._aggregate_items(items, "sector"),
+            by_country=self._aggregate_items(items, "country", normalizer=normalize_country_label),
+            by_asset_type=self._aggregate_items(items, "asset_type"),
             top_contributors=rank_top_items(items, lambda item: item.contribution_pct, limit=top_n),
             metadata=AnalyticsMetadata(
                 methodology="risk_score = weight * volatility_proxy; contribution_pct = risk_score / total_risk_score",
                 data_basis="invested_portfolio_market_value",
                 limitations=(
                     "MVP proxy model without covariance matrix. "
-                    "Sector/country/type aggregations are not populated yet in module 2.2."
+                    "Aggregations are built from item-level contribution_pct and weight_pct."
                 ),
                 confidence=quality.confidence,
                 warnings=quality.warnings,
@@ -245,3 +248,34 @@ class RiskContributionService:
         if patrimonial == "cash":
             return "cash"
         return "unknown"
+
+    @staticmethod
+    def _aggregate_items(
+        items: list[RiskContributionItem],
+        field_name: str,
+        *,
+        normalizer=None,
+    ):
+        contribution_grouped = aggregate_numeric_items(
+            items,
+            key_getter=lambda item: getattr(item, field_name, None),
+            value_getter=lambda item: item.contribution_pct,
+            normalizer=normalizer,
+        )
+        weight_grouped = aggregate_numeric_items(
+            items,
+            key_getter=lambda item: getattr(item, field_name, None),
+            value_getter=lambda item: item.weight_pct,
+            normalizer=normalizer,
+        )
+        return build_group_items(
+            contribution_grouped,
+            basis_total=None,
+        ) if not weight_grouped else [
+            group.__class__(
+                key=group.key,
+                contribution_pct=group.contribution_pct,
+                weight_pct=round(weight_grouped.get(group.key, 0.0), 2),
+            )
+            for group in build_group_items(contribution_grouped, basis_total=None)
+        ]
