@@ -1,6 +1,13 @@
 ﻿import logging
 from typing import Dict, List, Optional
 
+from apps.core.services.analytics_v2 import (
+    ExpectedReturnService,
+    FactorExposureService,
+    RiskContributionService,
+    ScenarioAnalysisService,
+    StressFragilityService,
+)
 from apps.dashboard.selectors import (
     get_concentracion_pais,
     get_concentracion_patrimonial,
@@ -52,6 +59,10 @@ class RecommendationEngine:
             performance_rec = self._analyze_performance(current_portfolio)
             if performance_rec:
                 recommendations.append(performance_rec)
+
+            analytics_v2_recs = self._analyze_analytics_v2()
+            if analytics_v2_recs:
+                recommendations.extend(analytics_v2_recs)
 
             logger.info(f"Generated {len(recommendations)} recommendations")
             return recommendations
@@ -320,3 +331,93 @@ class RecommendationEngine:
             logger.error(f"Error analyzing performance: {str(e)}")
 
         return None
+
+    def _analyze_analytics_v2(self) -> List[Dict]:
+        try:
+            signals = (
+                RiskContributionService().build_recommendation_signals(top_n=5)
+                + ScenarioAnalysisService().build_recommendation_signals()
+                + FactorExposureService().build_recommendation_signals()
+                + StressFragilityService().build_recommendation_signals()
+                + ExpectedReturnService().build_recommendation_signals()
+            )
+            if not signals:
+                return []
+
+            normalized = [self._map_signal_to_recommendation(signal) for signal in signals]
+            return sorted(
+                normalized,
+                key=lambda rec: {"alta": 0, "media": 1, "baja": 2}.get(rec.get("prioridad", "media"), 3),
+            )
+        except Exception as e:
+            logger.error(f"Error analyzing analytics v2 signals: {str(e)}")
+            return []
+
+    def _map_signal_to_recommendation(self, signal: Dict) -> Dict:
+        severity = str(signal.get("severity", "medium")).lower()
+        prioridad = {"high": "alta", "medium": "media", "low": "baja"}.get(severity, "media")
+        evidence = signal.get("evidence") or {}
+
+        recommendation = {
+            "tipo": f"analytics_v2_{signal.get('signal_key', 'signal')}",
+            "prioridad": prioridad,
+            "titulo": signal.get("title", "Señal Analytics v2"),
+            "descripcion": signal.get("description", ""),
+            "acciones_sugeridas": self._build_signal_actions(signal),
+            "impacto_esperado": "Mejor trazabilidad entre riesgo, escenarios y planeación",
+            "origen": "analytics_v2",
+        }
+
+        suggested_assets = self._extract_signal_assets(evidence)
+        if suggested_assets:
+            recommendation["activos_sugeridos"] = suggested_assets
+        return recommendation
+
+    @staticmethod
+    def _extract_signal_assets(evidence: Dict) -> List[str]:
+        top_symbols = evidence.get("top_symbols")
+        if isinstance(top_symbols, list) and top_symbols:
+            return [str(symbol) for symbol in top_symbols[:3]]
+        factor = evidence.get("factor")
+        if factor:
+            return [str(factor)]
+        return []
+
+    @staticmethod
+    def _build_signal_actions(signal: Dict) -> List[str]:
+        key = str(signal.get("signal_key", ""))
+        if "liquidity_drag" in key:
+            return [
+                "Reducir gradualmente liquidez excedente si no cumple una función táctica explícita",
+                "Dirigir nuevos flujos a buckets con mejor retorno esperado estructural",
+            ]
+        if "argentina" in key or "local_crisis" in key:
+            return [
+                "Bajar vulnerabilidad local con diversificación internacional adicional",
+                "Evitar sumar riesgo argentino sin convicción táctica explícita",
+            ]
+        if "tech" in key or "growth" in key:
+            return [
+                "Balancear exposición growth/tech con factores defensivos o dividend",
+                "Reforzar diversificación sectorial antes de ampliar posiciones dominantes",
+            ]
+        if "defensive_gap" in key or "dividend_gap" in key:
+            return [
+                "Canalizar nuevos aportes a segmentos defensivos o generadores de renta",
+                "Usar diversificación por estilo además de diversificación geográfica",
+            ]
+        if "fragility" in key or "stress" in key:
+            return [
+                "Reducir concentración en activos o sectores que dominan la pérdida bajo stress",
+                "Usar liquidez y diversificación para bajar fragilidad extrema",
+            ]
+        if "real_weak" in key or "nominal_weak" in key:
+            return [
+                "Revisar si la composición actual justifica el retorno esperado estructural",
+                "Comparar el peso de liquidez y renta fija contra los objetivos de crecimiento real",
+            ]
+        return [
+            "Revisar la señal analítica antes de sumar exposición en los bloques dominantes",
+            "Usar nuevos aportes para corregir el desbalance detectado",
+        ]
+

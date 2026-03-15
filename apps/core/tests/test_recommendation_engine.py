@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 
 from apps.core.services.recommendation_engine import RecommendationEngine
 
@@ -18,6 +18,7 @@ def test_generate_recommendations_uses_dashboard_kpis_when_portfolio_missing(eng
     monkeypatch.setattr(engine, "_analyze_sector_concentration", lambda portfolio: [])
     monkeypatch.setattr(engine, "_analyze_risk_profile", lambda portfolio: None)
     monkeypatch.setattr(engine, "_analyze_performance", lambda portfolio: None)
+    monkeypatch.setattr(engine, "_analyze_analytics_v2", lambda: [])
 
     result = engine.generate_recommendations()
 
@@ -38,6 +39,7 @@ def test_generate_recommendations_returns_combined_output(engine, monkeypatch):
     )
     monkeypatch.setattr(engine, "_analyze_risk_profile", lambda portfolio: {"tipo": "risk"})
     monkeypatch.setattr(engine, "_analyze_performance", lambda portfolio: {"tipo": "perf"})
+    monkeypatch.setattr(engine, "_analyze_analytics_v2", lambda: [{"tipo": "v2"}])
 
     result = engine.generate_recommendations({"total_iol": 100})
 
@@ -48,6 +50,7 @@ def test_generate_recommendations_returns_combined_output(engine, monkeypatch):
         {"tipo": "sector"},
         {"tipo": "risk"},
         {"tipo": "perf"},
+        {"tipo": "v2"},
     ]
 
 
@@ -196,3 +199,53 @@ def test_analyze_performance_returns_static_recommendation(engine):
 
     assert result["tipo"] == "revision_rendimiento"
     assert result["prioridad"] == "baja"
+
+
+def test_analyze_analytics_v2_maps_signals_to_recommendations(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.RiskContributionService",
+        lambda: type("DummyRisk", (), {"build_recommendation_signals": lambda self, top_n=5: [
+            {
+                "signal_key": "risk_concentration_top_assets",
+                "severity": "high",
+                "title": "Riesgo concentrado en pocos activos",
+                "description": "Tres activos dominan el riesgo proxy.",
+                "affected_scope": "portfolio",
+                "evidence": {"top_symbols": ["AAPL", "MSFT", "NVDA"]},
+            }
+        ]})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.ScenarioAnalysisService",
+        lambda: type("DummyScenario", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.FactorExposureService",
+        lambda: type("DummyFactor", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.StressFragilityService",
+        lambda: type("DummyStress", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.ExpectedReturnService",
+        lambda: type("DummyExpected", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+
+    result = engine._analyze_analytics_v2()
+
+    assert len(result) == 1
+    assert result[0]["tipo"] == "analytics_v2_risk_concentration_top_assets"
+    assert result[0]["prioridad"] == "alta"
+    assert result[0]["origen"] == "analytics_v2"
+    assert result[0]["activos_sugeridos"] == ["AAPL", "MSFT", "NVDA"]
+
+
+def test_analyze_analytics_v2_returns_empty_on_exception(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.RiskContributionService",
+        lambda: type("DummyRisk", (), {"build_recommendation_signals": lambda self, top_n=5: (_ for _ in ()).throw(RuntimeError("boom"))})(),
+    )
+
+    assert engine._analyze_analytics_v2() == []
+
