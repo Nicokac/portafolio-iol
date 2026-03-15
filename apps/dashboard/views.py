@@ -17,6 +17,7 @@ from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotServi
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.core.services.security_audit import record_sensitive_action
 from apps.dashboard.selectors import (
+    get_analytics_v2_dashboard_summary,
     get_analytics_mensual,
     get_active_alerts,
     get_concentracion_pais,
@@ -83,6 +84,7 @@ class DashboardContextMixin:
         context['concentracion_moneda_json'] = to_json(get_concentracion_moneda())
         context['concentracion_moneda_operativa_json'] = to_json(get_concentracion_moneda_operativa())
         context['analytics_mensual'] = get_analytics_mensual()
+        context['analytics_v2_summary'] = get_analytics_v2_dashboard_summary()
 
         evolucion_historica_obj = get_evolucion_historica()
         context['evolucion_historica_obj'] = evolucion_historica_obj

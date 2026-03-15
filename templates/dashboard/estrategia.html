@@ -60,6 +60,174 @@
     {% if snapshot_coverage.status != 'ok' %}<span class="badge bg-warning text-dark me-2">Historia de snapshots insuficiente para riesgo robusto</span>{% endif %}
 </div>
 
+<section class="mb-4">
+    <div class="card border-0 bg-dark-subtle">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h3 class="h5 mb-1">Analytics v2</h3>
+                    <p class="text-muted mb-0">Capa explicativa para leer contribución al riesgo, escenarios, factores, fragilidad y retorno esperado estructural.</p>
+                </div>
+                <span class="badge text-bg-dark">Integración MVP</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="row mb-4">
+    <div class="col-md-4 col-xl mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Activo con mayor contribución relativa al riesgo proxy según peso y volatilidad estimada.">Risk Contribution</div>
+                <div class="h5 mb-1">{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</div>
+                <div class="small text-body-secondary">
+                    {% if analytics_v2_summary.risk_contribution.top_asset %}
+                    {{ analytics_v2_summary.risk_contribution.top_asset.contribution_pct|pct:1 }} del riesgo proxy
+                    {% else %}
+                    Sin datos
+                    {% endif %}
+                </div>
+                <div class="small mt-2">
+                    <span class="badge {% if analytics_v2_summary.risk_contribution.confidence == 'high' %}bg-success{% elif analytics_v2_summary.risk_contribution.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.risk_contribution.confidence }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Impacto heurístico estimado bajo shocks cerrados del MVP. Se muestra el más adverso entre stress Argentina y shock tech.">Scenario Analysis</div>
+                <div class="h5 mb-1">{{ analytics_v2_summary.scenario_analysis.worst_label }}</div>
+                <div class="small text-body-secondary">
+                    Arg: {{ analytics_v2_summary.scenario_analysis.argentina_stress_pct|pct:1 }} | Tech: {{ analytics_v2_summary.scenario_analysis.tech_shock_pct|pct:1 }}
+                </div>
+                <div class="small mt-2">
+                    <span class="badge {% if analytics_v2_summary.scenario_analysis.confidence == 'high' %}bg-success{% elif analytics_v2_summary.scenario_analysis.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.scenario_analysis.confidence }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Factor o estilo dominante dentro del universo clasificado del portafolio.">Factor Exposure</div>
+                <div class="h5 mb-1">{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"N/D"|title }}</div>
+                <div class="small text-body-secondary">
+                    {% if analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct is not None %}
+                    {{ analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct|pct:1 }} clasificado
+                    {% else %}
+                    Sin datos
+                    {% endif %}
+                </div>
+                <div class="small mt-2">
+                    <span class="badge {% if analytics_v2_summary.factor_exposure.confidence == 'high' %}bg-success{% elif analytics_v2_summary.factor_exposure.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.factor_exposure.confidence }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Fragilidad heurística frente a stress extremo local severo. Resume pérdida estimada, concentración de daño y amortiguación por liquidez.">Stress Testing</div>
+                <div class="h5 mb-1">{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</div>
+                <div class="small text-body-secondary">
+                    Loss {{ analytics_v2_summary.stress_testing.total_loss_pct|pct:1 }}
+                </div>
+                <div class="small mt-2">
+                    <span class="badge {% if analytics_v2_summary.stress_testing.confidence == 'high' %}bg-success{% elif analytics_v2_summary.stress_testing.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.stress_testing.confidence }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-xl mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Referencia estructural de retorno esperado por buckets. No es un forecast preciso.">Expected Return Simple</div>
+                <div class="h5 mb-1">
+                    {% if analytics_v2_summary.expected_return.expected_return_pct is not None %}
+                    {{ analytics_v2_summary.expected_return.expected_return_pct|pct:1 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="small text-body-secondary">
+                    Real:
+                    {% if analytics_v2_summary.expected_return.real_expected_return_pct is not None %}
+                    {{ analytics_v2_summary.expected_return.real_expected_return_pct|pct:1 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="small mt-2">
+                    <span class="badge {% if analytics_v2_summary.expected_return.confidence == 'high' %}bg-success{% elif analytics_v2_summary.expected_return.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.expected_return.confidence }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <h3 data-bs-toggle="tooltip" title="Resumen de los outputs analíticos de Analytics v2 listos para consumo por dashboard.">Resumen Analytics v2</h3>
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td><strong>Top activo por riesgo</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Top sector por riesgo</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.risk_contribution.top_sector.key|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Factor dominante</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"-"|title }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Assets unknown en factores</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.factor_exposure.unknown_assets_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fragilidad crisis local</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Warnings retorno esperado</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.expected_return.warnings_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <h3 data-bs-toggle="tooltip" title="Señales reutilizables producidas por los módulos Analytics v2, ordenadas por severidad.">Señales Analytics v2</h3>
+        <div class="card">
+            <div class="card-body">
+                {% if analytics_v2_summary.signals %}
+                <div class="list-group list-group-flush">
+                    {% for signal in analytics_v2_summary.signals %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-semibold">{{ signal.title }}</div>
+                                <div class="small text-muted">{{ signal.description }}</div>
+                            </div>
+                            <span class="badge {% if signal.severity == 'high' %}bg-danger{% elif signal.severity == 'medium' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ signal.severity }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted">Sin señales activas en Analytics v2.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-4">
     <div class="col-md-4 mb-3"><div class="card h-100"><div class="card-header bg-success text-white"><h6 class="mb-0" data-bs-toggle="tooltip" title="Caja, caución y otros saldos de disponibilidad inmediata o muy corta.">Liquidez Operativa</h6><small>Activos + Cash disponibles</small></div><div class="card-body text-center"><h4 class="card-text text-success">{{ kpis.liquidez_operativa|currency:0 }}</h4><small class="text-muted">{{ riesgo_portafolio_detallado.pct_liquidez|pct:1 }} del total</small></div></div></div>
     <div class="col-md-4 mb-3"><div class="card h-100"><div class="card-header bg-info text-white"><h6 class="mb-0" data-bs-toggle="tooltip" title="Fondos de liquidez y cash management usados para administración transitoria de caja. No incluye caución.">FCI / Cash Management</h6><small>Fondos de liquidez / cash management</small></div><div class="card-body text-center"><h4 class="card-text text-info">{{ kpis.fci_cash_management|currency:0 }}</h4><small class="text-muted">{{ kpis.pct_fci_cash_management|pct:1 }} del total</small></div></div></div>

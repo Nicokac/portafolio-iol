@@ -17,6 +17,13 @@ from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.analytics_v2 import (
+    ExpectedReturnService,
+    FactorExposureService,
+    RiskContributionService,
+    ScenarioAnalysisService,
+    StressFragilityService,
+)
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -1055,5 +1062,82 @@ def get_active_alerts() -> list:
         'id', 'tipo', 'mensaje', 'severidad', 'valor',
         'simbolo', 'sector', 'pais', 'created_at', 'is_acknowledged'
     ))
+
+
+def get_analytics_v2_dashboard_summary() -> Dict:
+    """Resume Analytics v2 para consumo server-rendered en dashboard."""
+
+    def build():
+        risk_result = RiskContributionService().calculate()
+        scenario_service = ScenarioAnalysisService()
+        factor_service = FactorExposureService()
+        stress_service = StressFragilityService()
+        expected_return_service = ExpectedReturnService()
+
+        argentina_stress = scenario_service.analyze("argentina_stress")
+        tech_shock = scenario_service.analyze("tech_shock")
+        fragility = stress_service.calculate("local_crisis_severe")
+        factor_result = factor_service.calculate()
+        expected_return_result = expected_return_service.calculate()
+
+        combined_signals = (
+            RiskContributionService().build_recommendation_signals(top_n=5)
+            + scenario_service.build_recommendation_signals()
+            + factor_service.build_recommendation_signals()
+            + stress_service.build_recommendation_signals()
+            + expected_return_service.build_recommendation_signals()
+        )
+        combined_signals = sorted(
+            combined_signals,
+            key=lambda signal: {"high": 0, "medium": 1, "low": 2}.get(signal.get("severity"), 3)
+        )
+
+        top_risk_asset = risk_result["top_contributors"][0] if risk_result.get("top_contributors") else None
+        top_risk_sector = risk_result["by_sector"][0] if risk_result.get("by_sector") else None
+        dominant_factor_key = factor_result.get("dominant_factor")
+        dominant_factor = next(
+            (item for item in factor_result.get("factors", []) if item.get("factor") == dominant_factor_key),
+            None,
+        )
+
+        return {
+            "risk_contribution": {
+                "top_asset": top_risk_asset,
+                "top_sector": top_risk_sector,
+                "confidence": risk_result["metadata"]["confidence"],
+                "warnings_count": len(risk_result["metadata"].get("warnings", [])),
+            },
+            "scenario_analysis": {
+                "argentina_stress_pct": argentina_stress.get("total_impact_pct"),
+                "tech_shock_pct": tech_shock.get("total_impact_pct"),
+                "confidence": min(
+                    argentina_stress["metadata"]["confidence"],
+                    tech_shock["metadata"]["confidence"],
+                    key=lambda level: {"high": 3, "medium": 2, "low": 1}.get(level, 0),
+                ),
+                "worst_label": "Argentina Stress" if (argentina_stress.get("total_impact_pct") or 0) <= (tech_shock.get("total_impact_pct") or 0) else "Tech Shock",
+            },
+            "factor_exposure": {
+                "dominant_factor": dominant_factor_key,
+                "dominant_factor_exposure_pct": dominant_factor.get("exposure_pct") if dominant_factor else None,
+                "unknown_assets_count": len(factor_result.get("unknown_assets", [])),
+                "confidence": factor_result["metadata"]["confidence"],
+            },
+            "stress_testing": {
+                "scenario_key": fragility.get("scenario_key"),
+                "fragility_score": fragility.get("fragility_score"),
+                "total_loss_pct": fragility.get("total_loss_pct"),
+                "confidence": fragility["metadata"]["confidence"],
+            },
+            "expected_return": {
+                "expected_return_pct": expected_return_result.get("expected_return_pct"),
+                "real_expected_return_pct": expected_return_result.get("real_expected_return_pct"),
+                "confidence": expected_return_result["metadata"]["confidence"],
+                "warnings_count": len(expected_return_result["metadata"].get("warnings", [])),
+            },
+            "signals": combined_signals[:6],
+        }
+
+    return _get_cached_selector_result("analytics_v2_dashboard_summary", build)
 
 

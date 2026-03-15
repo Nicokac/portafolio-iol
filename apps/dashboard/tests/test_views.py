@@ -77,6 +77,9 @@ class TestDashboardView:
         body = response.content.decode()
         assert 'Fondos de liquidez / cash management' in body
         assert '% Renta fija AR' in body
+        assert 'Analytics v2' in body
+        assert 'Resumen Analytics v2' in body
+        assert 'Señales Analytics v2' in body
 
     def test_planeacion_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:planeacion')
