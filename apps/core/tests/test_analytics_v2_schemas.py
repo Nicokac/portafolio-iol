@@ -5,6 +5,7 @@ from apps.core.services.analytics_v2.schemas import (
     DataQualityFlags,
     ExpectedReturnBucketItem,
     ExpectedReturnResult,
+    FactorClassification,
     FactorDefinition,
     FactorExposureItem,
     FactorExposureResult,
@@ -211,4 +212,14 @@ def test_factor_definition_validates_required_fields():
             factor_key="",
             label="Growth",
             description="Desc",
+        )
+
+
+def test_factor_classification_validates_required_fields():
+    with pytest.raises(ValueError, match="symbol"):
+        FactorClassification(
+            symbol="",
+            factor="growth",
+            source="explicit_symbol_map",
+            confidence="high",
         )

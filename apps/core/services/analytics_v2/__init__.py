@@ -13,6 +13,7 @@ from .helpers import (
     safe_percentage,
 )
 from .factor_catalog import FACTOR_CATALOG, FactorCatalogService
+from .factor_classifier_service import FactorClassifierService
 from .risk_contribution_service import RiskContributionService
 from .scenario_analysis_service import ScenarioAnalysisService
 from .scenario_sensitivity_service import ScenarioSensitivityService
@@ -24,6 +25,7 @@ from .schemas import (
     DataQualityFlags,
     ExpectedReturnBucketItem,
     ExpectedReturnResult,
+    FactorClassification,
     FactorDefinition,
     FactorExposureItem,
     FactorExposureResult,
@@ -53,7 +55,9 @@ __all__ = [
     "ExpectedReturnBucketItem",
     "ExpectedReturnResult",
     "FACTOR_CATALOG",
+    "FactorClassification",
     "FactorCatalogService",
+    "FactorClassifierService",
     "FactorDefinition",
     "FactorExposureItem",
     "FactorExposureResult",

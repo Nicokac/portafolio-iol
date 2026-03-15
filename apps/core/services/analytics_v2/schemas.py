@@ -215,6 +215,22 @@ class FactorExposureItem(SerializableSchema):
 
 
 @dataclass(frozen=True)
+class FactorClassification(SerializableSchema):
+    symbol: str
+    factor: str | None
+    source: str
+    confidence: ConfidenceLevel
+    notes: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.symbol.strip():
+            raise ValueError("symbol cannot be empty")
+        if not self.source.strip():
+            raise ValueError("source cannot be empty")
+        _validate_confidence(self.confidence)
+
+
+@dataclass(frozen=True)
 class FactorDefinition(SerializableSchema):
     factor_key: str
     label: str
