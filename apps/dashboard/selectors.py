@@ -166,6 +166,13 @@ def _build_distribution_from_items(items: List[Dict], field: str) -> Dict[str, f
     return distribucion
 
 
+def _is_technology_sector(sector: str | None) -> bool:
+    if not sector:
+        return False
+    normalized = str(sector).strip().lower()
+    return normalized.startswith('tecnolog')
+
+
 def _get_resumen_cash_distribution_by_country() -> Dict[str, float]:
     distribucion: Dict[str, float] = {}
     for cuenta in get_latest_resumen_data():
@@ -477,7 +484,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     for activo in portafolio:
         parametro = parametros.get(activo.simbolo)
         if parametro:
-            if parametro.sector == 'Tecnolog?a':
+            if _is_technology_sector(parametro.sector):
                 exposicion_tech += activo.valorizado
             if parametro.tipo_patrimonial == 'Bond' and parametro.pais_exposicion == 'Argentina':
                 exposicion_renta_fija_ar += activo.valorizado
@@ -509,6 +516,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
         'pct_growth': pct_growth,
         'pct_liquidez': pct_liquidez,
         'methodology': {
+            'pct_tech': 'sectores que comienzan con Tecnología / portafolio invertido',
             'pct_renta_fija_ar': 'Bonos argentinos (soberanos, CER y corporativos) / portafolio invertido',
             'pct_liquidez': 'liquidez operativa / total iol',
         },

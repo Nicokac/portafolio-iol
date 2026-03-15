@@ -426,6 +426,48 @@ class TestDashboardSelectors(TestCase):
         assert 'pct_tech' in riesgo
         assert riesgo['pct_usa'] > 0
         assert riesgo['pct_argentina'] > 0
+        assert riesgo['pct_tech'] > 0
+
+    def test_pct_tech_agrega_subsectores_tecnologicos(self):
+        fecha = timezone.now()
+
+        ParametroActivo.objects.create(
+            simbolo='AAPL',
+            sector='Tecnolog?a',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='MELI',
+            sector='Tecnolog?a / E-commerce',
+            bloque_estrategico='Growth',
+            pais_exposicion='Latam',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='AMD',
+            sector='Tecnolog?a / Semiconductores',
+            bloque_estrategico='Growth',
+            pais_exposicion='USA',
+            tipo_patrimonial='Growth',
+        )
+        ParametroActivo.objects.create(
+            simbolo='KO',
+            sector='Consumo defensivo',
+            bloque_estrategico='Dividendos',
+            pais_exposicion='USA',
+            tipo_patrimonial='Equity',
+        )
+
+        make_activo(fecha, 'AAPL', valorizado=400.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'MELI', valorizado=300.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'AMD', valorizado=100.00, tipo='CEDEARS', moneda='USD')
+        make_activo(fecha, 'KO', valorizado=200.00, tipo='CEDEARS', moneda='USD')
+
+        riesgo = get_riesgo_portafolio_detallado()
+
+        assert abs(float(riesgo['pct_tech']) - 80.0) < 0.01
 
     def test_riesgo_portafolio_con_parametros(self):
         """Test métricas de riesgo simplificadas con ParametroActivo."""
