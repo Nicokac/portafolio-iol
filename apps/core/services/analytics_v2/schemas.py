@@ -240,6 +240,27 @@ class StressFragilityResult(SerializableSchema):
 
 
 @dataclass(frozen=True)
+class RecommendationSignal(SerializableSchema):
+    signal_key: str
+    severity: ConfidenceLevel
+    title: str
+    description: str
+    affected_scope: str
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.signal_key.strip():
+            raise ValueError("signal_key cannot be empty")
+        if not self.title.strip():
+            raise ValueError("title cannot be empty")
+        if not self.description.strip():
+            raise ValueError("description cannot be empty")
+        if not self.affected_scope.strip():
+            raise ValueError("affected_scope cannot be empty")
+        _validate_confidence(self.severity)
+
+
+@dataclass(frozen=True)
 class ExpectedReturnBucketItem(SerializableSchema):
     bucket_key: str
     label: str

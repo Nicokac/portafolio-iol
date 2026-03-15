@@ -10,6 +10,7 @@ from apps.core.services.analytics_v2.schemas import (
     NormalizedPosition,
     RiskContributionItem,
     RiskContributionResult,
+    RecommendationSignal,
     ScenarioAnalysisResult,
     ScenarioAssetImpact,
     ScenarioGroupImpact,
@@ -189,4 +190,15 @@ def test_expected_return_result_requires_basis_reference():
                 )
             ],
             metadata=metadata,
+        )
+
+
+def test_recommendation_signal_validates_required_fields():
+    with pytest.raises(ValueError, match="signal_key"):
+        RecommendationSignal(
+            signal_key="",
+            severity="medium",
+            title="Signal",
+            description="Desc",
+            affected_scope="portfolio",
         )

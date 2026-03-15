@@ -16,6 +16,7 @@ from apps.core.services.analytics_v2.helpers import (
 )
 from apps.core.services.analytics_v2.schemas import (
     AnalyticsMetadata,
+    RecommendationSignal,
     RiskContributionItem,
     RiskContributionResult,
 )
@@ -36,6 +37,11 @@ class RiskContributionService:
     MIN_ASSET_OBSERVATIONS = 5
     TRADING_DAYS_PER_YEAR = 252
     CASH_MANAGEMENT_SYMBOLS = {"ADBAICA", "IOLPORA", "PRPEDOB"}
+    TOP_CONTRIBUTOR_THRESHOLD = 25.0
+    TOP3_CONTRIBUTOR_THRESHOLD = 60.0
+    TECH_CONTRIBUTION_THRESHOLD = 35.0
+    ARGENTINA_CONTRIBUTION_THRESHOLD = 45.0
+    WEIGHT_RISK_DIVERGENCE_THRESHOLD = 15.0
     FALLBACK_VOLATILITY = {
         "equity": 0.35,
         "growth": 0.35,
@@ -148,6 +154,102 @@ class RiskContributionService:
             ),
         )
         return result.to_dict()
+
+    def build_recommendation_signals(self, lookback_days: int = 90, top_n: int = 5) -> list[dict]:
+        result = self.calculate(lookback_days=lookback_days, top_n=top_n)
+        items = result.get("items", [])
+        if not items:
+            return []
+
+        signals: list[RecommendationSignal] = []
+
+        top_contributors = result.get("top_contributors", [])
+        if top_contributors:
+            top_1 = float(top_contributors[0]["contribution_pct"])
+            top_3 = sum(float(item["contribution_pct"]) for item in top_contributors[:3])
+            if top_1 >= self.TOP_CONTRIBUTOR_THRESHOLD or top_3 >= self.TOP3_CONTRIBUTOR_THRESHOLD:
+                symbols = [item["symbol"] for item in top_contributors[:3]]
+                signals.append(
+                    RecommendationSignal(
+                        signal_key="risk_concentration_top_assets",
+                        severity="high" if top_1 >= self.TOP_CONTRIBUTOR_THRESHOLD else "medium",
+                        title="Riesgo concentrado en pocos activos",
+                        description="La contribucion al riesgo esta concentrada en uno o pocos activos dominantes.",
+                        affected_scope="portfolio",
+                        evidence={
+                            "top_1_contribution_pct": round(top_1, 2),
+                            "top_3_contribution_pct": round(top_3, 2),
+                            "symbols": symbols,
+                        },
+                    )
+                )
+
+        tech_contribution = sum(
+            float(group["contribution_pct"])
+            for group in result.get("by_sector", [])
+            if self._is_technology_sector(group["key"])
+        )
+        if tech_contribution >= self.TECH_CONTRIBUTION_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="risk_concentration_tech",
+                    severity="medium",
+                    title="Riesgo concentrado en tecnologia",
+                    description="La exposicion al riesgo tecnologico supera el umbral del MVP.",
+                    affected_scope="sector",
+                    evidence={
+                        "sector": "technology",
+                        "contribution_pct": round(tech_contribution, 2),
+                    },
+                )
+            )
+
+        argentina_group = next(
+            (group for group in result.get("by_country", []) if normalize_country_label(group["key"]) == "Argentina"),
+            None,
+        )
+        if argentina_group and float(argentina_group["contribution_pct"]) >= self.ARGENTINA_CONTRIBUTION_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="risk_concentration_argentina",
+                    severity="high",
+                    title="Riesgo concentrado en Argentina",
+                    description="La contribucion al riesgo argentino supera el umbral del MVP.",
+                    affected_scope="country",
+                    evidence={
+                        "country": "Argentina",
+                        "contribution_pct": round(float(argentina_group["contribution_pct"]), 2),
+                        "weight_pct": round(float(argentina_group.get("weight_pct") or 0.0), 2),
+                    },
+                )
+            )
+
+        max_divergence_item = None
+        max_divergence = 0.0
+        for item in items:
+            divergence = float(item["contribution_pct"]) - float(item["weight_pct"])
+            if divergence > max_divergence:
+                max_divergence = divergence
+                max_divergence_item = item
+
+        if max_divergence_item and max_divergence >= self.WEIGHT_RISK_DIVERGENCE_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="risk_vs_weight_divergence",
+                    severity="medium",
+                    title="Divergencia entre peso patrimonial y riesgo",
+                    description="Un activo explica mucho mas riesgo que su peso patrimonial relativo.",
+                    affected_scope="asset",
+                    evidence={
+                        "symbol": max_divergence_item["symbol"],
+                        "contribution_pct": round(float(max_divergence_item["contribution_pct"]), 2),
+                        "weight_pct": round(float(max_divergence_item["weight_pct"]), 2),
+                        "divergence_pct": round(max_divergence, 2),
+                    },
+                )
+            )
+
+        return [signal.to_dict() for signal in signals]
 
     def _load_current_invested_positions(self) -> list[ActivoPortafolioSnapshot]:
         latest_date = ActivoPortafolioSnapshot.objects.aggregate(
@@ -279,3 +381,10 @@ class RiskContributionService:
             )
             for group in build_group_items(contribution_grouped, basis_total=None)
         ]
+
+    @staticmethod
+    def _is_technology_sector(label: str | None) -> bool:
+        if not label:
+            return False
+        lowered = str(label).strip().lower()
+        return "tecnolog" in lowered or "tech" in lowered
