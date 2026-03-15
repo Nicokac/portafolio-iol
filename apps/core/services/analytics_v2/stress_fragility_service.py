@@ -4,6 +4,7 @@ from apps.core.services.analytics_v2.helpers import safe_percentage
 from apps.core.services.analytics_v2.scenario_analysis_service import ScenarioAnalysisService
 from apps.core.services.analytics_v2.schemas import (
     AnalyticsMetadata,
+    RecommendationSignal,
     ScenarioAssetImpact,
     ScenarioGroupImpact,
     StressFragilityResult,
@@ -20,6 +21,10 @@ class StressFragilityService:
     LOW_LIQUIDITY_PENALTY = 10.0
     HIGH_LIQUIDITY_THRESHOLD = 25.0
     HIGH_LIQUIDITY_CREDIT = 5.0
+    HIGH_FRAGILITY_THRESHOLD = 60.0
+    LOCAL_CRISIS_HIGH_LOSS_THRESHOLD = -12.0
+    SECTOR_CONCENTRATION_LOSS_THRESHOLD = -8.0
+    LIQUIDITY_BUFFER_MIN_SCORE = 15.0
 
     def __init__(
         self,
@@ -116,6 +121,97 @@ class StressFragilityService:
                 warnings=self._dedupe(warnings),
             ),
         ).to_dict()
+
+    def build_recommendation_signals(self) -> list[dict]:
+        stress_keys = [
+            "usa_crash_severe",
+            "local_crisis_severe",
+            "rates_equity_double_shock",
+            "em_deterioration",
+        ]
+        results = {stress_key: self.calculate(stress_key) for stress_key in stress_keys}
+        if all(result["metadata"]["warnings"] == ["empty_portfolio"] for result in results.values()):
+            return []
+
+        signals: list[RecommendationSignal] = []
+
+        local_result = results["local_crisis_severe"]
+        local_loss_pct = float(local_result["total_loss_pct"])
+        if local_loss_pct <= self.LOCAL_CRISIS_HIGH_LOSS_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="stress_fragility_local_crisis",
+                    severity="high",
+                    title="Fragilidad alta ante crisis local",
+                    description="La cartera muestra una perdida severa bajo un stress extremo argentino.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "stress_key": "local_crisis_severe",
+                        "total_loss_pct": round(local_loss_pct, 2),
+                        "top_symbols": [item["symbol"] for item in local_result["vulnerable_assets"][:3]],
+                    },
+                )
+            )
+
+        worst_stress = min(results.values(), key=lambda result: float(result["total_loss_pct"]))
+        if float(worst_stress["fragility_score"]) >= self.HIGH_FRAGILITY_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="stress_fragility_high",
+                    severity="high",
+                    title="Fragilidad total elevada",
+                    description="Al menos un stress extremo deja a la cartera en una zona de fragilidad alta.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "stress_key": worst_stress["scenario_key"],
+                        "fragility_score": round(float(worst_stress["fragility_score"]), 2),
+                        "total_loss_pct": round(float(worst_stress["total_loss_pct"]), 2),
+                    },
+                )
+            )
+
+        worst_sector = None
+        worst_sector_loss = 0.0
+        for result in results.values():
+            if not result["vulnerable_sectors"]:
+                continue
+            candidate = result["vulnerable_sectors"][0]
+            if float(candidate["impact_pct"]) < worst_sector_loss:
+                worst_sector = candidate
+                worst_sector_loss = float(candidate["impact_pct"])
+
+        if worst_sector and worst_sector_loss <= self.SECTOR_CONCENTRATION_LOSS_THRESHOLD:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="stress_sector_fragility",
+                    severity="medium",
+                    title="Fragilidad alta por concentracion sectorial",
+                    description="Un sector concentra una parte material de la perdida bajo stresses extremos.",
+                    affected_scope="sector",
+                    evidence={
+                        "sector": worst_sector["key"],
+                        "impact_pct": round(worst_sector_loss, 2),
+                    },
+                )
+            )
+
+        strongest_buffer = max(results.values(), key=lambda result: float(result["fragility_score"]))
+        if float(strongest_buffer["fragility_score"]) < self.LIQUIDITY_BUFFER_MIN_SCORE:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="stress_liquidity_buffer",
+                    severity="low",
+                    title="Liquidez suficiente como amortiguador",
+                    description="La liquidez actual reduce de forma visible la fragilidad frente a stresses extremos.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "stress_key": strongest_buffer["scenario_key"],
+                        "fragility_score": round(float(strongest_buffer["fragility_score"]), 2),
+                    },
+                )
+            )
+
+        return [signal.to_dict() for signal in signals]
 
     @staticmethod
     def _combine_asset_impacts(scenario_results: list[dict]) -> list[ScenarioAssetImpact]:

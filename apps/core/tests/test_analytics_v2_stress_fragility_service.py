@@ -199,3 +199,90 @@ def test_stress_fragility_degrades_confidence_with_missing_metadata_warning():
     result = service.calculate("em_deterioration")
 
     assert result["metadata"]["confidence"] == "medium"
+
+
+def test_stress_fragility_builds_local_and_high_fragility_signals():
+    service = StressFragilityService(
+        stress_catalog_service=SimpleNamespace(),
+        scenario_analysis_service=SimpleNamespace(),
+    )
+    service.calculate = lambda stress_key: {
+        "scenario_key": stress_key,
+        "fragility_score": 72.0 if stress_key == "local_crisis_severe" else 40.0,
+        "total_loss_pct": -15.0 if stress_key == "local_crisis_severe" else -6.0,
+        "total_loss_money": -1500.0 if stress_key == "local_crisis_severe" else -600.0,
+        "vulnerable_assets": [{"symbol": "AL30"}, {"symbol": "YPFD"}],
+        "vulnerable_sectors": [{"key": "Soberano", "impact_pct": -9.0, "impact_money": -900.0}],
+        "vulnerable_countries": [{"key": "Argentina", "impact_pct": -15.0, "impact_money": -1500.0}],
+        "metadata": {"warnings": []},
+    }
+
+    signals = service.build_recommendation_signals()
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert "stress_fragility_local_crisis" in keyed
+    assert "stress_fragility_high" in keyed
+    assert keyed["stress_fragility_local_crisis"]["evidence"]["stress_key"] == "local_crisis_severe"
+
+
+def test_stress_fragility_builds_sector_signal_when_sector_loss_is_material():
+    service = StressFragilityService(
+        stress_catalog_service=SimpleNamespace(),
+        scenario_analysis_service=SimpleNamespace(),
+    )
+    service.calculate = lambda stress_key: {
+        "scenario_key": stress_key,
+        "fragility_score": 35.0,
+        "total_loss_pct": -7.0,
+        "total_loss_money": -700.0,
+        "vulnerable_assets": [{"symbol": "SPY"}],
+        "vulnerable_sectors": [{"key": "Tecnologia", "impact_pct": -9.5, "impact_money": -950.0}],
+        "vulnerable_countries": [{"key": "USA", "impact_pct": -7.0, "impact_money": -700.0}],
+        "metadata": {"warnings": []},
+    }
+
+    signals = service.build_recommendation_signals()
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert keyed["stress_sector_fragility"]["evidence"]["sector"] == "Tecnologia"
+
+
+def test_stress_fragility_builds_liquidity_buffer_signal_for_low_fragility_portfolio():
+    service = StressFragilityService(
+        stress_catalog_service=SimpleNamespace(),
+        scenario_analysis_service=SimpleNamespace(),
+    )
+    service.calculate = lambda stress_key: {
+        "scenario_key": stress_key,
+        "fragility_score": 12.0,
+        "total_loss_pct": -2.0,
+        "total_loss_money": -200.0,
+        "vulnerable_assets": [{"symbol": "SPY"}],
+        "vulnerable_sectors": [{"key": "Indice", "impact_pct": -2.0, "impact_money": -200.0}],
+        "vulnerable_countries": [{"key": "USA", "impact_pct": -2.0, "impact_money": -200.0}],
+        "metadata": {"warnings": []},
+    }
+
+    signals = service.build_recommendation_signals()
+    signal_keys = {signal["signal_key"] for signal in signals}
+
+    assert "stress_liquidity_buffer" in signal_keys
+
+
+def test_stress_fragility_build_recommendation_signals_returns_empty_for_empty_portfolio():
+    service = StressFragilityService(
+        stress_catalog_service=SimpleNamespace(),
+        scenario_analysis_service=SimpleNamespace(),
+    )
+    service.calculate = lambda stress_key: {
+        "scenario_key": stress_key,
+        "fragility_score": 0.0,
+        "total_loss_pct": 0.0,
+        "total_loss_money": 0.0,
+        "vulnerable_assets": [],
+        "vulnerable_sectors": [],
+        "vulnerable_countries": [],
+        "metadata": {"warnings": ["empty_portfolio"]},
+    }
+
+    assert service.build_recommendation_signals() == []
