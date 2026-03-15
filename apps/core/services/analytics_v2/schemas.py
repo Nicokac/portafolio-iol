@@ -272,6 +272,21 @@ class StressFragilityResult(SerializableSchema):
 
 
 @dataclass(frozen=True)
+class StressDefinition(SerializableSchema):
+    stress_key: str
+    label: str
+    description: str
+
+    def __post_init__(self) -> None:
+        if not self.stress_key.strip():
+            raise ValueError("stress_key cannot be empty")
+        if not self.label.strip():
+            raise ValueError("label cannot be empty")
+        if not self.description.strip():
+            raise ValueError("description cannot be empty")
+
+
+@dataclass(frozen=True)
 class RecommendationSignal(SerializableSchema):
     signal_key: str
     severity: ConfidenceLevel

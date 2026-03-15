@@ -16,6 +16,7 @@ from apps.core.services.analytics_v2.schemas import (
     ScenarioAnalysisResult,
     ScenarioAssetImpact,
     ScenarioGroupImpact,
+    StressDefinition,
     StressFragilityResult,
 )
 
@@ -222,4 +223,13 @@ def test_factor_classification_validates_required_fields():
             factor="growth",
             source="explicit_symbol_map",
             confidence="high",
+        )
+
+
+def test_stress_definition_validates_required_fields():
+    with pytest.raises(ValueError, match="stress_key"):
+        StressDefinition(
+            stress_key="",
+            label="Stress",
+            description="Desc",
         )
