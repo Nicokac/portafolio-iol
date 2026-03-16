@@ -9,6 +9,7 @@ from apps.core.config.parametros_macro_local import ParametrosMacroLocal
 from apps.core.models import MacroSeriesSnapshot
 from apps.core.services.market_data.bcra_client import BCRAClient
 from apps.core.services.market_data.datos_gob_client import DatosGobSeriesClient
+from apps.core.services.market_data.fx_json_client import FXJSONClient, OptionalSourceUnavailableError
 from apps.portafolio_iol.models import PortfolioSnapshot
 
 
@@ -17,9 +18,11 @@ class LocalMacroSeriesService:
         self,
         bcra_client: BCRAClient | None = None,
         datos_client: DatosGobSeriesClient | None = None,
+        fx_client: FXJSONClient | None = None,
     ):
         self.bcra_client = bcra_client or BCRAClient()
         self.datos_client = datos_client or DatosGobSeriesClient()
+        self.fx_client = fx_client or FXJSONClient()
 
     def sync_all(self) -> dict:
         return {
@@ -32,7 +35,22 @@ class LocalMacroSeriesService:
         if not config:
             raise ValueError(f"Unknown macro series key: {series_key}")
 
-        rows = self._fetch_rows(config)
+        try:
+            rows = self._fetch_rows(config)
+        except OptionalSourceUnavailableError as exc:
+            if not config.get("optional"):
+                raise
+            return {
+                "success": True,
+                "series_key": series_key,
+                "title": config["title"],
+                "source": config["source"],
+                "rows_received": 0,
+                "created": 0,
+                "updated": 0,
+                "skipped": True,
+                "reason": str(exc),
+            }
         created = 0
         updated = 0
 
@@ -280,6 +298,8 @@ class LocalMacroSeriesService:
             return self.bcra_client.fetch_variable(config["external_id"])
         if config["source"] == "datos_gob_ar":
             return self.datos_client.fetch_series(config["external_id"])
+        if config["source"] == "fx_json":
+            return self.fx_client.fetch_usdars_mep()
         raise ValueError(f"Unsupported macro source: {config['source']}")
 
     def _build_portfolio_history(self, days: int) -> pd.DataFrame:

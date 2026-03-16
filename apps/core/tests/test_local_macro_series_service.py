@@ -6,6 +6,7 @@ import pytest
 
 from apps.core.models import MacroSeriesSnapshot
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.market_data.fx_json_client import OptionalSourceUnavailableError
 from apps.portafolio_iol.models import PortfolioSnapshot
 
 
@@ -24,6 +25,36 @@ def test_local_macro_series_service_syncs_bcra_series():
     assert first["created"] == 2
     assert second["updated"] == 2
     assert MacroSeriesSnapshot.objects.filter(series_key="usdars_oficial").count() == 2
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_skips_optional_mep_when_source_is_not_configured():
+    fx_client = Mock()
+    fx_client.fetch_usdars_mep.side_effect = OptionalSourceUnavailableError("USDARS_MEP_API_URL is required")
+    service = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock(), fx_client=fx_client)
+
+    result = service.sync_series("usdars_mep")
+
+    assert result["skipped"] is True
+    assert result["rows_received"] == 0
+    assert result["reason"] == "USDARS_MEP_API_URL is required"
+    assert MacroSeriesSnapshot.objects.filter(series_key="usdars_mep").count() == 0
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_syncs_optional_mep_when_source_is_available():
+    fx_client = Mock()
+    fx_client.fetch_usdars_mep.return_value = [
+        {"fecha": date(2026, 3, 16), "value": 1187.25},
+    ]
+    service = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock(), fx_client=fx_client)
+
+    result = service.sync_series("usdars_mep")
+
+    assert result["created"] == 1
+    assert result["updated"] == 0
+    snapshot = MacroSeriesSnapshot.objects.get(series_key="usdars_mep")
+    assert float(snapshot.value) == 1187.25
 
 
 @pytest.mark.django_db

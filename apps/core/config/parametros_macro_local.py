@@ -8,6 +8,13 @@ class ParametrosMacroLocal:
             "external_id": "5",
             "frequency": "daily",
         },
+        "usdars_mep": {
+            "title": "USDARS MEP",
+            "source": "fx_json",
+            "external_id": "usdars_mep",
+            "frequency": "daily",
+            "optional": True,
+        },
         "badlar_privada": {
             "title": "BADLAR bancos privados",
             "source": "bcra",
