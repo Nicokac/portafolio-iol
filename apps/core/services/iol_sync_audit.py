@@ -15,24 +15,32 @@ class IOLSyncAuditService:
         now = timezone.now()
         stale_limit = now - timedelta(hours=freshness_hours)
         issues = []
+        patrimonial_issues = []
 
         token_info = self._audit_token(now)
         if token_info["status"] != "ok":
             issues.append("token")
+            patrimonial_issues.append("token")
 
         snapshots_info = self._audit_snapshots(stale_limit)
         if snapshots_info["status"] != "ok":
             issues.append("snapshots")
+            patrimonial_issues.append("snapshots")
 
         operations_info = self._audit_operations(stale_limit)
         if operations_info["status"] != "ok":
             issues.append("operations")
 
         sync_status = "ok" if not issues else "warning"
+        patrimonial_status = "ok" if not patrimonial_issues else "warning"
         return {
             "status": sync_status,
             "issues_count": len(issues),
             "issues": issues,
+            "patrimonial_status": patrimonial_status,
+            "patrimonial_issues_count": len(patrimonial_issues),
+            "patrimonial_issues": patrimonial_issues,
+            "operations_status": operations_info["status"],
             "token": token_info,
             "snapshots": snapshots_info,
             "operations": operations_info,

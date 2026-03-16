@@ -307,7 +307,7 @@
             <tr><td><strong>Snapshots recientes</strong></td><td class="text-end {% if snapshot_coverage.status == 'ok' %}text-success{% else %}text-warning{% endif %}">{{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}</td></tr>
             <tr><td><strong>Último snapshot</strong></td><td class="text-end">{% if snapshot_coverage.latest_snapshot_at %}{{ snapshot_coverage.latest_snapshot_at }}{% else %}{{ snapshot_coverage.latest_snapshot_date|default:"-" }}{% endif %}</td></tr>
             <tr><td><strong>Gap máximo</strong></td><td class="text-end">{% if snapshot_coverage.max_gap_days is not None %}{{ snapshot_coverage.max_gap_days }} días{% else %}-{% endif %}</td></tr>
-            <tr><td><strong>Estado sync IOL</strong></td><td class="text-end"><span class="badge {% if sync_audit.status == 'ok' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ sync_audit.status|default:"unknown" }}</span></td></tr>
+            <tr><td><strong>Estado sync IOL</strong></td><td class="text-end"><span class="badge {% if sync_audit.patrimonial_status == 'ok' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ sync_audit.patrimonial_status|default:sync_audit.status|default:"unknown" }}</span></td></tr>
         </tbody></table></div></div>
     </div>
 </div>
