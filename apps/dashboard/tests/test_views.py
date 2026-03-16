@@ -133,9 +133,10 @@ class TestDashboardView:
         assert denied.status_code == 403
         allowed = staff_client.get(url)
         assert allowed.status_code == 200
-        assert 'Estado de benchmarks historicos' in allowed.content.decode()
-        assert 'Activacion modelo de riesgo' in allowed.content.decode()
+        assert 'Estado de benchmarks históricos' in allowed.content.decode()
+        assert 'Activación modelo de riesgo' in allowed.content.decode()
         assert 'Continuidad diaria de snapshots' in allowed.content.decode()
+        assert 'Observabilidad interna' in allowed.content.decode()
 
     def test_ops_shows_snapshot_continuity_status(self, staff_client, monkeypatch):
         class DummyContinuityService:
@@ -269,6 +270,7 @@ class TestDashboardView:
         audit = SensitiveActionAudit.objects.get(action='sync_benchmarks')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
+
 
 
 
