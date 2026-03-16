@@ -427,3 +427,66 @@ def test_prioritize_recommendations_keeps_distinct_topics(engine):
         "revision_rendimiento",
     ]
 
+
+def test_prioritize_recommendations_prefers_local_liquidity_signal_for_overlapping_liquidity_topics(engine):
+    recommendations = [
+        {
+            "tipo": "liquidez_excesiva",
+            "prioridad": "media",
+            "titulo": "Liquidez Excesiva",
+        },
+        {
+            "tipo": "analytics_v2_expected_return_liquidity_drag",
+            "prioridad": "media",
+            "titulo": "Costo de oportunidad por liquidez",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_liquidity_real_carry_negative",
+            "prioridad": "media",
+            "titulo": "Liquidez en pesos con carry real debil",
+            "origen": "analytics_v2",
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_local_liquidity_real_carry_negative",
+    ]
+
+
+def test_prioritize_recommendations_prefers_local_sovereign_signal_for_overlapping_argentina_topics(engine):
+    recommendations = [
+        {
+            "tipo": "concentracion_argentina_alta",
+            "prioridad": "alta",
+            "titulo": "Alta Concentracion Argentina",
+        },
+        {
+            "tipo": "analytics_v2_risk_concentration_argentina",
+            "prioridad": "alta",
+            "titulo": "Riesgo concentrado en Argentina",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_sovereign_risk_excess",
+            "prioridad": "alta",
+            "titulo": "Riesgo soberano local concentrado",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_inflation_hedge_gap",
+            "prioridad": "media",
+            "titulo": "Cobertura inflacionaria local acotada",
+            "origen": "analytics_v2",
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_local_sovereign_risk_excess",
+        "analytics_v2_local_inflation_hedge_gap",
+    ]
+

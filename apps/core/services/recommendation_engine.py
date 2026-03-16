@@ -407,8 +407,10 @@ class RecommendationEngine:
         topic_aliases = {
             "liquidez_excesiva": "liquidity_excess",
             "analytics_v2_expected_return_liquidity_drag": "liquidity_excess",
+            "analytics_v2_local_liquidity_real_carry_negative": "liquidity_excess",
             "concentracion_argentina_alta": "argentina_concentration",
             "analytics_v2_risk_concentration_argentina": "argentina_concentration",
+            "analytics_v2_local_sovereign_risk_excess": "argentina_concentration",
             "riesgo_concentracion_alto": "portfolio_concentration",
             "riesgo_concentracion_media": "portfolio_concentration",
             "analytics_v2_risk_concentration_top_assets": "portfolio_concentration",
@@ -421,8 +423,22 @@ class RecommendationEngine:
             3,
         )
         origin = 0 if recommendation.get("origen") == "analytics_v2" else 1
+        specificity = self._recommendation_specificity_rank(recommendation)
         has_assets = 0 if recommendation.get("activos_sugeridos") else 1
-        return (priority, origin, has_assets, index)
+        return (priority, origin, specificity, has_assets, index)
+
+    @staticmethod
+    def _recommendation_specificity_rank(recommendation: Dict) -> int:
+        recommendation_type = str(recommendation.get("tipo", "")).lower()
+        specificity_rank = {
+            "analytics_v2_local_liquidity_real_carry_negative": 0,
+            "analytics_v2_local_sovereign_risk_excess": 0,
+            "analytics_v2_expected_return_liquidity_drag": 1,
+            "analytics_v2_risk_concentration_argentina": 1,
+            "liquidez_excesiva": 2,
+            "concentracion_argentina_alta": 2,
+        }
+        return specificity_rank.get(recommendation_type, 1)
 
     def _map_signal_to_recommendation(self, signal: Dict) -> Dict:
         severity = str(signal.get("severity", "medium")).lower()
