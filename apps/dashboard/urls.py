@@ -11,6 +11,7 @@ from apps.dashboard.views import (
     ResumenView,
     RunSyncView,
     SetPreferencesView,
+    SyncLocalMacroView,
     SyncBenchmarksView,
 )
 
@@ -29,4 +30,5 @@ urlpatterns = [
     path('acciones/sync/', RunSyncView.as_view(), name='run_sync'),
     path('acciones/snapshot/', GenerateSnapshotView.as_view(), name='generate_snapshot'),
     path('acciones/benchmarks/', SyncBenchmarksView.as_view(), name='sync_benchmarks'),
+    path('acciones/macro-local/', SyncLocalMacroView.as_view(), name='sync_local_macro'),
 ]

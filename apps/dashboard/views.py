@@ -267,3 +267,39 @@ class SyncBenchmarksView(StaffRequiredMixin, View):
             )
             messages.error(request, "No fue posible sincronizar benchmarks historicos.")
         return redirect('dashboard:ops')
+
+
+class SyncLocalMacroView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        try:
+            result = LocalMacroSeriesService().sync_all()
+            has_failures = any(not payload.get('success', True) for payload in result.values())
+            record_sensitive_action(
+                request,
+                action='sync_local_macro',
+                status='failed' if has_failures else 'success',
+                details={'result': result},
+            )
+            completed = ", ".join(
+                (
+                    f"{key}: skipped"
+                    if payload.get('skipped')
+                    else f"{key}: {payload['rows_received']} rows"
+                )
+                for key, payload in result.items()
+            )
+            if has_failures:
+                messages.warning(request, f"Macro local sincronizada con fallos parciales. {completed}.")
+            else:
+                messages.success(request, f"Macro local sincronizada. {completed}.")
+        except Exception as exc:
+            record_sensitive_action(
+                request,
+                action='sync_local_macro',
+                status='failed',
+                details={'reason': 'exception', 'message': str(exc)},
+            )
+            messages.error(request, "No fue posible sincronizar macro local.")
+        return redirect('dashboard:ops')

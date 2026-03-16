@@ -138,6 +138,7 @@ class TestDashboardView:
         assert allowed.status_code == 200
         assert 'Estado de benchmarks históricos' in allowed.content.decode()
         assert 'Estado de macro local' in allowed.content.decode()
+        assert 'Sincronizar Macro Local' in allowed.content.decode()
         assert 'Activación modelo de riesgo' in allowed.content.decode()
         assert 'Continuidad diaria de snapshots' in allowed.content.decode()
         assert 'Observabilidad interna' in allowed.content.decode()
@@ -256,6 +257,11 @@ class TestDashboardView:
         assert response.status_code == 403
 
     @pytest.mark.django_db
+    def test_sync_local_macro_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:sync_local_macro'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
     def test_sync_benchmarks_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_all(self, outputsize='compact'):
@@ -272,6 +278,26 @@ class TestDashboardView:
         messages = list(get_messages(response.wsgi_request))
         assert any('Benchmarks sincronizados' in str(message) for message in messages)
         audit = SensitiveActionAudit.objects.get(action='sync_benchmarks')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
+
+    @pytest.mark.django_db
+    def test_sync_local_macro_view_success_message(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_all(self):
+                return {
+                    'usdars_oficial': {'rows_received': 1, 'success': True},
+                    'usdars_mep': {'rows_received': 0, 'success': True, 'skipped': True},
+                    'badlar_privada': {'rows_received': 1, 'success': True},
+                    'ipc_nacional': {'rows_received': 1, 'success': True},
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.LocalMacroSeriesService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_local_macro'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Macro local sincronizada' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='sync_local_macro')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
 
