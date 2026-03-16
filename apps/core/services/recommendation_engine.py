@@ -5,6 +5,7 @@ from apps.core.services.analytics_v2 import (
     CovarianceAwareRiskContributionService,
     ExpectedReturnService,
     FactorExposureService,
+    LocalMacroSignalsService,
     RiskContributionService,
     ScenarioAnalysisService,
     StressFragilityService,
@@ -348,6 +349,7 @@ class RecommendationEngine:
                 + FactorExposureService().build_recommendation_signals()
                 + StressFragilityService().build_recommendation_signals()
                 + ExpectedReturnService().build_recommendation_signals()
+                + LocalMacroSignalsService().build_recommendation_signals()
             )
             if not signals:
                 return []
@@ -461,6 +463,21 @@ class RecommendationEngine:
             return [
                 "Reducir gradualmente liquidez excedente si no cumple una función táctica explícita",
                 "Dirigir nuevos flujos a buckets con mejor retorno esperado estructural",
+            ]
+        if "real_carry" in key:
+            return [
+                "Revisar si la liquidez en ARS sigue cumpliendo una función táctica clara",
+                "Comparar BADLAR contra inflación antes de mantener saldos altos en pesos",
+            ]
+        if "inflation_hedge" in key:
+            return [
+                "Evaluar si la cobertura CER es suficiente para la exposición argentina actual",
+                "Evitar depender solo de carry nominal cuando la inflación local sigue alta",
+            ]
+        if "sovereign_risk" in key:
+            return [
+                "Reducir dependencia de soberanos locales si ya dominan el bloque argentino",
+                "Diversificar riesgo local entre instrumentos menos concentrados o exposición internacional",
             ]
         if "argentina" in key or "local_crisis" in key:
             return [

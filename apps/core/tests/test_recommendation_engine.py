@@ -233,6 +233,10 @@ def test_analyze_analytics_v2_maps_signals_to_recommendations(engine, monkeypatc
         "apps.core.services.recommendation_engine.ExpectedReturnService",
         lambda: type("DummyExpected", (), {"build_recommendation_signals": lambda self: []})(),
     )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.LocalMacroSignalsService",
+        lambda: type("DummyLocalMacro", (), {"build_recommendation_signals": lambda self: []})(),
+    )
 
     result = engine._analyze_analytics_v2()
 
@@ -252,6 +256,53 @@ def test_analyze_analytics_v2_returns_empty_on_exception(engine, monkeypatch):
     )
 
     assert engine._analyze_analytics_v2() == []
+
+
+def test_analyze_analytics_v2_includes_local_macro_signals(engine, monkeypatch):
+    monkeypatch.setattr(engine, "_build_risk_contribution_signals", lambda: [])
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.ScenarioAnalysisService",
+        lambda: type("DummyScenario", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.FactorExposureService",
+        lambda: type("DummyFactor", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.StressFragilityService",
+        lambda: type("DummyStress", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.ExpectedReturnService",
+        lambda: type("DummyExpected", (), {"build_recommendation_signals": lambda self: []})(),
+    )
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.LocalMacroSignalsService",
+        lambda: type(
+            "DummyLocalMacro",
+            (),
+            {
+                "build_recommendation_signals": lambda self: [
+                    {
+                        "signal_key": "local_sovereign_risk_excess",
+                        "severity": "medium",
+                        "title": "Riesgo soberano local concentrado",
+                        "description": "Los soberanos locales pesan demasiado.",
+                        "affected_scope": "portfolio",
+                        "evidence": {"argentina_weight_pct": 30.0},
+                    }
+                ]
+            },
+        )(),
+    )
+
+    result = engine._analyze_analytics_v2()
+
+    assert len(result) == 1
+    assert result[0]["tipo"] == "analytics_v2_local_sovereign_risk_excess"
+    assert result[0]["prioridad"] == "media"
+    assert result[0]["origen"] == "analytics_v2"
+    assert "soberanos locales" in result[0]["titulo"].lower() or "soberano" in result[0]["titulo"].lower()
 
 
 def test_build_risk_contribution_signals_prefers_covariance_when_active(engine, monkeypatch):
