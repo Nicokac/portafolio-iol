@@ -81,6 +81,8 @@ class TestDashboardView:
         assert 'Resumen Analytics v2' in body
         assert 'Señales Analytics v2' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
+        assert 'Snapshots:' in body
+        assert 'Operaciones:' in body
 
     def test_planeacion_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:planeacion')
@@ -245,3 +247,4 @@ class TestDashboardView:
         audit = SensitiveActionAudit.objects.get(action='sync_benchmarks')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
+
