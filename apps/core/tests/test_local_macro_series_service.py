@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import Mock
 
 import pandas as pd
 import pytest
+from django.utils import timezone
 
 from apps.core.models import MacroSeriesSnapshot
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
@@ -167,6 +168,61 @@ def test_local_macro_series_service_builds_optional_fx_gap_when_mep_exists():
 
     assert context["usdars_mep"] == 1180.0
     assert context["fx_gap_pct"] == 18.0
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_builds_status_summary_with_optional_mep_not_configured(settings):
+    settings.USDARS_MEP_API_URL = ""
+    MacroSeriesSnapshot.objects.create(
+        series_key="usdars_oficial",
+        source="bcra",
+        external_id="5",
+        frequency="daily",
+        fecha=timezone.localdate(),
+        value=1000.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="badlar_privada",
+        source="bcra",
+        external_id="7",
+        frequency="daily",
+        fecha=timezone.localdate(),
+        value=30.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="ipc_nacional",
+        source="datos_gob_ar",
+        external_id="ipc",
+        frequency="monthly",
+        fecha=timezone.localdate().replace(day=1),
+        value=200.0,
+    )
+
+    rows = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_status_summary()
+    keyed = {row["series_key"]: row for row in rows}
+
+    assert keyed["usdars_oficial"]["status"] == "ready"
+    assert keyed["badlar_privada"]["status"] == "ready"
+    assert keyed["ipc_nacional"]["status"] == "ready"
+    assert keyed["usdars_mep"]["status"] == "not_configured"
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_marks_series_as_stale_when_latest_date_is_old(settings):
+    settings.USDARS_MEP_API_URL = "https://example.test/mep"
+    MacroSeriesSnapshot.objects.create(
+        series_key="usdars_mep",
+        source="fx_json",
+        external_id="usdars_mep",
+        frequency="daily",
+        fecha=timezone.localdate() - timedelta(days=10),
+        value=1180.0,
+    )
+
+    rows = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock(), fx_client=Mock()).get_status_summary()
+    keyed = {row["series_key"]: row for row in rows}
+
+    assert keyed["usdars_mep"]["status"] == "stale"
 
 
 @pytest.mark.django_db

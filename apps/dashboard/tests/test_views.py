@@ -137,6 +137,7 @@ class TestDashboardView:
         allowed = staff_client.get(url)
         assert allowed.status_code == 200
         assert 'Estado de benchmarks históricos' in allowed.content.decode()
+        assert 'Estado de macro local' in allowed.content.decode()
         assert 'Activación modelo de riesgo' in allowed.content.decode()
         assert 'Continuidad diaria de snapshots' in allowed.content.decode()
         assert 'Observabilidad interna' in allowed.content.decode()

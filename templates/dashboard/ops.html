@@ -88,6 +88,43 @@
     </div>
 </section>
 
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de macro local</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Serie</th><th>Fuente</th><th>Frecuencia</th><th class="text-end">Rows</th><th>Última fecha</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in local_macro_status %}
+                        <tr>
+                            <td>{{ row.series_key }}</td>
+                            <td>{{ row.source }}</td>
+                            <td>{{ row.frequency }}</td>
+                            <td class="text-end">{{ row.rows_count }}</td>
+                            <td>{{ row.latest_date|default:"-" }}</td>
+                            <td>
+                                {% if row.status == 'ready' %}
+                                <span class="badge text-bg-success">Listo</span>
+                                {% elif row.status == 'not_configured' %}
+                                <span class="badge text-bg-secondary">Sin configurar</span>
+                                {% elif row.status == 'stale' %}
+                                <span class="badge text-bg-warning">Stale</span>
+                                {% else %}
+                                <span class="badge text-bg-danger">Sin datos</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section id="ops-observabilidad" class="mb-3">
     <div class="border-start border-4 border-secondary ps-3 mb-3">
         <h2 class="mb-1">Observabilidad interna</h2>

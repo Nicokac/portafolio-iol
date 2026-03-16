@@ -4,6 +4,8 @@ from decimal import Decimal
 
 import pandas as pd
 from django.db import transaction
+from django.db.models import Count, Max
+from django.utils import timezone
 
 from apps.core.config.parametros_macro_local import ParametrosMacroLocal
 from apps.core.models import MacroSeriesSnapshot
@@ -14,6 +16,11 @@ from apps.portafolio_iol.models import PortfolioSnapshot
 
 
 class LocalMacroSeriesService:
+    STALENESS_DAYS_BY_FREQUENCY = {
+        "daily": 7,
+        "monthly": 45,
+    }
+
     def __init__(
         self,
         bcra_client: BCRAClient | None = None,
@@ -133,6 +140,50 @@ class LocalMacroSeriesService:
             "portfolio_excess_ytd_vs_badlar": round(portfolio_excess_ytd_vs_badlar, 2) if portfolio_excess_ytd_vs_badlar is not None else None,
             **portfolio_ytd,
         }
+
+    def get_status_summary(self) -> list[dict]:
+        today = timezone.localdate()
+        aggregated = {
+            row["series_key"]: row
+            for row in MacroSeriesSnapshot.objects.values("series_key").annotate(
+                latest_date=Max("fecha"),
+                rows_count=Count("id"),
+            )
+        }
+
+        rows = []
+        for series_key, config in ParametrosMacroLocal.SERIES.items():
+            snapshot_row = aggregated.get(series_key)
+            latest_date = snapshot_row["latest_date"] if snapshot_row else None
+            rows_count = snapshot_row["rows_count"] if snapshot_row else 0
+            configured = self._is_series_configured(series_key, config)
+            is_optional = bool(config.get("optional"))
+            stale_days = self.STALENESS_DAYS_BY_FREQUENCY.get(config["frequency"], 7)
+
+            if is_optional and not configured:
+                status = "not_configured"
+            elif rows_count == 0 or latest_date is None:
+                status = "missing"
+            elif (today - latest_date).days > stale_days:
+                status = "stale"
+            else:
+                status = "ready"
+
+            rows.append(
+                {
+                    "series_key": series_key,
+                    "title": config["title"],
+                    "source": config["source"],
+                    "frequency": config["frequency"],
+                    "latest_date": latest_date,
+                    "rows_count": rows_count,
+                    "configured": configured,
+                    "optional": is_optional,
+                    "status": status,
+                    "is_ready": status == "ready",
+                }
+            )
+        return rows
 
     def build_macro_comparison(self, days: int = 365, base_value: float = 100.0) -> dict:
         df = self._build_real_portfolio_frame(days=days)
@@ -301,6 +352,13 @@ class LocalMacroSeriesService:
         if config["source"] == "fx_json":
             return self.fx_client.fetch_usdars_mep()
         raise ValueError(f"Unsupported macro source: {config['source']}")
+
+    def _is_series_configured(self, series_key: str, config: dict) -> bool:
+        if config["source"] != "fx_json":
+            return True
+        if series_key == "usdars_mep":
+            return bool(self.fx_client.mep_url)
+        return False
 
     def _build_portfolio_history(self, days: int) -> pd.DataFrame:
         end_date = PortfolioSnapshot.objects.order_by("-fecha").first()
