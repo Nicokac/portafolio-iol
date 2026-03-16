@@ -26,6 +26,14 @@ class Command(BaseCommand):
             month_of_year="*",
             timezone="America/Argentina/Buenos_Aires",
         )
+        daily_630pm, _ = CrontabSchedule.objects.get_or_create(
+            minute="30",
+            hour="18",
+            day_of_week="*",
+            day_of_month="*",
+            month_of_year="*",
+            timezone="America/Argentina/Buenos_Aires",
+        )
 
         tasks = [
             {
@@ -48,6 +56,11 @@ class Command(BaseCommand):
                 "task": "apps.core.tasks.portfolio_tasks.generate_daily_snapshot",
                 "crontab": daily_6am,
             },
+            {
+                "name": "core.sync_local_macro_series",
+                "task": "apps.core.tasks.portfolio_tasks.sync_local_macro_series",
+                "crontab": daily_630pm,
+            },
         ]
 
         for payload in tasks:
@@ -68,4 +81,3 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS(f"Periodic tasks configured: {len(tasks)}"))
-

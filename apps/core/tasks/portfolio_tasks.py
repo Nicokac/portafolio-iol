@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.core.models import Alert
 from apps.core.services.alerts_engine import AlertsEngine
+from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.temporal_metrics_service import TemporalMetricsService
@@ -92,6 +93,41 @@ def generate_daily_snapshot():
     except Exception as e:
         logger.error(f"Error in daily snapshot task: {str(e)}")
         return {'success': False, 'message': str(e)}
+
+
+@shared_task
+def sync_local_macro_series():
+    """
+    Tarea programada: Sincronizar referencias macro locales, incluido USDARS MEP si la fuente opcional existe.
+    """
+    logger.info("Starting local macro series sync")
+
+    try:
+        result = LocalMacroSeriesService().sync_all()
+        has_hard_failures = any(
+            payload.get("success") is False
+            for payload in result.values()
+            if isinstance(payload, dict)
+        )
+        synced = ", ".join(
+            f"{series_key}: rows={payload.get('rows_received', 0)}"
+            for series_key, payload in result.items()
+        )
+
+        if has_hard_failures:
+            logger.error(f"Local macro sync completed with failures: {synced}")
+        else:
+            logger.info(f"Local macro sync completed: {synced}")
+
+        return {
+            "success": not has_hard_failures,
+            "message": synced,
+            "series": result,
+        }
+
+    except Exception as e:
+        logger.error(f"Error in local macro sync task: {str(e)}")
+        return {"success": False, "message": str(e)}
 
 
 @shared_task

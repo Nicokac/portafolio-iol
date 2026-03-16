@@ -12,6 +12,7 @@ from apps.core.tasks.portfolio_tasks import (
     generate_alerts,
     generate_daily_snapshot,
     generate_rebalance_suggestions,
+    sync_local_macro_series,
     sync_portfolio_data,
 )
 
@@ -96,6 +97,40 @@ class TestPortfolioTasks:
         result = generate_daily_snapshot()
 
         assert result == {"success": False, "message": "Snapshot failed"}
+
+    @patch("apps.core.tasks.portfolio_tasks.LocalMacroSeriesService")
+    def test_sync_local_macro_series_success(self, MockService):
+        MockService.return_value.sync_all.return_value = {
+            "usdars_oficial": {"success": True, "rows_received": 1},
+            "usdars_mep": {"success": True, "rows_received": 1},
+        }
+
+        result = sync_local_macro_series()
+
+        assert result["success"] is True
+        assert "usdars_oficial: rows=1" in result["message"]
+        assert result["series"]["usdars_mep"]["rows_received"] == 1
+
+    @patch("apps.core.tasks.portfolio_tasks.LocalMacroSeriesService")
+    def test_sync_local_macro_series_tolerates_optional_skipped_source(self, MockService):
+        MockService.return_value.sync_all.return_value = {
+            "usdars_oficial": {"success": True, "rows_received": 1},
+            "usdars_mep": {"success": True, "rows_received": 0, "skipped": True},
+        }
+
+        result = sync_local_macro_series()
+
+        assert result["success"] is True
+        assert result["series"]["usdars_mep"]["skipped"] is True
+
+    @patch("apps.core.tasks.portfolio_tasks.LocalMacroSeriesService")
+    def test_sync_local_macro_series_exception(self, MockService):
+        MockService.return_value.sync_all.side_effect = Exception("macro boom")
+
+        result = sync_local_macro_series()
+
+        assert result["success"] is False
+        assert "macro boom" in result["message"]
 
     @patch("apps.core.tasks.portfolio_tasks.AlertsEngine")
     def test_generate_alerts_success(self, MockEngine):
