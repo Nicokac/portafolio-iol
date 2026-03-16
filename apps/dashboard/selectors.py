@@ -21,6 +21,7 @@ from apps.core.services.analytics_v2 import (
     CovarianceAwareRiskContributionService,
     ExpectedReturnService,
     FactorExposureService,
+    LocalMacroSignalsService,
     RiskContributionService,
     ScenarioAnalysisService,
     StressFragilityService,
@@ -1087,12 +1088,14 @@ def get_analytics_v2_dashboard_summary() -> Dict:
         factor_service = FactorExposureService()
         stress_service = StressFragilityService()
         expected_return_service = ExpectedReturnService()
+        local_macro_service = LocalMacroSignalsService()
 
         argentina_stress = scenario_service.analyze("argentina_stress")
         tech_shock = scenario_service.analyze("tech_shock")
         fragility = stress_service.calculate("local_crisis_severe")
         factor_result = factor_service.calculate()
         expected_return_result = expected_return_service.calculate()
+        local_macro_result = local_macro_service.calculate()
 
         combined_signals = (
             base_risk_service.build_recommendation_signals(top_n=5)
@@ -1100,6 +1103,7 @@ def get_analytics_v2_dashboard_summary() -> Dict:
             + factor_service.build_recommendation_signals()
             + stress_service.build_recommendation_signals()
             + expected_return_service.build_recommendation_signals()
+            + local_macro_service.build_recommendation_signals()
         )
         combined_signals = sorted(
             combined_signals,
@@ -1159,6 +1163,16 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                 "real_expected_return_pct": expected_return_result.get("real_expected_return_pct"),
                 "confidence": expected_return_result["metadata"]["confidence"],
                 "warnings_count": len(expected_return_result["metadata"].get("warnings", [])),
+            },
+            "local_macro": {
+                "argentina_weight_pct": local_macro_result.get("summary", {}).get("argentina_weight_pct"),
+                "ars_liquidity_weight_pct": local_macro_result.get("summary", {}).get("ars_liquidity_weight_pct"),
+                "cer_weight_pct": local_macro_result.get("summary", {}).get("cer_weight_pct"),
+                "sovereign_bond_weight_pct": local_macro_result.get("summary", {}).get("sovereign_bond_weight_pct"),
+                "badlar_real_carry_pct": local_macro_result.get("summary", {}).get("badlar_real_carry_pct"),
+                "ipc_yoy_pct": local_macro_result.get("summary", {}).get("ipc_yoy_pct"),
+                "confidence": local_macro_result.get("metadata", {}).get("confidence"),
+                "warnings_count": len(local_macro_result.get("metadata", {}).get("warnings", [])),
             },
             "signals": combined_signals[:6],
         }
