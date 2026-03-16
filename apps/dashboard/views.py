@@ -15,6 +15,7 @@ from apps.core.services.data_quality.daily_snapshot_continuity_service import Da
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.observability import record_state
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.core.services.security_audit import record_sensitive_action
@@ -275,6 +276,8 @@ class SyncLocalMacroView(StaffRequiredMixin, View):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         try:
             result = LocalMacroSeriesService().sync_all()
+            summary = LocalMacroSeriesService.summarize_sync_result(result)
+            record_state(summary['metric_name'], summary['state'], summary['extra'])
             has_failures = any(not payload.get('success', True) for payload in result.values())
             record_sensitive_action(
                 request,

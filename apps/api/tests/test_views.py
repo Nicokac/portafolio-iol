@@ -776,3 +776,34 @@ class TestRecommendationsFiltering:
         assert 'states' in body
         assert body['states'][0]['metric_name'] == 'analytics_v2.risk_contribution.model_variant'
         assert body['states'][0]['states']['mvp_proxy'] == 3
+
+    @patch('apps.api.views.get_state_summary')
+    @patch('apps.api.views.get_timing_summary')
+    def test_metrics_internal_observability_includes_local_macro_sync_state(
+        self, mock_timing, mock_state, staff_auth_client
+    ):
+        mock_timing.return_value = {'metric_name': 'metrics.returns.calc_ms', 'count': 0}
+        mock_state.side_effect = [
+            {
+                'metric_name': 'analytics_v2.risk_contribution.model_variant',
+                'count': 1,
+                'states': {'mvp_proxy': 1},
+                'latest_state': 'mvp_proxy',
+                'latest_extra': {},
+            },
+            {
+                'metric_name': 'analytics_v2.local_macro.sync_status',
+                'count': 2,
+                'states': {'success_with_skips': 2},
+                'latest_state': 'success_with_skips',
+                'latest_extra': {'synced_series': ['usdars_oficial'], 'skipped_series': ['usdars_mep'], 'failed_series': []},
+            },
+        ]
+
+        response = staff_auth_client.get(reverse('metrics-internal-observability'))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body['states']) == 2
+        assert body['states'][1]['metric_name'] == 'analytics_v2.local_macro.sync_status'
+        assert body['states'][1]['latest_state'] == 'success_with_skips'

@@ -16,6 +16,7 @@ from apps.portafolio_iol.models import PortfolioSnapshot
 
 
 class LocalMacroSeriesService:
+    SYNC_STATE_METRIC = "analytics_v2.local_macro.sync_status"
     STALENESS_DAYS_BY_FREQUENCY = {
         "daily": 7,
         "monthly": 45,
@@ -184,6 +185,40 @@ class LocalMacroSeriesService:
                 }
             )
         return rows
+
+    @classmethod
+    def summarize_sync_result(cls, result: dict) -> dict:
+        synced_series = []
+        skipped_series = []
+        failed_series = []
+
+        for series_key, payload in (result or {}).items():
+            if not isinstance(payload, dict):
+                failed_series.append(str(series_key))
+                continue
+            if payload.get("success") is False:
+                failed_series.append(str(series_key))
+            elif payload.get("skipped"):
+                skipped_series.append(str(series_key))
+            else:
+                synced_series.append(str(series_key))
+
+        if failed_series:
+            state = "failed"
+        elif skipped_series:
+            state = "success_with_skips"
+        else:
+            state = "success"
+
+        return {
+            "metric_name": cls.SYNC_STATE_METRIC,
+            "state": state,
+            "extra": {
+                "synced_series": synced_series,
+                "skipped_series": skipped_series,
+                "failed_series": failed_series,
+            },
+        }
 
     def build_macro_comparison(self, days: int = 365, base_value: float = 100.0) -> dict:
         df = self._build_real_portfolio_frame(days=days)

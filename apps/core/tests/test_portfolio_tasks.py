@@ -2,9 +2,11 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.core.cache import cache
 from django.utils import timezone
 
 from apps.core.models import Alert
+from apps.core.services.observability import get_state_summary
 from apps.core.tasks.portfolio_tasks import (
     _normalize_alert,
     calculate_temporal_metrics,
@@ -20,6 +22,9 @@ from apps.core.tasks.portfolio_tasks import (
 @pytest.mark.django_db
 @pytest.mark.celery_always_eager
 class TestPortfolioTasks:
+    def setup_method(self):
+        cache.clear()
+
     def test_normalize_alert_fills_defaults_and_maps_severity(self):
         normalized = _normalize_alert({"severidad": "high"})
 
@@ -104,12 +109,20 @@ class TestPortfolioTasks:
             "usdars_oficial": {"success": True, "rows_received": 1},
             "usdars_mep": {"success": True, "rows_received": 1},
         }
+        MockService.SYNC_STATE_METRIC = "analytics_v2.local_macro.sync_status"
+        MockService.summarize_sync_result.return_value = {
+            "metric_name": "analytics_v2.local_macro.sync_status",
+            "state": "success",
+            "extra": {"synced_series": ["usdars_oficial", "usdars_mep"], "skipped_series": [], "failed_series": []},
+        }
 
         result = sync_local_macro_series()
 
         assert result["success"] is True
         assert "usdars_oficial: rows=1" in result["message"]
         assert result["series"]["usdars_mep"]["rows_received"] == 1
+        summary = get_state_summary("analytics_v2.local_macro.sync_status")
+        assert summary["latest_state"] == "success"
 
     @patch("apps.core.tasks.portfolio_tasks.LocalMacroSeriesService")
     def test_sync_local_macro_series_tolerates_optional_skipped_source(self, MockService):
@@ -117,14 +130,23 @@ class TestPortfolioTasks:
             "usdars_oficial": {"success": True, "rows_received": 1},
             "usdars_mep": {"success": True, "rows_received": 0, "skipped": True},
         }
+        MockService.SYNC_STATE_METRIC = "analytics_v2.local_macro.sync_status"
+        MockService.summarize_sync_result.return_value = {
+            "metric_name": "analytics_v2.local_macro.sync_status",
+            "state": "success_with_skips",
+            "extra": {"synced_series": ["usdars_oficial"], "skipped_series": ["usdars_mep"], "failed_series": []},
+        }
 
         result = sync_local_macro_series()
 
         assert result["success"] is True
         assert result["series"]["usdars_mep"]["skipped"] is True
+        summary = get_state_summary("analytics_v2.local_macro.sync_status")
+        assert summary["latest_state"] == "success_with_skips"
 
     @patch("apps.core.tasks.portfolio_tasks.LocalMacroSeriesService")
     def test_sync_local_macro_series_exception(self, MockService):
+        MockService.SYNC_STATE_METRIC = "analytics_v2.local_macro.sync_status"
         MockService.return_value.sync_all.side_effect = Exception("macro boom")
 
         result = sync_local_macro_series()

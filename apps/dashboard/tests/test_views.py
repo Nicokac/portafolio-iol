@@ -1,6 +1,7 @@
 ﻿import pytest
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
+from django.core.cache import cache
 from django.test import Client
 from django.urls import reverse
 
@@ -9,6 +10,9 @@ from apps.core.models import SensitiveActionAudit
 
 @pytest.mark.django_db
 class TestDashboardView:
+
+    def setup_method(self):
+        cache.clear()
 
     @pytest.fixture
     def user(self):
@@ -284,6 +288,8 @@ class TestDashboardView:
     @pytest.mark.django_db
     def test_sync_local_macro_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
+            SYNC_STATE_METRIC = 'analytics_v2.local_macro.sync_status'
+
             def sync_all(self):
                 return {
                     'usdars_oficial': {'rows_received': 1, 'success': True},
@@ -292,7 +298,19 @@ class TestDashboardView:
                     'ipc_nacional': {'rows_received': 1, 'success': True},
                 }
 
-        monkeypatch.setattr('apps.dashboard.views.LocalMacroSeriesService', lambda: DummyService())
+            @classmethod
+            def summarize_sync_result(cls, result):
+                return {
+                    'metric_name': cls.SYNC_STATE_METRIC,
+                    'state': 'success_with_skips',
+                    'extra': {
+                        'synced_series': ['usdars_oficial', 'badlar_privada', 'ipc_nacional'],
+                        'skipped_series': ['usdars_mep'],
+                        'failed_series': [],
+                    },
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.LocalMacroSeriesService', DummyService)
         response = staff_client.post(reverse('dashboard:sync_local_macro'))
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
@@ -300,6 +318,9 @@ class TestDashboardView:
         audit = SensitiveActionAudit.objects.get(action='sync_local_macro')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
+        from apps.core.services.observability import get_state_summary
+        summary = get_state_summary('analytics_v2.local_macro.sync_status')
+        assert summary['latest_state'] == 'success_with_skips'
 
 
 

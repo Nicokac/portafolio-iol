@@ -596,6 +596,7 @@ def metrics_internal_observability(request):
     ]
     state_metric_names = [
         "analytics_v2.risk_contribution.model_variant",
+        "analytics_v2.local_macro.sync_status",
     ]
     data = [get_timing_summary(name) for name in metric_names]
     state_data = [get_state_summary(name) for name in state_metric_names]

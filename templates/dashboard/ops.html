@@ -265,6 +265,9 @@ fetch('/api/metrics/internal-observability/')
       const detailParts = [];
       if (extra.observations !== undefined) detailParts.push(`obs ${extra.observations}`);
       if (extra.coverage_pct !== undefined) detailParts.push(`coverage ${extra.coverage_pct}%`);
+      if (Array.isArray(extra.synced_series) && extra.synced_series.length) detailParts.push(`ok ${extra.synced_series.join(', ')}`);
+      if (Array.isArray(extra.skipped_series) && extra.skipped_series.length) detailParts.push(`skipped ${extra.skipped_series.join(', ')}`);
+      if (Array.isArray(extra.failed_series) && extra.failed_series.length) detailParts.push(`failed ${extra.failed_series.join(', ')}`);
       if (extra.reason) detailParts.push(extra.reason);
       return `
       <tr>

@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.core.models import Alert
 from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.observability import record_state
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.temporal_metrics_service import TemporalMetricsService
@@ -104,6 +105,8 @@ def sync_local_macro_series():
 
     try:
         result = LocalMacroSeriesService().sync_all()
+        summary = LocalMacroSeriesService.summarize_sync_result(result)
+        record_state(summary["metric_name"], summary["state"], summary["extra"])
         has_hard_failures = any(
             payload.get("success") is False
             for payload in result.values()
@@ -126,6 +129,11 @@ def sync_local_macro_series():
         }
 
     except Exception as e:
+        record_state(
+            LocalMacroSeriesService.SYNC_STATE_METRIC,
+            "failed",
+            {"reason": str(e), "synced_series": [], "skipped_series": [], "failed_series": ["task_exception"]},
+        )
         logger.error(f"Error in local macro sync task: {str(e)}")
         return {"success": False, "message": str(e)}
 

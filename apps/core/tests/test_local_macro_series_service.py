@@ -225,6 +225,22 @@ def test_local_macro_series_service_marks_series_as_stale_when_latest_date_is_ol
     assert keyed["usdars_mep"]["status"] == "stale"
 
 
+def test_local_macro_series_service_summarizes_sync_result_with_skips_and_failures():
+    summary = LocalMacroSeriesService.summarize_sync_result(
+        {
+            "usdars_oficial": {"success": True, "rows_received": 1},
+            "usdars_mep": {"success": True, "rows_received": 0, "skipped": True},
+            "badlar_privada": {"success": False, "rows_received": 0},
+        }
+    )
+
+    assert summary["metric_name"] == LocalMacroSeriesService.SYNC_STATE_METRIC
+    assert summary["state"] == "failed"
+    assert summary["extra"]["synced_series"] == ["usdars_oficial"]
+    assert summary["extra"]["skipped_series"] == ["usdars_mep"]
+    assert summary["extra"]["failed_series"] == ["badlar_privada"]
+
+
 @pytest.mark.django_db
 def test_local_macro_series_service_marks_partial_portfolio_ytd_when_prior_year_close_missing():
     PortfolioSnapshot.objects.create(
