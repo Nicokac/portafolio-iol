@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.test import Client
@@ -63,6 +63,8 @@ class TestDashboardView:
     def test_analisis_shows_base_labels_and_aggregated_sector_view(self, auth_client):
         response = auth_client.get(reverse('dashboard:analisis'))
         body = response.content.decode()
+        assert 'Análisis de composición y riesgo' in body
+        assert 'Vista detallada para entender concentración, exposición y lectura de riesgo.' in body
         assert 'Base: Portafolio Invertido' in body
         assert 'Base: Total IOL' in body
         assert 'Vista agregada opcional de sectores' in body
@@ -267,5 +269,9 @@ class TestDashboardView:
         audit = SensitiveActionAudit.objects.get(action='sync_benchmarks')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
+
+
+
+
 
 

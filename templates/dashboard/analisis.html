@@ -1,16 +1,16 @@
-{% extends 'base.html' %}
-{% block title %}AnÃ¡lisis - Portafolio IOL{% endblock %}
+﻿{% extends 'base.html' %}
+{% block title %}Análisis - Portafolio IOL{% endblock %}
 
 {% block content %}
 <section class="dashboard-hero mb-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
-            <h1 class="mb-1">AnÃ¡lisis de composiciÃ³n y riesgo</h1>
-            <p class="text-muted mb-0">Vista detallada para entender concentraciÃ³n, exposiciÃ³n y lectura de riesgo.</p>
+            <h1 class="mb-1">Análisis de composición y riesgo</h1>
+            <p class="text-muted mb-0">Vista detallada para entender concentración, exposición y lectura de riesgo.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'dashboard:performance' %}" class="btn btn-outline-primary">Centro de Performance</a>
-            <a href="{% url 'dashboard:metricas' %}" class="btn btn-outline-secondary">Centro de MÃ©tricas</a>
+            <a href="{% url 'dashboard:metricas' %}" class="btn btn-outline-secondary">Centro de Métricas</a>
             <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Ir a Estrategia</a>
         </div>
     </div>
@@ -21,12 +21,12 @@
         <div class="card-body py-3">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
-                    <h2 class="h5 mb-1">Mapa de anÃ¡lisis</h2>
-                    <p class="text-muted mb-0">Primero distribuciÃ³n visual. DespuÃ©s concentraciÃ³n y mÃ©tricas de riesgo detallado.</p>
+                    <h2 class="h5 mb-1">Mapa de análisis</h2>
+                    <p class="text-muted mb-0">Primero distribución visual. Después concentración y métricas de riesgo detallado.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-sm btn-outline-primary" href="#analisis-distribucion">DistribuciÃ³n</a>
-                    <a class="btn btn-sm btn-outline-warning" href="#analisis-concentracion">ConcentraciÃ³n</a>
+                    <a class="btn btn-sm btn-outline-primary" href="#analisis-distribucion">Distribución</a>
+                    <a class="btn btn-sm btn-outline-warning" href="#analisis-concentracion">Concentración</a>
                     <a class="btn btn-sm btn-outline-danger" href="#analisis-riesgo">Riesgo</a>
                 </div>
             </div>
@@ -36,15 +36,15 @@
 
 <section id="analisis-distribucion" class="mb-3">
     <div class="border-start border-4 border-primary ps-3 mb-3">
-        <h2 class="mb-1">DistribuciÃ³n de la cartera</h2>
-        <p class="text-muted mb-0">Lectura visual de sector, paÃ­s y tipo patrimonial para detectar sesgos de composiciÃ³n. Base principal: portafolio invertido.</p>
+        <h2 class="mb-1">Distribución de la cartera</h2>
+        <p class="text-muted mb-0">Lectura visual de sector, país y tipo patrimonial para detectar sesgos de composición. Base principal: portafolio invertido.</p>
     </div>
 </section>
 
 <section class="row g-3 mb-4">
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="DistribuciÃ³n del capital por sector econÃ³mico usando la metadata asignada a cada activo.">Sector</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Distribución del capital por sector económico usando la metadata asignada a cada activo.">Sector</h5></div>
             <div class="card-body">
                 <div class="small text-muted mb-2">Base: Portafolio Invertido</div>
                 <div class="chart-container"><canvas id="sectorChart"></canvas></div>
@@ -53,7 +53,7 @@
     </div>
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="PaÃ­s o regiÃ³n econÃ³mica subyacente del activo, no necesariamente la plaza de cotizaciÃ³n.">PaÃ­s</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="País o región económica subyacente del activo, no necesariamente la plaza de cotización.">País</h5></div>
             <div class="card-body">
                 <div class="small text-muted mb-2">Base: Portafolio Invertido</div>
                 <div class="chart-container"><canvas id="paisChart"></canvas></div>
@@ -62,7 +62,7 @@
     </div>
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="ClasificaciÃ³n patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Clasificación patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</h5></div>
             <div class="card-body">
                 <div class="small text-muted mb-2">Base: Total IOL</div>
                 <div class="chart-container"><canvas id="tipoChart"></canvas></div>
@@ -73,15 +73,15 @@
 
 <section id="analisis-concentracion" class="mb-3">
     <div class="border-start border-4 border-warning ps-3 mb-3">
-        <h2 class="mb-1">ConcentraciÃ³n</h2>
-        <p class="text-muted mb-0">Foco en pesos altos por sector para detectar acumulaciÃ³n de riesgo.</p>
+        <h2 class="mb-1">Concentración</h2>
+        <p class="text-muted mb-0">Foco en pesos altos por sector para detectar acumulación de riesgo.</p>
     </div>
 </section>
 
 <section class="row g-3 mb-4">
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Ranking de sectores por peso relativo dentro de la cartera.">ConcentraciÃ³n por Sector</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Ranking de sectores por peso relativo dentro de la cartera.">Concentración por Sector</h5></div>
             <div class="card-body table-responsive">
                 <div class="small text-muted mb-2">Base: Portafolio Invertido</div>
                 <table class="table table-hover align-middle">
@@ -109,12 +109,12 @@
     </div>
     <div class="col-lg-6" id="analisis-riesgo">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Lectura resumida de exposiciÃ³n geogrÃ¡fica, estilo y sensibilidad de la cartera.">Riesgo Detallado</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Lectura resumida de exposición geográfica, estilo y sensibilidad de la cartera.">Riesgo Detallado</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
-                            <th>MÃ©trica</th>
+                            <th>Métrica</th>
                             <th class="text-end">Valor</th>
                             <th class="text-end">Base</th>
                         </tr>
@@ -122,7 +122,7 @@
                     <tbody>
                         <tr><td>% USA</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Argentina</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
-                        <tr><td data-bs-toggle="tooltip" title="Base: portafolio invertido. Incluye TecnologÃ­a, TecnologÃ­a / E-commerce y TecnologÃ­a / Semiconductores.">% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
+                        <tr><td data-bs-toggle="tooltip" title="Base: portafolio invertido. Incluye Tecnología, Tecnología / E-commerce y Tecnología / Semiconductores.">% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td data-bs-toggle="tooltip" title="Peso de la renta fija argentina dentro del portafolio invertido. Incluye soberanos, CER y corporativos AR.">% Renta fija AR</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_renta_fija_ar|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Defensivo</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_defensivo|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Growth</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_growth|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
@@ -139,7 +139,7 @@
         <div class="card">
             <div class="card-header bg-transparent"><h5 class="mb-0">Vista agregada opcional de sectores</h5></div>
             <div class="card-body table-responsive">
-                <div class="small text-muted mb-2">Base: Portafolio Invertido. Agrupa TecnologÃ­a, TecnologÃ­a / E-commerce y TecnologÃ­a / Semiconductores como TecnologÃ­a Total.</div>
+                <div class="small text-muted mb-2">Base: Portafolio Invertido. Agrupa Tecnología, Tecnología / E-commerce y Tecnología / Semiconductores como Tecnología Total.</div>
                 <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
