@@ -16,6 +16,7 @@ from .covariance_risk_contribution_service import CovarianceAwareRiskContributio
 from .factor_catalog import FACTOR_CATALOG, FactorCatalogService
 from .factor_classifier_service import FactorClassifierService
 from .factor_exposure_service import FactorExposureService
+from .local_macro_signals_service import LocalMacroSignalsService
 from .expected_return_service import ExpectedReturnService
 from .risk_contribution_service import RiskContributionService
 from .scenario_analysis_service import ScenarioAnalysisService
@@ -68,6 +69,7 @@ __all__ = [
     "FactorClassifierService",
     "FactorDefinition",
     "FactorExposureService",
+    "LocalMacroSignalsService",
     "FactorExposureItem",
     "FactorExposureResult",
     "normalize_country_label",
