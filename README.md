@@ -63,6 +63,16 @@ Copiar `.env.example` y completar al menos:
 - `DATABASE_URL` (recomendado en prod)
 - `REDIS_URL`
 
+Variables opcionales para FX local / `USDARS MEP`:
+- `USDARS_MEP_API_URL`
+- `USDARS_MEP_API_VALUE_PATH`
+- `USDARS_MEP_API_DATE_PATH`
+
+Si no se configuran:
+- el sync macro local sigue funcionando
+- `usdars_mep` queda en estado `Sin configurar` / `skipped`
+- la brecha FX no se calcula
+
 ## Ejecucion local (sin Docker)
 ```bash
 python -m venv .venv
@@ -77,6 +87,11 @@ Credenciales y variables minimas:
 - `IOL_USERNAME`
 - `IOL_PASSWORD`
 - `IOL_BASE_URL=https://api.invertironline.com`
+
+Opcional para señales locales FX:
+- `USDARS_MEP_API_URL`
+- `USDARS_MEP_API_VALUE_PATH=venta`
+- `USDARS_MEP_API_DATE_PATH`
 
 ## Ejecucion con Docker
 ```bash
