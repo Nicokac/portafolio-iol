@@ -225,7 +225,11 @@ class GenerateSnapshotView(StaffRequiredMixin, View):
             details={'snapshot_date': str(snapshot.fecha) if snapshot is not None else None},
         )
         if snapshot is not None:
-            messages.success(request, f"Snapshot disponible para {snapshot.fecha}.")
+            action = getattr(snapshot, "_refresh_action", "created")
+            if action == "refreshed":
+                messages.success(request, f"Snapshot actualizado para {snapshot.fecha}.")
+            else:
+                messages.success(request, f"Snapshot disponible para {snapshot.fecha}.")
         else:
             messages.error(request, "No fue posible generar el snapshot.")
         return redirect('dashboard:resumen')

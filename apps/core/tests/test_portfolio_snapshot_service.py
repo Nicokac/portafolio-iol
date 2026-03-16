@@ -65,6 +65,9 @@ class TestPortfolioSnapshotService:
         snapshot = service.generate_daily_snapshot()
         assert snapshot.pk == existing.pk
         assert PortfolioSnapshot.objects.count() == 1
+        snapshot.refresh_from_db()
+        assert snapshot.total_iol == mock_kpis['total_iol']
+        assert getattr(snapshot, '_refresh_action') == 'refreshed'
 
     def test_sync_iol_data_no_estado_cuenta(self, service):
         service.api_client.get_estado_cuenta.return_value = None

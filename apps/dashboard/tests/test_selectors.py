@@ -772,3 +772,4 @@ class TestDashboardSelectors(TestCase):
         assert summary['snapshots_count'] == 3
         assert summary['status'] == 'insufficient_history'
         assert summary['max_gap_days'] >= 1
+        assert summary['latest_snapshot_at'] is not None

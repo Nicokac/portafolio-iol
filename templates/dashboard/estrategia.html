@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block title %}Estrategia - Portafolio IOL{% endblock %}
 
 {% block content %}
@@ -305,7 +305,7 @@
             <tr><td><strong>Activos inconsistentes</strong></td><td class="text-end {% if riesgo_portafolio.metadata_inconsistent_count > 0 %}text-danger{% else %}text-success{% endif %}">{{ riesgo_portafolio.metadata_inconsistent_count|default:0 }}</td></tr>
             <tr><td><strong>Issues integridad snapshots</strong></td><td class="text-end {% if snapshot_integrity.issues_count > 0 %}text-danger{% else %}text-success{% endif %}">{{ snapshot_integrity.issues_count|default:0 }}</td></tr>
             <tr><td><strong>Snapshots recientes</strong></td><td class="text-end {% if snapshot_coverage.status == 'ok' %}text-success{% else %}text-warning{% endif %}">{{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}</td></tr>
-            <tr><td><strong>Último snapshot</strong></td><td class="text-end">{{ snapshot_coverage.latest_snapshot_date|default:"-" }}</td></tr>
+            <tr><td><strong>Último snapshot</strong></td><td class="text-end">{% if snapshot_coverage.latest_snapshot_at %}{{ snapshot_coverage.latest_snapshot_at }}{% else %}{{ snapshot_coverage.latest_snapshot_date|default:"-" }}{% endif %}</td></tr>
             <tr><td><strong>Gap máximo</strong></td><td class="text-end">{% if snapshot_coverage.max_gap_days is not None %}{{ snapshot_coverage.max_gap_days }} días{% else %}-{% endif %}</td></tr>
             <tr><td><strong>Estado sync IOL</strong></td><td class="text-end"><span class="badge {% if sync_audit.status == 'ok' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ sync_audit.status|default:"unknown" }}</span></td></tr>
         </tbody></table></div></div>
@@ -478,3 +478,4 @@ createEvolutionChart();
 loadDataQualityDetails();
 </script>
 {% endblock %}
+

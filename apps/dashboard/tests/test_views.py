@@ -206,6 +206,7 @@ class TestDashboardView:
     def test_generate_snapshot_view_success_message(self, staff_client, monkeypatch):
         class DummySnapshot:
             fecha = '2026-03-12'
+            _refresh_action = 'refreshed'
 
         class DummyService:
             def generate_daily_snapshot(self):
@@ -215,7 +216,7 @@ class TestDashboardView:
         response = staff_client.post(reverse('dashboard:generate_snapshot'))
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
-        assert any('Snapshot disponible' in str(message) for message in messages)
+        assert any('Snapshot actualizado' in str(message) for message in messages)
         audit = SensitiveActionAudit.objects.get(action='generate_snapshot')
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'

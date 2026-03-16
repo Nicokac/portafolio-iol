@@ -1034,6 +1034,11 @@ def get_snapshot_coverage_summary(days: int = 90) -> Dict[str, float | int | str
         "requested_days": days,
         "snapshots_count": count,
         "latest_snapshot_date": latest_snapshot.fecha.isoformat() if latest_snapshot else None,
+        "latest_snapshot_at": (
+            timezone.localtime(latest_snapshot.updated_at).strftime("%Y-%m-%d %H:%M")
+            if latest_snapshot and latest_snapshot.updated_at
+            else None
+        ),
         "history_span_days": history_span_days,
         "missing_days_estimate": missing_days_estimate,
         "max_gap_days": max_gap_days if count >= 2 else None,

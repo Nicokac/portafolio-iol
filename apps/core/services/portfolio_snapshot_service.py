@@ -34,11 +34,6 @@ class PortfolioSnapshotService:
 
         logger.info(f"Generating portfolio snapshot for {target_date}")
 
-        existing_snapshot = PortfolioSnapshot.objects.filter(fecha=target_date).first()
-        if existing_snapshot:
-            logger.warning(f"Snapshot already exists for {target_date}")
-            return existing_snapshot
-
         kpis = get_dashboard_kpis()
         distribucion_pais = get_distribucion_pais()
 
@@ -51,23 +46,37 @@ class PortfolioSnapshotService:
             elif pais.lower() == "argentina":
                 exposicion_argentina = valor
 
+        snapshot_payload = {
+            "total_iol": kpis["total_iol"],
+            "liquidez_operativa": kpis["liquidez_operativa"],
+            "cash_management": kpis["fci_cash_management"],
+            "portafolio_invertido": kpis["portafolio_invertido"],
+            "rendimiento_total": kpis["rendimiento_total_porcentaje"],
+            "exposicion_usa": exposicion_usa,
+            "exposicion_argentina": exposicion_argentina,
+        }
+
         with transaction.atomic():
-            snapshot = PortfolioSnapshot.objects.create(
-                fecha=target_date,
-                total_iol=kpis["total_iol"],
-                liquidez_operativa=kpis["liquidez_operativa"],
-                cash_management=kpis["fci_cash_management"],
-                portafolio_invertido=kpis["portafolio_invertido"],
-                rendimiento_total=kpis["rendimiento_total_porcentaje"],
-                exposicion_usa=exposicion_usa,
-                exposicion_argentina=exposicion_argentina,
-            )
+            snapshot = PortfolioSnapshot.objects.select_for_update().filter(fecha=target_date).first()
+            if snapshot is None:
+                snapshot = PortfolioSnapshot.objects.create(
+                    fecha=target_date,
+                    **snapshot_payload,
+                )
+                refresh_action = "created"
+            else:
+                for field_name, value in snapshot_payload.items():
+                    setattr(snapshot, field_name, value)
+                snapshot.save(update_fields=[*snapshot_payload.keys(), "updated_at"])
+                snapshot.positions.all().delete()
+                refresh_action = "refreshed"
 
             self._create_position_snapshots(snapshot)
             logger.info(
-                f"Created portfolio snapshot for {target_date} with {snapshot.positions.count()} positions"
+                f"{refresh_action.capitalize()} portfolio snapshot for {target_date} with {snapshot.positions.count()} positions"
             )
 
+        snapshot._refresh_action = refresh_action  # noqa: SLF001
         return snapshot
 
     def _create_position_snapshots(self, snapshot: PortfolioSnapshot):
