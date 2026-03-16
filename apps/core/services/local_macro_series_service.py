@@ -66,6 +66,7 @@ class LocalMacroSeriesService:
 
     def get_context_summary(self, total_iol: float | None = None) -> dict:
         usdars_latest = self._get_latest_snapshot("usdars_oficial")
+        usdars_mep_latest = self._get_latest_snapshot("usdars_mep")
         badlar_latest = self._get_latest_snapshot("badlar_privada")
         ipc_snapshots = list(
             MacroSeriesSnapshot.objects.filter(series_key="ipc_nacional").order_by("-fecha")[:2]
@@ -80,6 +81,13 @@ class LocalMacroSeriesService:
         total_iol_usd = None
         if total_iol and usdars_latest and float(usdars_latest.value) > 0:
             total_iol_usd = float(total_iol) / float(usdars_latest.value)
+        fx_gap_pct = None
+        if (
+            usdars_latest and
+            usdars_mep_latest and
+            float(usdars_latest.value) > 0
+        ):
+            fx_gap_pct = ((float(usdars_mep_latest.value) / float(usdars_latest.value)) - 1) * 100
         portfolio_ytd = self._calculate_portfolio_ytd(ipc_variation_ytd)
         badlar_ytd = self._calculate_badlar_ytd()
         portfolio_excess_ytd_vs_badlar = None
@@ -92,6 +100,9 @@ class LocalMacroSeriesService:
         return {
             "usdars_oficial": float(usdars_latest.value) if usdars_latest else None,
             "usdars_oficial_date": usdars_latest.fecha if usdars_latest else None,
+            "usdars_mep": float(usdars_mep_latest.value) if usdars_mep_latest else None,
+            "usdars_mep_date": usdars_mep_latest.fecha if usdars_mep_latest else None,
+            "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
             "badlar_privada": float(badlar_latest.value) if badlar_latest else None,
             "badlar_privada_date": badlar_latest.fecha if badlar_latest else None,
             "badlar_ytd": round(badlar_ytd, 2) if badlar_ytd is not None else None,

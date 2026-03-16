@@ -114,6 +114,31 @@ def test_local_macro_series_service_builds_context_summary():
 
 
 @pytest.mark.django_db
+def test_local_macro_series_service_builds_optional_fx_gap_when_mep_exists():
+    MacroSeriesSnapshot.objects.create(
+        series_key="usdars_oficial",
+        source="bcra",
+        external_id="5",
+        frequency="daily",
+        fecha=date(2026, 3, 13),
+        value=1000.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="usdars_mep",
+        source="manual",
+        external_id="mep",
+        frequency="daily",
+        fecha=date(2026, 3, 13),
+        value=1180.0,
+    )
+
+    context = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_context_summary()
+
+    assert context["usdars_mep"] == 1180.0
+    assert context["fx_gap_pct"] == 18.0
+
+
+@pytest.mark.django_db
 def test_local_macro_series_service_marks_partial_portfolio_ytd_when_prior_year_close_missing():
     PortfolioSnapshot.objects.create(
         fecha=date(2026, 1, 10),

@@ -16,6 +16,8 @@ class LocalMacroSignalsService:
     LOW_CER_HEDGE_THRESHOLD = 8.0
     HIGH_SOVEREIGN_RISK_THRESHOLD = 10.0
     VERY_HIGH_SOVEREIGN_RISK_THRESHOLD = 15.0
+    HIGH_FX_GAP_THRESHOLD = 15.0
+    VERY_HIGH_FX_GAP_THRESHOLD = 30.0
 
     def __init__(
         self,
@@ -74,6 +76,8 @@ class LocalMacroSignalsService:
         ipc_yoy_pct = self._as_float(context.get("ipc_nacional_variation_yoy"))
         ipc_ytd_pct = self._as_float(context.get("ipc_nacional_variation_ytd"))
         usdars_oficial = self._as_float(context.get("usdars_oficial"))
+        usdars_mep = self._as_float(context.get("usdars_mep"))
+        fx_gap_pct = self._as_float(context.get("fx_gap_pct"))
         badlar_real_carry_pct = None
         if badlar_pct is not None and ipc_yoy_pct is not None:
             badlar_real_carry_pct = round(badlar_pct - ipc_yoy_pct, 2)
@@ -98,16 +102,18 @@ class LocalMacroSignalsService:
                 "ipc_ytd_pct": round(ipc_ytd_pct, 2) if ipc_ytd_pct is not None else None,
                 "badlar_real_carry_pct": badlar_real_carry_pct,
                 "usdars_oficial": round(usdars_oficial, 2) if usdars_oficial is not None else None,
+                "usdars_mep": round(usdars_mep, 2) if usdars_mep is not None else None,
+                "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
             },
             "metadata": AnalyticsMetadata(
                 methodology=(
                     "signals are derived from current normalized positions plus persisted local references "
-                    "for BADLAR, IPC and USDARS oficial"
+                    "for BADLAR, IPC, USDARS oficial and optional USDARS MEP"
                 ),
                 data_basis="current_positions_market_value + MacroSeriesSnapshot",
                 limitations=(
-                    "The module does not use breakeven inflation, sovereign spreads, MEP or risk-country series yet. "
-                    "It is a heuristic local reading focused on carry, CER coverage and sovereign concentration."
+                    "The module does not use breakeven inflation, sovereign spreads or risk-country series yet. "
+                    "MEP and FX gap are only used when that series already exists in MacroSeriesSnapshot."
                 ),
                 confidence=self._derive_confidence(warnings),
                 warnings=warnings,
@@ -129,6 +135,7 @@ class LocalMacroSignalsService:
         sovereign_bond_weight_pct = float(summary.get("sovereign_bond_weight_pct") or 0.0)
         badlar_real_carry_pct = summary.get("badlar_real_carry_pct")
         ipc_yoy_pct = summary.get("ipc_yoy_pct")
+        fx_gap_pct = summary.get("fx_gap_pct")
 
         if (
             badlar_real_carry_pct is not None
@@ -171,6 +178,27 @@ class LocalMacroSignalsService:
                         "argentina_weight_pct": round(argentina_weight_pct, 2),
                         "cer_weight_pct": round(cer_weight_pct, 2),
                         "ipc_yoy_pct": round(float(ipc_yoy_pct), 2),
+                    },
+                )
+            )
+
+        if (
+            fx_gap_pct is not None
+            and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
+            and float(fx_gap_pct) >= self.HIGH_FX_GAP_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_fx_gap_high",
+                    severity="high" if float(fx_gap_pct) >= self.VERY_HIGH_FX_GAP_THRESHOLD else "medium",
+                    title="Brecha cambiaria local elevada",
+                    description="La exposicion argentina es material y la brecha entre dolar oficial y MEP agrega sensibilidad local.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "argentina_weight_pct": round(argentina_weight_pct, 2),
+                        "fx_gap_pct": round(float(fx_gap_pct), 2),
+                        "usdars_oficial": round(float(summary.get("usdars_oficial") or 0.0), 2),
+                        "usdars_mep": round(float(summary.get("usdars_mep") or 0.0), 2),
                     },
                 )
             )

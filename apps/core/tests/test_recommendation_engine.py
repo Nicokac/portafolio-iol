@@ -305,6 +305,13 @@ def test_analyze_analytics_v2_includes_local_macro_signals(engine, monkeypatch):
     assert "soberanos locales" in result[0]["titulo"].lower() or "soberano" in result[0]["titulo"].lower()
 
 
+def test_build_signal_actions_returns_specific_actions_for_fx_gap(engine):
+    actions = engine._build_signal_actions({"signal_key": "local_fx_gap_high"})
+
+    assert any("brecha" in action.lower() for action in actions)
+    assert any("argentina" in action.lower() or "local" in action.lower() for action in actions)
+
+
 def test_build_risk_contribution_signals_prefers_covariance_when_active(engine, monkeypatch):
     monkeypatch.setattr(
         "apps.core.services.recommendation_engine.CovarianceAwareRiskContributionService",

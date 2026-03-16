@@ -84,6 +84,7 @@ class TestDashboardView:
         assert 'Señales Analytics v2' in body
         assert 'Macro Local' in body
         assert 'Carry real BADLAR' in body
+        assert 'Brecha FX' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body

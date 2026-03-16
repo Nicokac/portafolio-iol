@@ -485,6 +485,11 @@ class RecommendationEngine:
                 "Revisar si la liquidez en ARS sigue cumpliendo una función táctica clara",
                 "Comparar BADLAR contra inflación antes de mantener saldos altos en pesos",
             ]
+        if "fx_gap" in key:
+            return [
+                "Revisar cuánta exposición argentina depende de una brecha cambiaria tensionada",
+                "Evitar sumar riesgo local en ARS o soberano sin una convicción táctica explícita",
+            ]
         if "inflation_hedge" in key:
             return [
                 "Evaluar si la cobertura CER es suficiente para la exposición argentina actual",
