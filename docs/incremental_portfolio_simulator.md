@@ -329,3 +329,34 @@ Limitaciones:
 - no ejecuta ni bloquea acciones reales
 - no reemplaza criterio humano
 - sigue siendo una validacion operativa simple y heuristica
+
+## Workflow de decision manual
+
+La hoja `Planeacion` agrega un workflow manual minimo sobre snapshots incrementales ya guardados.
+
+Objetivo:
+
+- registrar si un snapshot fue aceptado, diferido o rechazado
+- dejar trazabilidad operativa separada del calculo analitico
+
+Implementacion MVP:
+
+- reutiliza `IncrementalProposalSnapshot`
+- persiste:
+  - `manual_decision_status`
+  - `manual_decision_note`
+  - `manual_decided_at`
+- expone un resumen de la ultima decision manual registrada
+- permite decidir desde el historial reciente por `POST`
+
+Estados:
+
+- `accepted`
+- `deferred`
+- `rejected`
+
+Limitaciones:
+
+- la decision vive sobre snapshots guardados, no sobre propuestas efimeras
+- no hay workflow multi-etapa ni aprobacion colaborativa
+- no existe una vista dedicada fuera de `Planeacion`

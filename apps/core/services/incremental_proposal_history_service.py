@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.models import AnonymousUser
+from django.utils import timezone
 
 from apps.core.models import IncrementalProposalSnapshot
 
@@ -11,6 +12,7 @@ class IncrementalProposalHistoryService:
     """Persistencia liviana de propuestas incrementales guardadas desde Planeacion."""
 
     MAX_SNAPSHOTS_PER_USER = 10
+    MANUAL_DECISION_STATUSES = {"accepted", "deferred", "rejected"}
 
     def save_preferred_proposal(
         self,
@@ -79,6 +81,37 @@ class IncrementalProposalHistoryService:
             return None
         return self.serialize(snapshot)
 
+    def decide_snapshot(self, *, user, snapshot_id: int | str, decision_status: str, note: str = "") -> dict:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            raise ValueError("authenticated_user_required")
+
+        normalized_status = str(decision_status or "").strip().lower()
+        if normalized_status not in self.MANUAL_DECISION_STATUSES:
+            raise ValueError("invalid_decision_status")
+
+        snapshot = IncrementalProposalSnapshot.objects.filter(user=user, pk=snapshot_id).first()
+        if snapshot is None:
+            raise ValueError("snapshot_not_found")
+
+        snapshot.manual_decision_status = normalized_status
+        snapshot.manual_decision_note = str(note or "").strip()[:240]
+        snapshot.manual_decided_at = timezone.now()
+        snapshot.save(update_fields=["manual_decision_status", "manual_decision_note", "manual_decided_at"])
+        return self.serialize(snapshot)
+
+    def get_latest_manual_decision(self, *, user) -> dict | None:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            return None
+        snapshot = (
+            IncrementalProposalSnapshot.objects.filter(user=user)
+            .exclude(manual_decision_status="pending")
+            .order_by("-manual_decided_at", "-id")
+            .first()
+        )
+        if snapshot is None:
+            return None
+        return self.serialize(snapshot)
+
     def serialize(self, snapshot: IncrementalProposalSnapshot) -> dict:
         return {
             "id": snapshot.pk,
@@ -94,6 +127,9 @@ class IncrementalProposalHistoryService:
             "simulation_interpretation": snapshot.simulation_interpretation,
             "explanation": snapshot.explanation,
             "is_tracking_baseline": bool(snapshot.is_tracking_baseline),
+            "manual_decision_status": snapshot.manual_decision_status,
+            "manual_decision_note": snapshot.manual_decision_note,
+            "manual_decided_at": snapshot.manual_decided_at,
             "created_at": snapshot.created_at,
         }
 

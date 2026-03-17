@@ -127,3 +127,68 @@ def test_promote_to_tracking_baseline_sets_unique_active_snapshot():
         IncrementalProposalSnapshot.objects.filter(user=user).order_by("id").values_list("proposal_label", "is_tracking_baseline")
     )
     assert flags == [("Plan A", False), ("Plan B", True)]
+
+
+@pytest.mark.django_db
+def test_decide_snapshot_persists_manual_decision():
+    user = User.objects.create_user(username="history-decision", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    saved = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    decided = service.decide_snapshot(user=user, snapshot_id=saved["id"], decision_status="accepted", note="Lista para ejecutar")
+
+    snapshot = IncrementalProposalSnapshot.objects.get(pk=saved["id"])
+    assert decided["manual_decision_status"] == "accepted"
+    assert decided["manual_decision_note"] == "Lista para ejecutar"
+    assert snapshot.manual_decision_status == "accepted"
+    assert snapshot.manual_decision_note == "Lista para ejecutar"
+    assert snapshot.manual_decided_at is not None
+
+
+@pytest.mark.django_db
+def test_get_latest_manual_decision_returns_last_decided_snapshot():
+    user = User.objects.create_user(username="history-decision-latest", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "automatic_variants",
+            "source_label": "Comparador automatico",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "automatic_variants",
+            "source_label": "Comparador automatico",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    service.decide_snapshot(user=user, snapshot_id=first["id"], decision_status="deferred")
+    service.decide_snapshot(user=user, snapshot_id=second["id"], decision_status="accepted")
+
+    latest = service.get_latest_manual_decision(user=user)
+
+    assert latest["proposal_label"] == "Plan B"
+    assert latest["manual_decision_status"] == "accepted"

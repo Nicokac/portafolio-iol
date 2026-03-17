@@ -32,6 +32,7 @@ from apps.dashboard.selectors import (
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
     get_incremental_proposal_tracking_baseline,
+    get_incremental_manual_decision_summary,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -1786,6 +1787,40 @@ class TestDashboardSelectors(TestCase):
         assert detail["adoption_ready"] is True
         assert detail["passed_count"] == 5
         assert "puede pasar a decision manual" in detail["headline"]
+
+    def test_get_incremental_manual_decision_summary_returns_latest_decision(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_latest_manual_decision",
+            return_value={
+                "proposal_label": "Plan manual A",
+                "manual_decision_status": "accepted",
+                "manual_decision_note": "Lista para ejecutar",
+                "manual_decided_at": timezone.now(),
+            },
+        ):
+            detail = get_incremental_manual_decision_summary(user=DummyUser())
+
+        assert detail["has_decision"] is True
+        assert detail["status"] == "accepted"
+        assert detail["status_label"] == "Aceptada"
+        assert "Plan manual A" in detail["headline"]
+
+    def test_get_incremental_manual_decision_summary_handles_missing_decision(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_latest_manual_decision",
+            return_value=None,
+        ):
+            detail = get_incremental_manual_decision_summary(user=DummyUser())
+
+        assert detail["has_decision"] is False
+        assert detail["status"] == "pending"
+        assert "Todavia no registraste" in detail["headline"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

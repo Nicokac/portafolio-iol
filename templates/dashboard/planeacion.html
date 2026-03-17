@@ -507,6 +507,40 @@
                 </div>
             </div>
             <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">Workflow de decisión manual</h5>
+                <small class="text-muted">Registro explícito de adopción, diferimiento o rechazo sobre snapshots guardados.</small>
+            </div>
+            <div class="card-body border-bottom">
+                <p class="text-muted mb-3">{{ incremental_manual_decision_summary.headline }}</p>
+                {% if incremental_manual_decision_summary.has_decision %}
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Última decisión</div>
+                            <div><strong>{{ incremental_manual_decision_summary.status_label }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Snapshot</div>
+                            <div><strong>{{ incremental_manual_decision_summary.item.proposal_label }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Fecha</div>
+                            <div><strong>{{ incremental_manual_decision_summary.item.manual_decided_at|date:"d M Y H:i"|default:"-" }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                {% if incremental_manual_decision_summary.item.manual_decision_note %}
+                <div class="small text-muted mt-3">{{ incremental_manual_decision_summary.item.manual_decision_note }}</div>
+                {% endif %}
+                {% else %}
+                <div class="text-muted">Todavía no registraste una decisión manual sobre propuestas incrementales guardadas.</div>
+                {% endif %}
+            </div>
+            <div class="card-header bg-light border-bottom">
                 <h5 class="mb-0">Resumen ejecutivo de seguimiento incremental</h5>
                 <small class="text-muted">Lectura compacta para decidir si conviene seguir, revisar o fijar referencia sobre la propuesta actual.</small>
             </div>
@@ -673,6 +707,7 @@
                                 <th>Propuesta</th>
                                 <th>Origen</th>
                                 <th>Compra resumida</th>
+                                <th>Decision manual</th>
                                 <th class="text-end">Δ Expected</th>
                                 <th class="text-end">Δ Fragility</th>
                                 <th class="text-end">Δ Worst Scenario</th>
@@ -701,6 +736,24 @@
                                                 {% if item.is_tracking_baseline %}Baseline activo{% else %}Promover a baseline{% endif %}
                                             </button>
                                         </form>
+                                        <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                            <input type="hidden" name="decision_status" value="accepted">
+                                            <button type="submit" class="btn btn-outline-success btn-sm">Aceptar</button>
+                                        </form>
+                                        <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                            <input type="hidden" name="decision_status" value="deferred">
+                                            <button type="submit" class="btn btn-outline-warning btn-sm">Diferir</button>
+                                        </form>
+                                        <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                            <input type="hidden" name="decision_status" value="rejected">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Rechazar</button>
+                                        </form>
                                     </div>
                                     {% if item.reapply_truncated %}
                                     <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
@@ -711,6 +764,15 @@
                                     {% for purchase in item.purchase_plan %}
                                     <div class="small">{{ purchase.symbol }} · {{ purchase.amount|currency:0 }}</div>
                                     {% endfor %}
+                                </td>
+                                <td>
+                                    <div><strong>{{ item.manual_decision_status_label|default:"Pendiente" }}</strong></div>
+                                    {% if item.manual_decided_at %}
+                                    <div class="small text-muted">{{ item.manual_decided_at|date:"d M Y H:i" }}</div>
+                                    {% endif %}
+                                    {% if item.manual_decision_note %}
+                                    <div class="small text-muted">{{ item.manual_decision_note }}</div>
+                                    {% endif %}
                                 </td>
                                 <td class="text-end">{{ item.simulation_delta.expected_return_change|default:"-" }}</td>
                                 <td class="text-end">{{ item.simulation_delta.fragility_change|default:"-" }}</td>

@@ -246,6 +246,13 @@ class SensitiveActionAudit(models.Model):
 class IncrementalProposalSnapshot(models.Model):
     """Snapshot persistente de una propuesta incremental elegida desde Planeacion."""
 
+    DECISION_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("deferred", "Deferred"),
+        ("rejected", "Rejected"),
+    ]
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -263,6 +270,9 @@ class IncrementalProposalSnapshot(models.Model):
     simulation_interpretation = models.TextField(blank=True, default="")
     explanation = models.TextField(blank=True, default="")
     is_tracking_baseline = models.BooleanField(default=False)
+    manual_decision_status = models.CharField(max_length=16, choices=DECISION_STATUS_CHOICES, default="pending")
+    manual_decision_note = models.CharField(max_length=240, blank=True, default="")
+    manual_decided_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1985,6 +1985,9 @@ def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
     for item in raw_items:
         reapply = _build_incremental_snapshot_reapply_payload(item)
         enriched = dict(item)
+        enriched["manual_decision_status_label"] = _format_incremental_manual_decision_status(
+            str(item.get("manual_decision_status") or "pending")
+        )
         enriched.update(reapply)
         items.append(enriched)
     return {
@@ -2001,6 +2004,20 @@ def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
     return {
         "item": item,
         "has_baseline": item is not None,
+    }
+
+
+def get_incremental_manual_decision_summary(*, user) -> Dict:
+    """Resume la ultima decision manual persistida sobre propuestas incrementales guardadas."""
+
+    item = IncrementalProposalHistoryService().get_latest_manual_decision(user=user)
+    status = str((item or {}).get("manual_decision_status") or "pending")
+    return {
+        "item": item,
+        "has_decision": item is not None,
+        "status": status,
+        "status_label": _format_incremental_manual_decision_status(status),
+        "headline": _build_incremental_manual_decision_headline(item),
     }
 
 
@@ -2514,6 +2531,28 @@ def _build_incremental_adoption_check_item(*, key: str, label: str, passed: bool
         "passed": bool(passed),
         "detail": str(detail or "-"),
     }
+
+
+def _format_incremental_manual_decision_status(status: str) -> str:
+    mapping = {
+        "accepted": "Aceptada",
+        "deferred": "Diferida",
+        "rejected": "Rechazada",
+        "pending": "Pendiente",
+    }
+    return mapping.get(status, "Pendiente")
+
+
+def _build_incremental_manual_decision_headline(item: Dict | None) -> str:
+    if item is None:
+        return "Todavia no registraste una decision manual sobre snapshots incrementales guardados."
+
+    decision_label = _format_incremental_manual_decision_status(str(item.get("manual_decision_status") or "pending")).lower()
+    note = str(item.get("manual_decision_note") or "").strip()
+    base = f"La ultima decision manual registrada es {decision_label} sobre {item.get('proposal_label') or 'la propuesta seleccionada'}."
+    if note:
+        return f"{base} Nota: {note}"
+    return base
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:

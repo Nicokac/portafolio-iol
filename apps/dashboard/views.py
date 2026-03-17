@@ -46,6 +46,7 @@ from apps.dashboard.selectors import (
     get_expected_return_detail,
     get_incremental_proposal_history,
     get_incremental_proposal_tracking_baseline,
+    get_incremental_manual_decision_summary,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -219,6 +220,9 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         context['incremental_proposal_tracking_baseline'] = get_incremental_proposal_tracking_baseline(
             user=self.request.user,
         )
+        context['incremental_manual_decision_summary'] = get_incremental_manual_decision_summary(
+            user=self.request.user,
+        )
         context['incremental_followup_executive_summary'] = get_incremental_followup_executive_summary(
             self.request.GET,
             user=self.request.user,
@@ -387,6 +391,49 @@ class PromoteIncrementalProposalBaselineView(LoginRequiredMixin, View):
             details={'snapshot_id': saved['id'], 'proposal_label': saved['proposal_label']},
         )
         messages.success(request, f"Baseline incremental activo: {saved['proposal_label']}.")
+        return redirect(redirect_url)
+
+
+class DecideIncrementalProposalView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        snapshot_id = request.POST.get('snapshot_id')
+        decision_status = request.POST.get('decision_status')
+        decision_note = request.POST.get('decision_note', '')
+        redirect_url = f"{reverse('dashboard:planeacion')}#planeacion-aportes"
+
+        try:
+            decided = IncrementalProposalHistoryService().decide_snapshot(
+                user=request.user,
+                snapshot_id=snapshot_id,
+                decision_status=decision_status,
+                note=decision_note,
+            )
+        except ValueError as exc:
+            record_sensitive_action(
+                request,
+                action='decide_incremental_proposal',
+                status='failed',
+                details={'reason': str(exc), 'snapshot_id': snapshot_id, 'decision_status': decision_status},
+            )
+            messages.error(request, "No fue posible registrar la decision manual sobre la propuesta incremental.")
+            return redirect(redirect_url)
+
+        record_sensitive_action(
+            request,
+            action='decide_incremental_proposal',
+            status='success',
+            details={
+                'snapshot_id': decided['id'],
+                'proposal_label': decided['proposal_label'],
+                'decision_status': decided['manual_decision_status'],
+            },
+        )
+        messages.success(
+            request,
+            f"Decision manual registrada: {decided['proposal_label']} -> {decided['manual_decision_status']}.",
+        )
         return redirect(redirect_url)
 
 

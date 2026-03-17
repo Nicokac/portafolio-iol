@@ -3,6 +3,7 @@ from django.urls import path
 from apps.dashboard.views import (
     AnalisisView,
     DashboardView,
+    DecideIncrementalProposalView,
     ExpectedReturnDetailView,
     GenerateSnapshotView,
     MetricasView,
@@ -39,6 +40,7 @@ urlpatterns = [
     path('planeacion/', PlaneacionView.as_view(), name='planeacion'),
     path('planeacion/guardar-propuesta/', SavePreferredIncrementalProposalView.as_view(), name='save_incremental_proposal'),
     path('planeacion/promover-baseline/', PromoteIncrementalProposalBaselineView.as_view(), name='promote_incremental_baseline'),
+    path('planeacion/decidir-propuesta/', DecideIncrementalProposalView.as_view(), name='decide_incremental_proposal'),
     path('ops/', OpsView.as_view(), name='ops'),
     path('preferencias/', SetPreferencesView.as_view(), name='set_preferences'),
     path('acciones/sync/', RunSyncView.as_view(), name='run_sync'),

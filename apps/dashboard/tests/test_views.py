@@ -754,6 +754,21 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_manual_decision_summary',
+            lambda user: {
+                'item': {
+                    'proposal_label': 'Plan manual A',
+                    'manual_decision_status': 'accepted',
+                    'manual_decision_note': 'Lista para ejecutar',
+                    'manual_decided_at': '2026-03-17 12:00',
+                },
+                'has_decision': True,
+                'status': 'accepted',
+                'status_label': 'Aceptada',
+                'headline': 'La ultima decision manual registrada es aceptada sobre Plan manual A.',
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_followup_executive_summary',
             lambda query_params, user, capital_amount=600000: {
                 'status': 'aligned',
@@ -883,6 +898,8 @@ class TestDashboardView:
         assert 'Checklist de adopción de propuesta incremental' in body
         assert 'La propuesta actual supera el checklist operativo y puede pasar a decision manual.' in body
         assert 'Adopcion habilitada' in body
+        assert 'Workflow de decisión manual' in body
+        assert 'La ultima decision manual registrada es aceptada sobre Plan manual A.' in body
         assert 'Resumen ejecutivo de seguimiento incremental' in body
         assert 'La propuesta actual se mantiene alineada con el baseline activo.' in body
         assert 'Baseline incremental de seguimiento' in body
@@ -893,6 +910,9 @@ class TestDashboardView:
         assert 'Promover a baseline' in body
         assert 'Historial reciente de propuestas guardadas' in body
         assert 'Plan guardado 1' in body
+        assert 'Aceptar' in body
+        assert 'Diferir' in body
+        assert 'Rechazar' in body
         assert 'Reaplicar en comparador manual' in body
         assert 'Snapshot guardado vs propuesta actual' in body
         assert 'Comparar snapshot' in body
@@ -1001,6 +1021,45 @@ class TestDashboardView:
 
         assert response.status_code == 302
         audit = SensitiveActionAudit.objects.get(action='promote_incremental_baseline')
+        assert audit.status == 'failed'
+
+    def test_decide_incremental_proposal_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:decide_incremental_proposal'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    def test_decide_incremental_proposal_updates_snapshot(self, auth_client, user):
+        snapshot = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key='manual_plan',
+            source_label='Comparador manual',
+            proposal_key='plan_a',
+            proposal_label='Plan manual A',
+            capital_amount=600000,
+            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
+            simulation_delta={},
+        )
+
+        response = auth_client.post(
+            reverse('dashboard:decide_incremental_proposal'),
+            {'snapshot_id': snapshot.id, 'decision_status': 'accepted', 'decision_note': 'Lista para ejecutar'},
+        )
+
+        assert response.status_code == 302
+        snapshot.refresh_from_db()
+        assert snapshot.manual_decision_status == 'accepted'
+        assert snapshot.manual_decision_note == 'Lista para ejecutar'
+        audit = SensitiveActionAudit.objects.get(action='decide_incremental_proposal')
+        assert audit.status == 'success'
+
+    def test_decide_incremental_proposal_rejects_invalid_snapshot(self, auth_client):
+        response = auth_client.post(
+            reverse('dashboard:decide_incremental_proposal'),
+            {'snapshot_id': 999999, 'decision_status': 'accepted'},
+        )
+
+        assert response.status_code == 302
+        audit = SensitiveActionAudit.objects.get(action='decide_incremental_proposal')
         assert audit.status == 'failed'
 
     def test_planeacion_accepts_reapplied_snapshot_query_in_manual_comparator(self, auth_client):
