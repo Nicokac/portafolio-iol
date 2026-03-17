@@ -365,6 +365,42 @@ class TestDashboardView:
         assert 'Liquidez total = liquidez operativa + cash management' in body
         assert 'Modelo de riesgo:' in body
 
+    def test_planeacion_shows_monthly_allocation_proposal(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_monthly_allocation_plan',
+            lambda capital_amount=600000: {
+                'capital_total': capital_amount,
+                'recommended_blocks_count': 2,
+                'criterion': 'rules_based_analytics_v2_mvp',
+                'recommended_blocks': [
+                    {
+                        'label': 'Defensive / resiliente',
+                        'suggested_amount': 350000,
+                        'suggested_pct': 58.33,
+                        'score': 4.5,
+                        'reason': 'cubre defensive_gap',
+                    },
+                    {
+                        'label': 'Dividend / ingresos pasivos',
+                        'suggested_amount': 250000,
+                        'suggested_pct': 41.67,
+                        'score': 3.0,
+                        'reason': 'cubre dividend_gap',
+                    },
+                ],
+                'avoided_blocks': [
+                    {'label': 'Tecnología / growth', 'reason': 'ya domina el riesgo'}
+                ],
+                'explanation': 'Plan incremental MVP',
+            },
+        )
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Propuesta de compra mensual' in body
+        assert 'Plan incremental MVP' in body
+        assert 'Tecnología / growth' in body
+
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')
         response = auth_client.get(url)

@@ -17,6 +17,7 @@ from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.monthly_allocation_service import MonthlyAllocationService
 from apps.core.services.analytics_v2 import (
     AnalyticsExplanationService,
     CovarianceAwareRiskContributionService,
@@ -1474,6 +1475,18 @@ def get_expected_return_detail() -> Dict:
         }
 
     return _get_cached_selector_result("expected_return_detail", build)
+
+
+def get_monthly_allocation_plan(capital_amount: int | float = 600000) -> Dict:
+    """Devuelve la propuesta mvp de asignacion mensual incremental."""
+
+    cache_key = f"monthly_allocation_plan:{int(capital_amount)}"
+
+    def build():
+        service = MonthlyAllocationService()
+        return service.build_plan(capital_amount)
+
+    return _get_cached_selector_result(cache_key, build)
 
 
 def get_analytics_v2_dashboard_summary() -> Dict:

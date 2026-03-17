@@ -26,6 +26,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_factor_exposure_detail,
+    get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
@@ -910,6 +911,34 @@ class TestDashboardSelectors(TestCase):
         assert detail["main_warning"] is None
         assert detail["warnings"] == []
         assert detail["confidence"] == "low"
+
+    def test_get_monthly_allocation_plan_reuses_service_output(self):
+        cache.clear()
+
+        expected_plan = {
+            "capital_total": 600000,
+            "recommended_blocks_count": 2,
+            "criterion": "rules_based_analytics_v2_mvp",
+            "recommended_blocks": [
+                {"bucket": "defensive", "suggested_amount": 350000},
+                {"bucket": "dividend", "suggested_amount": 250000},
+            ],
+            "avoided_blocks": [{"bucket": "tech_growth"}],
+            "explanation": "Plan incremental",
+        }
+
+        class DummyMonthlyAllocationService:
+            def build_plan(self, capital_amount):
+                assert capital_amount == 600000
+                return expected_plan
+
+        with patch("apps.dashboard.selectors.MonthlyAllocationService", DummyMonthlyAllocationService):
+            detail = get_monthly_allocation_plan()
+
+        assert detail["capital_total"] == 600000
+        assert detail["recommended_blocks_count"] == 2
+        assert detail["recommended_blocks"][0]["bucket"] == "defensive"
+        assert detail["avoided_blocks"][0]["bucket"] == "tech_growth"
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

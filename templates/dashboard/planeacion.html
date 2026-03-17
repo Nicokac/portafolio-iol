@@ -149,6 +149,88 @@
                 <p class="text-muted mb-0">Distribución automática de nuevos capitales según perfil de riesgo.</p>
             </div>
         </section>
+        <div class="card border-info-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Propuesta de compra mensual</h5>
+                <small class="text-muted">Motor MVP incremental guiado por Analytics v2 y señales priorizadas.</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted">Capital base</div>
+                            <div class="h5 mb-0">{{ monthly_allocation_plan.capital_total|currency:0 }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted">Bloques recomendados</div>
+                            <div class="h5 mb-0">{{ monthly_allocation_plan.recommended_blocks_count }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted">Criterio</div>
+                            <div class="small mb-0"><code>{{ monthly_allocation_plan.criterion }}</code></div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-muted mb-3">{{ monthly_allocation_plan.explanation }}</p>
+                <div class="table-responsive mb-3">
+                    <table class="table table-striped align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Bloque</th>
+                                <th class="text-end">Monto sugerido</th>
+                                <th class="text-end">% sugerido</th>
+                                <th class="text-end">Score</th>
+                                <th>Razón principal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in monthly_allocation_plan.recommended_blocks %}
+                            <tr>
+                                <td><strong>{{ item.label }}</strong></td>
+                                <td class="text-end">{{ item.suggested_amount|currency:0 }}</td>
+                                <td class="text-end">{{ item.suggested_pct|floatformat:2 }}%</td>
+                                <td class="text-end">{{ item.score|floatformat:2 }}</td>
+                                <td>{{ item.reason }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-muted">No hay bloques recomendados para el aporte incremental actual.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <h6 class="mb-2">Bloques a evitar</h6>
+                        {% if monthly_allocation_plan.avoided_blocks %}
+                        <div class="d-flex flex-column gap-2">
+                            {% for item in monthly_allocation_plan.avoided_blocks %}
+                            <div class="border rounded p-2">
+                                <div><strong>{{ item.label }}</strong></div>
+                                <div class="small text-muted">{{ item.reason }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-muted">Sin bloque claramente penalizado en este corte.</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-lg-6">
+                        <h6 class="mb-2">Cómo leerlo</h6>
+                        <ul class="mb-0 text-muted">
+                            <li>Primero excluye bloques que hoy agravan riesgo, fragilidad o shocks dominantes.</li>
+                            <li>Después refuerza factores faltantes y buckets con mejor retorno estructural.</li>
+                            <li>La asignación es por bloques; no reemplaza la decisión final de activos concretos.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card">

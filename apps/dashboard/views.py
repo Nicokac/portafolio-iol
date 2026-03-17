@@ -39,6 +39,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_macro_local_context,
+    get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
     get_risk_contribution_detail,
@@ -169,6 +170,11 @@ class ExpectedReturnDetailView(LoginRequiredMixin, DashboardContextMixin, Templa
 class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
     template_name = 'dashboard/planeacion.html'
     active_section = 'planeacion'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['monthly_allocation_plan'] = get_monthly_allocation_plan(capital_amount=600000)
+        return context
 
 
 class ResumenView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
