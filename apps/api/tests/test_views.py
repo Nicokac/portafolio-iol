@@ -572,6 +572,61 @@ class TestAPIPostEndpointsHappyPath:
         assert response.status_code == 500
         assert response.json()['error'] == 'Internal server error'
 
+    @pytest.mark.parametrize(
+        'url_name,payload,expected_error',
+        [
+            ('simulation-purchase', {'activo': 'SPY', 'capital': 0}, 'capital debe ser mayor a 0'),
+            ('simulation-sale', {'activo': 'SPY', 'cantidad': 0}, 'cantidad debe ser mayor a 0'),
+            (
+                'simulation-rebalance',
+                {'target_weights': {f'S{i}': 1 for i in range(51)}},
+                'pesos objetivo excede el máximo permitido',
+            ),
+            (
+                'optimizer-risk-parity',
+                {'activos': [f'S{i}' for i in range(51)]},
+                'activos excede el máximo permitido',
+            ),
+            (
+                'optimizer-markowitz',
+                {'activos': ['SPY', 'EEM'], 'target_return': 50},
+                'target_return fuera de rango permitido',
+            ),
+            (
+                'optimizer-target-allocation',
+                {'target_allocations': {'SPY': 101}},
+                'asignaciones objetivo:SPY excede el máximo permitido',
+            ),
+        ],
+    )
+    def test_post_endpoints_reject_excessive_or_invalid_payloads(
+        self, auth_client, url_name, payload, expected_error
+    ):
+        response = auth_client.post(reverse(url_name), payload, format='json')
+        assert response.status_code == 400
+        assert response.json()['error'] == expected_error
+
+    @patch('apps.api.views.get_dashboard_kpis', return_value={'total_iol': 10000})
+    def test_simulation_purchase_normalizes_symbol_before_service_call(self, mock_kpis, auth_client):
+        with patch('apps.core.services.portfolio_simulator.PortfolioSimulator.simulate_purchase', return_value={'ok': True}) as mock_service:
+            response = auth_client.post(
+                reverse('simulation-purchase'),
+                {'activo': ' spy ', 'capital': 1000},
+                format='json',
+            )
+        assert response.status_code == 200
+        assert mock_service.call_args[0][0] == 'SPY'
+
+    @patch('apps.api.views.get_dashboard_kpis', return_value={'total_iol': 10000})
+    def test_optimizer_risk_parity_rejects_non_list_activos(self, mock_kpis, auth_client):
+        response = auth_client.post(
+            reverse('optimizer-risk-parity'),
+            {'activos': 'SPY'},
+            format='json',
+        )
+        assert response.status_code == 400
+        assert response.json()['error'] == 'activos debe ser una lista'
+
     def test_portfolio_parameters_update_forbidden_non_staff(self, auth_client):
         url = reverse('portfolio-parameters-update')
         response = auth_client.post(url, {}, format='json')

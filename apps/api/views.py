@@ -35,6 +35,13 @@ from apps.portafolio_iol.models import PortfolioSnapshot
 
 logger = logging.getLogger(__name__)
 
+MAX_PORTFOLIO_PAYLOAD_ITEMS = 50
+MAX_SYMBOL_LENGTH = 24
+MAX_MONETARY_INPUT = 1_000_000_000_000
+MAX_QUANTITY_INPUT = 1_000_000_000
+MIN_TARGET_RETURN = -1.0
+MAX_TARGET_RETURN = 10.0
+
 METRIC_BASES = {
     'total_portfolio': 'Total IOL (activos + cash)',
     'invested_capital': 'Capital invertido en activos',
@@ -79,6 +86,69 @@ def sanitize_json_payload(value):
     if isinstance(value, float):
         return value if math.isfinite(value) else None
     return value
+
+
+def _coerce_positive_number(value, *, field_name: str, max_value: float) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field_name} debe ser numérico")
+
+    if not math.isfinite(numeric):
+        raise ValueError(f"{field_name} debe ser numérico")
+    if numeric <= 0:
+        raise ValueError(f"{field_name} debe ser mayor a 0")
+    if numeric > max_value:
+        raise ValueError(f"{field_name} excede el máximo permitido")
+    return numeric
+
+
+def _validate_symbol(value, *, field_name: str = "activo") -> str:
+    symbol = str(value or "").strip().upper()
+    if not symbol:
+        raise ValueError(f"{field_name} es obligatorio")
+    if len(symbol) > MAX_SYMBOL_LENGTH:
+        raise ValueError(f"{field_name} excede la longitud permitida")
+    return symbol
+
+
+def _validate_symbol_list(symbols, *, field_name: str = "activos") -> list[str]:
+    if not isinstance(symbols, list):
+        raise ValueError(f"{field_name} debe ser una lista")
+    if not symbols:
+        raise ValueError(f"Se requieren {field_name}")
+    if len(symbols) > MAX_PORTFOLIO_PAYLOAD_ITEMS:
+        raise ValueError(f"{field_name} excede el máximo permitido")
+    return [_validate_symbol(symbol, field_name="activo") for symbol in symbols]
+
+
+def _validate_weight_mapping(mapping, *, field_name: str) -> dict[str, float]:
+    if not isinstance(mapping, dict):
+        raise ValueError(f"{field_name} debe ser un objeto")
+    if not mapping:
+        raise ValueError(f"Se requieren {field_name}")
+    if len(mapping) > MAX_PORTFOLIO_PAYLOAD_ITEMS:
+        raise ValueError(f"{field_name} excede el máximo permitido")
+
+    validated = {}
+    for key, value in mapping.items():
+        symbol = _validate_symbol(key, field_name="activo")
+        numeric = _coerce_positive_number(value, field_name=f"{field_name}:{symbol}", max_value=100.0)
+        validated[symbol] = numeric
+    return validated
+
+
+def _coerce_target_return(value) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("target_return debe ser numérico")
+
+    if not math.isfinite(numeric):
+        raise ValueError("target_return debe ser numérico")
+    if numeric < MIN_TARGET_RETURN or numeric > MAX_TARGET_RETURN:
+        raise ValueError("target_return fuera de rango permitido")
+    return numeric
 
 
 # Dashboard API
@@ -714,11 +784,17 @@ def simulation_purchase(request):
     activo_symbol = request.data.get('activo')
     capital = request.data.get('capital')
 
-    if not activo_symbol or not capital:
+    if not activo_symbol or capital in (None, ""):
         return Response(
             {'error': 'Se requieren activo y capital'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    try:
+        activo_symbol = _validate_symbol(activo_symbol)
+        capital = _coerce_positive_number(capital, field_name="capital", max_value=MAX_MONETARY_INPUT)
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         simulator = PortfolioSimulator()
@@ -736,11 +812,17 @@ def simulation_sale(request):
     activo_symbol = request.data.get('activo')
     cantidad = request.data.get('cantidad')
 
-    if not activo_symbol or not cantidad:
+    if not activo_symbol or cantidad in (None, ""):
         return Response(
             {'error': 'Se requieren activo y cantidad'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    try:
+        activo_symbol = _validate_symbol(activo_symbol)
+        cantidad = _coerce_positive_number(cantidad, field_name="cantidad", max_value=MAX_QUANTITY_INPUT)
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         simulator = PortfolioSimulator()
@@ -762,6 +844,11 @@ def simulation_rebalance(request):
             {'error': 'Se requieren pesos objetivo'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    try:
+        target_weights = _validate_weight_mapping(target_weights, field_name="pesos objetivo")
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         simulator = PortfolioSimulator()
@@ -787,6 +874,12 @@ def optimizer_risk_parity(request):
         )
 
     try:
+        activos = _validate_symbol_list(activos)
+        target_return = _coerce_target_return(target_return) if target_return is not None else None
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
         optimizer = PortfolioOptimizer()
         result = optimizer.optimize_risk_parity(activos, target_return)
         return Response(result, status=status.HTTP_200_OK)
@@ -801,11 +894,17 @@ def optimizer_markowitz(request):
     activos = request.data.get('activos', [])
     target_return = request.data.get('target_return')
 
-    if not activos or not target_return:
+    if not activos or target_return in (None, ""):
         return Response(
             {'error': 'Se requieren activos y retorno objetivo'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    try:
+        activos = _validate_symbol_list(activos)
+        target_return = _coerce_target_return(target_return)
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         optimizer = PortfolioOptimizer()
@@ -826,6 +925,14 @@ def optimizer_target_allocation(request):
             {'error': 'Se requieren asignaciones objetivo'},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    try:
+        target_allocations = _validate_weight_mapping(
+            target_allocations,
+            field_name="asignaciones objetivo",
+        )
+    except ValueError as exc:
+        return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         optimizer = PortfolioOptimizer()
