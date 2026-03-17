@@ -634,3 +634,74 @@ def test_prioritize_recommendations_prefers_hard_dollar_dependence_over_cer_gap(
         "analytics_v2_local_sovereign_hard_dollar_dependence",
     ]
 
+
+def test_prioritize_recommendations_prefers_country_risk_overconcentration_over_generic_argentina_signals(engine):
+    recommendations = [
+        {
+            "tipo": "concentracion_argentina_alta",
+            "prioridad": "alta",
+        },
+        {
+            "tipo": "analytics_v2_risk_concentration_argentina",
+            "prioridad": "alta",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_country_risk_overconcentration",
+            "prioridad": "alta",
+            "origen": "analytics_v2",
+            "evidence": {"country": "Argentina"},
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_country_risk_overconcentration",
+    ]
+
+
+def test_prioritize_recommendations_prefers_sector_risk_overconcentration_over_generic_tech_signal(engine):
+    recommendations = [
+        {
+            "tipo": "analytics_v2_risk_concentration_tech",
+            "prioridad": "media",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_sector_risk_overconcentration",
+            "prioridad": "media",
+            "origen": "analytics_v2",
+            "evidence": {"sector": "Tecnologia"},
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_sector_risk_overconcentration",
+    ]
+
+
+def test_prioritize_recommendations_keeps_country_underconcentration_as_distinct_informative_topic(engine):
+    recommendations = [
+        {
+            "tipo": "analytics_v2_risk_concentration_argentina",
+            "prioridad": "alta",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_country_risk_underconcentration",
+            "prioridad": "baja",
+            "origen": "analytics_v2",
+            "evidence": {"country": "Argentina"},
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_risk_concentration_argentina",
+        "analytics_v2_country_risk_underconcentration",
+    ]
+

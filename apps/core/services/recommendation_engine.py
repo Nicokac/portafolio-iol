@@ -404,6 +404,7 @@ class RecommendationEngine:
     @staticmethod
     def _recommendation_topic_key(recommendation: Dict) -> str:
         recommendation_type = str(recommendation.get("tipo", "")).lower()
+        evidence = recommendation.get("evidence") or {}
         topic_aliases = {
             "liquidez_excesiva": "liquidity_excess",
             "analytics_v2_expected_return_liquidity_drag": "liquidity_excess",
@@ -418,6 +419,24 @@ class RecommendationEngine:
             "riesgo_concentracion_media": "portfolio_concentration",
             "analytics_v2_risk_concentration_top_assets": "portfolio_concentration",
         }
+        if recommendation_type == "analytics_v2_country_risk_overconcentration":
+            country = str(evidence.get("country", "")).strip().lower()
+            if country == "argentina":
+                return "argentina_concentration"
+            if country:
+                return f"country_risk_overconcentration:{country}"
+        if recommendation_type == "analytics_v2_country_risk_underconcentration":
+            country = str(evidence.get("country", "")).strip().lower()
+            if country:
+                return f"country_risk_underconcentration:{country}"
+        if recommendation_type == "analytics_v2_sector_risk_overconcentration":
+            sector = str(evidence.get("sector", "")).strip().lower()
+            if "tecnolog" in sector or "tech" in sector:
+                return "tech_concentration"
+            if sector:
+                return f"sector_risk_overconcentration:{sector}"
+        if recommendation_type == "analytics_v2_risk_concentration_tech":
+            return "tech_concentration"
         return topic_aliases.get(recommendation_type, recommendation_type)
 
     def _recommendation_sort_key(self, recommendation: Dict, index: int) -> tuple:
@@ -436,11 +455,15 @@ class RecommendationEngine:
         specificity_rank = {
             "analytics_v2_local_liquidity_real_carry_negative": 0,
             "analytics_v2_local_country_risk_high": -1,
+            "analytics_v2_country_risk_overconcentration": 0,
+            "analytics_v2_sector_risk_overconcentration": 0,
+            "analytics_v2_country_risk_underconcentration": 0,
             "analytics_v2_local_sovereign_hard_dollar_dependence": 0,
             "analytics_v2_local_sovereign_risk_excess": 0,
             "analytics_v2_local_inflation_hedge_gap": 1,
             "analytics_v2_expected_return_liquidity_drag": 1,
             "analytics_v2_risk_concentration_argentina": 1,
+            "analytics_v2_risk_concentration_tech": 1,
             "liquidez_excesiva": 2,
             "concentracion_argentina_alta": 2,
         }
