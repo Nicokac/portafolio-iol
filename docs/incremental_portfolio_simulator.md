@@ -295,3 +295,37 @@ Limitaciones:
 - resume, no reemplaza el detalle analitico
 - la decision ejecutiva sigue siendo heuristica
 - no persiste una bitacora de estados ejecutivos
+
+## Checklist de adopcion de propuesta incremental
+
+La hoja `Planeacion` agrega un checklist operativo minimo antes de pasar de propuesta a decision manual.
+
+Inputs reutilizados:
+
+- propuesta incremental preferida actual
+- baseline incremental activo
+- drift respecto del baseline
+- alertas livianas de drift
+
+Checks MVP:
+
+- existe propuesta incremental preferida
+- la propuesta tiene compra resumida
+- existe baseline incremental activo
+- el drift no es desfavorable
+- no hay alertas criticas de drift
+
+Salida:
+
+- estado general:
+  - `ready`
+  - `review`
+  - `pending`
+- cantidad de checks aprobados
+- detalle por check
+
+Limitaciones:
+
+- no ejecuta ni bloquea acciones reales
+- no reemplaza criterio humano
+- sigue siendo una validacion operativa simple y heuristica

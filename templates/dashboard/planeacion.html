@@ -444,6 +444,69 @@
         </div>
         <div class="card border-secondary-subtle shadow-sm mb-4">
             <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">Checklist de adopción de propuesta incremental</h5>
+                <small class="text-muted">Validación operativa mínima antes de pasar de propuesta a decisión manual.</small>
+            </div>
+            <div class="card-body border-bottom">
+                <p class="text-muted mb-3">{{ incremental_adoption_checklist.headline }}</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Estado</div>
+                            <div>
+                                <strong>
+                                    {% if incremental_adoption_checklist.status == "ready" %}
+                                    Lista para decision
+                                    {% elif incremental_adoption_checklist.status == "review" %}
+                                    Requiere revision
+                                    {% else %}
+                                    Pendiente
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Checks aprobados</div>
+                            <div><strong>{{ incremental_adoption_checklist.passed_count }}/{{ incremental_adoption_checklist.total_count }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Resultado</div>
+                            <div><strong>{% if incremental_adoption_checklist.adoption_ready %}Adopcion habilitada{% else %}Adopcion no habilitada{% endif %}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Check</th>
+                                <th>Estado</th>
+                                <th>Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in incremental_adoption_checklist.items %}
+                            <tr>
+                                <td>{{ item.label }}</td>
+                                <td>
+                                    {% if item.passed %}
+                                    <span class="badge bg-success">OK</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">Revisar</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small text-muted">{{ item.detail }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-header bg-light border-bottom">
                 <h5 class="mb-0">Resumen ejecutivo de seguimiento incremental</h5>
                 <small class="text-muted">Lectura compacta para decidir si conviene seguir, revisar o fijar referencia sobre la propuesta actual.</small>
             </div>

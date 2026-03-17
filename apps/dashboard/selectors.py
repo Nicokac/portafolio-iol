@@ -2081,6 +2081,73 @@ def get_incremental_followup_executive_summary(
     }
 
 
+def get_incremental_adoption_checklist(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Construye un checklist operativo para decidir adopcion de la propuesta incremental actual."""
+
+    preferred_payload = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=capital_amount)
+    baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
+    drift_payload = get_incremental_baseline_drift(query_params, user=user, capital_amount=capital_amount)
+    executive_payload = get_incremental_followup_executive_summary(query_params, user=user, capital_amount=capital_amount)
+
+    preferred = preferred_payload.get("preferred")
+    baseline = baseline_payload.get("item")
+    drift_status = drift_payload.get("summary", {}).get("status", "unavailable")
+    drift_alerts = list(drift_payload.get("alerts") or [])
+
+    items = [
+        _build_incremental_adoption_check_item(
+            key="preferred_available",
+            label="Existe propuesta incremental preferida",
+            passed=preferred is not None,
+            detail=preferred.get("proposal_label") if preferred else "Todavia no hay propuesta incremental construible.",
+        ),
+        _build_incremental_adoption_check_item(
+            key="purchase_plan_available",
+            label="La propuesta tiene compra resumida",
+            passed=bool((preferred or {}).get("purchase_plan")),
+            detail=_format_incremental_purchase_plan_summary((preferred or {}).get("purchase_plan") or []),
+        ),
+        _build_incremental_adoption_check_item(
+            key="baseline_defined",
+            label="Existe baseline incremental activo",
+            passed=baseline is not None,
+            detail=baseline.get("proposal_label") if baseline else "Conviene fijar una referencia antes de adoptar.",
+        ),
+        _build_incremental_adoption_check_item(
+            key="drift_not_unfavorable",
+            label="El drift no es desfavorable frente al baseline",
+            passed=drift_status != "unfavorable",
+            detail=_format_incremental_followup_status(drift_status),
+        ),
+        _build_incremental_adoption_check_item(
+            key="critical_drift_alerts",
+            label="No hay alertas criticas de drift",
+            passed=not any(alert.get("severity") == "critical" for alert in drift_alerts),
+            detail=_summarize_incremental_drift_alerts(drift_alerts),
+        ),
+    ]
+
+    passed_count = sum(1 for item in items if item["passed"])
+    adoption_ready = all(item["passed"] for item in items[:2]) and items[3]["passed"] and items[4]["passed"]
+    status = "ready" if adoption_ready else "review"
+    if preferred is None:
+        status = "pending"
+
+    return {
+        "status": status,
+        "adoption_ready": adoption_ready,
+        "items": items,
+        "passed_count": passed_count,
+        "total_count": len(items),
+        "headline": _build_incremental_adoption_checklist_headline(status, executive_payload, preferred, baseline),
+    }
+
+
 def get_incremental_snapshot_vs_current_comparison(
     query_params,
     *,
@@ -2438,6 +2505,54 @@ def _format_incremental_followup_status(status: str) -> str:
         "unavailable": "Sin comparacion",
     }
     return mapping.get(status, "Sin clasificar")
+
+
+def _build_incremental_adoption_check_item(*, key: str, label: str, passed: bool, detail: str) -> Dict:
+    return {
+        "key": key,
+        "label": label,
+        "passed": bool(passed),
+        "detail": str(detail or "-"),
+    }
+
+
+def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:
+    if not purchase_plan:
+        return "Sin compra resumida disponible."
+    first_items = [f"{item.get('symbol')} ({item.get('amount')})" for item in purchase_plan[:3] if item.get("symbol")]
+    return ", ".join(first_items) if first_items else "Compra resumida disponible."
+
+
+def _summarize_incremental_drift_alerts(alerts: list[Dict]) -> str:
+    if not alerts:
+        return "Sin alertas activas."
+    critical_titles = [alert.get("title") for alert in alerts if alert.get("severity") == "critical"]
+    if critical_titles:
+        return ", ".join(str(title) for title in critical_titles if title)
+    return f"{len(alerts)} alerta(s) de drift no criticas."
+
+
+def _build_incremental_adoption_checklist_headline(
+    status: str,
+    executive_payload: Dict,
+    preferred: Dict | None,
+    baseline: Dict | None,
+) -> str:
+    if status == "pending":
+        return "Todavia no hay una propuesta incremental lista para pasar por checklist de adopcion."
+    if status == "ready":
+        return (
+            f"La propuesta actual ({preferred['proposal_label']}) supera el checklist operativo y puede "
+            "pasar a decision manual."
+        )
+    if baseline is None:
+        return (
+            f"La propuesta actual ({preferred['proposal_label']}) todavia requiere contexto adicional: "
+            "conviene fijar un baseline antes de adoptarla."
+        )
+    return executive_payload.get("headline") or (
+        f"La propuesta actual ({preferred['proposal_label']}) todavia requiere revision antes de adopcion."
+    )
 
 
 def _build_incremental_snapshot_reapply_payload(item: Dict) -> Dict:

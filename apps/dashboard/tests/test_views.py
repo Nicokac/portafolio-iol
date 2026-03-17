@@ -773,6 +773,20 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_adoption_checklist',
+            lambda query_params, user, capital_amount=600000: {
+                'status': 'ready',
+                'adoption_ready': True,
+                'passed_count': 5,
+                'total_count': 5,
+                'headline': 'La propuesta actual supera el checklist operativo y puede pasar a decision manual.',
+                'items': [
+                    {'label': 'Existe propuesta incremental preferida', 'passed': True, 'detail': 'Split KO + MCD'},
+                    {'label': 'La propuesta tiene compra resumida', 'passed': True, 'detail': 'KO (150000), MCD (150000)'},
+                ],
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_baseline_drift',
             lambda query_params, user, capital_amount=600000: {
                 'baseline': {'proposal_label': 'Plan baseline'},
@@ -866,6 +880,9 @@ class TestDashboardView:
         assert 'Fragility' in body
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
+        assert 'Checklist de adopción de propuesta incremental' in body
+        assert 'La propuesta actual supera el checklist operativo y puede pasar a decision manual.' in body
+        assert 'Adopcion habilitada' in body
         assert 'Resumen ejecutivo de seguimiento incremental' in body
         assert 'La propuesta actual se mantiene alineada con el baseline activo.' in body
         assert 'Baseline incremental de seguimiento' in body

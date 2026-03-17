@@ -34,6 +34,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_tracking_baseline,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
+    get_incremental_adoption_checklist,
     get_incremental_snapshot_vs_current_comparison,
     get_candidate_split_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
@@ -1707,6 +1708,84 @@ class TestDashboardSelectors(TestCase):
         assert detail["status"] == "pending"
         assert detail["has_summary"] is False
         assert "Todavia no hay una propuesta incremental preferida" in detail["headline"]
+
+    def test_get_incremental_adoption_checklist_marks_review_when_drift_is_unfavorable(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Propuesta actual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 300000}],
+                    }
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": {"proposal_label": "Baseline activo"}, "has_baseline": True},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={
+                    "summary": {"status": "unfavorable"},
+                    "alerts": [{"severity": "critical", "title": "Drift critico"}],
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                return_value={"headline": "Conviene revisarla antes de adoptarla."},
+            ),
+        ):
+            detail = get_incremental_adoption_checklist({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["status"] == "review"
+        assert detail["adoption_ready"] is False
+        assert detail["passed_count"] == 3
+        checks = {item["key"]: item for item in detail["items"]}
+        assert checks["preferred_available"]["passed"] is True
+        assert checks["purchase_plan_available"]["passed"] is True
+        assert checks["drift_not_unfavorable"]["passed"] is False
+        assert checks["critical_drift_alerts"]["passed"] is False
+
+    def test_get_incremental_adoption_checklist_marks_ready_when_checks_pass(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Propuesta actual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 300000}],
+                    }
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": {"proposal_label": "Baseline activo"}, "has_baseline": True},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={
+                    "summary": {"status": "favorable"},
+                    "alerts": [{"severity": "info", "title": "Sin drift material"}],
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                return_value={"headline": "La propuesta actual supera el checklist."},
+            ),
+        ):
+            detail = get_incremental_adoption_checklist({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["status"] == "ready"
+        assert detail["adoption_ready"] is True
+        assert detail["passed_count"] == 5
+        assert "puede pasar a decision manual" in detail["headline"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

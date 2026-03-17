@@ -48,6 +48,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_tracking_baseline,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
+    get_incremental_adoption_checklist,
     get_incremental_snapshot_vs_current_comparison,
     get_macro_local_context,
     get_manual_incremental_portfolio_simulation_comparison,
@@ -219,6 +220,11 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
             user=self.request.user,
         )
         context['incremental_followup_executive_summary'] = get_incremental_followup_executive_summary(
+            self.request.GET,
+            user=self.request.user,
+            capital_amount=600000,
+        )
+        context['incremental_adoption_checklist'] = get_incremental_adoption_checklist(
             self.request.GET,
             user=self.request.user,
             capital_amount=600000,
