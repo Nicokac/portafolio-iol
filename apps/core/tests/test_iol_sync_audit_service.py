@@ -206,19 +206,10 @@ class TestIOLSyncAuditService:
 
     def test_audit_operations_handles_naive_datetime(self):
         stale_time = timezone.now().replace(tzinfo=None) - timedelta(days=2)
-        OperacionIOL.objects.create(
-            numero="abc-3",
-            fecha_orden=stale_time,
-            tipo="Compra",
-            estado="Terminada",
-            mercado="BCBA",
-            simbolo="SPY",
-            cantidad=1,
-            monto=100,
-            modalidad="precio_limite",
-        )
+        with patch("apps.core.services.iol_sync_audit.OperacionIOL.objects") as operation_objects:
+            operation_objects.order_by.return_value.first.return_value = MagicMock(fecha_orden=stale_time)
 
-        result = IOLSyncAuditService._audit_operations(timezone.now() - timedelta(hours=24))
+            result = IOLSyncAuditService._audit_operations(timezone.now() - timedelta(hours=24))
 
         assert result["status"] == "warning"
         assert result["reason"] == "stale_operations"
