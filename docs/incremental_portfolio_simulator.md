@@ -123,3 +123,25 @@ Reglas del MVP:
 - usa una prioridad explicita para desempates
 - si hay comparacion manual valida, puede prevalecer como override funcional
 - no recalcula simulaciones nuevas fuera de las ya expuestas por cada comparador
+
+## Historial persistente de propuestas
+
+La hoja `Planeacion` permite guardar explicitamente la propuesta incremental preferida actual.
+
+Reglas del modulo:
+
+- el guardado se ejecuta solo por `POST`
+- la propuesta se recalcula desde el querystring actual para no confiar en payloads armados en cliente
+- se persiste un snapshot liviano por usuario con:
+  - origen
+  - etiqueta de propuesta
+  - compra resumida
+  - deltas principales
+  - interpretacion
+- se conserva un historial corto por usuario
+
+Limitaciones:
+
+- no persiste comparadores completos ni variantes descartadas
+- no hay versionado profundo ni restauracion automatica
+- el historial es operativo y breve, no una bitacora completa de decisiones

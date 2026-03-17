@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.test import Client
 from django.urls import reverse
 
-from apps.core.models import SensitiveActionAudit
+from apps.core.models import IncrementalProposalSnapshot, SensitiveActionAudit
 
 
 @pytest.mark.django_db
@@ -720,6 +720,27 @@ class TestDashboardView:
                 'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_proposal_history',
+            lambda user, limit=5: {
+                'items': [
+                    {
+                        'proposal_label': 'Plan guardado 1',
+                        'source_label': 'Comparador manual',
+                        'selected_context': 'Plan manual enviado por el usuario',
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
+                        'simulation_delta': {
+                            'expected_return_change': 0.4,
+                            'fragility_change': -1.5,
+                            'scenario_loss_change': 0.3,
+                        },
+                        'created_at': '2026-03-17 11:00',
+                    }
+                ],
+                'count': 1,
+                'has_history': True,
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -738,6 +759,9 @@ class TestDashboardView:
         assert 'Expected return' in body
         assert 'Fragility' in body
         assert 'Propuesta incremental preferida' in body
+        assert 'Guardar propuesta preferida' in body
+        assert 'Historial reciente de propuestas guardadas' in body
+        assert 'Plan guardado 1' in body
         assert 'Comparador por split' in body
         assert 'Split KO + MCD' in body
         assert 'Comparador de propuestas incrementales' in body
@@ -754,6 +778,64 @@ class TestDashboardView:
         assert 'Plan manual B' in body
         assert 'Comparar planes manuales' in body
         assert 'Mejor balance manual' in body
+
+    def test_save_incremental_proposal_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:save_incremental_proposal'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    def test_save_incremental_proposal_persists_snapshot(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
+            lambda query_params, capital_amount=600000: {
+                'preferred': {
+                    'source_key': 'manual_plan',
+                    'source_label': 'Comparador manual',
+                    'proposal_key': 'plan_a',
+                    'proposal_label': 'Plan manual A',
+                    'selected_context': 'Plan manual enviado por el usuario',
+                    'comparison_score': 5.4,
+                    'purchase_plan': [
+                        {'symbol': 'KO', 'amount': 300000},
+                        {'symbol': 'MCD', 'amount': 300000},
+                    ],
+                    'simulation': {
+                        'delta': {'expected_return_change': 0.7, 'fragility_change': -3.8},
+                        'interpretation': 'Plan manual A reduce mejor la fragilidad.',
+                    },
+                },
+                'explanation': 'Sintesis manual.',
+            },
+        )
+
+        response = auth_client.post(
+            reverse('dashboard:save_incremental_proposal'),
+            {'source_query': 'manual_compare=1'},
+        )
+
+        assert response.status_code == 302
+        snapshot = IncrementalProposalSnapshot.objects.get()
+        assert snapshot.proposal_label == 'Plan manual A'
+        audit = SensitiveActionAudit.objects.get(action='save_incremental_proposal')
+        assert audit.status == 'success'
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Propuesta incremental guardada' in str(message) for message in messages)
+
+    def test_save_incremental_proposal_rejects_missing_preferred(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
+            lambda query_params, capital_amount=600000: {
+                'preferred': None,
+                'explanation': 'Sin propuesta.',
+            },
+        )
+
+        response = auth_client.post(reverse('dashboard:save_incremental_proposal'), {'source_query': ''})
+
+        assert response.status_code == 302
+        assert IncrementalProposalSnapshot.objects.count() == 0
+        audit = SensitiveActionAudit.objects.get(action='save_incremental_proposal')
+        assert audit.status == 'denied'
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

@@ -1,0 +1,86 @@
+import pytest
+from django.contrib.auth.models import AnonymousUser, User
+
+from apps.core.models import IncrementalProposalSnapshot
+from apps.core.services.incremental_proposal_history_service import IncrementalProposalHistoryService
+
+
+@pytest.mark.django_db
+def test_save_preferred_proposal_persists_snapshot():
+    user = User.objects.create_user(username="history-user", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    saved = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan manual A",
+            "selected_context": "Plan manual enviado por el usuario",
+            "comparison_score": 4.5,
+            "purchase_plan": [{"symbol": "ko", "amount": 200000}, {"symbol": "mcd", "amount": 200000}],
+            "simulation": {
+                "delta": {"expected_return_change": 0.12, "fragility_change": -0.3},
+                "interpretation": "Mejora el balance defensivo.",
+            },
+        },
+        explanation="Sintesis preferida.",
+        capital_amount=600000,
+    )
+
+    snapshot = IncrementalProposalSnapshot.objects.get()
+    assert saved["proposal_label"] == "Plan manual A"
+    assert snapshot.user == user
+    assert snapshot.purchase_plan[0]["symbol"] == "KO"
+    assert float(snapshot.capital_amount) == 600000.0
+    assert snapshot.simulation_delta["fragility_change"] == -0.3
+
+
+@pytest.mark.django_db
+def test_save_preferred_proposal_prunes_old_history():
+    user = User.objects.create_user(username="history-prune", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    for index in range(12):
+        service.save_preferred_proposal(
+            user=user,
+            preferred_payload={
+                "source_key": "automatic_variants",
+                "source_label": "Comparador automatico",
+                "proposal_key": f"plan_{index}",
+                "proposal_label": f"Plan {index}",
+                "purchase_plan": [{"symbol": "SPY", "amount": 100000}],
+                "simulation": {"delta": {}, "interpretation": ""},
+            },
+            capital_amount=100000,
+        )
+
+    labels = list(
+        IncrementalProposalSnapshot.objects.filter(user=user)
+        .order_by("-created_at")
+        .values_list("proposal_label", flat=True)
+    )
+    assert len(labels) == service.MAX_SNAPSHOTS_PER_USER
+    assert "Plan 11" in labels
+    assert "Plan 1" not in labels
+
+
+@pytest.mark.django_db
+def test_list_recent_returns_empty_for_anonymous_user():
+    service = IncrementalProposalHistoryService()
+
+    assert service.list_recent(user=AnonymousUser(), limit=5) == []
+
+
+@pytest.mark.django_db
+def test_save_preferred_proposal_rejects_empty_purchase_plan():
+    user = User.objects.create_user(username="history-empty", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    with pytest.raises(ValueError):
+        service.save_preferred_proposal(
+            user=user,
+            preferred_payload={"proposal_label": "Sin compra", "purchase_plan": []},
+            capital_amount=0,
+        )

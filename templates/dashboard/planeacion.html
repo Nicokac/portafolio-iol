@@ -373,6 +373,11 @@
             <div class="card-body">
                 <p class="text-muted mb-3">{{ preferred_incremental_portfolio_proposal.explanation }}</p>
                 {% if preferred_incremental_portfolio_proposal.preferred %}
+                <form method="post" action="{% url 'dashboard:save_incremental_proposal' %}" class="mb-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="source_query" value="{{ request.GET.urlencode }}">
+                    <button type="submit" class="btn btn-outline-success btn-sm">Guardar propuesta preferida</button>
+                </form>
                 <div class="row g-3 mb-3">
                     <div class="col-lg-4">
                         <div class="border rounded p-3 h-100">
@@ -434,6 +439,55 @@
                 <div class="small text-muted mt-3">{{ preferred_incremental_portfolio_proposal.preferred.simulation.interpretation }}</div>
                 {% else %}
                 <div class="text-muted">Todavía no hay una propuesta incremental preferida disponible.</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card border-secondary-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
+                <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>
+            </div>
+            <div class="card-body">
+                {% if incremental_proposal_history.has_history %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Propuesta</th>
+                                <th>Origen</th>
+                                <th>Compra resumida</th>
+                                <th class="text-end">Δ Expected</th>
+                                <th class="text-end">Δ Fragility</th>
+                                <th class="text-end">Δ Worst Scenario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in incremental_proposal_history.items %}
+                            <tr>
+                                <td>{{ item.created_at|date:"d M Y H:i" }}</td>
+                                <td>
+                                    <strong>{{ item.proposal_label }}</strong>
+                                    {% if item.selected_context %}
+                                    <div class="small text-muted">{{ item.selected_context }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.source_label|default:"-" }}</td>
+                                <td>
+                                    {% for purchase in item.purchase_plan %}
+                                    <div class="small">{{ purchase.symbol }} · {{ purchase.amount|currency:0 }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-end">{{ item.simulation_delta.expected_return_change|default:"-" }}</td>
+                                <td class="text-end">{{ item.simulation_delta.fragility_change|default:"-" }}</td>
+                                <td class="text-end">{{ item.simulation_delta.scenario_loss_change|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted">Todavía no guardaste propuestas incrementales preferidas.</div>
                 {% endif %}
             </div>
         </div>

@@ -30,6 +30,7 @@ from apps.dashboard.selectors import (
     get_incremental_portfolio_simulation_comparison,
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
+    get_incremental_proposal_history,
     get_candidate_split_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
     get_candidate_asset_ranking,
@@ -1462,6 +1463,24 @@ class TestDashboardSelectors(TestCase):
             detail = get_preferred_incremental_portfolio_proposal({})
 
         assert detail["preferred"] is None
+
+    def test_get_incremental_proposal_history_wraps_recent_items(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {"proposal_label": "Plan manual A"},
+                {"proposal_label": "Split KO + MCD"},
+            ],
+        ) as mocked:
+            detail = get_incremental_proposal_history(user=DummyUser(), limit=5)
+
+        mocked.assert_called_once()
+        assert detail["count"] == 2
+        assert detail["has_history"] is True
+        assert detail["items"][0]["proposal_label"] == "Plan manual A"
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

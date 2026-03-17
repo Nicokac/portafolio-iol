@@ -20,6 +20,7 @@ from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.candidate_asset_ranking_service import CandidateAssetRankingService
 from apps.core.services.incremental_portfolio_simulator import IncrementalPortfolioSimulator
+from apps.core.services.incremental_proposal_history_service import IncrementalProposalHistoryService
 from apps.core.services.monthly_allocation_service import MonthlyAllocationService
 from apps.core.services.analytics_v2 import (
     AnalyticsExplanationService,
@@ -1972,6 +1973,17 @@ def get_preferred_incremental_portfolio_proposal(
         "preferred": best,
         "has_manual_override": bool(manual.get("submitted") and manual.get("proposals")),
         "explanation": _build_preferred_incremental_explanation(best, manual),
+    }
+
+
+def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
+    """Retorna historial reciente de propuestas incrementales guardadas por el usuario."""
+
+    items = IncrementalProposalHistoryService().list_recent(user=user, limit=limit)
+    return {
+        "items": items,
+        "count": len(items),
+        "has_history": bool(items),
     }
 
 

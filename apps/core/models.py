@@ -234,13 +234,47 @@ class SensitiveActionAudit(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-created_at", "-id"]
         verbose_name = "Sensitive action audit"
         verbose_name_plural = "Sensitive action audits"
 
     def __str__(self):
         username = self.user.username if self.user else "anonymous"
         return f"{self.action} [{self.status}] by {username}"
+
+
+class IncrementalProposalSnapshot(models.Model):
+    """Snapshot persistente de una propuesta incremental elegida desde Planeacion."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="incremental_proposal_snapshots",
+    )
+    source_key = models.CharField(max_length=64)
+    source_label = models.CharField(max_length=120)
+    proposal_key = models.CharField(max_length=64)
+    proposal_label = models.CharField(max_length=160)
+    selected_context = models.CharField(max_length=160, blank=True, default="")
+    capital_amount = models.DecimalField(max_digits=18, decimal_places=2)
+    comparison_score = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    purchase_plan = models.JSONField(default=list, blank=True)
+    simulation_delta = models.JSONField(default=dict, blank=True)
+    simulation_interpretation = models.TextField(blank=True, default="")
+    explanation = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["source_key", "created_at"]),
+        ]
+        verbose_name = "Incremental proposal snapshot"
+        verbose_name_plural = "Incremental proposal snapshots"
+
+    def __str__(self):
+        return f"{self.user_id}:{self.proposal_label} ({self.source_key})"
 
 
 class BenchmarkSnapshot(models.Model):

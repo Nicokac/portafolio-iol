@@ -4,8 +4,9 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django_celery_beat.models import PeriodicTask
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.contrib.auth.views import redirect_to_login
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
@@ -19,6 +20,7 @@ from apps.core.services.observability import record_state
 from apps.core.services.pipeline_observability_service import PipelineObservabilityService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
+from apps.core.services.incremental_proposal_history_service import IncrementalProposalHistoryService
 from apps.core.services.security_audit import record_sensitive_action
 from apps.dashboard.selectors import (
     get_analytics_v2_dashboard_summary,
@@ -42,6 +44,7 @@ from apps.dashboard.selectors import (
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
     get_expected_return_detail,
+    get_incremental_proposal_history,
     get_macro_local_context,
     get_manual_incremental_portfolio_simulation_comparison,
     get_monthly_allocation_plan,
@@ -204,6 +207,10 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
             self.request.GET,
             capital_amount=600000,
         )
+        context['incremental_proposal_history'] = get_incremental_proposal_history(
+            user=self.request.user,
+            limit=5,
+        )
         return context
 
 
@@ -267,6 +274,60 @@ class SetPreferencesView(LoginRequiredMixin, TemplateView):
             next_url = '/'
 
         return redirect(next_url)
+
+
+class SavePreferredIncrementalProposalView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        source_query = request.POST.get('source_query', '')
+        query_params = QueryDict(source_query, mutable=False)
+        detail = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=600000)
+        preferred = detail.get('preferred')
+        redirect_url = reverse('dashboard:planeacion')
+        if source_query:
+            redirect_url = f"{redirect_url}?{source_query}#planeacion-aportes"
+        else:
+            redirect_url = f"{redirect_url}#planeacion-aportes"
+
+        if not preferred:
+            record_sensitive_action(
+                request,
+                action='save_incremental_proposal',
+                status='denied',
+                details={'reason': 'missing_preferred_proposal'},
+            )
+            messages.error(request, "No hay una propuesta incremental preferida construible para guardar.")
+            return redirect(redirect_url)
+
+        try:
+            saved = IncrementalProposalHistoryService().save_preferred_proposal(
+                user=request.user,
+                preferred_payload=preferred,
+                explanation=detail.get('explanation', ''),
+                capital_amount=600000,
+            )
+        except ValueError as exc:
+            record_sensitive_action(
+                request,
+                action='save_incremental_proposal',
+                status='failed',
+                details={'reason': str(exc)},
+            )
+            messages.error(request, "No fue posible guardar la propuesta incremental actual.")
+            return redirect(redirect_url)
+
+        record_sensitive_action(
+            request,
+            action='save_incremental_proposal',
+            status='success',
+            details={
+                'proposal_label': saved['proposal_label'],
+                'source_key': saved['source_key'],
+            },
+        )
+        messages.success(request, f"Propuesta incremental guardada: {saved['proposal_label']}.")
+        return redirect(redirect_url)
 
 
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
