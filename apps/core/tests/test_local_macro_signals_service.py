@@ -163,6 +163,7 @@ def test_local_macro_signals_detects_single_name_concentration_in_local_sovereig
     positions = [
         build_position(symbol="GD30", market_value=300.0, sector="Soberano", country="Argentina", asset_type="bond"),
         build_position(symbol="AL30", market_value=120.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="TZX26", market_value=80.0, sector="CER", country="Argentina", asset_type="bond"),
         build_position(symbol="SPY", market_value=580.0, sector="Indice", country="USA", asset_type="equity", strategic_bucket="Growth", patrimonial_type="Equity", currency="USD"),
     ]
     positions_loader = Mock()
@@ -185,8 +186,14 @@ def test_local_macro_signals_detects_single_name_concentration_in_local_sovereig
     assert result["summary"]["top_local_sovereign_symbol"] == "GD30"
     assert result["summary"]["local_sovereign_symbols_count"] == 2
     assert result["summary"]["top_local_sovereign_share_pct"] == 71.43
+    assert result["summary"]["local_sovereign_concentration_hhi"] == 5918.49
+    assert result["summary"]["local_hard_dollar_bond_weight_pct"] == 38.89
+    assert result["summary"]["local_cer_bond_weight_pct"] == 7.41
+    assert result["summary"]["local_hard_dollar_share_pct"] == 84.0
+    assert result["summary"]["local_cer_share_pct"] == 16.0
     keyed = {signal["signal_key"]: signal for signal in signals}
     assert "local_sovereign_single_name_concentration" in keyed
+    assert "local_sovereign_hard_dollar_dependence" in keyed
     assert keyed["local_sovereign_single_name_concentration"]["evidence"]["top_local_sovereign_symbol"] == "GD30"
 
 

@@ -500,6 +500,11 @@ class RecommendationEngine:
                 "Reducir dependencia de un solo bono soberano dentro del bloque argentino",
                 "Distribuir el riesgo local entre instrumentos con drivers distintos si la convicción sigue siendo local",
             ]
+        if "hard_dollar" in key and "sovereign" in key:
+            return [
+                "Revisar si el bloque de renta fija local depende demasiado de soberanos hard dollar",
+                "Balancear el bloque local con CER u otras exposiciones argentinas menos correlacionadas",
+            ]
         if "inflation_hedge" in key:
             return [
                 "Evaluar si la cobertura CER es suficiente para la exposición argentina actual",

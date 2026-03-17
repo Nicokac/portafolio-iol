@@ -263,10 +263,38 @@
                             </td>
                         </tr>
                         <tr>
+                            <td><strong>Peso soberano local</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.local_macro.sovereign_bond_weight_pct|default:0|pct:1 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nombres soberanos</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.local_macro.local_sovereign_symbols_count|default:0 }}</td>
+                        </tr>
+                        <tr>
                             <td><strong>Top soberano local</strong></td>
                             <td class="text-end">
                                 {% if analytics_v2_summary.local_macro.top_local_sovereign_symbol %}
                                 {{ analytics_v2_summary.local_macro.top_local_sovereign_symbol }} ({{ analytics_v2_summary.local_macro.top_local_sovereign_share_pct|default:0|pct:0 }} bloque)
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Concentración bloque soberano</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.local_sovereign_concentration_hhi is not None %}
+                                HHI {{ analytics_v2_summary.local_macro.local_sovereign_concentration_hhi|floatformat:0 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Split hard dollar / CER</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.local_hard_dollar_share_pct is not None %}
+                                {{ analytics_v2_summary.local_macro.local_hard_dollar_share_pct|default:0|pct:0 }} / {{ analytics_v2_summary.local_macro.local_cer_share_pct|default:0|pct:0 }}
                                 {% else %}
                                 -
                                 {% endif %}

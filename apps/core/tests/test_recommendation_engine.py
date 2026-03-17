@@ -286,6 +286,20 @@ def test_build_signal_actions_returns_single_name_sovereign_actions(engine):
     ]
 
 
+def test_build_signal_actions_returns_hard_dollar_sovereign_actions(engine):
+    actions = engine._build_signal_actions(
+        {
+            "signal_key": "local_sovereign_hard_dollar_dependence",
+            "affected_scope": "portfolio",
+        }
+    )
+
+    assert actions == [
+        "Revisar si el bloque de renta fija local depende demasiado de soberanos hard dollar",
+        "Balancear el bloque local con CER u otras exposiciones argentinas menos correlacionadas",
+    ]
+
+
 def test_analyze_analytics_v2_includes_local_macro_signals(engine, monkeypatch):
     monkeypatch.setattr(engine, "_build_risk_contribution_signals", lambda: [])
     monkeypatch.setattr(

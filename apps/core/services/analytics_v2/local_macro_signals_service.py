@@ -22,6 +22,7 @@ class LocalMacroSignalsService:
     VERY_HIGH_COUNTRY_RISK_THRESHOLD = 1400.0
     HIGH_SINGLE_SOVEREIGN_SHARE_THRESHOLD = 45.0
     VERY_HIGH_SINGLE_SOVEREIGN_SHARE_THRESHOLD = 60.0
+    HIGH_HARD_DOLLAR_SHARE_THRESHOLD = 70.0
 
     def __init__(
         self,
@@ -75,8 +76,15 @@ class LocalMacroSignalsService:
             total_market_value,
             predicate=lambda position: (position.sector or "").strip().lower() == "soberano",
         )
+        cer_local_bond_weight_pct = self._weight_pct(
+            positions,
+            total_market_value,
+            predicate=lambda position: self._is_local_cer_bond(position),
+        )
         sovereign_positions = self._build_local_sovereign_breakdown(positions, total_market_value)
         top_local_sovereign = sovereign_positions[0] if sovereign_positions else None
+        sovereign_block_hhi = self._calculate_concentration_hhi(sovereign_positions, key="share_pct")
+        local_duration_split = self._build_local_duration_split(positions, total_market_value)
 
         badlar_pct = self._as_float(context.get("badlar_privada"))
         ipc_yoy_pct = self._as_float(context.get("ipc_nacional_variation_yoy"))
@@ -104,10 +112,15 @@ class LocalMacroSignalsService:
                 "cer_weight_pct": round(cer_weight_pct, 2),
                 "argentina_bond_weight_pct": round(argentina_bond_weight_pct, 2),
                 "sovereign_bond_weight_pct": round(sovereign_bond_weight_pct, 2),
+                "local_hard_dollar_bond_weight_pct": round(sovereign_bond_weight_pct, 2),
+                "local_cer_bond_weight_pct": round(cer_local_bond_weight_pct, 2),
+                "local_hard_dollar_share_pct": local_duration_split["hard_dollar_share_pct"],
+                "local_cer_share_pct": local_duration_split["cer_share_pct"],
                 "top_local_sovereign_symbol": top_local_sovereign["symbol"] if top_local_sovereign else None,
                 "top_local_sovereign_weight_pct": top_local_sovereign["weight_pct"] if top_local_sovereign else None,
                 "top_local_sovereign_share_pct": top_local_sovereign["share_pct"] if top_local_sovereign else None,
                 "local_sovereign_symbols_count": len(sovereign_positions),
+                "local_sovereign_concentration_hhi": sovereign_block_hhi,
                 "local_sovereign_breakdown": sovereign_positions[:3],
                 "badlar_pct": round(badlar_pct, 2) if badlar_pct is not None else None,
                 "ipc_yoy_pct": round(ipc_yoy_pct, 2) if ipc_yoy_pct is not None else None,
@@ -146,6 +159,9 @@ class LocalMacroSignalsService:
         cer_weight_pct = float(summary.get("cer_weight_pct") or 0.0)
         argentina_bond_weight_pct = float(summary.get("argentina_bond_weight_pct") or 0.0)
         sovereign_bond_weight_pct = float(summary.get("sovereign_bond_weight_pct") or 0.0)
+        local_hard_dollar_bond_weight_pct = float(summary.get("local_hard_dollar_bond_weight_pct") or 0.0)
+        local_cer_bond_weight_pct = float(summary.get("local_cer_bond_weight_pct") or 0.0)
+        local_hard_dollar_share_pct = summary.get("local_hard_dollar_share_pct")
         top_local_sovereign_symbol = summary.get("top_local_sovereign_symbol")
         top_local_sovereign_weight_pct = summary.get("top_local_sovereign_weight_pct")
         top_local_sovereign_share_pct = summary.get("top_local_sovereign_share_pct")
@@ -265,6 +281,28 @@ class LocalMacroSignalsService:
             )
 
         if (
+            local_hard_dollar_share_pct is not None
+            and sovereign_bond_weight_pct >= self.HIGH_SOVEREIGN_RISK_THRESHOLD
+            and float(local_hard_dollar_share_pct) >= self.HIGH_HARD_DOLLAR_SHARE_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_sovereign_hard_dollar_dependence",
+                    severity="medium",
+                    title="Bloque soberano local sesgado a hard dollar",
+                    description=(
+                        "Dentro de la renta fija local predomina la exposicion a soberanos hard dollar frente a CER."
+                    ),
+                    affected_scope="portfolio",
+                    evidence={
+                        "local_hard_dollar_bond_weight_pct": round(local_hard_dollar_bond_weight_pct, 2),
+                        "local_cer_bond_weight_pct": round(local_cer_bond_weight_pct, 2),
+                        "local_hard_dollar_share_pct": round(float(local_hard_dollar_share_pct), 2),
+                    },
+                )
+            )
+
+        if (
             riesgo_pais_arg is not None
             and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
             and sovereign_bond_weight_pct >= self.HIGH_SOVEREIGN_RISK_THRESHOLD
@@ -324,6 +362,49 @@ class LocalMacroSignalsService:
                 }
             )
         return sorted(rows, key=lambda item: item["weight_pct"], reverse=True)
+
+    @staticmethod
+    def _build_local_duration_split(positions, total_market_value: float) -> dict:
+        if total_market_value <= 0:
+            return {"hard_dollar_share_pct": None, "cer_share_pct": None}
+
+        hard_dollar_value = sum(
+            float(position.market_value)
+            for position in positions
+            if (position.sector or "").strip().lower() == "soberano"
+            and (position.country or "").strip().lower() == "argentina"
+            and (position.asset_type or "").strip().lower() == "bond"
+        )
+        cer_value = sum(
+            float(position.market_value)
+            for position in positions
+            if LocalMacroSignalsService._is_local_cer_bond(position)
+        )
+        total_local_duration = hard_dollar_value + cer_value
+        if total_local_duration <= 0:
+            return {"hard_dollar_share_pct": None, "cer_share_pct": None}
+
+        return {
+            "hard_dollar_share_pct": round((hard_dollar_value / total_local_duration) * 100.0, 2),
+            "cer_share_pct": round((cer_value / total_local_duration) * 100.0, 2),
+        }
+
+    @staticmethod
+    def _calculate_concentration_hhi(items: list[dict], *, key: str) -> float | None:
+        if not items:
+            return None
+        shares = [float(item.get(key) or 0.0) / 100.0 for item in items]
+        if not any(shares):
+            return None
+        return round(sum((share ** 2) for share in shares) * 10000, 2)
+
+    @staticmethod
+    def _is_local_cer_bond(position) -> bool:
+        return (
+            (position.sector or "").strip().lower() == "cer"
+            and (position.country or "").strip().lower() == "argentina"
+            and (position.asset_type or "").strip().lower() == "bond"
+        )
 
     @staticmethod
     def _as_float(value):
