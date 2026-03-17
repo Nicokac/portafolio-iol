@@ -54,6 +54,12 @@ En `Planeación`, el MVP se usa con una regla simple:
 3. construir un `purchase_plan` default
 4. mostrar comparaciÃ³n `before/after` server-rendered
 
+El comparador incremental agrega variantes simples sobre la misma base:
+
+- top candidato por bloque
+- segundo candidato si existe
+- split del bloque mÃ¡s grande entre top 2 candidatos
+
 ## Limitaciones
 
 - simula un Ãºnico plan de compra por vez

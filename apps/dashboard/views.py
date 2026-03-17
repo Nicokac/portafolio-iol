@@ -44,6 +44,7 @@ from apps.dashboard.selectors import (
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
     get_incremental_portfolio_simulation,
+    get_incremental_portfolio_simulation_comparison,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
     get_stress_fragility_detail,
@@ -178,6 +179,7 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         context['monthly_allocation_plan'] = get_monthly_allocation_plan(capital_amount=600000)
         context['candidate_asset_ranking'] = get_candidate_asset_ranking(capital_amount=600000)
         context['incremental_portfolio_simulation'] = get_incremental_portfolio_simulation(capital_amount=600000)
+        context['incremental_portfolio_simulation_comparison'] = get_incremental_portfolio_simulation_comparison(capital_amount=600000)
         return context
 
 

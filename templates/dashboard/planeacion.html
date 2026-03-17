@@ -365,6 +365,65 @@
                 {% endif %}
             </div>
         </div>
+        <div class="card border-primary-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Comparador de propuestas incrementales</h5>
+                <small class="text-muted">Contraste simple entre variantes del mismo aporte mensual usando el simulador incremental.</small>
+            </div>
+            <div class="card-body">
+                {% if incremental_portfolio_simulation_comparison.best_label %}
+                <p class="text-muted mb-3">Mejor balance actual: <strong>{{ incremental_portfolio_simulation_comparison.best_label }}</strong></p>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Propuesta</th>
+                                <th>Compra resumida</th>
+                                <th class="text-end">Δ Expected</th>
+                                <th class="text-end">Δ Fragility</th>
+                                <th class="text-end">Δ Worst Scenario</th>
+                                <th class="text-end">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proposal in incremental_portfolio_simulation_comparison.proposals %}
+                            <tr {% if proposal.proposal_key == incremental_portfolio_simulation_comparison.best_proposal_key %}class="table-success"{% endif %}>
+                                <td>
+                                    <strong>{{ proposal.label }}</strong>
+                                    {% if proposal.proposal_key == incremental_portfolio_simulation_comparison.best_proposal_key %}
+                                    <span class="badge bg-success ms-1">Mejor balance</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if proposal.selected_candidates %}
+                                    {% for item in proposal.selected_candidates %}
+                                    <div class="small">{{ item.symbol }} · {{ item.amount|currency:0 }}</div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <span class="text-muted">Sin propuesta construible</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ proposal.simulation.delta.expected_return_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.fragility_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.scenario_loss_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.comparison_score|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="6" class="bg-light">
+                                    <div class="small text-muted">{{ proposal.simulation.interpretation }}</div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-muted">Sin propuestas comparables disponibles.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card">

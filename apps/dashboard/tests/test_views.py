@@ -483,6 +483,51 @@ class TestDashboardView:
                 'unmapped_blocks': [],
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_portfolio_simulation_comparison',
+            lambda capital_amount=600000: {
+                'capital_amount': float(capital_amount),
+                'best_proposal_key': 'split_largest_block_top_two',
+                'best_label': 'Split del bloque más grande',
+                'proposals': [
+                    {
+                        'proposal_key': 'split_largest_block_top_two',
+                        'label': 'Split del bloque más grande',
+                        'selected_candidates': [
+                            {'symbol': 'KO', 'amount': 175000},
+                            {'symbol': 'PEP', 'amount': 175000},
+                            {'symbol': 'SPY', 'amount': 250000},
+                        ],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.7,
+                                'fragility_change': -4.0,
+                                'scenario_loss_change': 0.9,
+                            },
+                            'interpretation': 'Mejor equilibrio defensivo.',
+                        },
+                        'comparison_score': 5.1,
+                    },
+                    {
+                        'proposal_key': 'top_candidate_per_block',
+                        'label': 'Top candidato por bloque',
+                        'selected_candidates': [
+                            {'symbol': 'KO', 'amount': 350000},
+                            {'symbol': 'SPY', 'amount': 250000},
+                        ],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.6,
+                                'fragility_change': -3.5,
+                                'scenario_loss_change': 0.8,
+                            },
+                            'interpretation': 'Alternativa base.',
+                        },
+                        'comparison_score': 4.3,
+                    },
+                ],
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -500,6 +545,9 @@ class TestDashboardView:
         assert 'La compra reduce la fragilidad del portafolio.' in body
         assert 'Expected return' in body
         assert 'Fragility' in body
+        assert 'Comparador de propuestas incrementales' in body
+        assert 'Split del bloque más grande' in body
+        assert 'Mejor balance' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

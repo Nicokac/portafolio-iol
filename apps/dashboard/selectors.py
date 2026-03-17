@@ -1511,48 +1511,13 @@ def get_incremental_portfolio_simulation(capital_amount: int | float = 600000) -
     def build():
         monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
         candidate_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
-
-        by_block = {
-            str(item.get("block") or ""): item
-            for item in candidate_ranking.get("by_block", [])
-        }
-        purchase_amounts: Dict[str, float] = {}
-        selected_candidates = []
-        unmapped_blocks = []
-
-        for block in monthly_plan.get("recommended_blocks", []):
-            bucket = str(block.get("bucket") or "")
-            amount = float(block.get("suggested_amount") or 0.0)
-            block_candidates = by_block.get(bucket, {}).get("candidates", [])
-            if amount <= 0 or not block_candidates:
-                unmapped_blocks.append(block.get("label", bucket))
-                continue
-
-            top_candidate = block_candidates[0]
-            symbol = top_candidate.get("asset")
-            purchase_amounts[symbol] = purchase_amounts.get(symbol, 0.0) + amount
-            selected_candidates.append(
-                {
-                    "symbol": symbol,
-                    "block": bucket,
-                    "block_label": block.get("label", bucket),
-                    "amount": amount,
-                    "candidate_score": top_candidate.get("score"),
-                    "candidate_reason": top_candidate.get("main_reason"),
-                }
-            )
-
-        purchase_plan = [
-            {"symbol": symbol, "amount": round(amount, 2)}
-            for symbol, amount in purchase_amounts.items()
-        ]
-
-        if not purchase_plan:
+        proposal = _build_top_candidate_purchase_plan(monthly_plan, candidate_ranking)
+        if not proposal["purchase_plan"]:
             return {
                 "capital_amount": float(capital_amount),
                 "purchase_plan": [],
                 "selected_candidates": [],
-                "unmapped_blocks": unmapped_blocks,
+                "unmapped_blocks": proposal["unmapped_blocks"],
                 "before": {},
                 "after": {},
                 "delta": {
@@ -1569,15 +1534,232 @@ def get_incremental_portfolio_simulation(capital_amount: int | float = 600000) -
         result = IncrementalPortfolioSimulator().simulate(
             {
                 "capital_amount": capital_amount,
-                "purchase_plan": purchase_plan,
+                "purchase_plan": proposal["purchase_plan"],
             }
         )
-        result["selected_candidates"] = selected_candidates
-        result["unmapped_blocks"] = unmapped_blocks
+        result["selected_candidates"] = proposal["selected_candidates"]
+        result["unmapped_blocks"] = proposal["unmapped_blocks"]
         result["selection_basis"] = "top_candidate_per_recommended_block"
         return result
 
     return _get_cached_selector_result(cache_key, build)
+
+
+def get_incremental_portfolio_simulation_comparison(capital_amount: int | float = 600000) -> Dict:
+    """Compara variantes simples de propuestas incrementales sobre el mismo capital mensual."""
+
+    cache_key = f"incremental_portfolio_simulation_comparison:{int(capital_amount)}"
+
+    def build():
+        monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
+        candidate_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+        simulator = IncrementalPortfolioSimulator()
+
+        proposals = []
+        for proposal_key, label, builder in (
+            ("top_candidate_per_block", "Top candidato por bloque", _build_top_candidate_purchase_plan),
+            ("runner_up_when_available", "Segundo candidato si existe", _build_runner_up_purchase_plan),
+            ("split_largest_block_top_two", "Split del bloque más grande", _build_split_largest_block_purchase_plan),
+        ):
+            proposal = builder(monthly_plan, candidate_ranking)
+            if not proposal["purchase_plan"]:
+                proposals.append(
+                    {
+                        "proposal_key": proposal_key,
+                        "label": label,
+                        "purchase_plan": [],
+                        "selected_candidates": [],
+                        "unmapped_blocks": proposal["unmapped_blocks"],
+                        "simulation": {
+                            "before": {},
+                            "after": {},
+                            "delta": {
+                                "expected_return_change": None,
+                                "real_expected_return_change": None,
+                                "fragility_change": None,
+                                "scenario_loss_change": None,
+                                "risk_concentration_change": None,
+                            },
+                            "interpretation": "No hay candidatos suficientes para construir esta variante.",
+                        },
+                        "comparison_score": None,
+                    }
+                )
+                continue
+
+            simulation = simulator.simulate(
+                {
+                    "capital_amount": capital_amount,
+                    "purchase_plan": proposal["purchase_plan"],
+                }
+            )
+            proposals.append(
+                {
+                    "proposal_key": proposal_key,
+                    "label": label,
+                    "purchase_plan": proposal["purchase_plan"],
+                    "selected_candidates": proposal["selected_candidates"],
+                    "unmapped_blocks": proposal["unmapped_blocks"],
+                    "simulation": {
+                        "before": simulation["before"],
+                        "after": simulation["after"],
+                        "delta": simulation["delta"],
+                        "interpretation": simulation["interpretation"],
+                    },
+                    "comparison_score": _score_incremental_simulation(simulation),
+                }
+            )
+
+        ranked = sorted(
+            proposals,
+            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
+            reverse=True,
+        )
+        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        return {
+            "capital_amount": float(capital_amount),
+            "proposals": ranked,
+            "best_proposal_key": best["proposal_key"] if best else None,
+            "best_label": best["label"] if best else None,
+        }
+
+    return _get_cached_selector_result(cache_key, build)
+
+
+def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
+    return {
+        str(item.get("block") or ""): item
+        for item in candidate_ranking.get("by_block", [])
+    }
+
+
+def _build_purchase_plan_variant(monthly_plan: Dict, candidate_ranking: Dict, *, candidate_index: int) -> Dict:
+    by_block = _candidate_blocks_map(candidate_ranking)
+    purchase_amounts: Dict[str, float] = {}
+    selected_candidates = []
+    unmapped_blocks = []
+
+    for block in monthly_plan.get("recommended_blocks", []):
+        bucket = str(block.get("bucket") or "")
+        amount = float(block.get("suggested_amount") or 0.0)
+        block_candidates = by_block.get(bucket, {}).get("candidates", [])
+        if amount <= 0 or not block_candidates:
+            unmapped_blocks.append(block.get("label", bucket))
+            continue
+        idx = candidate_index if len(block_candidates) > candidate_index else 0
+        candidate = block_candidates[idx]
+        symbol = candidate.get("asset")
+        purchase_amounts[symbol] = purchase_amounts.get(symbol, 0.0) + amount
+        selected_candidates.append(
+            {
+                "symbol": symbol,
+                "block": bucket,
+                "block_label": block.get("label", bucket),
+                "amount": amount,
+                "candidate_score": candidate.get("score"),
+                "candidate_reason": candidate.get("main_reason"),
+            }
+        )
+
+    purchase_plan = [
+        {"symbol": symbol, "amount": round(amount, 2)}
+        for symbol, amount in purchase_amounts.items()
+    ]
+    return {
+        "purchase_plan": purchase_plan,
+        "selected_candidates": selected_candidates,
+        "unmapped_blocks": unmapped_blocks,
+    }
+
+
+def _build_top_candidate_purchase_plan(monthly_plan: Dict, candidate_ranking: Dict) -> Dict:
+    return _build_purchase_plan_variant(monthly_plan, candidate_ranking, candidate_index=0)
+
+
+def _build_runner_up_purchase_plan(monthly_plan: Dict, candidate_ranking: Dict) -> Dict:
+    return _build_purchase_plan_variant(monthly_plan, candidate_ranking, candidate_index=1)
+
+
+def _build_split_largest_block_purchase_plan(monthly_plan: Dict, candidate_ranking: Dict) -> Dict:
+    by_block = _candidate_blocks_map(candidate_ranking)
+    recommended_blocks = sorted(
+        monthly_plan.get("recommended_blocks", []),
+        key=lambda item: float(item.get("suggested_amount") or 0.0),
+        reverse=True,
+    )
+    purchase_amounts: Dict[str, float] = {}
+    selected_candidates = []
+    unmapped_blocks = []
+
+    split_bucket = None
+    for block in recommended_blocks:
+        bucket = str(block.get("bucket") or "")
+        if len(by_block.get(bucket, {}).get("candidates", [])) >= 2:
+            split_bucket = bucket
+            break
+
+    for block in monthly_plan.get("recommended_blocks", []):
+        bucket = str(block.get("bucket") or "")
+        amount = float(block.get("suggested_amount") or 0.0)
+        candidates = by_block.get(bucket, {}).get("candidates", [])
+        if amount <= 0 or not candidates:
+            unmapped_blocks.append(block.get("label", bucket))
+            continue
+
+        if bucket == split_bucket:
+            first = candidates[0]
+            second = candidates[1]
+            first_amount = round(amount / 2.0, 2)
+            second_amount = round(amount - first_amount, 2)
+            for candidate, candidate_amount in ((first, first_amount), (second, second_amount)):
+                symbol = candidate.get("asset")
+                purchase_amounts[symbol] = purchase_amounts.get(symbol, 0.0) + candidate_amount
+                selected_candidates.append(
+                    {
+                        "symbol": symbol,
+                        "block": bucket,
+                        "block_label": block.get("label", bucket),
+                        "amount": candidate_amount,
+                        "candidate_score": candidate.get("score"),
+                        "candidate_reason": candidate.get("main_reason"),
+                    }
+                )
+            continue
+
+        candidate = candidates[0]
+        symbol = candidate.get("asset")
+        purchase_amounts[symbol] = purchase_amounts.get(symbol, 0.0) + amount
+        selected_candidates.append(
+            {
+                "symbol": symbol,
+                "block": bucket,
+                "block_label": block.get("label", bucket),
+                "amount": amount,
+                "candidate_score": candidate.get("score"),
+                "candidate_reason": candidate.get("main_reason"),
+            }
+        )
+
+    purchase_plan = [
+        {"symbol": symbol, "amount": round(amount, 2)}
+        for symbol, amount in purchase_amounts.items()
+    ]
+    return {
+        "purchase_plan": purchase_plan,
+        "selected_candidates": selected_candidates,
+        "unmapped_blocks": unmapped_blocks,
+    }
+
+
+def _score_incremental_simulation(simulation: Dict) -> float:
+    delta = simulation.get("delta", {})
+    score = 0.0
+    score += float(delta.get("expected_return_change") or 0.0)
+    score += float(delta.get("real_expected_return_change") or 0.0) * 0.5
+    score += float(delta.get("scenario_loss_change") or 0.0) * 0.75
+    score -= float(delta.get("fragility_change") or 0.0)
+    score -= float(delta.get("risk_concentration_change") or 0.0) * 0.5
+    return round(score, 2)
 
 
 def get_analytics_v2_dashboard_summary() -> Dict:

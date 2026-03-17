@@ -27,6 +27,7 @@ from apps.dashboard.selectors import (
     get_expected_return_detail,
     get_factor_exposure_detail,
     get_incremental_portfolio_simulation,
+    get_incremental_portfolio_simulation_comparison,
     get_candidate_asset_ranking,
     get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
@@ -1055,6 +1056,88 @@ class TestDashboardSelectors(TestCase):
         assert detail["selected_candidates"][1]["symbol"] == "SPY"
         assert detail["delta"]["fragility_change"] == -3.0
         assert detail["selection_basis"] == "top_candidate_per_recommended_block"
+
+    def test_get_incremental_portfolio_simulation_comparison_ranks_variants(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 400000},
+                {"bucket": "global_index", "label": "Indice global", "suggested_amount": 200000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "PEP", "score": 8.0, "main_reason": "dividend_profile"},
+                    ],
+                },
+                {
+                    "block": "global_index",
+                    "candidates": [
+                        {"asset": "SPY", "score": 6.8, "main_reason": "stable_global_exposure"},
+                    ],
+                },
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                purchase_plan = proposal["purchase_plan"]
+                symbols = {item["symbol"] for item in purchase_plan}
+                if symbols == {"KO", "SPY"} and len(purchase_plan) == 2:
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.4,
+                            "real_expected_return_change": 0.1,
+                            "fragility_change": -2.0,
+                            "scenario_loss_change": 0.5,
+                            "risk_concentration_change": -0.8,
+                        },
+                        "interpretation": "Top candidato por bloque.",
+                    }
+                if symbols == {"PEP", "SPY"}:
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.3,
+                            "real_expected_return_change": 0.1,
+                            "fragility_change": -1.0,
+                            "scenario_loss_change": 0.2,
+                            "risk_concentration_change": -0.3,
+                        },
+                        "interpretation": "Runner up.",
+                    }
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.6,
+                        "real_expected_return_change": 0.2,
+                        "fragility_change": -3.0,
+                        "scenario_loss_change": 0.8,
+                        "risk_concentration_change": -1.0,
+                    },
+                    "interpretation": "Split del bloque mayor.",
+                }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+        ):
+            detail = get_incremental_portfolio_simulation_comparison()
+
+        assert len(detail["proposals"]) == 3
+        assert detail["best_proposal_key"] == "split_largest_block_top_two"
+        assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""
