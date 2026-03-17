@@ -135,6 +135,7 @@
                         <th class="text-end">Volatilidad proxy</th>
                         <th class="text-end">Risk score</th>
                         <th class="text-end">Contribucion</th>
+                        <th class="text-end">Δ Riesgo vs Peso</th>
                         <th style="min-width: 160px;">Barra</th>
                     </tr>
                 </thead>
@@ -153,6 +154,9 @@
                         <td class="text-end">{{ item.volatility_proxy|floatformat:2 }}%</td>
                         <td class="text-end">{{ item.risk_score|floatformat:6 }}</td>
                         <td class="text-end"><strong>{{ item.contribution_pct|floatformat:2 }}%</strong></td>
+                        <td class="text-end {% if item.risk_vs_weight_delta > 3 %}text-danger{% elif item.risk_vs_weight_delta < -3 %}text-success{% else %}text-muted{% endif %}">
+                            {{ item.risk_vs_weight_delta|floatformat:2 }}%
+                        </td>
                         <td>
                             <div class="progress" role="progressbar" aria-label="Contribucion {{ item.symbol }}" aria-valuenow="{{ item.contribution_pct|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
                                 <div class="progress-bar" style="width: {{ item.contribution_pct|floatformat:2 }}%"></div>
@@ -161,7 +165,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-muted">Sin datos suficientes para mostrar detalle.</td>
+                        <td colspan="9" class="text-muted">Sin datos suficientes para mostrar detalle.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

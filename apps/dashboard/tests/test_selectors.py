@@ -393,6 +393,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["symbol"] == "SPY"
         assert detail["items"][0]["rank"] == 1
         assert detail["items"][0]["risk_score"] == 0.04625
+        assert detail["items"][0]["risk_vs_weight_delta"] == 15.0
         assert detail["warnings"] == ["used_fallback:QQQ:insufficient_history"]
 
     def test_get_risk_contribution_detail_returns_covariance_variant_when_available(self):
@@ -459,6 +460,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["top_sector"]["key"] == "Tecnologia"
         assert detail["items"][0]["symbol"] == "MSFT"
         assert detail["items"][0]["contribution_pct"] == 44.1
+        assert detail["items"][0]["risk_vs_weight_delta"] == 25.6
         assert detail["covered_symbols"] == ["MSFT", "SPY", "AAPL"]
 
     def test_concentracion_por_pais(self):

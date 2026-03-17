@@ -1107,6 +1107,10 @@ def get_risk_contribution_detail() -> Dict:
                 "volatility_proxy": item.get("volatility_proxy"),
                 "risk_score": item.get("risk_score"),
                 "contribution_pct": item.get("contribution_pct"),
+                "risk_vs_weight_delta": round(
+                    float(item.get("contribution_pct") or 0.0) - float(item.get("weight_pct") or 0.0),
+                    2,
+                ),
                 "used_volatility_fallback": item.get("used_volatility_fallback", False),
             }
             for index, item in enumerate(result.get("items", []), start=1)
