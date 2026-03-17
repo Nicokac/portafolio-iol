@@ -539,3 +539,56 @@ def test_prioritize_recommendations_prefers_local_sovereign_signal_for_overlappi
         "analytics_v2_local_inflation_hedge_gap",
     ]
 
+
+def test_prioritize_recommendations_prefers_country_risk_over_generic_local_sovereign_risk(engine):
+    recommendations = [
+        {
+            "tipo": "analytics_v2_local_sovereign_risk_excess",
+            "prioridad": "alta",
+            "titulo": "Riesgo soberano local concentrado",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_country_risk_high",
+            "prioridad": "alta",
+            "titulo": "Riesgo país alto con soberano local relevante",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_sovereign_single_name_concentration",
+            "prioridad": "media",
+            "titulo": "Bloque soberano local concentrado en un solo bono",
+            "origen": "analytics_v2",
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_local_country_risk_high",
+        "analytics_v2_local_sovereign_single_name_concentration",
+    ]
+
+
+def test_prioritize_recommendations_prefers_hard_dollar_dependence_over_cer_gap(engine):
+    recommendations = [
+        {
+            "tipo": "analytics_v2_local_inflation_hedge_gap",
+            "prioridad": "media",
+            "titulo": "Cobertura inflacionaria local acotada",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_sovereign_hard_dollar_dependence",
+            "prioridad": "media",
+            "titulo": "Bloque soberano local sesgado a hard dollar",
+            "origen": "analytics_v2",
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_local_sovereign_hard_dollar_dependence",
+    ]
+

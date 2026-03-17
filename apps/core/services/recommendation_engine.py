@@ -411,6 +411,9 @@ class RecommendationEngine:
             "concentracion_argentina_alta": "argentina_concentration",
             "analytics_v2_risk_concentration_argentina": "argentina_concentration",
             "analytics_v2_local_sovereign_risk_excess": "argentina_concentration",
+            "analytics_v2_local_country_risk_high": "argentina_concentration",
+            "analytics_v2_local_inflation_hedge_gap": "local_fixed_income_mix",
+            "analytics_v2_local_sovereign_hard_dollar_dependence": "local_fixed_income_mix",
             "riesgo_concentracion_alto": "portfolio_concentration",
             "riesgo_concentracion_media": "portfolio_concentration",
             "analytics_v2_risk_concentration_top_assets": "portfolio_concentration",
@@ -432,7 +435,10 @@ class RecommendationEngine:
         recommendation_type = str(recommendation.get("tipo", "")).lower()
         specificity_rank = {
             "analytics_v2_local_liquidity_real_carry_negative": 0,
+            "analytics_v2_local_country_risk_high": -1,
+            "analytics_v2_local_sovereign_hard_dollar_dependence": 0,
             "analytics_v2_local_sovereign_risk_excess": 0,
+            "analytics_v2_local_inflation_hedge_gap": 1,
             "analytics_v2_expected_return_liquidity_drag": 1,
             "analytics_v2_risk_concentration_argentina": 1,
             "liquidez_excesiva": 2,
