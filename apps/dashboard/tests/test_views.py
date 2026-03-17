@@ -576,6 +576,55 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_candidate_split_incremental_portfolio_comparison',
+            lambda query_params, capital_amount=600000: {
+                'submitted': True,
+                'available_blocks': [
+                    {'bucket': 'defensive', 'label': 'Defensive / resiliente', 'suggested_amount': 300000},
+                ],
+                'selected_block': 'defensive',
+                'selected_label': 'Defensive / resiliente',
+                'block_amount': 300000,
+                'best_proposal_key': 'split_top_two',
+                'best_label': 'Split KO + MCD',
+                'proposals': [
+                    {
+                        'proposal_key': 'split_top_two',
+                        'label': 'Split KO + MCD',
+                        'purchase_plan': [
+                            {'symbol': 'KO', 'amount': 150000},
+                            {'symbol': 'MCD', 'amount': 150000},
+                        ],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.5,
+                                'fragility_change': -2.1,
+                                'scenario_loss_change': 0.7,
+                            },
+                            'interpretation': 'El split mejora mejor el balance riesgo/retorno.',
+                        },
+                        'comparison_score': 4.2,
+                    },
+                    {
+                        'proposal_key': 'single_top_candidate',
+                        'label': 'Concentrado en KO',
+                        'purchase_plan': [
+                            {'symbol': 'KO', 'amount': 300000},
+                        ],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.3,
+                                'fragility_change': -1.2,
+                                'scenario_loss_change': 0.3,
+                            },
+                            'interpretation': 'KO solo mejora de forma acotada.',
+                        },
+                        'comparison_score': 2.5,
+                    },
+                ],
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_manual_incremental_portfolio_simulation_comparison',
             lambda query_params, default_capital_amount=600000: {
                 'submitted': True,
@@ -644,6 +693,33 @@ class TestDashboardView:
                 ],
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
+            lambda query_params, capital_amount=600000: {
+                'preferred': {
+                    'source_label': 'Comparador por split',
+                    'selected_context': 'Defensive / resiliente',
+                    'proposal_label': 'Split KO + MCD',
+                    'comparison_score': 5.2,
+                    'purchase_plan': [
+                        {'symbol': 'KO', 'amount': 150000},
+                        {'symbol': 'MCD', 'amount': 150000},
+                    ],
+                    'simulation': {
+                        'delta': {
+                            'expected_return_change': 0.5,
+                            'real_expected_return_change': 0.2,
+                            'fragility_change': -2.1,
+                            'scenario_loss_change': 0.7,
+                            'risk_concentration_change': -0.6,
+                        },
+                        'interpretation': 'El split mejora mejor el balance riesgo/retorno.',
+                    },
+                },
+                'has_manual_override': False,
+                'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -661,12 +737,18 @@ class TestDashboardView:
         assert 'La compra reduce la fragilidad del portafolio.' in body
         assert 'Expected return' in body
         assert 'Fragility' in body
+        assert 'Propuesta incremental preferida' in body
+        assert 'Comparador por split' in body
+        assert 'Split KO + MCD' in body
         assert 'Comparador de propuestas incrementales' in body
         assert 'Split del bloque más grande' in body
         assert 'Mejor balance' in body
         assert 'Comparador incremental por candidato' in body
         assert 'Bloque a comparar' in body
         assert 'KO mejora más la resiliencia.' in body
+        assert 'Comparador incremental por split de bloque' in body
+        assert 'Bloque a dividir' in body
+        assert 'El split mejora mejor el balance riesgo/retorno.' in body
         assert 'Comparador manual de planes incrementales' in body
         assert 'Plan manual A' in body
         assert 'Plan manual B' in body

@@ -97,3 +97,29 @@ Reglas del MVP:
 - cada candidato se simula como compra individual
 - reutiliza `CandidateAssetRankingService` + `IncrementalPortfolioSimulator`
 - ordena por el mismo score comparativo heuristico del simulador incremental
+
+## Comparador incremental por split de bloque
+
+La hoja `Planeacion` permite contrastar dos construcciones simples dentro de un mismo bloque recomendado:
+
+- concentrar todo el monto en el top candidato
+- repartir el monto entre los top 2 candidatos
+
+Reglas del MVP:
+
+- usa el `suggested_amount` del bloque elegido
+- requiere al menos 2 candidatos elegibles en el bloque
+- reutiliza `CandidateAssetRankingService` + `IncrementalPortfolioSimulator`
+- ordena con el mismo score comparativo heuristico ya usado en los otros comparadores
+
+## Propuesta incremental preferida
+
+La hoja `Planeacion` sintetiza una propuesta incremental preferida a partir de los comparadores ya disponibles.
+
+Reglas del MVP:
+
+- toma la mejor propuesta de cada comparador activo
+- compara por `comparison_score`
+- usa una prioridad explicita para desempates
+- si hay comparacion manual valida, puede prevalecer como override funcional
+- no recalcula simulaciones nuevas fuera de las ya expuestas por cada comparador

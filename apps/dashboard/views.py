@@ -30,6 +30,8 @@ from apps.dashboard.selectors import (
     get_concentracion_tipo_patrimonial,
     get_candidate_asset_ranking,
     get_candidate_incremental_portfolio_comparison,
+    get_preferred_incremental_portfolio_proposal,
+    get_candidate_split_incremental_portfolio_comparison,
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
     get_dashboard_kpis,
@@ -186,11 +188,21 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
             self.request.GET,
             capital_amount=600000,
         )
+        context['candidate_split_incremental_portfolio_comparison'] = (
+            get_candidate_split_incremental_portfolio_comparison(
+                self.request.GET,
+                capital_amount=600000,
+            )
+        )
         context['manual_incremental_portfolio_simulation_comparison'] = (
             get_manual_incremental_portfolio_simulation_comparison(
                 self.request.GET,
                 default_capital_amount=600000,
             )
+        )
+        context['preferred_incremental_portfolio_proposal'] = get_preferred_incremental_portfolio_proposal(
+            self.request.GET,
+            capital_amount=600000,
         )
         return context
 

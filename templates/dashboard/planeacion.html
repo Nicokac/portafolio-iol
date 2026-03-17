@@ -365,6 +365,78 @@
                 {% endif %}
             </div>
         </div>
+        <div class="card border-success shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Propuesta incremental preferida</h5>
+                <small class="text-muted">Síntesis de la mejor construcción disponible entre los comparadores activos.</small>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">{{ preferred_incremental_portfolio_proposal.explanation }}</p>
+                {% if preferred_incremental_portfolio_proposal.preferred %}
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Origen</div>
+                            <div><strong>{{ preferred_incremental_portfolio_proposal.preferred.source_label }}</strong></div>
+                            {% if preferred_incremental_portfolio_proposal.preferred.selected_context %}
+                            <div class="small text-muted">{{ preferred_incremental_portfolio_proposal.preferred.selected_context }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Construcción elegida</div>
+                            <div><strong>{{ preferred_incremental_portfolio_proposal.preferred.proposal_label }}</strong></div>
+                            <div class="small text-muted">Score: {{ preferred_incremental_portfolio_proposal.preferred.comparison_score|default:"-" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Compra resumida</div>
+                            {% for item in preferred_incremental_portfolio_proposal.preferred.purchase_plan %}
+                            <div class="small">{{ item.symbol }} · {{ item.amount|currency:0 }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-end">Delta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Expected return</td>
+                                <td class="text-end">{{ preferred_incremental_portfolio_proposal.preferred.simulation.delta.expected_return_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Real expected return</td>
+                                <td class="text-end">{{ preferred_incremental_portfolio_proposal.preferred.simulation.delta.real_expected_return_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Fragility</td>
+                                <td class="text-end">{{ preferred_incremental_portfolio_proposal.preferred.simulation.delta.fragility_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Worst scenario loss</td>
+                                <td class="text-end">{{ preferred_incremental_portfolio_proposal.preferred.simulation.delta.scenario_loss_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Top risk concentration</td>
+                                <td class="text-end">{{ preferred_incremental_portfolio_proposal.preferred.simulation.delta.risk_concentration_change|default:"-" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="small text-muted mt-3">{{ preferred_incremental_portfolio_proposal.preferred.simulation.interpretation }}</div>
+                {% else %}
+                <div class="text-muted">Todavía no hay una propuesta incremental preferida disponible.</div>
+                {% endif %}
+            </div>
+        </div>
         <div class="card border-primary-subtle shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Comparador de propuestas incrementales</h5>
@@ -502,6 +574,89 @@
                 </div>
                 {% else %}
                 <div class="text-muted">No hay bloques recomendados con candidatos suficientes para comparar.</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card border-secondary-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Comparador incremental por split de bloque</h5>
+                <small class="text-muted">Evalúa si conviene concentrar el bloque en el mejor candidato o repartirlo entre los top 2.</small>
+            </div>
+            <div class="card-body">
+                {% if candidate_split_incremental_portfolio_comparison.available_blocks %}
+                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                    <input type="hidden" name="candidate_split_compare" value="1">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-6">
+                            <label class="form-label" for="candidate_split_block">Bloque a dividir</label>
+                            <select class="form-select" id="candidate_split_block" name="candidate_split_block">
+                                {% for block in candidate_split_incremental_portfolio_comparison.available_blocks %}
+                                <option value="{{ block.bucket }}" {% if block.bucket == candidate_split_incremental_portfolio_comparison.selected_block %}selected{% endif %}>
+                                    {{ block.label }} · {{ block.suggested_amount|currency:0 }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
+                            <button type="submit" class="btn btn-outline-secondary w-100">Comparar split</button>
+                        </div>
+                        <div class="col-lg-3">
+                            <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
+                        </div>
+                    </div>
+                </form>
+                {% if candidate_split_incremental_portfolio_comparison.best_label %}
+                <p class="text-muted mb-3">
+                    Mejor construcción actual para <strong>{{ candidate_split_incremental_portfolio_comparison.selected_label }}</strong>:
+                    <strong>{{ candidate_split_incremental_portfolio_comparison.best_label }}</strong>
+                </p>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Construcción</th>
+                                <th>Compra resumida</th>
+                                <th class="text-end">Δ Expected</th>
+                                <th class="text-end">Δ Fragility</th>
+                                <th class="text-end">Δ Worst Scenario</th>
+                                <th class="text-end">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proposal in candidate_split_incremental_portfolio_comparison.proposals %}
+                            <tr {% if proposal.proposal_key == candidate_split_incremental_portfolio_comparison.best_proposal_key %}class="table-success"{% endif %}>
+                                <td>
+                                    <strong>{{ proposal.label }}</strong>
+                                    {% if proposal.proposal_key == candidate_split_incremental_portfolio_comparison.best_proposal_key %}
+                                    <span class="badge bg-success ms-1">Mejor balance</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for item in proposal.purchase_plan %}
+                                    <div class="small">{{ item.symbol }} · {{ item.amount|currency:0 }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-end">{{ proposal.simulation.delta.expected_return_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.fragility_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.scenario_loss_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.comparison_score|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="6" class="bg-light">
+                                    <div class="small text-muted">{{ proposal.simulation.interpretation }}</div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-muted">Sin construcciones comparables para este bloque.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted">No hay bloques con top 2 candidatos suficientes para comparar un split.</div>
                 {% endif %}
             </div>
         </div>

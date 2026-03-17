@@ -29,6 +29,8 @@ from apps.dashboard.selectors import (
     get_incremental_portfolio_simulation,
     get_incremental_portfolio_simulation_comparison,
     get_candidate_incremental_portfolio_comparison,
+    get_preferred_incremental_portfolio_proposal,
+    get_candidate_split_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
     get_candidate_asset_ranking,
     get_monthly_allocation_plan,
@@ -1306,6 +1308,160 @@ class TestDashboardSelectors(TestCase):
         assert detail["submitted"] is True
         assert detail["available_blocks"] == []
         assert detail["proposals"] == []
+
+    def test_get_candidate_split_incremental_portfolio_comparison_prefers_split_when_better(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 300000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "MCD", "score": 7.7, "main_reason": "dividend_profile"},
+                    ],
+                },
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                symbols = {item["symbol"] for item in proposal["purchase_plan"]}
+                if symbols == {"KO"}:
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.3,
+                            "real_expected_return_change": 0.1,
+                            "fragility_change": -1.2,
+                            "scenario_loss_change": 0.3,
+                            "risk_concentration_change": -0.2,
+                        },
+                        "interpretation": "KO solo mejora de forma acotada.",
+                        "warnings": [],
+                    }
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.5,
+                        "real_expected_return_change": 0.2,
+                        "fragility_change": -2.1,
+                        "scenario_loss_change": 0.7,
+                        "risk_concentration_change": -0.6,
+                    },
+                    "interpretation": "El split mejora mejor el balance riesgo/retorno.",
+                    "warnings": [],
+                }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+        ):
+            detail = get_candidate_split_incremental_portfolio_comparison(
+                {"candidate_split_compare": "1", "candidate_split_block": "defensive"}
+            )
+
+        assert detail["submitted"] is True
+        assert detail["selected_block"] == "defensive"
+        assert detail["best_proposal_key"] == "split_top_two"
+        assert len(detail["proposals"]) == 2
+
+    def test_get_candidate_split_incremental_portfolio_comparison_handles_missing_top_two(self):
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: {"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: {"by_block": []}),
+        ):
+            detail = get_candidate_split_incremental_portfolio_comparison({"candidate_split_compare": "1"})
+
+        assert detail["submitted"] is True
+        assert detail["available_blocks"] == []
+        assert detail["proposals"] == []
+
+    def test_get_preferred_incremental_portfolio_proposal_prefers_manual_when_present(self):
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation_comparison", lambda capital_amount=600000: {
+                "best_proposal_key": "auto",
+                "proposals": [
+                    {
+                        "proposal_key": "auto",
+                        "label": "Top candidato por bloque",
+                        "purchase_plan": [{"symbol": "KO", "amount": 300000}],
+                        "simulation": {"delta": {}, "interpretation": "Auto."},
+                        "comparison_score": 4.0,
+                    }
+                ],
+            }),
+            patch("apps.dashboard.selectors.get_candidate_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {
+                "best_proposal_key": "KO",
+                "selected_label": "Defensive / resiliente",
+                "proposals": [
+                    {
+                        "proposal_key": "KO",
+                        "label": "KO",
+                        "purchase_plan": [{"symbol": "KO", "amount": 300000}],
+                        "simulation": {"delta": {}, "interpretation": "Candidate."},
+                        "comparison_score": 4.2,
+                    }
+                ],
+            }),
+            patch("apps.dashboard.selectors.get_candidate_split_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {
+                "best_proposal_key": "split_top_two",
+                "selected_label": "Defensive / resiliente",
+                "proposals": [
+                    {
+                        "proposal_key": "split_top_two",
+                        "label": "Split KO + MCD",
+                        "purchase_plan": [{"symbol": "KO", "amount": 150000}, {"symbol": "MCD", "amount": 150000}],
+                        "simulation": {"delta": {}, "interpretation": "Split."},
+                        "comparison_score": 4.5,
+                    }
+                ],
+            }),
+            patch("apps.dashboard.selectors.get_manual_incremental_portfolio_simulation_comparison", lambda query_params, default_capital_amount=600000: {
+                "submitted": True,
+                "best_proposal_key": "plan_a",
+                "proposals": [
+                    {
+                        "proposal_key": "plan_a",
+                        "label": "Plan manual A",
+                        "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                        "simulation": {"delta": {}, "interpretation": "Manual."},
+                        "comparison_score": 4.5,
+                    }
+                ],
+            }),
+        ):
+            detail = get_preferred_incremental_portfolio_proposal({"manual_compare": "1"})
+
+        assert detail["preferred"]["source_key"] == "manual_plan"
+        assert detail["preferred"]["proposal_label"] == "Plan manual A"
+        assert detail["has_manual_override"] is True
+
+    def test_get_preferred_incremental_portfolio_proposal_handles_no_candidates(self):
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation_comparison", lambda capital_amount=600000: {"best_proposal_key": None, "proposals": []}),
+            patch("apps.dashboard.selectors.get_candidate_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {"best_proposal_key": None, "proposals": []}),
+            patch("apps.dashboard.selectors.get_candidate_split_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {"best_proposal_key": None, "proposals": []}),
+            patch("apps.dashboard.selectors.get_manual_incremental_portfolio_simulation_comparison", lambda query_params, default_capital_amount=600000: {"submitted": False, "best_proposal_key": None, "proposals": []}),
+        ):
+            detail = get_preferred_incremental_portfolio_proposal({})
+
+        assert detail["preferred"] is None
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

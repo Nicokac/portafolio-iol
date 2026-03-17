@@ -1803,11 +1803,228 @@ def get_candidate_incremental_portfolio_comparison(
     return _get_cached_selector_result(cache_key, build)
 
 
+def get_candidate_split_incremental_portfolio_comparison(
+    query_params,
+    *,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Compara concentrar el bloque en un candidato vs repartirlo entre top 2."""
+
+    monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
+    candidate_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+    comparable_blocks = _build_comparable_candidate_blocks(monthly_plan, candidate_ranking)
+    split_blocks = [block for block in comparable_blocks if len(block["candidates"]) >= 2]
+    requested_block = str(_query_param_value(query_params, "candidate_split_block", "")).strip()
+    submitted = str(_query_param_value(query_params, "candidate_split_compare", "")).strip() == "1"
+
+    selected_block = requested_block if requested_block in {item["bucket"] for item in split_blocks} else None
+    if selected_block is None and split_blocks:
+        selected_block = split_blocks[0]["bucket"]
+
+    if selected_block is None:
+        return {
+            "submitted": submitted,
+            "available_blocks": split_blocks,
+            "selected_block": None,
+            "selected_label": None,
+            "block_amount": None,
+            "proposals": [],
+            "best_proposal_key": None,
+            "best_label": None,
+        }
+
+    selected_block_data = next(item for item in split_blocks if item["bucket"] == selected_block)
+    signature = hashlib.md5(
+        json.dumps(
+            {
+                "selected_block": selected_block,
+                "block_amount": selected_block_data["suggested_amount"],
+                "candidates": selected_block_data["candidates"][:2],
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    cache_key = f"candidate_split_incremental_portfolio_comparison:{signature}"
+
+    def build():
+        simulator = IncrementalPortfolioSimulator()
+        top_candidate = selected_block_data["candidates"][0]
+        runner_up = selected_block_data["candidates"][1]
+        total_amount = round(float(selected_block_data["suggested_amount"]), 2)
+        half_amount = round(total_amount / 2.0, 2)
+        remainder_amount = round(total_amount - half_amount, 2)
+
+        variants = [
+            {
+                "proposal_key": "single_top_candidate",
+                "label": f"Concentrado en {top_candidate['asset']}",
+                "purchase_plan": [{"symbol": top_candidate["asset"], "amount": total_amount}],
+                "composition": [top_candidate["asset"]],
+            },
+            {
+                "proposal_key": "split_top_two",
+                "label": f"Split {top_candidate['asset']} + {runner_up['asset']}",
+                "purchase_plan": [
+                    {"symbol": top_candidate["asset"], "amount": half_amount},
+                    {"symbol": runner_up["asset"], "amount": remainder_amount},
+                ],
+                "composition": [top_candidate["asset"], runner_up["asset"]],
+            },
+        ]
+
+        proposals = []
+        for variant in variants:
+            simulation = simulator.simulate(
+                {
+                    "capital_amount": total_amount,
+                    "purchase_plan": variant["purchase_plan"],
+                }
+            )
+            proposals.append(
+                {
+                    "proposal_key": variant["proposal_key"],
+                    "label": variant["label"],
+                    "purchase_plan": variant["purchase_plan"],
+                    "composition": variant["composition"],
+                    "simulation": {
+                        "before": simulation["before"],
+                        "after": simulation["after"],
+                        "delta": simulation["delta"],
+                        "interpretation": simulation["interpretation"],
+                        "warnings": simulation.get("warnings", []),
+                    },
+                    "comparison_score": _score_incremental_simulation(simulation),
+                }
+            )
+
+        ranked = sorted(
+            proposals,
+            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
+            reverse=True,
+        )
+        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        return {
+            "submitted": submitted,
+            "available_blocks": split_blocks,
+            "selected_block": selected_block,
+            "selected_label": selected_block_data["label"],
+            "block_amount": total_amount,
+            "proposals": ranked,
+            "best_proposal_key": best["proposal_key"] if best else None,
+            "best_label": best["label"] if best else None,
+        }
+
+    return _get_cached_selector_result(cache_key, build)
+
+
+def get_preferred_incremental_portfolio_proposal(
+    query_params,
+    *,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Sintetiza la mejor propuesta incremental disponible entre los comparadores activos."""
+
+    auto = get_incremental_portfolio_simulation_comparison(capital_amount=capital_amount)
+    candidate = get_candidate_incremental_portfolio_comparison(query_params, capital_amount=capital_amount)
+    split = get_candidate_split_incremental_portfolio_comparison(query_params, capital_amount=capital_amount)
+    manual = get_manual_incremental_portfolio_simulation_comparison(
+        query_params,
+        default_capital_amount=capital_amount,
+    )
+
+    candidates = []
+    for source_key, label, payload in (
+        ("automatic_variants", "Comparador automático", auto),
+        ("candidate_block", "Comparador por candidato", candidate),
+        ("candidate_split", "Comparador por split", split),
+        ("manual_plan", "Comparador manual", manual),
+    ):
+        best_item = _extract_best_incremental_proposal(payload)
+        if best_item is None:
+            continue
+        candidates.append(
+            {
+                "source_key": source_key,
+                "source_label": label,
+                "proposal_key": best_item["proposal_key"],
+                "proposal_label": best_item["label"],
+                "purchase_plan": best_item.get("purchase_plan", []),
+                "comparison_score": best_item.get("comparison_score"),
+                "simulation": best_item.get("simulation", {}),
+                "selected_context": _build_preferred_proposal_context(source_key, payload),
+                "priority_rank": _preferred_source_priority_rank(source_key, payload),
+            }
+        )
+
+    best = None
+    if candidates:
+        best = sorted(
+            candidates,
+            key=lambda item: (
+                float(item["comparison_score"] if item["comparison_score"] is not None else float("-inf")),
+                item["priority_rank"],
+            ),
+            reverse=True,
+        )[0]
+
+    return {
+        "candidates": candidates,
+        "preferred": best,
+        "has_manual_override": bool(manual.get("submitted") and manual.get("proposals")),
+        "explanation": _build_preferred_incremental_explanation(best, manual),
+    }
+
+
 def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
     return {
         str(item.get("block") or ""): item
         for item in candidate_ranking.get("by_block", [])
     }
+
+
+def _extract_best_incremental_proposal(payload: Dict) -> Dict | None:
+    best_key = payload.get("best_proposal_key")
+    if not best_key:
+        return None
+    for proposal in payload.get("proposals", []):
+        if proposal.get("proposal_key") == best_key:
+            return proposal
+    return None
+
+
+def _preferred_source_priority_rank(source_key: str, payload: Dict) -> int:
+    if source_key == "manual_plan" and payload.get("submitted") and payload.get("proposals"):
+        return 4
+    if source_key == "candidate_split":
+        return 3
+    if source_key == "candidate_block":
+        return 2
+    return 1
+
+
+def _build_preferred_proposal_context(source_key: str, payload: Dict) -> str | None:
+    if source_key == "candidate_block":
+        return payload.get("selected_label")
+    if source_key == "candidate_split":
+        return payload.get("selected_label")
+    if source_key == "manual_plan":
+        return "Plan manual enviado por el usuario" if payload.get("submitted") else None
+    return None
+
+
+def _build_preferred_incremental_explanation(best: Dict | None, manual_payload: Dict) -> str:
+    if best is None:
+        return "Todavia no hay una propuesta incremental preferida construible con los comparadores actuales."
+    if best["source_key"] == "manual_plan" and manual_payload.get("submitted"):
+        return (
+            f"La propuesta preferida actual sale del comparador manual: {best['proposal_label']}. "
+            "Se prioriza porque refleja una intencion explicita del usuario y ademas lidera el score comparativo disponible."
+        )
+    context = f" para {best['selected_context']}" if best.get("selected_context") else ""
+    return (
+        f"La propuesta preferida actual surge de {best['source_label']}{context}: {best['proposal_label']}. "
+        "Se selecciona por score comparativo y desempate de prioridad entre comparadores."
+    )
 
 
 def _build_comparable_candidate_blocks(monthly_plan: Dict, candidate_ranking: Dict) -> list[Dict]:
