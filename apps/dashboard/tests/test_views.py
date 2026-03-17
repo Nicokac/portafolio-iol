@@ -99,12 +99,23 @@ class TestDashboardView:
         assert 'Top soberano local' in body
         assert 'Concentración bloque soberano' in body
         assert 'Split hard dollar / CER' in body
+        assert 'Ver detalle' in body
         assert 'Último snapshot' in body
         assert 'Gap máximo' in body
         assert 'Posiciones completas' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body
+
+    def test_risk_contribution_detail_route_accessible_authenticated(self, auth_client):
+        response = auth_client.get(reverse('dashboard:risk_contribution_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Risk Contribution' in body
+        assert 'Detalle por activo' in body
+        assert 'Modelo activo' in body
+        assert 'Volatilidad proxy' in body
+        assert 'Contribucion' in body
 
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:

@@ -38,6 +38,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_macro_local_context,
     get_portafolio_enriquecido_actual,
+    get_risk_contribution_detail,
     get_riesgo_portafolio,
     get_riesgo_portafolio_detallado,
     get_snapshot_coverage_summary,
@@ -108,6 +109,16 @@ class DashboardContextMixin:
 class DashboardView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
     template_name = 'dashboard/estrategia.html'
     active_section = 'estrategia'
+
+
+class RiskContributionDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/risk_contribution_detail.html'
+    active_section = 'estrategia'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['risk_contribution_detail'] = get_risk_contribution_detail()
+        return context
 
 
 class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):

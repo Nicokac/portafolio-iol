@@ -1071,19 +1071,78 @@ def get_active_alerts() -> list:
     ))
 
 
+def _get_active_risk_contribution_result() -> Dict:
+    base_risk_service = RiskContributionService()
+    covariance_risk_service = CovarianceAwareRiskContributionService(base_service=base_risk_service)
+    base_risk_result = base_risk_service.calculate()
+    covariance_risk_result = covariance_risk_service.calculate()
+    active_result = (
+        covariance_risk_result
+        if covariance_risk_result.get("model_variant") == "covariance_aware"
+        else base_risk_result
+    )
+    return {
+        "base_result": base_risk_result,
+        "covariance_result": covariance_risk_result,
+        "active_result": active_result,
+    }
+
+
+def get_risk_contribution_detail() -> Dict:
+    """Devuelve el drill-down completo del modelo de risk contribution activo."""
+
+    def build():
+        resolved = _get_active_risk_contribution_result()
+        result = resolved["active_result"]
+        covariance_result = resolved["covariance_result"]
+
+        items = [
+            {
+                "rank": index,
+                "symbol": item.get("symbol"),
+                "sector": item.get("sector"),
+                "country": item.get("country"),
+                "asset_type": item.get("asset_type"),
+                "weight_pct": item.get("weight_pct"),
+                "volatility_proxy": item.get("volatility_proxy"),
+                "risk_score": item.get("risk_score"),
+                "contribution_pct": item.get("contribution_pct"),
+                "used_volatility_fallback": item.get("used_volatility_fallback", False),
+            }
+            for index, item in enumerate(result.get("items", []), start=1)
+        ]
+
+        metadata = result.get("metadata", {})
+        top_asset = result.get("top_contributors", [{}])[0] if result.get("top_contributors") else None
+        top_sector = result.get("by_sector", [{}])[0] if result.get("by_sector") else None
+
+        return {
+            "items": items,
+            "top_asset": top_asset,
+            "top_sector": top_sector,
+            "model_variant": covariance_result.get("model_variant", "mvp_proxy"),
+            "covariance_observations": int(covariance_result.get("covariance_observations") or 0),
+            "coverage_pct": float(covariance_result.get("coverage_pct") or 0.0),
+            "portfolio_volatility_proxy": covariance_result.get("portfolio_volatility_proxy"),
+            "confidence": metadata.get("confidence", "low"),
+            "warnings": metadata.get("warnings", []),
+            "methodology": metadata.get("methodology"),
+            "limitations": metadata.get("limitations"),
+            "covered_symbols": covariance_result.get("covered_symbols", []),
+            "excluded_symbols": covariance_result.get("excluded_symbols", []),
+        }
+
+    return _get_cached_selector_result("risk_contribution_detail", build)
+
+
 def get_analytics_v2_dashboard_summary() -> Dict:
     """Resume Analytics v2 para consumo server-rendered en dashboard."""
 
     def build():
+        resolved_risk = _get_active_risk_contribution_result()
         base_risk_service = RiskContributionService()
-        covariance_risk_service = CovarianceAwareRiskContributionService(base_service=base_risk_service)
-        base_risk_result = base_risk_service.calculate()
-        covariance_risk_result = covariance_risk_service.calculate()
-        risk_result = (
-            covariance_risk_result
-            if covariance_risk_result.get("model_variant") == "covariance_aware"
-            else base_risk_result
-        )
+        covariance_risk_result = resolved_risk["covariance_result"]
+        risk_result = resolved_risk["active_result"]
         scenario_service = ScenarioAnalysisService()
         factor_service = FactorExposureService()
         stress_service = StressFragilityService()

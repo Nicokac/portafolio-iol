@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% block title %}Risk Contribution - Portafolio IOL{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="mb-1">Risk Contribution</h1>
+        <p class="text-muted mb-0">Drill-down analitico del modelo activo de contribucion al riesgo sobre el portafolio invertido.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Modelo activo</div>
+                <div class="h5 mb-0">
+                    {% if risk_contribution_detail.model_variant == 'covariance_aware' %}
+                    Covarianza activa
+                    {% else %}
+                    Proxy MVP
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Top activo</div>
+                <div class="h5 mb-0">{{ risk_contribution_detail.top_asset.symbol|default:"N/D" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Cobertura</div>
+                <div class="h5 mb-0">{{ risk_contribution_detail.coverage_pct|floatformat:1 }}%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Obs covarianza</div>
+                <div class="h5 mb-0">{{ risk_contribution_detail.covariance_observations }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-5 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5">Metadatos del modelo</h2>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td><strong>Variante</strong></td>
+                            <td class="text-end"><code>{{ risk_contribution_detail.model_variant }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Confianza</strong></td>
+                            <td class="text-end">{{ risk_contribution_detail.confidence }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Top sector</strong></td>
+                            <td class="text-end">{{ risk_contribution_detail.top_sector.key|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Volatilidad portafolio proxy</strong></td>
+                            <td class="text-end">
+                                {% if risk_contribution_detail.portfolio_volatility_proxy is not None %}
+                                {{ risk_contribution_detail.portfolio_volatility_proxy|floatformat:2 }}%
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Covered symbols</strong></td>
+                            <td class="text-end">{{ risk_contribution_detail.covered_symbols|length }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Excluded symbols</strong></td>
+                            <td class="text-end">{{ risk_contribution_detail.excluded_symbols|length }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5">Metodologia</h2>
+                <p class="mb-2">{{ risk_contribution_detail.methodology|default:"Sin detalles" }}</p>
+                <p class="text-muted small mb-2">{{ risk_contribution_detail.limitations|default:"Sin limitaciones informadas" }}</p>
+                {% if risk_contribution_detail.warnings %}
+                <div class="mt-3">
+                    <div class="small text-muted mb-2">Warnings</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for warning in risk_contribution_detail.warnings %}
+                        <span class="badge bg-warning text-dark">{{ warning }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1">Detalle por activo</h2>
+                <p class="text-muted mb-0">El selector reutiliza el mismo resultado activo que alimenta el resumen de Estrategia.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">#</th>
+                        <th>Activo</th>
+                        <th>Sector</th>
+                        <th class="text-end">Peso</th>
+                        <th class="text-end">Volatilidad proxy</th>
+                        <th class="text-end">Risk score</th>
+                        <th class="text-end">Contribucion</th>
+                        <th style="min-width: 160px;">Barra</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in risk_contribution_detail.items %}
+                    <tr>
+                        <td class="text-end">{{ item.rank }}</td>
+                        <td>
+                            <strong>{{ item.symbol }}</strong>
+                            {% if item.used_volatility_fallback %}
+                            <div class="small text-muted">fallback</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.sector|default:"-" }}</td>
+                        <td class="text-end">{{ item.weight_pct|floatformat:2 }}%</td>
+                        <td class="text-end">{{ item.volatility_proxy|floatformat:2 }}%</td>
+                        <td class="text-end">{{ item.risk_score|floatformat:6 }}</td>
+                        <td class="text-end"><strong>{{ item.contribution_pct|floatformat:2 }}%</strong></td>
+                        <td>
+                            <div class="progress" role="progressbar" aria-label="Contribucion {{ item.symbol }}" aria-valuenow="{{ item.contribution_pct|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                                <div class="progress-bar" style="width: {{ item.contribution_pct|floatformat:2 }}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-muted">Sin datos suficientes para mostrar detalle.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -25,6 +25,7 @@ from apps.dashboard.selectors import (
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
     get_portafolio_enriquecido_actual,
+    get_risk_contribution_detail,
     get_riesgo_portafolio,
     get_snapshot_coverage_summary,
     get_riesgo_portafolio_detallado,
@@ -330,6 +331,135 @@ class TestDashboardSelectors(TestCase):
         assert summary["risk_contribution"]["model_variant"] == "covariance_aware"
         assert summary["risk_contribution"]["covariance_observations"] == 64
         assert summary["risk_contribution"]["coverage_pct"] == 96.5
+
+    def test_get_risk_contribution_detail_returns_mvp_proxy_when_covariance_is_not_active(self):
+        cache.clear()
+
+        base_result = {
+            "items": [
+                {
+                    "symbol": "SPY",
+                    "sector": "Indice",
+                    "country": "USA",
+                    "asset_type": "etf",
+                    "weight_pct": 25.0,
+                    "volatility_proxy": 18.5,
+                    "risk_score": 0.04625,
+                    "contribution_pct": 40.0,
+                    "used_volatility_fallback": False,
+                }
+            ],
+            "top_contributors": [{"symbol": "SPY", "contribution_pct": 40.0}],
+            "by_sector": [{"key": "Indice", "contribution_pct": 40.0}],
+            "metadata": {
+                "confidence": "medium",
+                "warnings": ["used_fallback:QQQ:insufficient_history"],
+                "methodology": "mvp_methodology",
+                "limitations": "mvp_limitations",
+            },
+        }
+        covariance_result = {
+            "model_variant": "mvp_proxy",
+            "covariance_observations": 6,
+            "coverage_pct": 72.0,
+            "portfolio_volatility_proxy": None,
+            "covered_symbols": ["SPY"],
+            "excluded_symbols": ["QQQ"],
+        }
+
+        class DummyRiskService:
+            def calculate(self):
+                return base_result
+
+        class DummyCovarianceRiskService:
+            def __init__(self, base_service=None):
+                self.base_service = base_service
+
+            def calculate(self):
+                return covariance_result
+
+        with (
+            patch("apps.dashboard.selectors.RiskContributionService", DummyRiskService),
+            patch("apps.dashboard.selectors.CovarianceAwareRiskContributionService", DummyCovarianceRiskService),
+        ):
+            detail = get_risk_contribution_detail()
+
+        assert detail["model_variant"] == "mvp_proxy"
+        assert detail["covariance_observations"] == 6
+        assert detail["coverage_pct"] == 72.0
+        assert detail["portfolio_volatility_proxy"] is None
+        assert detail["top_asset"]["symbol"] == "SPY"
+        assert detail["top_sector"]["key"] == "Indice"
+        assert detail["items"][0]["symbol"] == "SPY"
+        assert detail["items"][0]["rank"] == 1
+        assert detail["items"][0]["risk_score"] == 0.04625
+        assert detail["warnings"] == ["used_fallback:QQQ:insufficient_history"]
+
+    def test_get_risk_contribution_detail_returns_covariance_variant_when_available(self):
+        cache.clear()
+
+        base_result = {
+            "items": [],
+            "top_contributors": [],
+            "by_sector": [],
+            "metadata": {"confidence": "low", "warnings": []},
+        }
+        covariance_result = {
+            "items": [
+                {
+                    "symbol": "MSFT",
+                    "sector": "Tecnologia",
+                    "country": "USA",
+                    "asset_type": "equity",
+                    "weight_pct": 18.5,
+                    "volatility_proxy": 24.2,
+                    "risk_score": 0.081234,
+                    "contribution_pct": 44.1,
+                    "used_volatility_fallback": False,
+                }
+            ],
+            "top_contributors": [{"symbol": "MSFT", "contribution_pct": 44.1}],
+            "by_sector": [{"key": "Tecnologia", "contribution_pct": 44.1}],
+            "metadata": {
+                "confidence": "high",
+                "warnings": [],
+                "methodology": "covariance_methodology",
+                "limitations": "covariance_limitations",
+            },
+            "model_variant": "covariance_aware",
+            "covariance_observations": 64,
+            "coverage_pct": 96.5,
+            "portfolio_volatility_proxy": 17.9,
+            "covered_symbols": ["MSFT", "SPY", "AAPL"],
+            "excluded_symbols": [],
+        }
+
+        class DummyRiskService:
+            def calculate(self):
+                return base_result
+
+        class DummyCovarianceRiskService:
+            def __init__(self, base_service=None):
+                self.base_service = base_service
+
+            def calculate(self):
+                return covariance_result
+
+        with (
+            patch("apps.dashboard.selectors.RiskContributionService", DummyRiskService),
+            patch("apps.dashboard.selectors.CovarianceAwareRiskContributionService", DummyCovarianceRiskService),
+        ):
+            detail = get_risk_contribution_detail()
+
+        assert detail["model_variant"] == "covariance_aware"
+        assert detail["covariance_observations"] == 64
+        assert detail["coverage_pct"] == 96.5
+        assert detail["portfolio_volatility_proxy"] == 17.9
+        assert detail["top_asset"]["symbol"] == "MSFT"
+        assert detail["top_sector"]["key"] == "Tecnologia"
+        assert detail["items"][0]["symbol"] == "MSFT"
+        assert detail["items"][0]["contribution_pct"] == 44.1
+        assert detail["covered_symbols"] == ["MSFT", "SPY", "AAPL"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""
