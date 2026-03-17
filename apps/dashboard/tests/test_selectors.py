@@ -191,7 +191,7 @@ class TestDashboardSelectors(TestCase):
     def test_pct_liquidez_usa_total_iol_como_base(self):
         fecha = timezone.now()
 
-        ParametroActivo.objects.create(simbolo='AAPL', sector='Tecnolog?a', bloque_estrategico='Growth', pais_exposicion='USA', tipo_patrimonial='Growth')
+        ParametroActivo.objects.create(simbolo='AAPL', sector='Tecnología', bloque_estrategico='Growth', pais_exposicion='USA', tipo_patrimonial='Growth')
         ParametroActivo.objects.create(simbolo='CAU1', sector='Liquidez', bloque_estrategico='Liquidez', pais_exposicion='Argentina', tipo_patrimonial='Cash')
         ParametroActivo.objects.create(simbolo='ADBAICA', sector='Cash Mgmt', bloque_estrategico='Liquidez', pais_exposicion='Argentina', tipo_patrimonial='FCI')
         make_activo(fecha, 'AAPL', valorizado=1300.00, tipo='ACCIONES', moneda='USD')
@@ -209,7 +209,7 @@ class TestDashboardSelectors(TestCase):
         ParametroActivo.objects.create(simbolo='GD30', sector='Soberano', bloque_estrategico='Argentina', pais_exposicion='Argentina', tipo_patrimonial='Bond')
         ParametroActivo.objects.create(simbolo='TZX26', sector='CER', bloque_estrategico='Argentina', pais_exposicion='Argentina', tipo_patrimonial='Bond')
         ParametroActivo.objects.create(simbolo='BPOC7', sector='Corporativo', bloque_estrategico='Argentina', pais_exposicion='Argentina', tipo_patrimonial='Bond')
-        ParametroActivo.objects.create(simbolo='AAPL', sector='Tecnolog?a', bloque_estrategico='Growth', pais_exposicion='USA', tipo_patrimonial='Growth')
+        ParametroActivo.objects.create(simbolo='AAPL', sector='Tecnología', bloque_estrategico='Growth', pais_exposicion='USA', tipo_patrimonial='Growth')
         make_activo(fecha, 'GD30', valorizado=100.00, tipo='TitulosPublicos')
         make_activo(fecha, 'TZX26', valorizado=100.00, tipo='TitulosPublicos')
         make_activo(fecha, 'BPOC7', valorizado=100.00, tipo='TitulosPublicos')
@@ -337,15 +337,15 @@ class TestDashboardSelectors(TestCase):
 
         ParametroActivo.objects.create(
             simbolo='AAPL',
-            sector='Tecnolog?a',
-            bloque_estrategico='Inversi?n',
+            sector='Tecnología',
+            bloque_estrategico='Inversión',
             pais_exposicion='Estados Unidos',
             tipo_patrimonial='Growth',
         )
         ParametroActivo.objects.create(
             simbolo='YPF',
-            sector='Energ?a',
-            bloque_estrategico='Inversi?n',
+            sector='Energía',
+            bloque_estrategico='Inversión',
             pais_exposicion='Argentina',
             tipo_patrimonial='Equity',
         )
@@ -576,21 +576,21 @@ class TestDashboardSelectors(TestCase):
 
         ParametroActivo.objects.create(
             simbolo='AAPL',
-            sector='Tecnolog?a',
+            sector='Tecnología',
             bloque_estrategico='Growth',
             pais_exposicion='USA',
             tipo_patrimonial='Growth',
         )
         ParametroActivo.objects.create(
             simbolo='MELI',
-            sector='Tecnolog?a / E-commerce',
+            sector='Tecnología / E-commerce',
             bloque_estrategico='Growth',
             pais_exposicion='Latam',
             tipo_patrimonial='Growth',
         )
         ParametroActivo.objects.create(
             simbolo='AMD',
-            sector='Tecnolog?a / Semiconductores',
+            sector='Tecnología / Semiconductores',
             bloque_estrategico='Growth',
             pais_exposicion='USA',
             tipo_patrimonial='Growth',

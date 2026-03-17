@@ -81,10 +81,15 @@ class TestDashboardView:
     def test_estrategia_uses_updated_liquidity_and_fixed_income_labels(self, auth_client):
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
+        assert 'Bases de Cálculo' in body
+        assert 'Navegación rápida' in body
+        assert 'Lectura del portafolio' in body
+        assert 'Vista analítica' in body
         assert 'Fondos de liquidez / cash management' in body
         assert '% Renta fija AR' in body
         assert 'Analytics v2' in body
         assert 'Resumen Analytics v2' in body
+        assert 'Señales Analytics v2' in body
         assert 'Macro Local' in body
         assert 'Carry real BADLAR' in body
         assert 'Brecha FX' in body
@@ -94,6 +99,9 @@ class TestDashboardView:
         assert 'Top soberano local' in body
         assert 'Concentración bloque soberano' in body
         assert 'Split hard dollar / CER' in body
+        assert 'Último snapshot' in body
+        assert 'Gap máximo' in body
+        assert 'Posiciones completas' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body
