@@ -5,9 +5,9 @@ Cerrar la habilitacion operativa de `USDARS MEP` en entorno sin cambiar logica d
 ## Pasos minimos
 
 1. Definir:
-   - `USDARS_MEP_API_URL`
-   - `USDARS_MEP_API_VALUE_PATH`
-   - `USDARS_MEP_API_DATE_PATH`
+   - `USDARS_MEP_API_URL=https://dolarapi.com/v1/dolares/bolsa`
+   - `USDARS_MEP_API_VALUE_PATH=venta`
+   - `USDARS_MEP_API_DATE_PATH=fechaActualizacion`
 2. Ejecutar:
    - `python manage.py sync_local_macro`
    - o usar `Sincronizar Macro Local` en `Ops`
@@ -21,6 +21,15 @@ Cerrar la habilitacion operativa de `USDARS MEP` en entorno sin cambiar logica d
   - se persiste `usdars_mep`
   - se habilita `fx_gap_pct`
   - pueden aparecer señales `local_fx_gap_high`
+
+## Proveedor recomendado hoy
+
+- `DolarApi`
+- endpoint:
+  - `https://dolarapi.com/v1/dolares/bolsa`
+- campos usados:
+  - `venta`
+  - `fechaActualizacion`
 
 ## Limitaciones
 

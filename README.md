@@ -64,9 +64,12 @@ Copiar `.env.example` y completar al menos:
 - `REDIS_URL`
 
 Variables opcionales para FX local / `USDARS MEP`:
-- `USDARS_MEP_API_URL`
-- `USDARS_MEP_API_VALUE_PATH`
-- `USDARS_MEP_API_DATE_PATH`
+- `USDARS_MEP_API_URL` recomendado:
+  - `https://dolarapi.com/v1/dolares/bolsa`
+- `USDARS_MEP_API_VALUE_PATH` recomendado:
+  - `venta`
+- `USDARS_MEP_API_DATE_PATH` recomendado:
+  - `fechaActualizacion`
 
 Si no se configuran:
 - el sync macro local sigue funcionando
@@ -89,9 +92,9 @@ Credenciales y variables minimas:
 - `IOL_BASE_URL=https://api.invertironline.com`
 
 Opcional para señales locales FX:
-- `USDARS_MEP_API_URL`
+- `USDARS_MEP_API_URL=https://dolarapi.com/v1/dolares/bolsa`
 - `USDARS_MEP_API_VALUE_PATH=venta`
-- `USDARS_MEP_API_DATE_PATH`
+- `USDARS_MEP_API_DATE_PATH=fechaActualizacion`
 
 ## Ejecucion con Docker
 ```bash

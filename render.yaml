@@ -27,8 +27,8 @@ services:
       - key: IOL_PASSWORD
         sync: false
       - key: USDARS_MEP_API_URL
-        sync: false
+        value: https://dolarapi.com/v1/dolares/bolsa
       - key: USDARS_MEP_API_VALUE_PATH
         value: venta
       - key: USDARS_MEP_API_DATE_PATH
-        sync: false
+        value: fechaActualizacion
