@@ -566,7 +566,9 @@ function loadDataQualityDetails() {
         if (sync.token && sync.token.reason) {
             syncReasons.push(`Token: ${sync.token.reason}`);
         }
-        const syncReasonText = syncReasons.length  `<div class="mt-1 small text-muted">${syncReasons.join(' | ')}</div>` : '';
+        const syncReasonText = syncReasons.length
+            ? `<div class="mt-1 small text-muted">${syncReasons.join(' | ')}</div>`
+            : '';
         const content = `<div class="row g-3"><div class="col-md-3"><div class="p-2 border rounded"><strong>Snapshot issues</strong><br>${snapshot.issues_count || 0}</div></div><div class="col-md-3"><div class="p-2 border rounded"><strong>Sync issues</strong><br>${sync.issues_count || 0}</div></div><div class="col-md-3"><div class="p-2 border rounded"><strong>Sin metadata</strong><br>${metadata.unclassified_assets_count || 0}</div></div><div class="col-md-3"><div class="p-2 border rounded"><strong>Inconsistentes</strong><br>${metadata.inconsistent_assets_count || 0}</div></div></div><div class="mt-3 small text-muted">Sync status: ${sync.status || 'unknown'} | Token: ${(sync.token && sync.token.status) || 'unknown'}</div>${syncReasonText}`;
         document.getElementById('quality-details-content').innerHTML = content;
     }).catch(() => {

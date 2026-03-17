@@ -106,6 +106,7 @@ class TestDashboardView:
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body
+        assert "const syncReasonText = syncReasons.length" in body
 
     def test_risk_contribution_detail_route_accessible_authenticated(self, auth_client):
         response = auth_client.get(reverse('dashboard:risk_contribution_detail'))
