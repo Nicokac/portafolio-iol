@@ -13,6 +13,7 @@ class IncrementalProposalHistoryService:
 
     MAX_SNAPSHOTS_PER_USER = 10
     MANUAL_DECISION_STATUSES = {"accepted", "deferred", "rejected"}
+    HISTORY_FILTER_STATUSES = {"pending", "accepted", "deferred", "rejected"}
 
     def save_preferred_proposal(
         self,
@@ -47,11 +48,28 @@ class IncrementalProposalHistoryService:
         self._prune_user_history(user_id=user.pk)
         return self.serialize(snapshot)
 
-    def list_recent(self, *, user, limit: int = 5) -> list[dict]:
+    def list_recent(self, *, user, limit: int = 5, decision_status: str | None = None) -> list[dict]:
         if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
             return []
-        queryset = IncrementalProposalSnapshot.objects.filter(user=user).order_by("-created_at", "-id")[: max(int(limit), 0)]
+        queryset = IncrementalProposalSnapshot.objects.filter(user=user)
+        normalized_status = str(decision_status or "").strip().lower()
+        if normalized_status in self.HISTORY_FILTER_STATUSES:
+            queryset = queryset.filter(manual_decision_status=normalized_status)
+        queryset = queryset.order_by("-created_at", "-id")[: max(int(limit), 0)]
         return [self.serialize(item) for item in queryset]
+
+    def get_decision_counts(self, *, user) -> dict:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            return {"total": 0, "pending": 0, "accepted": 0, "deferred": 0, "rejected": 0}
+
+        queryset = IncrementalProposalSnapshot.objects.filter(user=user)
+        return {
+            "total": queryset.count(),
+            "pending": queryset.filter(manual_decision_status="pending").count(),
+            "accepted": queryset.filter(manual_decision_status="accepted").count(),
+            "deferred": queryset.filter(manual_decision_status="deferred").count(),
+            "rejected": queryset.filter(manual_decision_status="rejected").count(),
+        }
 
     def promote_to_tracking_baseline(self, *, user, snapshot_id: int | str) -> dict:
         if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):

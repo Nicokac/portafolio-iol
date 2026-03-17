@@ -216,6 +216,7 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         context['incremental_proposal_history'] = get_incremental_proposal_history(
             user=self.request.user,
             limit=5,
+            decision_status=self.request.GET.get('decision_status_filter'),
         )
         context['incremental_proposal_tracking_baseline'] = get_incremental_proposal_tracking_baseline(
             user=self.request.user,

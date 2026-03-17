@@ -698,6 +698,26 @@
                 <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>
             </div>
             <div class="card-body">
+                <p class="text-muted mb-3">{{ incremental_proposal_history.headline }}</p>
+                {% if incremental_proposal_history.decision_counts.total %}
+                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-5">
+                            <label class="form-label" for="decision_status_filter">Filtrar por decisión manual</label>
+                            <select class="form-select" id="decision_status_filter" name="decision_status_filter">
+                                {% for option in incremental_proposal_history.available_filters %}
+                                <option value="{% if option.key != 'all' %}{{ option.key }}{% endif %}" {% if option.selected %}selected{% endif %}>
+                                    {{ option.label }} · {{ option.count }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar filtro</button>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
                 {% if incremental_proposal_history.has_history %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">

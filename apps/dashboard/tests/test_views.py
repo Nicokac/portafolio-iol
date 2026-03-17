@@ -722,7 +722,7 @@ class TestDashboardView:
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_proposal_history',
-            lambda user, limit=5: {
+            lambda user, limit=5, decision_status=None: {
                 'items': [
                     {
                         'proposal_label': 'Plan guardado 1',
@@ -734,11 +734,20 @@ class TestDashboardView:
                             'fragility_change': -1.5,
                             'scenario_loss_change': 0.3,
                         },
+                        'manual_decision_status_label': 'Aceptada',
                         'created_at': '2026-03-17 11:00',
                     }
                 ],
                 'count': 1,
                 'has_history': True,
+                'active_filter': 'all',
+                'active_filter_label': 'Todos',
+                'decision_counts': {'total': 1, 'pending': 0, 'accepted': 1, 'deferred': 0, 'rejected': 0},
+                'available_filters': [
+                    {'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True},
+                    {'key': 'accepted', 'label': 'Aceptada', 'count': 1, 'selected': False},
+                ],
+                'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
             },
         )
         monkeypatch.setattr(
@@ -909,6 +918,8 @@ class TestDashboardView:
         assert 'Drift favorable' in body
         assert 'Promover a baseline' in body
         assert 'Historial reciente de propuestas guardadas' in body
+        assert 'Filtrar por decisión manual' in body
+        assert 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.' in body
         assert 'Plan guardado 1' in body
         assert 'Aceptar' in body
         assert 'Diferir' in body

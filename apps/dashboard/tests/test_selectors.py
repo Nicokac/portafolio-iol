@@ -1489,16 +1489,48 @@ class TestDashboardSelectors(TestCase):
                 },
                 {"proposal_label": "Split KO + MCD", "capital_amount": 300000, "purchase_plan": []},
             ],
-        ) as mocked:
+        ) as mocked, patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 2, "pending": 1, "accepted": 1, "deferred": 0, "rejected": 0},
+        ):
             detail = get_incremental_proposal_history(user=DummyUser(), limit=5)
 
         mocked.assert_called_once()
         assert detail["count"] == 2
         assert detail["has_history"] is True
+        assert detail["active_filter"] == "all"
         assert detail["items"][0]["proposal_label"] == "Plan manual A"
         assert "manual_compare=1" in detail["items"][0]["reapply_querystring"]
         assert "plan_a_symbol_1=KO" in detail["items"][0]["reapply_querystring"]
         assert detail["items"][0]["reapply_truncated"] is True
+
+    def test_get_incremental_proposal_history_supports_manual_decision_filter(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "proposal_label": "Plan manual A",
+                    "manual_decision_status": "accepted",
+                    "capital_amount": 600000,
+                    "purchase_plan": [],
+                }
+            ],
+        ) as mocked, patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 3, "pending": 1, "accepted": 1, "deferred": 1, "rejected": 0},
+        ):
+            detail = get_incremental_proposal_history(user=user, limit=5, decision_status="accepted")
+
+        mocked.assert_called_once_with(user=user, limit=5, decision_status="accepted")
+        assert detail["active_filter"] == "accepted"
+        assert detail["active_filter_label"] == "Aceptada"
+        assert detail["decision_counts"]["accepted"] == 1
+        assert "decision aceptada" in detail["headline"].lower()
 
     def test_get_incremental_snapshot_vs_current_comparison_compares_saved_against_current(self):
         class DummyUser:

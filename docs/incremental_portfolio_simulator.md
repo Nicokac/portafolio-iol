@@ -360,3 +360,31 @@ Limitaciones:
 - la decision vive sobre snapshots guardados, no sobre propuestas efimeras
 - no hay workflow multi-etapa ni aprobacion colaborativa
 - no existe una vista dedicada fuera de `Planeacion`
+
+## Lectura operativa del historial por estado
+
+La hoja `Planeacion` permite filtrar el historial incremental por estado de decision manual.
+
+Estados soportados:
+
+- `pending`
+- `accepted`
+- `deferred`
+- `rejected`
+
+Objetivo:
+
+- separar rapido propuestas pendientes de propuestas ya resueltas
+- dar una lectura operativa del backlog incremental sin crear otra superficie
+
+Salida:
+
+- filtro activo
+- conteos por estado
+- headline operativo segun el filtro aplicado
+
+Limitaciones:
+
+- el filtro es solo de lectura
+- no agrega persistencia nueva
+- no reemplaza una vista historica dedicada

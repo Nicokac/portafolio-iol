@@ -192,3 +192,97 @@ def test_get_latest_manual_decision_returns_last_decided_snapshot():
 
     assert latest["proposal_label"] == "Plan B"
     assert latest["manual_decision_status"] == "accepted"
+
+
+@pytest.mark.django_db
+def test_list_recent_can_filter_by_manual_decision_status():
+    user = User.objects.create_user(username="history-filter", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    service.decide_snapshot(user=user, snapshot_id=first["id"], decision_status="accepted")
+
+    pending_items = service.list_recent(user=user, limit=10, decision_status="pending")
+    accepted_items = service.list_recent(user=user, limit=10, decision_status="accepted")
+
+    assert [item["proposal_label"] for item in pending_items] == ["Plan B"]
+    assert [item["proposal_label"] for item in accepted_items] == ["Plan A"]
+
+
+@pytest.mark.django_db
+def test_get_decision_counts_returns_operational_summary():
+    user = User.objects.create_user(username="history-counts", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    third = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_c",
+            "proposal_label": "Plan C",
+            "purchase_plan": [{"symbol": "XLU", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    service.decide_snapshot(user=user, snapshot_id=first["id"], decision_status="accepted")
+    service.decide_snapshot(user=user, snapshot_id=second["id"], decision_status="deferred")
+    service.decide_snapshot(user=user, snapshot_id=third["id"], decision_status="rejected")
+
+    counts = service.get_decision_counts(user=user)
+
+    assert counts == {
+        "total": 3,
+        "pending": 0,
+        "accepted": 1,
+        "deferred": 1,
+        "rejected": 1,
+    }

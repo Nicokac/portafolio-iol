@@ -1977,10 +1977,13 @@ def get_preferred_incremental_portfolio_proposal(
     }
 
 
-def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
+def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: str | None = None) -> Dict:
     """Retorna historial reciente de propuestas incrementales guardadas por el usuario."""
 
-    raw_items = IncrementalProposalHistoryService().list_recent(user=user, limit=limit)
+    service = IncrementalProposalHistoryService()
+    normalized_filter = _normalize_incremental_history_decision_filter(decision_status)
+    raw_items = service.list_recent(user=user, limit=limit, decision_status=normalized_filter)
+    counts = service.get_decision_counts(user=user)
     items = []
     for item in raw_items:
         reapply = _build_incremental_snapshot_reapply_payload(item)
@@ -1994,6 +1997,11 @@ def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
         "items": items,
         "count": len(items),
         "has_history": bool(items),
+        "active_filter": normalized_filter or "all",
+        "active_filter_label": _format_incremental_history_decision_filter_label(normalized_filter),
+        "decision_counts": counts,
+        "available_filters": _build_incremental_history_available_filters(normalized_filter, counts),
+        "headline": _build_incremental_history_headline(normalized_filter, counts, len(items)),
     }
 
 
@@ -2553,6 +2561,45 @@ def _build_incremental_manual_decision_headline(item: Dict | None) -> str:
     if note:
         return f"{base} Nota: {note}"
     return base
+
+
+def _normalize_incremental_history_decision_filter(decision_status: str | None) -> str | None:
+    normalized = str(decision_status or "").strip().lower()
+    if normalized in {"pending", "accepted", "deferred", "rejected"}:
+        return normalized
+    return None
+
+
+def _format_incremental_history_decision_filter_label(decision_status: str | None) -> str:
+    if decision_status is None:
+        return "Todos"
+    return _format_incremental_manual_decision_status(decision_status)
+
+
+def _build_incremental_history_available_filters(active_filter: str | None, counts: Dict) -> list[Dict]:
+    options = [None, "pending", "accepted", "deferred", "rejected"]
+    items = []
+    for option in options:
+        key = option or "all"
+        items.append(
+            {
+                "key": key,
+                "label": _format_incremental_history_decision_filter_label(option),
+                "count": int(counts.get("total", 0) if option is None else counts.get(option, 0)),
+                "selected": (active_filter or "all") == key,
+            }
+        )
+    return items
+
+
+def _build_incremental_history_headline(decision_status: str | None, counts: Dict, visible_count: int) -> str:
+    total = int(counts.get("total", 0))
+    if total == 0:
+        return "Todavia no guardaste propuestas incrementales para seguimiento manual."
+    if decision_status is None:
+        return f"Se muestran {visible_count} snapshots recientes sobre un total de {total} propuestas guardadas."
+    label = _format_incremental_history_decision_filter_label(decision_status).lower()
+    return f"Se muestran {visible_count} snapshots con decision {label}."
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:
