@@ -272,6 +272,20 @@ def test_build_signal_actions_returns_country_risk_actions(engine):
     ]
 
 
+def test_build_signal_actions_returns_single_name_sovereign_actions(engine):
+    actions = engine._build_signal_actions(
+        {
+            "signal_key": "local_sovereign_single_name_concentration",
+            "affected_scope": "portfolio",
+        }
+    )
+
+    assert actions == [
+        "Reducir dependencia de un solo bono soberano dentro del bloque argentino",
+        "Distribuir el riesgo local entre instrumentos con drivers distintos si la convicción sigue siendo local",
+    ]
+
+
 def test_analyze_analytics_v2_includes_local_macro_signals(engine, monkeypatch):
     monkeypatch.setattr(engine, "_build_risk_contribution_signals", lambda: [])
     monkeypatch.setattr(

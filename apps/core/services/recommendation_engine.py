@@ -495,6 +495,11 @@ class RecommendationEngine:
                 "Revisar si el peso de soberanos locales sigue siendo consistente con el nivel actual de riesgo país",
                 "Reducir dependencia de crédito soberano argentino si el bloque local ya es material",
             ]
+        if "single_name" in key and "sovereign" in key:
+            return [
+                "Reducir dependencia de un solo bono soberano dentro del bloque argentino",
+                "Distribuir el riesgo local entre instrumentos con drivers distintos si la convicción sigue siendo local",
+            ]
         if "inflation_hedge" in key:
             return [
                 "Evaluar si la cobertura CER es suficiente para la exposición argentina actual",

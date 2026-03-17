@@ -89,6 +89,7 @@ class TestDashboardView:
         assert 'Carry real BADLAR' in body
         assert 'Brecha FX' in body
         assert 'Riesgo país' in body
+        assert 'Top soberano local' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body

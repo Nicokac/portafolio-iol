@@ -1169,6 +1169,8 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                 "ars_liquidity_weight_pct": local_macro_result.get("summary", {}).get("ars_liquidity_weight_pct"),
                 "cer_weight_pct": local_macro_result.get("summary", {}).get("cer_weight_pct"),
                 "sovereign_bond_weight_pct": local_macro_result.get("summary", {}).get("sovereign_bond_weight_pct"),
+                "top_local_sovereign_symbol": local_macro_result.get("summary", {}).get("top_local_sovereign_symbol"),
+                "top_local_sovereign_share_pct": local_macro_result.get("summary", {}).get("top_local_sovereign_share_pct"),
                 "badlar_real_carry_pct": local_macro_result.get("summary", {}).get("badlar_real_carry_pct"),
                 "usdars_mep": local_macro_result.get("summary", {}).get("usdars_mep"),
                 "fx_gap_pct": local_macro_result.get("summary", {}).get("fx_gap_pct"),

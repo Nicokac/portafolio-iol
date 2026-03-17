@@ -20,6 +20,7 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
   - carry real de liquidez en ARS
   - cobertura inflacionaria via CER
   - concentracion en soberanos locales
+  - concentracion en un soberano puntual
   - brecha cambiaria local
   - riesgo pais alto con soberano local relevante
 
@@ -28,6 +29,7 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
 - `local_liquidity_real_carry_negative`
 - `local_inflation_hedge_gap`
 - `local_sovereign_risk_excess`
+- `local_sovereign_single_name_concentration`
 - `local_fx_gap_high`
 - `local_country_risk_high`
 
@@ -37,6 +39,8 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
 - `cer_weight_pct`: peso de posiciones con sector `CER`
 - `argentina_bond_weight_pct`: bonos con exposicion Argentina
 - `sovereign_bond_weight_pct`: posiciones con sector `Soberano`
+- `top_local_sovereign_symbol`: bono soberano local dominante
+- `top_local_sovereign_share_pct`: peso del bono dominante dentro del bloque soberano local
 - `badlar_real_carry_pct = BADLAR - IPC yoy`
 - `fx_gap_pct = (MEP / oficial - 1) * 100`
 - `riesgo_pais_arg`: ultimo valor persistido de la serie local configurada

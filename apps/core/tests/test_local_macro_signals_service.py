@@ -159,6 +159,37 @@ def test_local_macro_signals_detects_high_country_risk_with_sovereign_weight():
     assert keyed["local_country_risk_high"]["evidence"]["riesgo_pais_arg"] == 1250.0
 
 
+def test_local_macro_signals_detects_single_name_concentration_in_local_sovereigns():
+    positions = [
+        build_position(symbol="GD30", market_value=300.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="AL30", market_value=120.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="SPY", market_value=580.0, sector="Indice", country="USA", asset_type="equity", strategic_bucket="Growth", patrimonial_type="Equity", currency="USD"),
+    ]
+    positions_loader = Mock()
+    positions_loader._load_current_positions.return_value = positions
+    positions_loader._is_cash_like_position.return_value = False
+
+    macro_service = Mock()
+    macro_service.get_context_summary.return_value = {
+        "badlar_privada": 28.0,
+        "ipc_nacional_variation_yoy": 36.0,
+        "ipc_nacional_variation_ytd": 9.0,
+        "usdars_oficial": 1000.0,
+        "riesgo_pais_arg": 1250.0,
+    }
+    service = LocalMacroSignalsService(positions_loader=positions_loader, macro_service=macro_service)
+
+    result = service.calculate()
+    signals = service.build_recommendation_signals()
+
+    assert result["summary"]["top_local_sovereign_symbol"] == "GD30"
+    assert result["summary"]["local_sovereign_symbols_count"] == 2
+    assert result["summary"]["top_local_sovereign_share_pct"] == 71.43
+    keyed = {signal["signal_key"]: signal for signal in signals}
+    assert "local_sovereign_single_name_concentration" in keyed
+    assert keyed["local_sovereign_single_name_concentration"]["evidence"]["top_local_sovereign_symbol"] == "GD30"
+
+
 def test_local_macro_signals_degrades_confidence_when_macro_references_are_missing():
     positions = [
         build_position(symbol="GD30", market_value=100.0, sector="Soberano", country="Argentina", asset_type="bond"),

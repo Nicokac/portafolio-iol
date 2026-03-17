@@ -262,6 +262,16 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        <tr>
+                            <td><strong>Top soberano local</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.top_local_sovereign_symbol %}
+                                {{ analytics_v2_summary.local_macro.top_local_sovereign_symbol }} ({{ analytics_v2_summary.local_macro.top_local_sovereign_share_pct|default:0|pct:0 }} bloque)
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

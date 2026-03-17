@@ -20,6 +20,8 @@ class LocalMacroSignalsService:
     VERY_HIGH_FX_GAP_THRESHOLD = 30.0
     HIGH_COUNTRY_RISK_THRESHOLD = 900.0
     VERY_HIGH_COUNTRY_RISK_THRESHOLD = 1400.0
+    HIGH_SINGLE_SOVEREIGN_SHARE_THRESHOLD = 45.0
+    VERY_HIGH_SINGLE_SOVEREIGN_SHARE_THRESHOLD = 60.0
 
     def __init__(
         self,
@@ -73,6 +75,8 @@ class LocalMacroSignalsService:
             total_market_value,
             predicate=lambda position: (position.sector or "").strip().lower() == "soberano",
         )
+        sovereign_positions = self._build_local_sovereign_breakdown(positions, total_market_value)
+        top_local_sovereign = sovereign_positions[0] if sovereign_positions else None
 
         badlar_pct = self._as_float(context.get("badlar_privada"))
         ipc_yoy_pct = self._as_float(context.get("ipc_nacional_variation_yoy"))
@@ -100,6 +104,11 @@ class LocalMacroSignalsService:
                 "cer_weight_pct": round(cer_weight_pct, 2),
                 "argentina_bond_weight_pct": round(argentina_bond_weight_pct, 2),
                 "sovereign_bond_weight_pct": round(sovereign_bond_weight_pct, 2),
+                "top_local_sovereign_symbol": top_local_sovereign["symbol"] if top_local_sovereign else None,
+                "top_local_sovereign_weight_pct": top_local_sovereign["weight_pct"] if top_local_sovereign else None,
+                "top_local_sovereign_share_pct": top_local_sovereign["share_pct"] if top_local_sovereign else None,
+                "local_sovereign_symbols_count": len(sovereign_positions),
+                "local_sovereign_breakdown": sovereign_positions[:3],
                 "badlar_pct": round(badlar_pct, 2) if badlar_pct is not None else None,
                 "ipc_yoy_pct": round(ipc_yoy_pct, 2) if ipc_yoy_pct is not None else None,
                 "ipc_ytd_pct": round(ipc_ytd_pct, 2) if ipc_ytd_pct is not None else None,
@@ -137,6 +146,9 @@ class LocalMacroSignalsService:
         cer_weight_pct = float(summary.get("cer_weight_pct") or 0.0)
         argentina_bond_weight_pct = float(summary.get("argentina_bond_weight_pct") or 0.0)
         sovereign_bond_weight_pct = float(summary.get("sovereign_bond_weight_pct") or 0.0)
+        top_local_sovereign_symbol = summary.get("top_local_sovereign_symbol")
+        top_local_sovereign_weight_pct = summary.get("top_local_sovereign_weight_pct")
+        top_local_sovereign_share_pct = summary.get("top_local_sovereign_share_pct")
         badlar_real_carry_pct = summary.get("badlar_real_carry_pct")
         ipc_yoy_pct = summary.get("ipc_yoy_pct")
         fx_gap_pct = summary.get("fx_gap_pct")
@@ -225,6 +237,34 @@ class LocalMacroSignalsService:
             )
 
         if (
+            top_local_sovereign_symbol
+            and top_local_sovereign_share_pct is not None
+            and sovereign_bond_weight_pct >= self.HIGH_SOVEREIGN_RISK_THRESHOLD
+            and float(top_local_sovereign_share_pct) >= self.HIGH_SINGLE_SOVEREIGN_SHARE_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_sovereign_single_name_concentration",
+                    severity=(
+                        "high"
+                        if float(top_local_sovereign_share_pct) >= self.VERY_HIGH_SINGLE_SOVEREIGN_SHARE_THRESHOLD
+                        else "medium"
+                    ),
+                    title="Bloque soberano local concentrado en un solo bono",
+                    description=(
+                        "La exposicion a soberanos locales depende demasiado de un instrumento puntual dentro del bloque argentino."
+                    ),
+                    affected_scope="portfolio",
+                    evidence={
+                        "top_local_sovereign_symbol": top_local_sovereign_symbol,
+                        "top_local_sovereign_weight_pct": round(float(top_local_sovereign_weight_pct or 0.0), 2),
+                        "top_local_sovereign_share_pct": round(float(top_local_sovereign_share_pct), 2),
+                        "sovereign_bond_weight_pct": round(sovereign_bond_weight_pct, 2),
+                    },
+                )
+            )
+
+        if (
             riesgo_pais_arg is not None
             and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
             and sovereign_bond_weight_pct >= self.HIGH_SOVEREIGN_RISK_THRESHOLD
@@ -259,6 +299,31 @@ class LocalMacroSignalsService:
             return 0.0
         market_value = sum(float(position.market_value) for position in positions if predicate(position))
         return (market_value / total_market_value) * 100.0
+
+    @staticmethod
+    def _build_local_sovereign_breakdown(positions, total_market_value: float) -> list[dict]:
+        sovereign_positions = [
+            position
+            for position in positions
+            if (position.sector or "").strip().lower() == "soberano"
+            and (position.country or "").strip().lower() == "argentina"
+            and (position.asset_type or "").strip().lower() == "bond"
+        ]
+        sovereign_total = sum(float(position.market_value) for position in sovereign_positions)
+        if total_market_value <= 0 or sovereign_total <= 0:
+            return []
+
+        rows = []
+        for position in sovereign_positions:
+            market_value = float(position.market_value)
+            rows.append(
+                {
+                    "symbol": position.symbol,
+                    "weight_pct": round((market_value / total_market_value) * 100.0, 2),
+                    "share_pct": round((market_value / sovereign_total) * 100.0, 2),
+                }
+            )
+        return sorted(rows, key=lambda item: item["weight_pct"], reverse=True)
 
     @staticmethod
     def _as_float(value):
