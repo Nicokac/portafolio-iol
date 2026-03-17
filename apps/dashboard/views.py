@@ -45,6 +45,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_incremental_proposal_history,
+    get_incremental_snapshot_vs_current_comparison,
     get_macro_local_context,
     get_manual_incremental_portfolio_simulation_comparison,
     get_monthly_allocation_plan,
@@ -210,6 +211,11 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         context['incremental_proposal_history'] = get_incremental_proposal_history(
             user=self.request.user,
             limit=5,
+        )
+        context['incremental_snapshot_vs_current_comparison'] = get_incremental_snapshot_vs_current_comparison(
+            self.request.GET,
+            user=self.request.user,
+            capital_amount=600000,
         )
         return context
 

@@ -1994,11 +1994,132 @@ def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
     }
 
 
+def get_incremental_snapshot_vs_current_comparison(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+    history_limit: int = 10,
+) -> Dict:
+    """Compara un snapshot incremental guardado contra la propuesta preferida actual."""
+
+    history = get_incremental_proposal_history(user=user, limit=history_limit)
+    preferred_payload = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=capital_amount)
+    preferred = preferred_payload.get("preferred")
+
+    selected_snapshot_id = str(_query_param_value(query_params, "saved_proposal_id", "")).strip()
+    selected_snapshot = None
+    if history["items"]:
+        if selected_snapshot_id:
+            selected_snapshot = next(
+                (item for item in history["items"] if str(item.get("id")) == selected_snapshot_id),
+                None,
+            )
+        if selected_snapshot is None:
+            selected_snapshot = history["items"][0]
+
+    comparison = None
+    if selected_snapshot and preferred:
+        comparison = _build_incremental_snapshot_comparison(selected_snapshot, preferred)
+
+    return {
+        "available_snapshots": [
+            {
+                "id": item.get("id"),
+                "label": item.get("proposal_label"),
+                "created_at": item.get("created_at"),
+            }
+            for item in history["items"]
+        ],
+        "selected_snapshot_id": str(selected_snapshot.get("id")) if selected_snapshot else None,
+        "selected_snapshot": selected_snapshot,
+        "current_preferred": preferred,
+        "comparison": comparison,
+        "has_comparison": comparison is not None,
+        "explanation": _build_incremental_snapshot_comparison_explanation(selected_snapshot, preferred, comparison),
+    }
+
+
 def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
     return {
         str(item.get("block") or ""): item
         for item in candidate_ranking.get("by_block", [])
     }
+
+
+def _build_incremental_snapshot_comparison(saved_item: Dict, current_item: Dict) -> Dict:
+    saved_score = _coerce_optional_float(saved_item.get("comparison_score"))
+    current_score = _coerce_optional_float(current_item.get("comparison_score"))
+    saved_delta = dict(saved_item.get("simulation_delta") or {})
+    current_delta = dict((current_item.get("simulation") or {}).get("delta") or {})
+
+    metrics = []
+    for key, label in (
+        ("expected_return_change", "Expected return"),
+        ("real_expected_return_change", "Real expected return"),
+        ("fragility_change", "Fragility"),
+        ("scenario_loss_change", "Worst scenario loss"),
+        ("risk_concentration_change", "Top risk concentration"),
+    ):
+        saved_value = _coerce_optional_float(saved_delta.get(key))
+        current_value = _coerce_optional_float(current_delta.get(key))
+        metrics.append(
+            {
+                "key": key,
+                "label": label,
+                "saved_value": saved_value,
+                "current_value": current_value,
+                "difference": None if saved_value is None or current_value is None else round(current_value - saved_value, 4),
+            }
+        )
+
+    return {
+        "score_saved": saved_score,
+        "score_current": current_score,
+        "score_difference": None if saved_score is None or current_score is None else round(current_score - saved_score, 4),
+        "metrics": metrics,
+        "winner": _resolve_incremental_snapshot_winner(saved_score, current_score),
+    }
+
+
+def _resolve_incremental_snapshot_winner(saved_score: float | None, current_score: float | None) -> str | None:
+    if saved_score is None and current_score is None:
+        return None
+    if saved_score is None:
+        return "current"
+    if current_score is None:
+        return "saved"
+    if current_score > saved_score:
+        return "current"
+    if current_score < saved_score:
+        return "saved"
+    return "tie"
+
+
+def _build_incremental_snapshot_comparison_explanation(saved_item: Dict | None, current_item: Dict | None, comparison: Dict | None) -> str:
+    if not saved_item and not current_item:
+        return "Todavia no hay snapshots guardados ni propuesta preferida actual para comparar."
+    if not saved_item:
+        return "Todavia no hay un snapshot guardado para comparar contra la propuesta preferida actual."
+    if not current_item:
+        return "Todavia no hay una propuesta preferida actual construible para comparar contra el snapshot guardado."
+    if comparison is None:
+        return "No fue posible construir la comparacion entre snapshot guardado y propuesta actual."
+    winner = comparison.get("winner")
+    if winner == "current":
+        return (
+            f"La propuesta preferida actual ({current_item['proposal_label']}) mejora el score comparativo frente al snapshot "
+            f"guardado ({saved_item['proposal_label']})."
+        )
+    if winner == "saved":
+        return (
+            f"El snapshot guardado ({saved_item['proposal_label']}) todavia supera a la propuesta preferida actual "
+            f"({current_item['proposal_label']}) bajo el score comparativo actual."
+        )
+    return (
+        f"El snapshot guardado ({saved_item['proposal_label']}) y la propuesta preferida actual "
+        f"({current_item['proposal_label']}) quedan empatados bajo el score comparativo actual."
+    )
 
 
 def _build_incremental_snapshot_reapply_payload(item: Dict) -> Dict:
@@ -2023,6 +2144,13 @@ def _stringify_reapply_amount(value) -> str:
     if amount.is_integer():
         return str(int(amount))
     return f"{amount:.2f}"
+
+
+def _coerce_optional_float(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_best_incremental_proposal(payload: Dict) -> Dict | None:

@@ -741,6 +741,32 @@ class TestDashboardView:
                 'has_history': True,
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_snapshot_vs_current_comparison',
+            lambda query_params, user, capital_amount=600000: {
+                'available_snapshots': [
+                    {'id': 1, 'label': 'Plan guardado 1', 'created_at': '2026-03-17 11:00'}
+                ],
+                'selected_snapshot_id': '1',
+                'selected_snapshot': {'proposal_label': 'Plan guardado 1'},
+                'current_preferred': {'proposal_label': 'Split KO + MCD'},
+                'comparison': {
+                    'score_saved': 4.2,
+                    'score_current': 5.2,
+                    'score_difference': 1.0,
+                    'metrics': [
+                        {
+                            'label': 'Expected return',
+                            'saved_value': 0.4,
+                            'current_value': 0.5,
+                            'difference': 0.1,
+                        }
+                    ],
+                },
+                'has_comparison': True,
+                'explanation': 'La propuesta preferida actual mejora el score comparativo frente al snapshot guardado.',
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -763,6 +789,8 @@ class TestDashboardView:
         assert 'Historial reciente de propuestas guardadas' in body
         assert 'Plan guardado 1' in body
         assert 'Reaplicar en comparador manual' in body
+        assert 'Snapshot guardado vs propuesta actual' in body
+        assert 'Comparar snapshot' in body
         assert 'Comparador por split' in body
         assert 'Split KO + MCD' in body
         assert 'Comparador de propuestas incrementales' in body

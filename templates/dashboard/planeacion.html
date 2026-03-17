@@ -502,6 +502,84 @@
                 {% endif %}
             </div>
         </div>
+        <div class="card border-warning-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Snapshot guardado vs propuesta actual</h5>
+                <small class="text-muted">Comparación rápida entre una propuesta guardada y la mejor construcción incremental vigente.</small>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">{{ incremental_snapshot_vs_current_comparison.explanation }}</p>
+                {% if incremental_snapshot_vs_current_comparison.available_snapshots %}
+                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-8">
+                            <label class="form-label" for="saved_proposal_id">Snapshot guardado</label>
+                            <select class="form-select" id="saved_proposal_id" name="saved_proposal_id">
+                                {% for item in incremental_snapshot_vs_current_comparison.available_snapshots %}
+                                <option value="{{ item.id }}" {% if item.id|stringformat:"s" == incremental_snapshot_vs_current_comparison.selected_snapshot_id %}selected{% endif %}>
+                                    {{ item.label }} · {{ item.created_at|date:"d M Y H:i" }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-4">
+                            <button type="submit" class="btn btn-outline-warning w-100">Comparar snapshot</button>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
+                {% if incremental_snapshot_vs_current_comparison.has_comparison %}
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Snapshot guardado</div>
+                            <div><strong>{{ incremental_snapshot_vs_current_comparison.selected_snapshot.proposal_label }}</strong></div>
+                            <div class="small text-muted">Score: {{ incremental_snapshot_vs_current_comparison.comparison.score_saved|default:"-" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Propuesta actual</div>
+                            <div><strong>{{ incremental_snapshot_vs_current_comparison.current_preferred.proposal_label }}</strong></div>
+                            <div class="small text-muted">Score: {{ incremental_snapshot_vs_current_comparison.comparison.score_current|default:"-" }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-end">Guardado</th>
+                                <th class="text-end">Actual</th>
+                                <th class="text-end">Δ Actual - Guardado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Score comparativo</td>
+                                <td class="text-end">{{ incremental_snapshot_vs_current_comparison.comparison.score_saved|default:"-" }}</td>
+                                <td class="text-end">{{ incremental_snapshot_vs_current_comparison.comparison.score_current|default:"-" }}</td>
+                                <td class="text-end">{{ incremental_snapshot_vs_current_comparison.comparison.score_difference|default:"-" }}</td>
+                            </tr>
+                            {% for metric in incremental_snapshot_vs_current_comparison.comparison.metrics %}
+                            <tr>
+                                <td>{{ metric.label }}</td>
+                                <td class="text-end">{{ metric.saved_value|default:"-" }}</td>
+                                <td class="text-end">{{ metric.current_value|default:"-" }}</td>
+                                <td class="text-end">{{ metric.difference|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% elif incremental_snapshot_vs_current_comparison.available_snapshots %}
+                <div class="text-muted">Todavía no hay una propuesta actual construible para comparar contra el snapshot elegido.</div>
+                {% else %}
+                <div class="text-muted">Todavía no hay snapshots guardados para comparar.</div>
+                {% endif %}
+            </div>
+        </div>
         <div class="card border-primary-subtle shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Comparador de propuestas incrementales</h5>

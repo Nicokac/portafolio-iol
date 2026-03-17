@@ -162,3 +162,24 @@ Limitaciones:
 - la reaplicacion usa solo las primeras 3 lineas del snapshot
 - no reconstruye automaticamente `Plan manual B`
 - no restaura estados de otros comparadores
+
+## Comparacion snapshot guardado vs propuesta actual
+
+La hoja `Planeacion` permite contrastar un snapshot guardado contra la propuesta incremental preferida actual.
+
+Reglas del modulo:
+
+- reutiliza el historial persistente de propuestas
+- reutiliza la propuesta preferida actual ya calculada por la hoja
+- compara score comparativo y deltas principales:
+  - expected return
+  - real expected return
+  - fragility
+  - worst scenario loss
+  - top risk concentration
+
+Limitaciones:
+
+- compara contra una unica propuesta actual, no contra todas las variantes historicas
+- el winner se define por `comparison_score`
+- no recalcula snapshots historicos; solo contrasta valores ya guardados contra la propuesta vigente

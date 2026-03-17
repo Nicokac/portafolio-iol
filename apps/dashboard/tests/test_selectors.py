@@ -31,6 +31,7 @@ from apps.dashboard.selectors import (
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
+    get_incremental_snapshot_vs_current_comparison,
     get_candidate_split_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
     get_candidate_asset_ranking,
@@ -1493,6 +1494,54 @@ class TestDashboardSelectors(TestCase):
         assert "manual_compare=1" in detail["items"][0]["reapply_querystring"]
         assert "plan_a_symbol_1=KO" in detail["items"][0]["reapply_querystring"]
         assert detail["items"][0]["reapply_truncated"] is True
+
+    def test_get_incremental_snapshot_vs_current_comparison_compares_saved_against_current(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={
+                    "items": [
+                        {
+                            "id": 7,
+                            "proposal_label": "Plan guardado 1",
+                            "simulation_delta": {
+                                "expected_return_change": 0.4,
+                                "fragility_change": -1.5,
+                                "scenario_loss_change": 0.3,
+                            },
+                            "comparison_score": 4.2,
+                        }
+                    ],
+                    "count": 1,
+                    "has_history": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Propuesta actual",
+                        "comparison_score": 5.1,
+                        "simulation": {
+                            "delta": {
+                                "expected_return_change": 0.7,
+                                "fragility_change": -2.0,
+                                "scenario_loss_change": 0.8,
+                            }
+                        },
+                    }
+                },
+            ),
+        ):
+            detail = get_incremental_snapshot_vs_current_comparison({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["has_comparison"] is True
+        assert detail["comparison"]["winner"] == "current"
+        assert detail["comparison"]["score_difference"] == 0.9
+        assert "mejora el score comparativo" in detail["explanation"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""
