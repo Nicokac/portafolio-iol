@@ -379,6 +379,13 @@ class TestDashboardView:
                         'suggested_pct': 58.33,
                         'score': 4.5,
                         'reason': 'cubre defensive_gap',
+                        'score_breakdown': {
+                            'positive_signals': [
+                                {'signal': 'factor_defensive_gap', 'impact': '+3.00', 'source': 'factor_exposure'}
+                            ],
+                            'negative_signals': [],
+                            'notes': 'Score explicable MVP',
+                        },
                     },
                     {
                         'label': 'Dividend / ingresos pasivos',
@@ -386,6 +393,13 @@ class TestDashboardView:
                         'suggested_pct': 41.67,
                         'score': 3.0,
                         'reason': 'cubre dividend_gap',
+                        'score_breakdown': {
+                            'positive_signals': [],
+                            'negative_signals': [
+                                {'signal': 'scenario_vulnerability_tech', 'impact': '-1.00', 'source': 'scenario_analysis'}
+                            ],
+                            'notes': 'Score explicable MVP',
+                        },
                     },
                 ],
                 'avoided_blocks': [
@@ -400,6 +414,9 @@ class TestDashboardView:
         assert 'Propuesta de compra mensual' in body
         assert 'Plan incremental MVP' in body
         assert 'Tecnología / growth' in body
+        assert 'Por qué este bloque recibió este score' in body
+        assert 'Señales positivas' in body
+        assert 'Señales negativas' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

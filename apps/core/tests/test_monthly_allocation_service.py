@@ -141,6 +141,11 @@ def test_build_plan_returns_consistent_allocation_for_valid_capital():
     assert "defensive" in recommended_buckets or "dividend" in recommended_buckets
     avoided_buckets = {item["bucket"] for item in result["avoided_blocks"]}
     assert "tech_growth" in avoided_buckets
+    first_block = result["recommended_blocks"][0]
+    assert "score_breakdown" in first_block
+    assert "positive_signals" in first_block["score_breakdown"]
+    assert "negative_signals" in first_block["score_breakdown"]
+    assert first_block["score_breakdown"]["notes"]
 
 
 def test_build_plan_does_not_recommend_penalized_fixed_income_block():
@@ -189,6 +194,8 @@ def test_build_plan_falls_back_to_liquidity_when_all_blocks_are_penalized():
     assert result["recommended_blocks_count"] == 1
     assert result["recommended_blocks"][0]["bucket"] == "liquidity_ars"
     assert result["recommended_blocks"][0]["suggested_amount"] == 100000
+    assert result["recommended_blocks"][0]["score_breakdown"]["positive_signals"]
+    assert result["recommended_blocks"][0]["score_breakdown"]["negative_signals"] == []
 
 
 def test_build_plan_degrades_with_partial_payloads():
@@ -206,3 +213,47 @@ def test_build_plan_degrades_with_partial_payloads():
     assert result["capital_total"] == 600000
     assert sum(item["suggested_amount"] for item in result["recommended_blocks"]) == 600000
     assert result["explanation"]
+
+
+def test_build_plan_allows_only_positive_signals_when_no_penalties_apply():
+    service = build_service(
+        factor_result={"underrepresented_factors": ["defensive"], "dominant_factor": None, "metadata": {"warnings": []}},
+        expected_return_result={
+            "expected_return_pct": 12.0,
+            "real_expected_return_pct": 1.0,
+            "by_bucket": [
+                {
+                    "bucket_key": "equity_beta",
+                    "label": "Equity beta / CEDEAR",
+                    "weight_pct": 40.0,
+                    "expected_return_pct": 16.0,
+                    "basis_reference": "benchmark:cedear_usa",
+                }
+            ],
+            "metadata": {"warnings": []},
+        },
+        stress_result={"scenario_key": "local_crisis_severe", "fragility_score": 10.0, "total_loss_pct": -3.0, "vulnerable_countries": [], "metadata": {"warnings": []}},
+        scenarios={"tech_shock": {"total_impact_pct": -2.0}, "argentina_stress": {"total_impact_pct": -2.0}},
+        recommendations=[],
+        risk_result={"by_sector": [{"key": "Utilities", "contribution_pct": 12.0}], "by_country": [{"key": "USA", "contribution_pct": 20.0}], "metadata": {"warnings": []}},
+    )
+
+    result = service.build_plan(200000)
+
+    assert result["recommended_blocks"]
+    assert any(item["score_breakdown"]["positive_signals"] for item in result["recommended_blocks"])
+    assert any(item["score_breakdown"]["negative_signals"] == [] for item in result["recommended_blocks"])
+
+
+def test_build_plan_records_negative_signals_for_penalized_blocks():
+    service = build_service()
+
+    result = service.build_plan(600000)
+
+    for item in result["recommended_blocks"]:
+        assert "positive_signals" in item["score_breakdown"]
+        assert "negative_signals" in item["score_breakdown"]
+        for signal in item["score_breakdown"]["negative_signals"]:
+            assert "signal" in signal
+            assert "impact" in signal
+            assert "source" in signal

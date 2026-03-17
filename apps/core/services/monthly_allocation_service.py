@@ -134,10 +134,29 @@ class MonthlyAllocationService:
                 "label": config["label"],
                 "score": Decimal("0"),
                 "reasons": [],
+                "score_breakdown": {
+                    "positive_signals": [],
+                    "negative_signals": [],
+                    "notes": "Score compuesto por reglas explicables del MVP sobre analytics_v2 y recomendaciones priorizadas.",
+                },
                 "blocked": False,
             }
-        self._boost(candidates, "dividend", Decimal("0.5"), "favorece ingresos pasivos cuando no hay penalización dominante")
-        self._boost(candidates, "fixed_income_ar", Decimal("0.25"), "aporta carry y generación de renta si el bloque local no está penalizado")
+        self._boost(
+            candidates,
+            "dividend",
+            Decimal("0.5"),
+            "favorece ingresos pasivos cuando no hay penalización dominante",
+            signal="passive_income_preference",
+            source="monthly_allocation_mvp",
+        )
+        self._boost(
+            candidates,
+            "fixed_income_ar",
+            Decimal("0.25"),
+            "aporta carry y generación de renta si el bloque local no está penalizado",
+            signal="carry_income_bias",
+            source="monthly_allocation_mvp",
+        )
         return candidates
 
     def _apply_factor_rules(self, candidates: dict, analytics: dict) -> None:
@@ -146,16 +165,65 @@ class MonthlyAllocationService:
         dominant_factor = str(factor_result.get("dominant_factor") or "").strip().lower()
 
         if "defensive" in underrepresented:
-            self._boost(candidates, "defensive", Decimal("3"), "cubre defensive_gap detectado por factor exposure")
-            self._boost(candidates, "dividend", Decimal("1"), "complementa el sesgo defensivo faltante")
+            self._boost(
+                candidates,
+                "defensive",
+                Decimal("3"),
+                "cubre defensive_gap detectado por factor exposure",
+                signal="factor_defensive_gap",
+                source="factor_exposure",
+            )
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("1"),
+                "complementa el sesgo defensivo faltante",
+                signal="diversification_needed",
+                source="factor_exposure",
+            )
         if "dividend" in underrepresented:
-            self._boost(candidates, "dividend", Decimal("3"), "cubre dividend_gap detectado por factor exposure")
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("3"),
+                "cubre dividend_gap detectado por factor exposure",
+                signal="factor_dividend_gap",
+                source="factor_exposure",
+            )
         if "value" in underrepresented:
-            self._boost(candidates, "dividend", Decimal("1"), "agrega sesgo value vía activos orientados a renta")
-            self._boost(candidates, "fixed_income_ar", Decimal("0.75"), "refuerza un bloque de carry estructural")
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("1"),
+                "agrega sesgo value vía activos orientados a renta",
+                signal="factor_value_gap",
+                source="factor_exposure",
+            )
+            self._boost(
+                candidates,
+                "fixed_income_ar",
+                Decimal("0.75"),
+                "refuerza un bloque de carry estructural",
+                signal="factor_value_gap",
+                source="factor_exposure",
+            )
         if dominant_factor == "growth":
-            self._boost(candidates, "defensive", Decimal("1.5"), "reduce dependencia del factor growth dominante")
-            self._boost(candidates, "dividend", Decimal("1"), "balancea el sesgo growth con renta")
+            self._boost(
+                candidates,
+                "defensive",
+                Decimal("1.5"),
+                "reduce dependencia del factor growth dominante",
+                signal="factor_growth_excess",
+                source="factor_exposure",
+            )
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("1"),
+                "balancea el sesgo growth con renta",
+                signal="factor_growth_excess",
+                source="factor_exposure",
+            )
 
     def _apply_expected_return_rules(self, candidates: dict, analytics: dict) -> None:
         result = analytics.get("expected_return_result", {})
@@ -179,6 +247,8 @@ class MonthlyAllocationService:
                     "global_index",
                     bonus,
                     f"equity_beta muestra mejor referencia estructural de retorno ({float(expected_return_pct):.2f}%)",
+                    signal="expected_return_bucket_preferred",
+                    source="expected_return",
                 )
             elif bucket_key == "fixed_income_ar":
                 self._boost(
@@ -186,6 +256,8 @@ class MonthlyAllocationService:
                     "fixed_income_ar",
                     bonus,
                     f"renta fija AR muestra referencia estructural positiva ({float(expected_return_pct):.2f}%)",
+                    signal="expected_return_bucket_preferred",
+                    source="expected_return",
                 )
             elif bucket_key == "liquidity_ars":
                 self._boost(
@@ -193,11 +265,27 @@ class MonthlyAllocationService:
                     "liquidity_ars",
                     Decimal("0.5"),
                     f"liquidez táctica mantiene retorno estructural positivo ({float(expected_return_pct):.2f}%)",
+                    signal="expected_return_bucket_preferred",
+                    source="expected_return",
                 )
 
         if result.get("real_expected_return_pct") is not None and float(result["real_expected_return_pct"]) < 0:
-            self._boost(candidates, "dividend", Decimal("0.75"), "busca mejorar el perfil de retorno real con renta")
-            self._boost(candidates, "global_index", Decimal("0.75"), "compensa retorno real débil del mix actual")
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("0.75"),
+                "busca mejorar el perfil de retorno real con renta",
+                signal="expected_return_real_weak",
+                source="expected_return",
+            )
+            self._boost(
+                candidates,
+                "global_index",
+                Decimal("0.75"),
+                "compensa retorno real débil del mix actual",
+                signal="expected_return_real_weak",
+                source="expected_return",
+            )
 
     def _apply_risk_and_stress_rules(self, candidates: dict, avoided_blocks: dict, analytics: dict) -> None:
         risk_result = analytics.get("risk_result", {})
@@ -214,8 +302,22 @@ class MonthlyAllocationService:
                 "label": "Tecnología / growth",
                 "reason": "ya domina el riesgo relativo actual y no conviene ampliarlo con capital incremental",
             }
-            self._boost(candidates, "defensive", Decimal("1.5"), "compensa sobreconcentración actual en tecnología")
-            self._boost(candidates, "dividend", Decimal("1"), "reduce dependencia de bloques growth/tech")
+            self._boost(
+                candidates,
+                "defensive",
+                Decimal("1.5"),
+                "compensa sobreconcentración actual en tecnología",
+                signal="diversification_needed",
+                source="risk_contribution",
+            )
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("1"),
+                "reduce dependencia de bloques growth/tech",
+                signal="diversification_needed",
+                source="risk_contribution",
+            )
 
         if "argentina" in top_country:
             avoided_blocks["argentina_local"] = {
@@ -228,10 +330,26 @@ class MonthlyAllocationService:
                 "fixed_income_ar",
                 Decimal("3"),
                 "el bloque argentino ya domina riesgo país o concentración geográfica",
+                signal="country_risk_overconcentration",
+                source="risk_contribution",
                 block=True,
             )
-            self._boost(candidates, "global_index", Decimal("1.5"), "diversifica fuera del bloque local dominante")
-            self._boost(candidates, "emerging", Decimal("1"), "agrega diversificación fuera de Argentina")
+            self._boost(
+                candidates,
+                "global_index",
+                Decimal("1.5"),
+                "diversifica fuera del bloque local dominante",
+                signal="diversification_needed",
+                source="risk_contribution",
+            )
+            self._boost(
+                candidates,
+                "emerging",
+                Decimal("1"),
+                "agrega diversificación fuera de Argentina",
+                signal="diversification_needed",
+                source="risk_contribution",
+            )
 
         if float(tech_scenario.get("total_impact_pct") or 0.0) <= -8.0:
             avoided_blocks.setdefault(
@@ -242,8 +360,22 @@ class MonthlyAllocationService:
                     "reason": "el shock tech sigue siendo una fuente relevante de pérdida en escenarios adversos",
                 },
             )
-            self._boost(candidates, "defensive", Decimal("1.5"), "amortigua la vulnerabilidad al shock tech")
-            self._boost(candidates, "dividend", Decimal("0.75"), "favorece un sesgo menos procíclico")
+            self._boost(
+                candidates,
+                "defensive",
+                Decimal("1.5"),
+                "amortigua la vulnerabilidad al shock tech",
+                signal="scenario_vulnerability_tech",
+                source="scenario_analysis",
+            )
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("0.75"),
+                "favorece un sesgo menos procíclico",
+                signal="scenario_vulnerability_tech",
+                source="scenario_analysis",
+            )
 
         if float(argentina_scenario.get("total_impact_pct") or 0.0) <= -6.0:
             avoided_blocks.setdefault(
@@ -259,9 +391,18 @@ class MonthlyAllocationService:
                 "fixed_income_ar",
                 Decimal("2"),
                 "el escenario local sigue siendo demasiado severo para ampliar el bloque argentino",
+                signal="scenario_vulnerability_argentina",
+                source="scenario_analysis",
                 block=True,
             )
-            self._boost(candidates, "global_index", Decimal("1"), "mueve el aporte hacia diversificación internacional")
+            self._boost(
+                candidates,
+                "global_index",
+                Decimal("1"),
+                "mueve el aporte hacia diversificación internacional",
+                signal="diversification_needed",
+                source="scenario_analysis",
+            )
 
         vulnerable_country = str(((stress_result.get("vulnerable_countries") or [{}])[0]).get("key", "")).lower()
         if "argentina" in vulnerable_country or float(stress_result.get("total_loss_pct") or 0.0) <= -12.0:
@@ -278,10 +419,26 @@ class MonthlyAllocationService:
                 "fixed_income_ar",
                 Decimal("2"),
                 "la fragilidad local actual hace prudente no reforzar el bloque argentino en el MVP",
+                signal="stress_fragility_local_crisis",
+                source="stress_fragility",
                 block=True,
             )
-            self._boost(candidates, "defensive", Decimal("2"), "reduce fragilidad estructural bajo stress extremo")
-            self._boost(candidates, "dividend", Decimal("1"), "mejora resiliencia y flujo pasivo")
+            self._boost(
+                candidates,
+                "defensive",
+                Decimal("2"),
+                "reduce fragilidad estructural bajo stress extremo",
+                signal="stress_fragility_high",
+                source="stress_fragility",
+            )
+            self._boost(
+                candidates,
+                "dividend",
+                Decimal("1"),
+                "mejora resiliencia y flujo pasivo",
+                signal="stress_fragility_high",
+                source="stress_fragility",
+            )
 
     def _apply_recommendation_rules(self, candidates: dict, avoided_blocks: dict, analytics: dict) -> None:
         for recommendation in analytics.get("recommendations", []):
@@ -294,22 +451,80 @@ class MonthlyAllocationService:
                     "liquidity_ars",
                     Decimal("4"),
                     "la liquidez ya actúa como drag de retorno esperado",
+                    signal="expected_return_liquidity_drag",
+                    source="recommendation_engine",
                     block=True,
                 )
-                self._boost(candidates, "global_index", Decimal("1"), "redirige flujos desde liquidez excedente")
-                self._boost(candidates, "defensive", Decimal("1"), "usa el nuevo capital para diversificar en lugar de dejarlo en caja")
-                self._boost(candidates, "dividend", Decimal("1"), "convierte caja excedente en renta potencial")
+                self._boost(
+                    candidates,
+                    "global_index",
+                    Decimal("1"),
+                    "redirige flujos desde liquidez excedente",
+                    signal="expected_return_liquidity_drag",
+                    source="recommendation_engine",
+                )
+                self._boost(
+                    candidates,
+                    "defensive",
+                    Decimal("1"),
+                    "usa el nuevo capital para diversificar en lugar de dejarlo en caja",
+                    signal="expected_return_liquidity_drag",
+                    source="recommendation_engine",
+                )
+                self._boost(
+                    candidates,
+                    "dividend",
+                    Decimal("1"),
+                    "convierte caja excedente en renta potencial",
+                    signal="expected_return_liquidity_drag",
+                    source="recommendation_engine",
+                )
 
             if "factor_defensive_gap" in recommendation_type:
-                self._boost(candidates, "defensive", Decimal("3"), "RecommendationEngine marca falta de factor defensivo")
+                self._boost(
+                    candidates,
+                    "defensive",
+                    Decimal("3"),
+                    "RecommendationEngine marca falta de factor defensivo",
+                    signal="factor_defensive_gap",
+                    source="recommendation_engine",
+                )
 
             if "factor_dividend_gap" in recommendation_type:
-                self._boost(candidates, "dividend", Decimal("3"), "RecommendationEngine marca falta de factor dividend")
+                self._boost(
+                    candidates,
+                    "dividend",
+                    Decimal("3"),
+                    "RecommendationEngine marca falta de factor dividend",
+                    signal="factor_dividend_gap",
+                    source="recommendation_engine",
+                )
 
             if "factor_concentration_excessive" in recommendation_type:
-                self._boost(candidates, "defensive", Decimal("1"), "reduce concentración factorial excesiva")
-                self._boost(candidates, "dividend", Decimal("1"), "agrega otro estilo complementario")
-                self._boost(candidates, "emerging", Decimal("1"), "amplía diversificación de drivers")
+                self._boost(
+                    candidates,
+                    "defensive",
+                    Decimal("1"),
+                    "reduce concentración factorial excesiva",
+                    signal="factor_concentration_excessive",
+                    source="recommendation_engine",
+                )
+                self._boost(
+                    candidates,
+                    "dividend",
+                    Decimal("1"),
+                    "agrega otro estilo complementario",
+                    signal="factor_concentration_excessive",
+                    source="recommendation_engine",
+                )
+                self._boost(
+                    candidates,
+                    "emerging",
+                    Decimal("1"),
+                    "amplía diversificación de drivers",
+                    signal="factor_concentration_excessive",
+                    source="recommendation_engine",
+                )
 
             if "risk_concentration_tech" in recommendation_type or "scenario_vulnerability_tech" in recommendation_type:
                 avoided_blocks.setdefault(
@@ -335,12 +550,28 @@ class MonthlyAllocationService:
                     "fixed_income_ar",
                     Decimal("2"),
                     "RecommendationEngine prioriza bajar la dependencia argentina",
+                    signal="country_risk_overconcentration",
+                    source="recommendation_engine",
                     block=True,
                 )
 
             if "stress_fragility_high" in recommendation_type or "stress_sector_fragility" in recommendation_type:
-                self._boost(candidates, "defensive", Decimal("1.5"), "mitiga la fragilidad alta detectada por stress testing")
-                self._boost(candidates, "dividend", Decimal("1"), "agrega resiliencia adicional al aporte")
+                self._boost(
+                    candidates,
+                    "defensive",
+                    Decimal("1.5"),
+                    "mitiga la fragilidad alta detectada por stress testing",
+                    signal="stress_fragility_high",
+                    source="recommendation_engine",
+                )
+                self._boost(
+                    candidates,
+                    "dividend",
+                    Decimal("1"),
+                    "agrega resiliencia adicional al aporte",
+                    signal="stress_fragility_high",
+                    source="recommendation_engine",
+                )
 
             if "country_risk_overconcentration" in recommendation_type:
                 country = str(evidence.get("country", "")).strip()
@@ -355,20 +586,53 @@ class MonthlyAllocationService:
                     )
 
     @staticmethod
-    def _boost(candidates: dict, bucket: str, points: Decimal, reason: str) -> None:
+    def _boost(
+        candidates: dict,
+        bucket: str,
+        points: Decimal,
+        reason: str,
+        *,
+        signal: str,
+        source: str,
+    ) -> None:
         candidate = candidates.get(bucket)
         if not candidate:
             return
         candidate["score"] += points
         candidate["reasons"].append(reason)
+        candidate["score_breakdown"]["positive_signals"].append(
+            {
+                "signal": signal,
+                "impact": f"+{float(points):.2f}",
+                "source": source,
+                "reason": reason,
+            }
+        )
 
     @staticmethod
-    def _penalize(candidates: dict, bucket: str, points: Decimal, reason: str, *, block: bool = False) -> None:
+    def _penalize(
+        candidates: dict,
+        bucket: str,
+        points: Decimal,
+        reason: str,
+        *,
+        signal: str,
+        source: str,
+        block: bool = False,
+    ) -> None:
         candidate = candidates.get(bucket)
         if not candidate:
             return
         candidate["score"] -= points
         candidate["reasons"].append(reason)
+        candidate["score_breakdown"]["negative_signals"].append(
+            {
+                "signal": signal,
+                "impact": f"-{float(points):.2f}",
+                "source": source,
+                "reason": reason,
+            }
+        )
         candidate["blocked"] = candidate["blocked"] or block
 
     def _select_recommended_candidates(self, candidates: dict[str, dict]) -> list[dict]:
@@ -419,6 +683,7 @@ class MonthlyAllocationService:
                     "suggested_pct": suggested_pct,
                     "reason": candidate["reasons"][0],
                     "reasons": candidate["reasons"],
+                    "score_breakdown": candidate["score_breakdown"],
                 }
             )
 
@@ -449,6 +714,18 @@ class MonthlyAllocationService:
             "reasons": [
                 "no hay bloques de inversión claramente favorecidos; se preserva flexibilidad táctica como fallback del MVP"
             ],
+            "score_breakdown": {
+                "positive_signals": [
+                    {
+                        "signal": "fallback_liquidity_preservation",
+                        "impact": "+1.00",
+                        "source": "monthly_allocation_mvp",
+                        "reason": "no hay bloques positivos claros y se preserva flexibilidad táctica",
+                    }
+                ],
+                "negative_signals": [],
+                "notes": "Fallback prudente cuando el motor no encuentra bloques de inversión claramente favorecidos.",
+            },
             "blocked": False,
         }
 

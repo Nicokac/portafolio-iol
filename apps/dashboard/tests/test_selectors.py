@@ -920,8 +920,16 @@ class TestDashboardSelectors(TestCase):
             "recommended_blocks_count": 2,
             "criterion": "rules_based_analytics_v2_mvp",
             "recommended_blocks": [
-                {"bucket": "defensive", "suggested_amount": 350000},
-                {"bucket": "dividend", "suggested_amount": 250000},
+                {
+                    "bucket": "defensive",
+                    "suggested_amount": 350000,
+                    "score_breakdown": {"positive_signals": [], "negative_signals": [], "notes": ""},
+                },
+                {
+                    "bucket": "dividend",
+                    "suggested_amount": 250000,
+                    "score_breakdown": {"positive_signals": [], "negative_signals": [], "notes": ""},
+                },
             ],
             "avoided_blocks": [{"bucket": "tech_growth"}],
             "explanation": "Plan incremental",
@@ -938,6 +946,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["capital_total"] == 600000
         assert detail["recommended_blocks_count"] == 2
         assert detail["recommended_blocks"][0]["bucket"] == "defensive"
+        assert "score_breakdown" in detail["recommended_blocks"][0]
         assert detail["avoided_blocks"][0]["bucket"] == "tech_growth"
 
     def test_concentracion_por_pais(self):

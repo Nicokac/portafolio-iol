@@ -196,6 +196,50 @@
                                 <td class="text-end">{{ item.score|floatformat:2 }}</td>
                                 <td>{{ item.reason }}</td>
                             </tr>
+                            <tr>
+                                <td colspan="5" class="bg-light">
+                                    <div class="small">
+                                        <div class="fw-semibold mb-2">Por qué este bloque recibió este score</div>
+                                        <div class="row g-3">
+                                            <div class="col-lg-6">
+                                                <div class="text-success fw-semibold mb-1">Señales positivas</div>
+                                                {% if item.score_breakdown.positive_signals %}
+                                                <ul class="mb-0 text-muted">
+                                                    {% for signal in item.score_breakdown.positive_signals %}
+                                                    <li>
+                                                        <code>{{ signal.signal }}</code>
+                                                        <span class="text-success">{{ signal.impact }}</span>
+                                                        · {{ signal.source }}
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                                {% else %}
+                                                <div class="text-muted">Sin señales positivas explícitas.</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-lg-6">
+                                                <div class="text-danger fw-semibold mb-1">Señales negativas</div>
+                                                {% if item.score_breakdown.negative_signals %}
+                                                <ul class="mb-0 text-muted">
+                                                    {% for signal in item.score_breakdown.negative_signals %}
+                                                    <li>
+                                                        <code>{{ signal.signal }}</code>
+                                                        <span class="text-danger">{{ signal.impact }}</span>
+                                                        · {{ signal.source }}
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                                {% else %}
+                                                <div class="text-muted">Sin señales negativas explícitas.</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% if item.score_breakdown.notes %}
+                                        <div class="text-muted mt-2">{{ item.score_breakdown.notes }}</div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
                             {% empty %}
                             <tr>
                                 <td colspan="5" class="text-muted">No hay bloques recomendados para el aporte incremental actual.</td>

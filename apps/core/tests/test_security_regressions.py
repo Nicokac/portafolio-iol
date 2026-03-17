@@ -132,5 +132,9 @@ def test_production_security_validation_requires_hardened_settings():
             "SESSION_COOKIE_HTTPONLY": True,
             "SECURE_HSTS_SECONDS": 31536000,
             "SECURE_PROXY_SSL_HEADER": ("HTTP_X_FORWARDED_PROTO", "https"),
+            "SECURE_CONTENT_TYPE_NOSNIFF": True,
+            "X_FRAME_OPTIONS": "DENY",
+            "SECURE_REFERRER_POLICY": "same-origin",
+            "CSRF_TRUSTED_ORIGINS": ["https://example.com"],
         }
     )

@@ -37,6 +37,25 @@ Traducir la analítica actual de la app en una propuesta simple y explicable de 
 - bloques evitados
 - explicación consolidada
 
+## Score explanation
+
+Cada bloque recomendado expone:
+
+- `positive_signals`
+- `negative_signals`
+- `notes`
+
+La idea no es recalcular el score, sino dejar trazabilidad de qué reglas existentes lo empujaron hacia arriba o hacia abajo.
+
+Las señales salen solo de:
+
+- factor exposure
+- expected return
+- risk contribution
+- scenario analysis
+- stress fragility
+- recommendation engine
+
 ## Limitaciones
 
 - no recomienda activos concretos
