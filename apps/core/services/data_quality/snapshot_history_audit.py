@@ -25,9 +25,8 @@ class SnapshotHistoryAuditService:
         positions = self.risk_service._load_current_invested_positions()  # noqa: SLF001
         symbols = [position.simbolo for position in positions]
         end_dt = timezone.now()
-        start_dt = end_dt - timedelta(days=lookback_days)
         end_date = end_dt.date()
-        start_date = start_dt.date()
+        start_date = (end_dt - timedelta(days=lookback_days)).date()
 
         if not symbols:
             return {
@@ -43,7 +42,8 @@ class SnapshotHistoryAuditService:
 
         queryset = ActivoPortafolioSnapshot.objects.filter(
             simbolo__in=symbols,
-            fecha_extraccion__range=(start_dt, end_dt),
+            fecha_extraccion__date__gt=start_date,
+            fecha_extraccion__date__lte=end_date,
         ).values("fecha_extraccion", "simbolo", "valorizado")
         df = pd.DataFrame(list(queryset))
         if df.empty:
@@ -81,7 +81,7 @@ class SnapshotHistoryAuditService:
             .reindex(columns=symbols)
         )
         price_matrix = self.covariance_service._build_daily_price_matrix(df, symbols)  # noqa: SLF001
-        returns = self.covariance_service.build_returns_matrix(symbols, lookback_days=lookback_days)
+        returns = self.covariance_service._build_returns_from_price_matrix(price_matrix)  # noqa: SLF001
         usable_dates = {pd.Timestamp(idx).date().isoformat() for idx in returns.index}
 
         all_dates = [day.date() for day in pd.date_range(start=start_date, end=end_date, freq="D")]

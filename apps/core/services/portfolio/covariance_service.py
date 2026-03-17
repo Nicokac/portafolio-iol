@@ -14,12 +14,14 @@ class CovarianceService:
     TRADING_DAYS_PER_YEAR = 252
 
     def build_returns_matrix(self, activos: List[str], lookback_days: int = 252) -> pd.DataFrame:
-        end_date = timezone.now()
-        start_date = end_date - timedelta(days=lookback_days)
+        end_dt = timezone.now()
+        end_date = end_dt.date()
+        start_date = (end_dt - timedelta(days=lookback_days)).date()
 
         queryset = ActivoPortafolioSnapshot.objects.filter(
             simbolo__in=activos,
-            fecha_extraccion__range=(start_date, end_date),
+            fecha_extraccion__date__gt=start_date,
+            fecha_extraccion__date__lte=end_date,
         ).values("fecha_extraccion", "simbolo", "valorizado")
 
         df = pd.DataFrame(list(queryset))
@@ -29,6 +31,10 @@ class CovarianceService:
         df["fecha_extraccion"] = pd.to_datetime(df["fecha_extraccion"])
         df["valorizado"] = pd.to_numeric(df["valorizado"], errors="coerce")
         pivot = self._build_daily_price_matrix(df, activos)
+        return self._build_returns_from_price_matrix(pivot)
+
+    @staticmethod
+    def _build_returns_from_price_matrix(pivot: pd.DataFrame) -> pd.DataFrame:
         if pivot.shape[0] < 2:
             return pd.DataFrame()
 
