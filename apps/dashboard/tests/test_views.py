@@ -85,10 +85,10 @@ class TestDashboardView:
         assert '% Renta fija AR' in body
         assert 'Analytics v2' in body
         assert 'Resumen Analytics v2' in body
-        assert 'Señales Analytics v2' in body
         assert 'Macro Local' in body
         assert 'Carry real BADLAR' in body
         assert 'Brecha FX' in body
+        assert 'Riesgo país' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body

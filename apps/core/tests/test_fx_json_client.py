@@ -32,3 +32,29 @@ def test_fx_json_client_fetches_mep_quote_from_configured_json(mock_get, setting
 
     assert rows == [{"fecha": date(2026, 3, 16), "value": 1187.25}]
     mock_get.assert_called_once_with("https://example.test/mep", timeout=30)
+
+
+@patch("apps.core.services.market_data.fx_json_client.requests.get")
+def test_fx_json_client_fetches_country_risk_from_configured_json(mock_get, settings):
+    settings.RIESGO_PAIS_API_URL = "https://example.test/riesgo-pais"
+    settings.RIESGO_PAIS_API_VALUE_PATH = "data.valor"
+    settings.RIESGO_PAIS_API_DATE_PATH = "meta.updated_at"
+    settings.RIESGO_PAIS_API_KEY = "secret"
+    settings.RIESGO_PAIS_API_KEY_HEADER = "X-API-KEY"
+
+    mock_response = Mock()
+    mock_response.json.return_value = {
+        "data": {"valor": 1250},
+        "meta": {"updated_at": "2026-03-16"},
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    rows = FXJSONClient().fetch_riesgo_pais()
+
+    assert rows == [{"fecha": date(2026, 3, 16), "value": 1250.0}]
+    mock_get.assert_called_once_with(
+        "https://example.test/riesgo-pais",
+        headers={"X-API-KEY": "secret"},
+        timeout=30,
+    )

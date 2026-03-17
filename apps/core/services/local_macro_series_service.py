@@ -93,6 +93,7 @@ class LocalMacroSeriesService:
     def get_context_summary(self, total_iol: float | None = None) -> dict:
         usdars_latest = self._get_latest_snapshot("usdars_oficial")
         usdars_mep_latest = self._get_latest_snapshot("usdars_mep")
+        riesgo_pais_latest = self._get_latest_snapshot("riesgo_pais_arg")
         badlar_latest = self._get_latest_snapshot("badlar_privada")
         ipc_snapshots = list(
             MacroSeriesSnapshot.objects.filter(series_key="ipc_nacional").order_by("-fecha")[:2]
@@ -129,6 +130,8 @@ class LocalMacroSeriesService:
             "usdars_mep": float(usdars_mep_latest.value) if usdars_mep_latest else None,
             "usdars_mep_date": usdars_mep_latest.fecha if usdars_mep_latest else None,
             "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
+            "riesgo_pais_arg": float(riesgo_pais_latest.value) if riesgo_pais_latest else None,
+            "riesgo_pais_arg_date": riesgo_pais_latest.fecha if riesgo_pais_latest else None,
             "badlar_privada": float(badlar_latest.value) if badlar_latest else None,
             "badlar_privada_date": badlar_latest.fecha if badlar_latest else None,
             "badlar_ytd": round(badlar_ytd, 2) if badlar_ytd is not None else None,
@@ -385,7 +388,11 @@ class LocalMacroSeriesService:
         if config["source"] == "datos_gob_ar":
             return self.datos_client.fetch_series(config["external_id"])
         if config["source"] == "fx_json":
-            return self.fx_client.fetch_usdars_mep()
+            if config["external_id"] == "usdars_mep":
+                return self.fx_client.fetch_usdars_mep()
+            if config["external_id"] == "riesgo_pais_arg":
+                return self.fx_client.fetch_riesgo_pais()
+            raise ValueError(f"Unsupported fx_json external_id: {config['external_id']}")
         raise ValueError(f"Unsupported macro source: {config['source']}")
 
     def _is_series_configured(self, series_key: str, config: dict) -> bool:
@@ -393,6 +400,8 @@ class LocalMacroSeriesService:
             return True
         if series_key == "usdars_mep":
             return bool(self.fx_client.mep_url)
+        if series_key == "riesgo_pais_arg":
+            return bool(self.fx_client.country_risk_url)
         return False
 
     def _build_portfolio_history(self, days: int) -> pd.DataFrame:

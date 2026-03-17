@@ -59,6 +59,22 @@ def test_local_macro_series_service_syncs_optional_mep_when_source_is_available(
 
 
 @pytest.mark.django_db
+def test_local_macro_series_service_syncs_optional_country_risk_when_source_is_available():
+    fx_client = Mock()
+    fx_client.fetch_riesgo_pais.return_value = [
+        {"fecha": date(2026, 3, 16), "value": 1250.0},
+    ]
+    service = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock(), fx_client=fx_client)
+
+    result = service.sync_series("riesgo_pais_arg")
+
+    assert result["created"] == 1
+    assert result["updated"] == 0
+    snapshot = MacroSeriesSnapshot.objects.get(series_key="riesgo_pais_arg")
+    assert float(snapshot.value) == 1250.0
+
+
+@pytest.mark.django_db
 def test_local_macro_series_service_builds_context_summary():
     PortfolioSnapshot.objects.create(
         fecha=date(2025, 12, 31),
@@ -168,6 +184,22 @@ def test_local_macro_series_service_builds_optional_fx_gap_when_mep_exists():
 
     assert context["usdars_mep"] == 1180.0
     assert context["fx_gap_pct"] == 18.0
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_builds_context_summary_with_country_risk():
+    MacroSeriesSnapshot.objects.create(
+        series_key="riesgo_pais_arg",
+        source="fx_json",
+        external_id="riesgo_pais_arg",
+        frequency="daily",
+        fecha=date(2026, 3, 16),
+        value=1350.0,
+    )
+
+    context = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_context_summary()
+
+    assert context["riesgo_pais_arg"] == 1350.0
 
 
 @pytest.mark.django_db

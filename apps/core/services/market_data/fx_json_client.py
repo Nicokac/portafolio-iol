@@ -15,20 +15,59 @@ class FXJSONClient:
         self.mep_url = settings.USDARS_MEP_API_URL
         self.mep_value_path = settings.USDARS_MEP_API_VALUE_PATH
         self.mep_date_path = settings.USDARS_MEP_API_DATE_PATH
+        self.country_risk_url = settings.RIESGO_PAIS_API_URL
+        self.country_risk_value_path = settings.RIESGO_PAIS_API_VALUE_PATH
+        self.country_risk_date_path = settings.RIESGO_PAIS_API_DATE_PATH
+        self.country_risk_api_key = settings.RIESGO_PAIS_API_KEY
+        self.country_risk_api_key_header = settings.RIESGO_PAIS_API_KEY_HEADER
 
     def fetch_usdars_mep(self) -> list[dict]:
-        if not self.mep_url:
-            raise OptionalSourceUnavailableError("USDARS_MEP_API_URL is required")
+        return self._fetch_configured_scalar(
+            url=self.mep_url,
+            value_path=self.mep_value_path,
+            date_path=self.mep_date_path,
+            missing_url_error="USDARS_MEP_API_URL is required",
+            missing_value_error=f"Missing configured value path for USDARS MEP: {self.mep_value_path}",
+        )
 
-        response = requests.get(self.mep_url, timeout=30)
+    def fetch_riesgo_pais(self) -> list[dict]:
+        headers = {}
+        if self.country_risk_api_key:
+            headers[self.country_risk_api_key_header] = self.country_risk_api_key
+        return self._fetch_configured_scalar(
+            url=self.country_risk_url,
+            value_path=self.country_risk_value_path,
+            date_path=self.country_risk_date_path,
+            missing_url_error="RIESGO_PAIS_API_URL is required",
+            missing_value_error=f"Missing configured value path for riesgo pais: {self.country_risk_value_path}",
+            headers=headers or None,
+        )
+
+    def _fetch_configured_scalar(
+        self,
+        *,
+        url: str,
+        value_path: str,
+        date_path: str,
+        missing_url_error: str,
+        missing_value_error: str,
+        headers: dict | None = None,
+    ) -> list[dict]:
+        if not url:
+            raise OptionalSourceUnavailableError(missing_url_error)
+
+        request_kwargs = {"timeout": 30}
+        if headers:
+            request_kwargs["headers"] = headers
+        response = requests.get(url, **request_kwargs)
         response.raise_for_status()
         payload = response.json()
 
-        value = self._extract_path(payload, self.mep_value_path)
+        value = self._extract_path(payload, value_path)
         if value is None:
-            raise ValueError(f"Missing configured value path for USDARS MEP: {self.mep_value_path}")
+            raise ValueError(missing_value_error)
 
-        raw_date = self._extract_path(payload, self.mep_date_path) if self.mep_date_path else None
+        raw_date = self._extract_path(payload, date_path) if date_path else None
         return [
             {
                 "fecha": self._parse_date(raw_date),

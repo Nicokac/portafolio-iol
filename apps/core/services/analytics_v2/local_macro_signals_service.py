@@ -18,6 +18,8 @@ class LocalMacroSignalsService:
     VERY_HIGH_SOVEREIGN_RISK_THRESHOLD = 15.0
     HIGH_FX_GAP_THRESHOLD = 15.0
     VERY_HIGH_FX_GAP_THRESHOLD = 30.0
+    HIGH_COUNTRY_RISK_THRESHOLD = 900.0
+    VERY_HIGH_COUNTRY_RISK_THRESHOLD = 1400.0
 
     def __init__(
         self,
@@ -78,6 +80,7 @@ class LocalMacroSignalsService:
         usdars_oficial = self._as_float(context.get("usdars_oficial"))
         usdars_mep = self._as_float(context.get("usdars_mep"))
         fx_gap_pct = self._as_float(context.get("fx_gap_pct"))
+        riesgo_pais_arg = self._as_float(context.get("riesgo_pais_arg"))
         badlar_real_carry_pct = None
         if badlar_pct is not None and ipc_yoy_pct is not None:
             badlar_real_carry_pct = round(badlar_pct - ipc_yoy_pct, 2)
@@ -104,16 +107,17 @@ class LocalMacroSignalsService:
                 "usdars_oficial": round(usdars_oficial, 2) if usdars_oficial is not None else None,
                 "usdars_mep": round(usdars_mep, 2) if usdars_mep is not None else None,
                 "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
+                "riesgo_pais_arg": round(riesgo_pais_arg, 2) if riesgo_pais_arg is not None else None,
             },
             "metadata": AnalyticsMetadata(
                 methodology=(
                     "signals are derived from current normalized positions plus persisted local references "
-                    "for BADLAR, IPC, USDARS oficial and optional USDARS MEP"
+                    "for BADLAR, IPC, USDARS oficial and optional local external references such as USDARS MEP or riesgo pais"
                 ),
                 data_basis="current_positions_market_value + MacroSeriesSnapshot",
                 limitations=(
-                    "The module does not use breakeven inflation, sovereign spreads or risk-country series yet. "
-                    "MEP and FX gap are only used when that series already exists in MacroSeriesSnapshot."
+                    "The module does not use breakeven inflation or sovereign spreads yet. "
+                    "MEP, FX gap and riesgo pais are only used when those series already exist in MacroSeriesSnapshot."
                 ),
                 confidence=self._derive_confidence(warnings),
                 warnings=warnings,
@@ -136,6 +140,7 @@ class LocalMacroSignalsService:
         badlar_real_carry_pct = summary.get("badlar_real_carry_pct")
         ipc_yoy_pct = summary.get("ipc_yoy_pct")
         fx_gap_pct = summary.get("fx_gap_pct")
+        riesgo_pais_arg = summary.get("riesgo_pais_arg")
 
         if (
             badlar_real_carry_pct is not None
@@ -215,6 +220,27 @@ class LocalMacroSignalsService:
                         "sovereign_bond_weight_pct": round(sovereign_bond_weight_pct, 2),
                         "argentina_bond_weight_pct": round(argentina_bond_weight_pct, 2),
                         "argentina_weight_pct": round(argentina_weight_pct, 2),
+                    },
+                )
+            )
+
+        if (
+            riesgo_pais_arg is not None
+            and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
+            and sovereign_bond_weight_pct >= self.HIGH_SOVEREIGN_RISK_THRESHOLD
+            and float(riesgo_pais_arg) >= self.HIGH_COUNTRY_RISK_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_country_risk_high",
+                    severity="high" if float(riesgo_pais_arg) >= self.VERY_HIGH_COUNTRY_RISK_THRESHOLD else "medium",
+                    title="Riesgo país alto con soberano local relevante",
+                    description="La cartera combina exposición argentina material, soberanos locales y un nivel elevado de riesgo país.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "argentina_weight_pct": round(argentina_weight_pct, 2),
+                        "sovereign_bond_weight_pct": round(sovereign_bond_weight_pct, 2),
+                        "riesgo_pais_arg": round(float(riesgo_pais_arg), 2),
                     },
                 )
             )

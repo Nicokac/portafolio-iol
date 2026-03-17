@@ -258,6 +258,20 @@ def test_analyze_analytics_v2_returns_empty_on_exception(engine, monkeypatch):
     assert engine._analyze_analytics_v2() == []
 
 
+def test_build_signal_actions_returns_country_risk_actions(engine):
+    actions = engine._build_signal_actions(
+        {
+            "signal_key": "local_country_risk_high",
+            "affected_scope": "portfolio",
+        }
+    )
+
+    assert actions == [
+        "Revisar si el peso de soberanos locales sigue siendo consistente con el nivel actual de riesgo país",
+        "Reducir dependencia de crédito soberano argentino si el bloque local ya es material",
+    ]
+
+
 def test_analyze_analytics_v2_includes_local_macro_signals(engine, monkeypatch):
     monkeypatch.setattr(engine, "_build_risk_contribution_signals", lambda: [])
     monkeypatch.setattr(

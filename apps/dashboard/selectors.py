@@ -1172,6 +1172,7 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                 "badlar_real_carry_pct": local_macro_result.get("summary", {}).get("badlar_real_carry_pct"),
                 "usdars_mep": local_macro_result.get("summary", {}).get("usdars_mep"),
                 "fx_gap_pct": local_macro_result.get("summary", {}).get("fx_gap_pct"),
+                "riesgo_pais_arg": local_macro_result.get("summary", {}).get("riesgo_pais_arg"),
                 "ipc_yoy_pct": local_macro_result.get("summary", {}).get("ipc_yoy_pct"),
                 "confidence": local_macro_result.get("metadata", {}).get("confidence"),
                 "warnings_count": len(local_macro_result.get("metadata", {}).get("warnings", [])),

@@ -490,6 +490,11 @@ class RecommendationEngine:
                 "Revisar cuánta exposición argentina depende de una brecha cambiaria tensionada",
                 "Evitar sumar riesgo local en ARS o soberano sin una convicción táctica explícita",
             ]
+        if "country_risk" in key:
+            return [
+                "Revisar si el peso de soberanos locales sigue siendo consistente con el nivel actual de riesgo país",
+                "Reducir dependencia de crédito soberano argentino si el bloque local ya es material",
+            ]
         if "inflation_hedge" in key:
             return [
                 "Evaluar si la cobertura CER es suficiente para la exposición argentina actual",

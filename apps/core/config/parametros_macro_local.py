@@ -15,6 +15,13 @@ class ParametrosMacroLocal:
             "frequency": "daily",
             "optional": True,
         },
+        "riesgo_pais_arg": {
+            "title": "Riesgo pais Argentina",
+            "source": "fx_json",
+            "external_id": "riesgo_pais_arg",
+            "frequency": "daily",
+            "optional": True,
+        },
         "badlar_privada": {
             "title": "BADLAR bancos privados",
             "source": "bcra",
