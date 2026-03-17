@@ -37,6 +37,7 @@ from apps.dashboard.selectors import (
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
+    get_expected_return_detail,
     get_macro_local_context,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
@@ -152,6 +153,16 @@ class StressFragilityDetailView(LoginRequiredMixin, DashboardContextMixin, Templ
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['stress_fragility_detail'] = get_stress_fragility_detail()
+        return context
+
+
+class ExpectedReturnDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/expected_return_detail.html'
+    active_section = 'estrategia'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['expected_return_detail'] = get_expected_return_detail()
         return context
 
 

@@ -3,6 +3,7 @@ from django.urls import path
 from apps.dashboard.views import (
     AnalisisView,
     DashboardView,
+    ExpectedReturnDetailView,
     GenerateSnapshotView,
     MetricasView,
     OpsView,
@@ -32,6 +33,7 @@ urlpatterns = [
     path('estrategia/scenario-analysis/', ScenarioAnalysisDetailView.as_view(), name='scenario_analysis_detail'),
     path('estrategia/factor-exposure/', FactorExposureDetailView.as_view(), name='factor_exposure_detail'),
     path('estrategia/stress-fragility/', StressFragilityDetailView.as_view(), name='stress_fragility_detail'),
+    path('estrategia/expected-return/', ExpectedReturnDetailView.as_view(), name='expected_return_detail'),
     path('planeacion/', PlaneacionView.as_view(), name='planeacion'),
     path('ops/', OpsView.as_view(), name='ops'),
     path('preferencias/', SetPreferencesView.as_view(), name='set_preferences'),

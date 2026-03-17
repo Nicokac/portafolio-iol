@@ -294,6 +294,46 @@ class TestDashboardView:
         assert response.status_code == 200
         assert reverse('dashboard:stress_fragility_detail') in body
 
+    def test_expected_return_detail_route_accessible_authenticated(self, auth_client):
+        response = auth_client.get(reverse('dashboard:expected_return_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Expected Return' in body
+        assert 'Retorno esperado nominal' in body
+        assert 'Breakdown por bucket' in body
+        assert 'Supuestos y limitaciones' in body
+
+    def test_expected_return_detail_handles_empty_payload(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_expected_return_detail',
+            lambda: {
+                'expected_return_pct': None,
+                'real_expected_return_pct': None,
+                'basis_reference': 'weighted_bucket_baseline_current_positions',
+                'dominant_bucket': None,
+                'bucket_rows': [],
+                'asset_rows': [],
+                'confidence': 'low',
+                'warnings': [],
+                'main_warning': None,
+                'methodology': None,
+                'limitations': None,
+                'assumptions': [],
+                'interpretation': '',
+            },
+        )
+        response = auth_client.get(reverse('dashboard:expected_return_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Sin breakdown por bucket disponible.' in body
+        assert 'El servicio actual no expone detalle por activo para Expected Return.' in body
+
+    def test_estrategia_contains_expected_return_detail_link(self, auth_client):
+        response = auth_client.get(reverse('dashboard:estrategia'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert reverse('dashboard:expected_return_detail') in body
+
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:
             def run_audit(self, freshness_hours=24):

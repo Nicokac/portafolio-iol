@@ -24,6 +24,7 @@ from apps.dashboard.selectors import (
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
+    get_expected_return_detail,
     get_factor_exposure_detail,
     get_portafolio_enriquecido_actual,
     get_risk_contribution_detail,
@@ -820,6 +821,95 @@ class TestDashboardSelectors(TestCase):
         assert detail["worst_sectors"] == []
         assert detail["worst_countries"] == []
         assert detail["warnings"] == ["empty_portfolio"]
+
+    def test_get_expected_return_detail_returns_ranked_buckets_and_dominant_bucket(self):
+        cache.clear()
+
+        expected_return_result = {
+            "expected_return_pct": 18.4,
+            "real_expected_return_pct": 2.1,
+            "basis_reference": "weighted_bucket_baseline_current_positions",
+            "by_bucket": [
+                {
+                    "bucket_key": "fixed_income_ar",
+                    "label": "Renta fija AR",
+                    "weight_pct": 30.0,
+                    "expected_return_pct": 14.0,
+                    "basis_reference": "benchmark:bonos_ar:daily_trailing_100",
+                },
+                {
+                    "bucket_key": "equity_beta",
+                    "label": "Equity beta / CEDEAR",
+                    "weight_pct": 55.0,
+                    "expected_return_pct": 22.0,
+                    "basis_reference": "benchmark:cedear_usa:daily_trailing_180",
+                },
+            ],
+            "metadata": {
+                "confidence": "high",
+                "warnings": ["missing_badlar"],
+                "methodology": "expected_return_methodology",
+                "limitations": "expected_return_limitations",
+            },
+        }
+
+        class DummyExpectedReturnService:
+            def calculate(self):
+                return expected_return_result
+
+        class DummyExplanationService:
+            def build_expected_return_explanation(self, result):
+                assert result is expected_return_result
+                return "Interpretacion expected return"
+
+        with (
+            patch("apps.dashboard.selectors.ExpectedReturnService", DummyExpectedReturnService),
+            patch("apps.dashboard.selectors.AnalyticsExplanationService", DummyExplanationService),
+        ):
+            detail = get_expected_return_detail()
+
+        assert detail["expected_return_pct"] == 18.4
+        assert detail["real_expected_return_pct"] == 2.1
+        assert [row["bucket_key"] for row in detail["bucket_rows"]] == ["equity_beta", "fixed_income_ar"]
+        assert detail["bucket_rows"][0]["rank"] == 1
+        assert detail["bucket_rows"][0]["contribution_relative_pct"] == 12.1
+        assert detail["dominant_bucket"]["bucket_key"] == "equity_beta"
+        assert detail["main_warning"] == "missing_badlar"
+        assert detail["interpretation"] == "Interpretacion expected return"
+        assert detail["asset_rows"] == []
+
+    def test_get_expected_return_detail_handles_empty_or_partial_result(self):
+        cache.clear()
+
+        expected_return_result = {
+            "expected_return_pct": 0,
+            "real_expected_return_pct": None,
+            "basis_reference": "weighted_bucket_baseline_current_positions",
+            "by_bucket": [],
+            "metadata": {"confidence": "low", "warnings": []},
+        }
+
+        class DummyExpectedReturnService:
+            def calculate(self):
+                return expected_return_result
+
+        class DummyExplanationService:
+            def build_expected_return_explanation(self, result):
+                return ""
+
+        with (
+            patch("apps.dashboard.selectors.ExpectedReturnService", DummyExpectedReturnService),
+            patch("apps.dashboard.selectors.AnalyticsExplanationService", DummyExplanationService),
+        ):
+            detail = get_expected_return_detail()
+
+        assert detail["expected_return_pct"] == 0
+        assert detail["real_expected_return_pct"] is None
+        assert detail["bucket_rows"] == []
+        assert detail["dominant_bucket"] is None
+        assert detail["main_warning"] is None
+        assert detail["warnings"] == []
+        assert detail["confidence"] == "low"
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

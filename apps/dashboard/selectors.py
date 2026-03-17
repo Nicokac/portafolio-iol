@@ -1412,6 +1412,70 @@ def get_stress_fragility_detail() -> Dict:
     return _get_cached_selector_result("stress_fragility_detail", build)
 
 
+def get_expected_return_detail() -> Dict:
+    """Devuelve el drill-down analitico completo de expected return."""
+
+    def build():
+        expected_return_service = ExpectedReturnService()
+        explanation_service = AnalyticsExplanationService()
+        result = expected_return_service.calculate()
+
+        bucket_rows = [
+            {
+                "rank": index,
+                "bucket_key": item.get("bucket_key"),
+                "label": item.get("label"),
+                "weight_pct": item.get("weight_pct"),
+                "expected_return_pct": item.get("expected_return_pct"),
+                "real_expected_return_pct": None,
+                "contribution_relative_pct": (
+                    round(
+                        (float(item.get("weight_pct") or 0.0) / 100.0)
+                        * float(item.get("expected_return_pct") or 0.0),
+                        2,
+                    )
+                    if item.get("expected_return_pct") is not None
+                    else None
+                ),
+                "basis_reference": item.get("basis_reference"),
+            }
+            for index, item in enumerate(
+                sorted(
+                    result.get("by_bucket", []),
+                    key=lambda entry: float(entry.get("weight_pct") or 0.0),
+                    reverse=True,
+                ),
+                start=1,
+            )
+        ]
+
+        dominant_bucket = bucket_rows[0] if bucket_rows else None
+        metadata = result.get("metadata", {})
+        warnings = metadata.get("warnings", [])
+
+        return {
+            "expected_return_pct": result.get("expected_return_pct"),
+            "real_expected_return_pct": result.get("real_expected_return_pct"),
+            "basis_reference": result.get("basis_reference"),
+            "dominant_bucket": dominant_bucket,
+            "bucket_rows": bucket_rows,
+            "asset_rows": [],
+            "confidence": metadata.get("confidence", "low"),
+            "warnings": warnings,
+            "main_warning": warnings[0] if warnings else None,
+            "methodology": metadata.get("methodology"),
+            "limitations": metadata.get("limitations"),
+            "assumptions": [
+                "El modelo agrupa posiciones actuales en buckets estructurales.",
+                "Las referencias usan SPY, EMB o BADLAR con fallbacks explícitos cuando falta historia suficiente.",
+                "El retorno real depende de una referencia de inflación disponible al momento del cálculo.",
+            ],
+            "interpretation": explanation_service.build_expected_return_explanation(result),
+        }
+
+    return _get_cached_selector_result("expected_return_detail", build)
+
+
 def get_analytics_v2_dashboard_summary() -> Dict:
     """Resume Analytics v2 para consumo server-rendered en dashboard."""
 

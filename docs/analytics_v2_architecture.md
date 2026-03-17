@@ -228,6 +228,10 @@ Ejemplo concreto:
   - reutiliza `StressFragilityService`, `StressCatalogService` y `AnalyticsExplanationService`
   - compara stresses cerrados del catálogo y expone el breakdown del stress más severo
   - alimenta `/estrategia/stress-fragility/` sin recalcular fragilidad en la vista
+- `get_expected_return_detail()`
+  - reutiliza `ExpectedReturnService` y `AnalyticsExplanationService`
+  - expone resumen estructural, ranking por bucket, warnings y supuestos ya disponibles
+  - alimenta `/estrategia/expected-return/` sin recalcular expected return en la vista
 
 ### RecommendationEngine
 
