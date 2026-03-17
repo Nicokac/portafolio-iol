@@ -742,6 +742,67 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_proposal_tracking_baseline',
+            lambda user: {
+                'item': {
+                    'proposal_label': 'Plan baseline',
+                    'source_label': 'Comparador manual',
+                    'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
+                    'created_at': '2026-03-17 11:00',
+                },
+                'has_baseline': True,
+            },
+        )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_baseline_drift',
+            lambda query_params, user, capital_amount=600000: {
+                'baseline': {'proposal_label': 'Plan baseline'},
+                'current_preferred': {'proposal_label': 'Split KO + MCD'},
+                'comparison': {
+                    'metrics': [
+                        {
+                            'key': 'expected_return_change',
+                            'label': 'Expected return',
+                            'saved_value': 0.4,
+                            'current_value': 0.5,
+                            'difference': 0.1,
+                            'direction': 'favorable',
+                        },
+                        {
+                            'key': 'fragility_change',
+                            'label': 'Fragility',
+                            'saved_value': -1.5,
+                            'current_value': -2.1,
+                            'difference': -0.6,
+                            'direction': 'favorable',
+                        },
+                    ],
+                },
+                'summary': {
+                    'status': 'favorable',
+                    'favorable_count': 2,
+                    'unfavorable_count': 0,
+                    'changed_count': 2,
+                    'material_metrics': [
+                        {'key': 'expected_return_change', 'direction': 'favorable'},
+                        {'key': 'fragility_change', 'direction': 'favorable'},
+                    ],
+                },
+                'alerts': [
+                    {
+                        'severity': 'info',
+                        'title': 'No hay drift material',
+                        'message': 'La propuesta actual se mantiene alineada con el baseline activo.',
+                    }
+                ],
+                'alerts_count': 1,
+                'has_alerts': True,
+                'has_drift': True,
+                'has_baseline': True,
+                'explanation': 'La propuesta preferida actual mejora el baseline activo en las metricas incrementales relevantes.',
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_snapshot_vs_current_comparison',
             lambda query_params, user, capital_amount=600000: {
                 'available_snapshots': [
@@ -786,6 +847,12 @@ class TestDashboardView:
         assert 'Fragility' in body
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
+        assert 'Baseline incremental de seguimiento' in body
+        assert 'Plan baseline' in body
+        assert 'Drift vs propuesta preferida actual' in body
+        assert 'Alertas de drift' in body
+        assert 'Drift favorable' in body
+        assert 'Promover a baseline' in body
         assert 'Historial reciente de propuestas guardadas' in body
         assert 'Plan guardado 1' in body
         assert 'Reaplicar en comparador manual' in body
@@ -865,6 +932,38 @@ class TestDashboardView:
         assert IncrementalProposalSnapshot.objects.count() == 0
         audit = SensitiveActionAudit.objects.get(action='save_incremental_proposal')
         assert audit.status == 'denied'
+
+    def test_promote_incremental_baseline_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:promote_incremental_baseline'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    def test_promote_incremental_baseline_marks_snapshot(self, auth_client, user):
+        snapshot = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key='manual_plan',
+            source_label='Comparador manual',
+            proposal_key='plan_a',
+            proposal_label='Plan manual A',
+            capital_amount=600000,
+            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
+            simulation_delta={},
+        )
+
+        response = auth_client.post(reverse('dashboard:promote_incremental_baseline'), {'snapshot_id': snapshot.id})
+
+        assert response.status_code == 302
+        snapshot.refresh_from_db()
+        assert snapshot.is_tracking_baseline is True
+        audit = SensitiveActionAudit.objects.get(action='promote_incremental_baseline')
+        assert audit.status == 'success'
+
+    def test_promote_incremental_baseline_rejects_unknown_snapshot(self, auth_client):
+        response = auth_client.post(reverse('dashboard:promote_incremental_baseline'), {'snapshot_id': 999999})
+
+        assert response.status_code == 302
+        audit = SensitiveActionAudit.objects.get(action='promote_incremental_baseline')
+        assert audit.status == 'failed'
 
     def test_planeacion_accepts_reapplied_snapshot_query_in_manual_comparator(self, auth_client):
         response = auth_client.get(

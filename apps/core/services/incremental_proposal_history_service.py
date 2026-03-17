@@ -51,6 +51,34 @@ class IncrementalProposalHistoryService:
         queryset = IncrementalProposalSnapshot.objects.filter(user=user).order_by("-created_at", "-id")[: max(int(limit), 0)]
         return [self.serialize(item) for item in queryset]
 
+    def promote_to_tracking_baseline(self, *, user, snapshot_id: int | str) -> dict:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            raise ValueError("authenticated_user_required")
+
+        snapshot = IncrementalProposalSnapshot.objects.filter(user=user, pk=snapshot_id).first()
+        if snapshot is None:
+            raise ValueError("snapshot_not_found")
+
+        IncrementalProposalSnapshot.objects.filter(user=user, is_tracking_baseline=True).exclude(pk=snapshot.pk).update(
+            is_tracking_baseline=False
+        )
+        if not snapshot.is_tracking_baseline:
+            snapshot.is_tracking_baseline = True
+            snapshot.save(update_fields=["is_tracking_baseline"])
+        return self.serialize(snapshot)
+
+    def get_tracking_baseline(self, *, user) -> dict | None:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            return None
+        snapshot = (
+            IncrementalProposalSnapshot.objects.filter(user=user, is_tracking_baseline=True)
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if snapshot is None:
+            return None
+        return self.serialize(snapshot)
+
     def serialize(self, snapshot: IncrementalProposalSnapshot) -> dict:
         return {
             "id": snapshot.pk,
@@ -65,6 +93,7 @@ class IncrementalProposalHistoryService:
             "simulation_delta": dict(snapshot.simulation_delta or {}),
             "simulation_interpretation": snapshot.simulation_interpretation,
             "explanation": snapshot.explanation,
+            "is_tracking_baseline": bool(snapshot.is_tracking_baseline),
             "created_at": snapshot.created_at,
         }
 

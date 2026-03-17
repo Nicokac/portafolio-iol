@@ -1994,6 +1994,49 @@ def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
     }
 
 
+def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
+    """Retorna el snapshot incremental activo como baseline de seguimiento del usuario."""
+
+    item = IncrementalProposalHistoryService().get_tracking_baseline(user=user)
+    return {
+        "item": item,
+        "has_baseline": item is not None,
+    }
+
+
+def get_incremental_baseline_drift(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Compara el baseline incremental activo contra la propuesta preferida actual."""
+
+    baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
+    preferred_payload = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=capital_amount)
+
+    baseline = baseline_payload.get("item")
+    current_preferred = preferred_payload.get("preferred")
+    comparison = None
+    if baseline and current_preferred:
+        comparison = _build_incremental_snapshot_comparison(baseline, current_preferred)
+
+    summary = _build_incremental_baseline_drift_summary(comparison)
+    alerts = _build_incremental_baseline_drift_alerts(baseline, current_preferred, summary)
+    return {
+        "baseline": baseline,
+        "current_preferred": current_preferred,
+        "comparison": comparison,
+        "summary": summary,
+        "alerts": alerts,
+        "alerts_count": len(alerts),
+        "has_alerts": bool(alerts),
+        "has_drift": comparison is not None,
+        "has_baseline": baseline is not None,
+        "explanation": _build_incremental_baseline_drift_explanation(baseline, current_preferred, comparison, summary),
+    }
+
+
 def get_incremental_snapshot_vs_current_comparison(
     query_params,
     *,
@@ -2063,6 +2106,7 @@ def _build_incremental_snapshot_comparison(saved_item: Dict, current_item: Dict)
     ):
         saved_value = _coerce_optional_float(saved_delta.get(key))
         current_value = _coerce_optional_float(current_delta.get(key))
+        direction = _classify_incremental_metric_direction(key, saved_value, current_value)
         metrics.append(
             {
                 "key": key,
@@ -2070,6 +2114,7 @@ def _build_incremental_snapshot_comparison(saved_item: Dict, current_item: Dict)
                 "saved_value": saved_value,
                 "current_value": current_value,
                 "difference": None if saved_value is None or current_value is None else round(current_value - saved_value, 4),
+                "direction": direction,
             }
         )
 
@@ -2080,6 +2125,66 @@ def _build_incremental_snapshot_comparison(saved_item: Dict, current_item: Dict)
         "metrics": metrics,
         "winner": _resolve_incremental_snapshot_winner(saved_score, current_score),
     }
+
+
+def _build_incremental_baseline_drift_summary(comparison: Dict | None) -> Dict:
+    if comparison is None:
+        return {
+            "status": "unavailable",
+            "favorable_count": 0,
+            "unfavorable_count": 0,
+            "changed_count": 0,
+            "material_metrics": [],
+        }
+
+    material_metrics = []
+    favorable_count = 0
+    unfavorable_count = 0
+    for metric in comparison.get("metrics", []):
+        direction = metric.get("direction") or "neutral"
+        if direction == "neutral":
+            continue
+        enriched_metric = dict(metric)
+        enriched_metric["direction"] = direction
+        material_metrics.append(enriched_metric)
+        if direction == "favorable":
+            favorable_count += 1
+        elif direction == "unfavorable":
+            unfavorable_count += 1
+
+    if favorable_count and not unfavorable_count:
+        status = "favorable"
+    elif unfavorable_count and not favorable_count:
+        status = "unfavorable"
+    elif favorable_count or unfavorable_count:
+        status = "mixed"
+    else:
+        status = "stable"
+
+    return {
+        "status": status,
+        "favorable_count": favorable_count,
+        "unfavorable_count": unfavorable_count,
+        "changed_count": len(material_metrics),
+        "material_metrics": material_metrics,
+    }
+
+
+def _classify_incremental_metric_direction(metric_key: str, saved_value: float | None, current_value: float | None) -> str:
+    if saved_value is None or current_value is None:
+        return "neutral"
+    diff = round(current_value - saved_value, 4)
+    if abs(diff) < 0.0001:
+        return "neutral"
+
+    higher_is_better = metric_key in {
+        "expected_return_change",
+        "real_expected_return_change",
+        "scenario_loss_change",
+    }
+    if higher_is_better:
+        return "favorable" if diff > 0 else "unfavorable"
+    return "favorable" if diff < 0 else "unfavorable"
 
 
 def _resolve_incremental_snapshot_winner(saved_score: float | None, current_score: float | None) -> str | None:
@@ -2120,6 +2225,103 @@ def _build_incremental_snapshot_comparison_explanation(saved_item: Dict | None, 
         f"El snapshot guardado ({saved_item['proposal_label']}) y la propuesta preferida actual "
         f"({current_item['proposal_label']}) quedan empatados bajo el score comparativo actual."
     )
+
+
+def _build_incremental_baseline_drift_explanation(
+    baseline_item: Dict | None,
+    current_item: Dict | None,
+    comparison: Dict | None,
+    summary: Dict,
+) -> str:
+    if not baseline_item and not current_item:
+        return "Todavia no hay baseline incremental activo ni propuesta preferida actual para medir drift."
+    if not baseline_item:
+        return "Todavia no hay un baseline incremental activo para medir drift contra la propuesta preferida actual."
+    if not current_item:
+        return "Todavia no hay una propuesta preferida actual construible para medir drift contra el baseline activo."
+    if comparison is None:
+        return "No fue posible construir el drift entre el baseline incremental activo y la propuesta preferida actual."
+
+    status = summary.get("status")
+    if status == "favorable":
+        return (
+            f"La propuesta preferida actual ({current_item['proposal_label']}) mejora el baseline activo "
+            f"({baseline_item['proposal_label']}) en las metricas incrementales relevantes."
+        )
+    if status == "unfavorable":
+        return (
+            f"La propuesta preferida actual ({current_item['proposal_label']}) empeora frente al baseline activo "
+            f"({baseline_item['proposal_label']}) y conviene revisarla antes de reemplazar la referencia."
+        )
+    if status == "mixed":
+        return (
+            f"La propuesta preferida actual ({current_item['proposal_label']}) se desvia del baseline activo "
+            f"({baseline_item['proposal_label']}) con mejoras y deterioros mezclados."
+        )
+    return (
+        f"La propuesta preferida actual ({current_item['proposal_label']}) se mantiene alineada con el baseline activo "
+        f"({baseline_item['proposal_label']}) sin drift material en los deltas principales."
+    )
+
+
+def _build_incremental_baseline_drift_alerts(
+    baseline_item: Dict | None,
+    current_item: Dict | None,
+    summary: Dict,
+) -> list[Dict]:
+    if baseline_item is None or current_item is None:
+        return []
+
+    alerts: list[Dict] = []
+    status = summary.get("status")
+    if status == "unfavorable":
+        alerts.append(
+            {
+                "severity": "critical" if summary.get("unfavorable_count", 0) >= 2 else "warning",
+                "title": "La propuesta actual empeora frente al baseline",
+                "message": (
+                    f"{current_item['proposal_label']} queda por debajo de {baseline_item['proposal_label']} "
+                    "en las metricas incrementales relevantes."
+                ),
+            }
+        )
+    elif status == "mixed":
+        alerts.append(
+            {
+                "severity": "warning",
+                "title": "Hay drift mixto respecto del baseline",
+                "message": (
+                    f"{current_item['proposal_label']} mejora algunas metricas pero deteriora otras frente a "
+                    f"{baseline_item['proposal_label']}."
+                ),
+            }
+        )
+    elif status == "stable":
+        alerts.append(
+            {
+                "severity": "info",
+                "title": "No hay drift material",
+                "message": (
+                    f"{current_item['proposal_label']} se mantiene alineada con el baseline activo "
+                    f"{baseline_item['proposal_label']}."
+                ),
+            }
+        )
+
+    for metric in summary.get("material_metrics", []):
+        if metric.get("direction") != "unfavorable":
+            continue
+        alerts.append(
+            {
+                "severity": "warning",
+                "title": f"Drift desfavorable en {metric['label']}",
+                "message": (
+                    f"El delta actual ({metric.get('current_value')}) queda peor que el baseline "
+                    f"({metric.get('saved_value')}) en {metric['label']}."
+                ),
+            }
+        )
+    return alerts
 
 
 def _build_incremental_snapshot_reapply_payload(item: Dict) -> Dict:

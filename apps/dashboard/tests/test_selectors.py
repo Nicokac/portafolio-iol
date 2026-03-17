@@ -31,6 +31,8 @@ from apps.dashboard.selectors import (
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
+    get_incremental_proposal_tracking_baseline,
+    get_incremental_baseline_drift,
     get_incremental_snapshot_vs_current_comparison,
     get_candidate_split_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
@@ -1542,6 +1544,98 @@ class TestDashboardSelectors(TestCase):
         assert detail["comparison"]["winner"] == "current"
         assert detail["comparison"]["score_difference"] == 0.9
         assert "mejora el score comparativo" in detail["explanation"]
+
+    def test_get_incremental_proposal_tracking_baseline_wraps_single_item(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_tracking_baseline",
+            return_value={"proposal_label": "Plan baseline", "is_tracking_baseline": True},
+        ) as mocked:
+            detail = get_incremental_proposal_tracking_baseline(user=DummyUser())
+
+        mocked.assert_called_once()
+        assert detail["has_baseline"] is True
+        assert detail["item"]["proposal_label"] == "Plan baseline"
+
+    def test_get_incremental_baseline_drift_classifies_metric_direction(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={
+                    "item": {
+                        "proposal_label": "Baseline defensivo",
+                        "comparison_score": 4.0,
+                        "simulation_delta": {
+                            "expected_return_change": 0.3,
+                            "real_expected_return_change": 0.1,
+                            "fragility_change": -1.0,
+                            "scenario_loss_change": 0.2,
+                            "risk_concentration_change": -0.4,
+                        },
+                    },
+                    "has_baseline": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Propuesta actual",
+                        "comparison_score": 4.8,
+                        "simulation": {
+                            "delta": {
+                                "expected_return_change": 0.5,
+                                "real_expected_return_change": 0.05,
+                                "fragility_change": -1.8,
+                                "scenario_loss_change": 0.4,
+                                "risk_concentration_change": -0.2,
+                            }
+                        },
+                    }
+                },
+            ),
+        ):
+            detail = get_incremental_baseline_drift({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["has_drift"] is True
+        assert detail["summary"]["status"] == "mixed"
+        assert detail["summary"]["favorable_count"] == 3
+        assert detail["summary"]["unfavorable_count"] == 2
+        assert detail["has_alerts"] is True
+        assert detail["alerts"][0]["severity"] == "warning"
+        assert "drift mixto" in detail["alerts"][0]["title"].lower()
+        assert detail["comparison"]["winner"] == "current"
+        directions = {item["key"]: item["direction"] for item in detail["summary"]["material_metrics"]}
+        assert directions["expected_return_change"] == "favorable"
+        assert directions["fragility_change"] == "favorable"
+        assert directions["real_expected_return_change"] == "unfavorable"
+        assert "se desvia del baseline activo" in detail["explanation"]
+
+    def test_get_incremental_baseline_drift_handles_missing_baseline(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": None, "has_baseline": False},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={"preferred": {"proposal_label": "Propuesta actual"}},
+            ),
+        ):
+            detail = get_incremental_baseline_drift({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["has_drift"] is False
+        assert detail["summary"]["status"] == "unavailable"
+        assert detail["alerts"] == []
+        assert "Todavia no hay un baseline incremental activo" in detail["explanation"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

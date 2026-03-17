@@ -443,6 +443,118 @@
             </div>
         </div>
         <div class="card border-secondary-subtle shadow-sm mb-4">
+            <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">Baseline incremental de seguimiento</h5>
+                <small class="text-muted">Snapshot guardado que queda como referencia operativa para seguimiento manual.</small>
+            </div>
+            <div class="card-body border-bottom">
+                {% if incremental_proposal_tracking_baseline.has_baseline %}
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <div class="small text-muted mb-1">Baseline activo</div>
+                        <div><strong>{{ incremental_proposal_tracking_baseline.item.proposal_label }}</strong></div>
+                        <div class="small text-muted">{{ incremental_proposal_tracking_baseline.item.created_at|date:"d M Y H:i" }}</div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="small text-muted mb-1">Origen</div>
+                        <div>{{ incremental_proposal_tracking_baseline.item.source_label|default:"-" }}</div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="small text-muted mb-1">Compra resumida</div>
+                        {% for purchase in incremental_proposal_tracking_baseline.item.purchase_plan %}
+                        <div class="small">{{ purchase.symbol }} · {{ purchase.amount|currency:0 }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-muted">Todavía no definiste un baseline incremental activo.</div>
+                {% endif %}
+            </div>
+            <div class="card-body border-bottom bg-light-subtle">
+                <h6 class="mb-2">Drift vs propuesta preferida actual</h6>
+                <p class="text-muted mb-3">{{ incremental_baseline_drift.explanation }}</p>
+                <div class="mb-3">
+                    <div class="small text-muted mb-2">Alertas de drift</div>
+                    {% if incremental_baseline_drift.has_alerts %}
+                    {% for alert in incremental_baseline_drift.alerts %}
+                    <div class="alert {% if alert.severity == 'critical' %}alert-danger{% elif alert.severity == 'warning' %}alert-warning{% else %}alert-info{% endif %} py-2 mb-2">
+                        <div><strong>{{ alert.title }}</strong></div>
+                        <div class="small mb-0">{{ alert.message }}</div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="small text-muted">Sin alertas activas de drift para la referencia actual.</div>
+                    {% endif %}
+                </div>
+                {% if incremental_baseline_drift.has_drift %}
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Estado</div>
+                            <div>
+                                <strong>
+                                    {% if incremental_baseline_drift.summary.status == "favorable" %}
+                                    Drift favorable
+                                    {% elif incremental_baseline_drift.summary.status == "unfavorable" %}
+                                    Drift desfavorable
+                                    {% elif incremental_baseline_drift.summary.status == "mixed" %}
+                                    Drift mixto
+                                    {% elif incremental_baseline_drift.summary.status == "stable" %}
+                                    Sin drift material
+                                    {% else %}
+                                    Sin clasificar
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Métricas favorables</div>
+                            <div><strong>{{ incremental_baseline_drift.summary.favorable_count }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Métricas desfavorables</div>
+                            <div><strong>{{ incremental_baseline_drift.summary.unfavorable_count }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-end">Baseline</th>
+                                <th class="text-end">Actual</th>
+                                <th class="text-end">Drift</th>
+                                <th>Lectura</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for metric in incremental_baseline_drift.comparison.metrics %}
+                            <tr>
+                                <td>{{ metric.label }}</td>
+                                <td class="text-end">{{ metric.saved_value|default:"-" }}</td>
+                                <td class="text-end">{{ metric.current_value|default:"-" }}</td>
+                                <td class="text-end">{{ metric.difference|default:"-" }}</td>
+                                <td>
+                                    {% if metric.direction == "favorable" %}
+                                    <span class="badge bg-success">Favorable</span>
+                                    {% elif metric.direction == "unfavorable" %}
+                                    <span class="badge bg-danger">Desfavorable</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Estable</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
             <div class="card-header bg-light">
                 <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
                 <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>
@@ -478,6 +590,13 @@
                                         >
                                             Reaplicar en comparador manual
                                         </a>
+                                        <form method="post" action="{% url 'dashboard:promote_incremental_baseline' %}" class="d-inline-block ms-2">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                                {% if item.is_tracking_baseline %}Baseline activo{% else %}Promover a baseline{% endif %}
+                                            </button>
+                                        </form>
                                     </div>
                                     {% if item.reapply_truncated %}
                                     <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>

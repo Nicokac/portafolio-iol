@@ -262,6 +262,7 @@ class IncrementalProposalSnapshot(models.Model):
     simulation_delta = models.JSONField(default=dict, blank=True)
     simulation_interpretation = models.TextField(blank=True, default="")
     explanation = models.TextField(blank=True, default="")
+    is_tracking_baseline = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

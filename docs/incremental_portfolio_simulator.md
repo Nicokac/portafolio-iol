@@ -183,3 +183,87 @@ Limitaciones:
 - compara contra una unica propuesta actual, no contra todas las variantes historicas
 - el winner se define por `comparison_score`
 - no recalcula snapshots historicos; solo contrasta valores ya guardados contra la propuesta vigente
+
+## Baseline incremental de seguimiento
+
+La hoja `Planeacion` permite promover un snapshot guardado a baseline incremental activo.
+
+Reglas del modulo:
+
+- el baseline es por usuario
+- solo puede haber un baseline activo por usuario
+- la promocion se ejecuta por `POST`
+- reutiliza snapshots ya persistidos, sin crear una tabla paralela
+
+Uso previsto:
+
+- fijar una referencia operativa manual
+- contrastar futuras propuestas contra un punto de seguimiento elegido
+
+Limitaciones:
+
+- no congela el estado completo de la hoja
+- no activa alertas ni seguimiento automatico
+- no reemplaza la propuesta preferida actual; solo marca una referencia persistente
+
+## Drift entre baseline y propuesta actual
+
+La hoja `Planeacion` expone un seguimiento simple de drift entre:
+
+- el baseline incremental activo
+- la propuesta incremental preferida actual
+
+Reglas del modulo:
+
+- reutiliza el mismo contrato de comparacion ya usado para `snapshot guardado vs propuesta actual`
+- no recalcula snapshots historicos
+- clasifica el drift por metrica como:
+  - `favorable`
+  - `desfavorable`
+  - `estable`
+
+Metricas consideradas:
+
+- expected return change
+- real expected return change
+- fragility change
+- worst scenario loss change
+- top risk concentration change
+
+Uso previsto:
+
+- detectar si la propuesta actual mejora o empeora frente a la referencia operativa elegida
+- sostener seguimiento manual sin abrir un sistema de alertas nuevo
+
+Limitaciones:
+
+- el drift se mide solo contra el baseline activo, no contra todo el historial
+- la clasificacion es heuristica por direccion de mejora, no un score nuevo
+- no hay alertas persistentes ni notificaciones automaticas
+
+## Alertas livianas de drift
+
+Sobre el bloque de drift, `Planeacion` expone alertas livianas por request.
+
+Reglas del modulo:
+
+- no persiste alertas en `Alert`
+- no agrega cron ni seguimiento automatico
+- deriva avisos directamente desde el resumen de drift actual
+
+Tipos de lectura:
+
+- `info` cuando no hay drift material
+- `warning` cuando el drift es mixto o hay metricas desfavorables
+- `critical` cuando el drift global es desfavorable y acumula multiples deterioros
+
+Uso previsto:
+
+- dar una lectura operativa rapida sin salir de `Planeacion`
+- marcar cuando la propuesta actual ya se alejo del baseline elegido
+
+Limitaciones:
+
+- son alertas efimeras, no historicas
+- no reemplazan el bloque de drift detallado
+- no se integran al centro global de alertas del dashboard

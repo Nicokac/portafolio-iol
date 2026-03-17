@@ -45,6 +45,8 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_incremental_proposal_history,
+    get_incremental_proposal_tracking_baseline,
+    get_incremental_baseline_drift,
     get_incremental_snapshot_vs_current_comparison,
     get_macro_local_context,
     get_manual_incremental_portfolio_simulation_comparison,
@@ -212,6 +214,14 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
             user=self.request.user,
             limit=5,
         )
+        context['incremental_proposal_tracking_baseline'] = get_incremental_proposal_tracking_baseline(
+            user=self.request.user,
+        )
+        context['incremental_baseline_drift'] = get_incremental_baseline_drift(
+            self.request.GET,
+            user=self.request.user,
+            capital_amount=600000,
+        )
         context['incremental_snapshot_vs_current_comparison'] = get_incremental_snapshot_vs_current_comparison(
             self.request.GET,
             user=self.request.user,
@@ -333,6 +343,38 @@ class SavePreferredIncrementalProposalView(LoginRequiredMixin, View):
             },
         )
         messages.success(request, f"Propuesta incremental guardada: {saved['proposal_label']}.")
+        return redirect(redirect_url)
+
+
+class PromoteIncrementalProposalBaselineView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        snapshot_id = request.POST.get('snapshot_id')
+        redirect_url = f"{reverse('dashboard:planeacion')}#planeacion-aportes"
+
+        try:
+            saved = IncrementalProposalHistoryService().promote_to_tracking_baseline(
+                user=request.user,
+                snapshot_id=snapshot_id,
+            )
+        except ValueError as exc:
+            record_sensitive_action(
+                request,
+                action='promote_incremental_baseline',
+                status='failed',
+                details={'reason': str(exc), 'snapshot_id': snapshot_id},
+            )
+            messages.error(request, "No fue posible promover el snapshot incremental a baseline de seguimiento.")
+            return redirect(redirect_url)
+
+        record_sensitive_action(
+            request,
+            action='promote_incremental_baseline',
+            status='success',
+            details={'snapshot_id': saved['id'], 'proposal_label': saved['proposal_label']},
+        )
+        messages.success(request, f"Baseline incremental activo: {saved['proposal_label']}.")
         return redirect(redirect_url)
 
 

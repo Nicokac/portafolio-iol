@@ -84,3 +84,46 @@ def test_save_preferred_proposal_rejects_empty_purchase_plan():
             preferred_payload={"proposal_label": "Sin compra", "purchase_plan": []},
             capital_amount=0,
         )
+
+
+@pytest.mark.django_db
+def test_promote_to_tracking_baseline_sets_unique_active_snapshot():
+    user = User.objects.create_user(username="history-baseline", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    promoted = service.promote_to_tracking_baseline(user=user, snapshot_id=first["id"])
+    assert promoted["is_tracking_baseline"] is True
+
+    promoted = service.promote_to_tracking_baseline(user=user, snapshot_id=second["id"])
+    assert promoted["proposal_label"] == "Plan B"
+    assert service.get_tracking_baseline(user=user)["proposal_label"] == "Plan B"
+
+    flags = list(
+        IncrementalProposalSnapshot.objects.filter(user=user).order_by("id").values_list("proposal_label", "is_tracking_baseline")
+    )
+    assert flags == [("Plan A", False), ("Plan B", True)]
