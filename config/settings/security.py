@@ -39,3 +39,14 @@ def validate_production_security(settings_dict: dict) -> None:
     if not secret_key_is_strong(str(settings_dict.get("SECRET_KEY", ""))):
         raise ImproperlyConfigured("SECRET_KEY is too weak for production")
 
+    if settings_dict.get("SECURE_CONTENT_TYPE_NOSNIFF") is not True:
+        raise ImproperlyConfigured("SECURE_CONTENT_TYPE_NOSNIFF must be True in production")
+
+    if not settings_dict.get("X_FRAME_OPTIONS"):
+        raise ImproperlyConfigured("X_FRAME_OPTIONS must be configured in production")
+
+    if not settings_dict.get("SECURE_REFERRER_POLICY"):
+        raise ImproperlyConfigured("SECURE_REFERRER_POLICY must be configured in production")
+
+    if not settings_dict.get("CSRF_TRUSTED_ORIGINS"):
+        raise ImproperlyConfigured("CSRF_TRUSTED_ORIGINS cannot be empty in production")
