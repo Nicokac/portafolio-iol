@@ -312,6 +312,75 @@ def test_risk_contribution_builds_argentina_and_divergence_signals():
 
 
 @pytest.mark.django_db
+def test_risk_contribution_builds_group_delta_signals_when_thresholds_are_exceeded():
+    now = timezone.now()
+
+    fixtures = [
+        ("NEM", "Mineria", "USA", "Equity", [1000, 1700, 900, 1800, 1900], "ACCIONES", "dolar_Estadounidense"),
+        ("SPY", "Indice", "USA", "Equity", [1000, 1080, 1040, 1100, 1120], "CEDEARS", "dolar_Estadounidense"),
+        ("GD30", "Soberano", "Argentina", "Bond", [1000, 1010, 1005, 1015, 1020], "TitulosPublicos", "peso_Argentino"),
+        ("AL30", "Soberano", "Argentina", "Bond", [980, 990, 985, 995, 1000], "TitulosPublicos", "peso_Argentino"),
+    ]
+
+    for symbol, sector, country, patrimonial, _, _, _ in fixtures:
+        ParametroActivo.objects.create(
+            simbolo=symbol,
+            sector=sector,
+            bloque_estrategico="Test",
+            pais_exposicion=country,
+            tipo_patrimonial=patrimonial,
+        )
+
+    for i in range(5):
+        fecha = now - timedelta(days=4 - i)
+        for symbol, _, _, _, values, tipo, moneda in fixtures:
+            _make_asset_snapshot(fecha, symbol, values[i], tipo=tipo, moneda=moneda)
+
+    signals = RiskContributionService().build_recommendation_signals(top_n=4)
+    keyed = {signal["signal_key"]: signal for signal in signals}
+
+    assert keyed["sector_risk_overconcentration"]["evidence"]["sector"] == "Mineria"
+    assert keyed["sector_risk_overconcentration"]["evidence"]["risk_vs_weight_delta"] > 5.0
+    assert keyed["country_risk_overconcentration"]["evidence"]["country"] == "USA"
+    assert keyed["country_risk_overconcentration"]["evidence"]["risk_vs_weight_delta"] > 7.0
+    assert keyed["country_risk_underconcentration"]["evidence"]["country"] == "Argentina"
+    assert keyed["country_risk_underconcentration"]["evidence"]["risk_vs_weight_delta"] < -7.0
+
+
+@pytest.mark.django_db
+def test_risk_contribution_does_not_build_group_delta_signals_below_thresholds():
+    now = timezone.now()
+
+    fixtures = [
+        ("AAPL", "Tecnologia", "USA", "Equity", [1000, 1020, 1010, 1030, 1040], "ACCIONES", "dolar_Estadounidense"),
+        ("KO", "Consumo defensivo", "USA", "Equity", [1000, 1018, 1008, 1028, 1038], "ACCIONES", "dolar_Estadounidense"),
+        ("JNJ", "Salud", "USA", "Equity", [1000, 1015, 1007, 1022, 1032], "ACCIONES", "dolar_Estadounidense"),
+    ]
+
+    for symbol, sector, country, patrimonial, _, _, _ in fixtures:
+        ParametroActivo.objects.create(
+            simbolo=symbol,
+            sector=sector,
+            bloque_estrategico="Test",
+            pais_exposicion=country,
+            tipo_patrimonial=patrimonial,
+        )
+
+    for i in range(5):
+        fecha = now - timedelta(days=4 - i)
+        for symbol, _, _, _, values, tipo, moneda in fixtures:
+            _make_asset_snapshot(fecha, symbol, values[i], tipo=tipo, moneda=moneda)
+
+    signal_keys = {
+        signal["signal_key"] for signal in RiskContributionService().build_recommendation_signals(top_n=3)
+    }
+
+    assert "sector_risk_overconcentration" not in signal_keys
+    assert "country_risk_overconcentration" not in signal_keys
+    assert "country_risk_underconcentration" not in signal_keys
+
+
+@pytest.mark.django_db
 def test_risk_contribution_single_position_returns_full_contribution_and_respects_top_n():
     now = timezone.now()
 

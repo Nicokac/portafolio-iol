@@ -496,6 +496,24 @@ class RecommendationEngine:
                 "Revisar cuánta exposición argentina depende de una brecha cambiaria tensionada",
                 "Evitar sumar riesgo local en ARS o soberano sin una convicción táctica explícita",
             ]
+        if "sector_risk_overconcentration" in key:
+            sector = signal.get("evidence", {}).get("sector", "ese sector")
+            return [
+                f"Revisar concentración de riesgo en el sector {sector}.",
+                "Usar nuevos aportes para bajar dependencia del bloque sectorial que domina el riesgo.",
+            ]
+        if "country_risk_overconcentration" in key:
+            country = signal.get("evidence", {}).get("country", "ese país")
+            return [
+                f"Revisar concentración geográfica de riesgo en {country}.",
+                "Reducir dependencia del bloque geográfico que hoy explica más riesgo que peso.",
+            ]
+        if "country_risk_underconcentration" in key:
+            country = signal.get("evidence", {}).get("country", "ese país")
+            return [
+                f"El peso patrimonial en {country} es mayor que su contribución actual al riesgo.",
+                "Mantener la lectura como señal informativa antes de rebalancear solo por patrimonio.",
+            ]
         if "country_risk" in key:
             return [
                 "Revisar si el peso de soberanos locales sigue siendo consistente con el nivel actual de riesgo país",

@@ -272,6 +272,48 @@ def test_build_signal_actions_returns_country_risk_actions(engine):
     ]
 
 
+def test_build_signal_actions_returns_sector_risk_overconcentration_actions(engine):
+    actions = engine._build_signal_actions(
+        {
+            "signal_key": "sector_risk_overconcentration",
+            "evidence": {"sector": "Tecnologia"},
+        }
+    )
+
+    assert actions == [
+        "Revisar concentración de riesgo en el sector Tecnologia.",
+        "Usar nuevos aportes para bajar dependencia del bloque sectorial que domina el riesgo.",
+    ]
+
+
+def test_build_signal_actions_returns_country_risk_overconcentration_actions(engine):
+    actions = engine._build_signal_actions(
+        {
+            "signal_key": "country_risk_overconcentration",
+            "evidence": {"country": "USA"},
+        }
+    )
+
+    assert actions == [
+        "Revisar concentración geográfica de riesgo en USA.",
+        "Reducir dependencia del bloque geográfico que hoy explica más riesgo que peso.",
+    ]
+
+
+def test_build_signal_actions_returns_country_risk_underconcentration_actions(engine):
+    actions = engine._build_signal_actions(
+        {
+            "signal_key": "country_risk_underconcentration",
+            "evidence": {"country": "Argentina"},
+        }
+    )
+
+    assert actions == [
+        "El peso patrimonial en Argentina es mayor que su contribución actual al riesgo.",
+        "Mantener la lectura como señal informativa antes de rebalancear solo por patrimonio.",
+    ]
+
+
 def test_build_signal_actions_returns_single_name_sovereign_actions(engine):
     actions = engine._build_signal_actions(
         {

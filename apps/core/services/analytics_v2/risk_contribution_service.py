@@ -42,6 +42,9 @@ class RiskContributionService:
     TECH_CONTRIBUTION_THRESHOLD = 35.0
     ARGENTINA_CONTRIBUTION_THRESHOLD = 45.0
     WEIGHT_RISK_DIVERGENCE_THRESHOLD = 15.0
+    SECTOR_RISK_OVERCONCENTRATION_THRESHOLD = 5.0
+    COUNTRY_RISK_OVERCONCENTRATION_THRESHOLD = 7.0
+    COUNTRY_RISK_UNDERCONCENTRATION_THRESHOLD = -7.0
     FALLBACK_VOLATILITY = {
         "equity": 0.35,
         "growth": 0.35,
@@ -252,7 +255,124 @@ class RiskContributionService:
                 )
             )
 
+        sector_overconcentration = self._find_max_group_delta(
+            result.get("by_sector", []),
+            minimum_delta=self.SECTOR_RISK_OVERCONCENTRATION_THRESHOLD,
+        )
+        if sector_overconcentration:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="sector_risk_overconcentration",
+                    severity="medium",
+                    title="Sector con sobre-contribucion de riesgo",
+                    description=(
+                        f"El sector {sector_overconcentration['key']} explica "
+                        f"{sector_overconcentration['contribution_pct']:.2f}% del riesgo con solo "
+                        f"{sector_overconcentration['weight_pct']:.2f}% del peso patrimonial."
+                    ),
+                    affected_scope="sector",
+                    evidence={
+                        "sector": sector_overconcentration["key"],
+                        "weight_pct": round(sector_overconcentration["weight_pct"], 2),
+                        "contribution_pct": round(sector_overconcentration["contribution_pct"], 2),
+                        "risk_vs_weight_delta": round(sector_overconcentration["risk_vs_weight_delta"], 2),
+                    },
+                )
+            )
+
+        country_overconcentration = self._find_max_group_delta(
+            result.get("by_country", []),
+            minimum_delta=self.COUNTRY_RISK_OVERCONCENTRATION_THRESHOLD,
+            normalizer=normalize_country_label,
+        )
+        if country_overconcentration:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="country_risk_overconcentration",
+                    severity="high",
+                    title="Pais con sobre-contribucion de riesgo",
+                    description=(
+                        f"El bloque {country_overconcentration['key']} concentra mas riesgo "
+                        "del que su peso patrimonial sugiere."
+                    ),
+                    affected_scope="country",
+                    evidence={
+                        "country": country_overconcentration["key"],
+                        "weight_pct": round(country_overconcentration["weight_pct"], 2),
+                        "contribution_pct": round(country_overconcentration["contribution_pct"], 2),
+                        "risk_vs_weight_delta": round(country_overconcentration["risk_vs_weight_delta"], 2),
+                    },
+                )
+            )
+
+        country_underconcentration = self._find_min_group_delta(
+            result.get("by_country", []),
+            maximum_delta=self.COUNTRY_RISK_UNDERCONCENTRATION_THRESHOLD,
+            normalizer=normalize_country_label,
+        )
+        if country_underconcentration:
+            signals.append(
+                RecommendationSignal(
+                    signal_key="country_risk_underconcentration",
+                    severity="low",
+                    title="Pais con infra-contribucion de riesgo",
+                    description=(
+                        f"El bloque {country_underconcentration['key']} pesa significativamente "
+                        "mas en patrimonio que en contribucion al riesgo."
+                    ),
+                    affected_scope="country",
+                    evidence={
+                        "country": country_underconcentration["key"],
+                        "weight_pct": round(country_underconcentration["weight_pct"], 2),
+                        "contribution_pct": round(country_underconcentration["contribution_pct"], 2),
+                        "risk_vs_weight_delta": round(country_underconcentration["risk_vs_weight_delta"], 2),
+                    },
+                )
+            )
+
         return [signal.to_dict() for signal in signals]
+
+    @staticmethod
+    def _find_max_group_delta(groups: list[dict], *, minimum_delta: float, normalizer=None) -> dict | None:
+        winner = None
+        for group in groups:
+            key = group.get("key")
+            if normalizer:
+                key = normalizer(key)
+            weight_pct = float(group.get("weight_pct") or 0.0)
+            contribution_pct = float(group.get("contribution_pct") or 0.0)
+            delta = contribution_pct - weight_pct
+            if delta <= minimum_delta:
+                continue
+            if winner is None or delta > winner["risk_vs_weight_delta"]:
+                winner = {
+                    "key": key,
+                    "weight_pct": weight_pct,
+                    "contribution_pct": contribution_pct,
+                    "risk_vs_weight_delta": delta,
+                }
+        return winner
+
+    @staticmethod
+    def _find_min_group_delta(groups: list[dict], *, maximum_delta: float, normalizer=None) -> dict | None:
+        winner = None
+        for group in groups:
+            key = group.get("key")
+            if normalizer:
+                key = normalizer(key)
+            weight_pct = float(group.get("weight_pct") or 0.0)
+            contribution_pct = float(group.get("contribution_pct") or 0.0)
+            delta = contribution_pct - weight_pct
+            if delta >= maximum_delta:
+                continue
+            if winner is None or delta < winner["risk_vs_weight_delta"]:
+                winner = {
+                    "key": key,
+                    "weight_pct": weight_pct,
+                    "contribution_pct": contribution_pct,
+                    "risk_vs_weight_delta": delta,
+                }
+        return winner
 
     def _load_current_invested_positions(self) -> list[ActivoPortafolioSnapshot]:
         latest_date = ActivoPortafolioSnapshot.objects.aggregate(

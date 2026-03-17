@@ -23,7 +23,8 @@ Exponer una superficie de lectura detallada del calculo de `Risk Contribution` s
   - `weight_pct`
   - `volatility_proxy`
   - `risk_score`
-  - `contribution_pct`
+- `contribution_pct`
+  - `risk_vs_weight_delta`
   - `used_volatility_fallback`
 - `top_asset`
 - `top_sector`
@@ -49,11 +50,24 @@ La hoja muestra:
 - metadata del modelo activo
 - top activo y cobertura
 - tabla completa por activo
+- delta `Riesgo vs Peso` por activo
+- tablas agregadas por sector y pais con delta patrimonial vs riesgo
 - barra visual simple de contribucion
+
+## Senales derivadas reutilizadas
+
+El mismo resultado agregado de `Risk Contribution` alimenta senales analiticas sin recalcular el modelo:
+
+- `sector_risk_overconcentration`
+- `country_risk_overconcentration`
+- `country_risk_underconcentration`
+
+Las tres se derivan desde `by_sector` y `by_country` usando:
+
+- `risk_vs_weight_delta = contribution_pct - weight_pct`
 
 ## Limitaciones
 
 - no agrega endpoint API nuevo
-- no agrega drill-down por sector o pais
 - no cambia el algoritmo del modelo
 - no cambia la decision entre `mvp_proxy` y `covariance_aware`
