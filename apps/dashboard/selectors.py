@@ -1095,6 +1095,32 @@ def get_risk_contribution_detail() -> Dict:
         resolved = _get_active_risk_contribution_result()
         result = resolved["active_result"]
         covariance_result = resolved["covariance_result"]
+        by_sector = [
+            {
+                "rank": index,
+                "key": item.get("key"),
+                "weight_pct": item.get("weight_pct"),
+                "contribution_pct": item.get("contribution_pct"),
+                "risk_vs_weight_delta": round(
+                    float(item.get("contribution_pct") or 0.0) - float(item.get("weight_pct") or 0.0),
+                    2,
+                ),
+            }
+            for index, item in enumerate(result.get("by_sector", []), start=1)
+        ]
+        by_country = [
+            {
+                "rank": index,
+                "key": item.get("key"),
+                "weight_pct": item.get("weight_pct"),
+                "contribution_pct": item.get("contribution_pct"),
+                "risk_vs_weight_delta": round(
+                    float(item.get("contribution_pct") or 0.0) - float(item.get("weight_pct") or 0.0),
+                    2,
+                ),
+            }
+            for index, item in enumerate(result.get("by_country", []), start=1)
+        ]
 
         items = [
             {
@@ -1122,6 +1148,8 @@ def get_risk_contribution_detail() -> Dict:
 
         return {
             "items": items,
+            "by_sector": by_sector,
+            "by_country": by_country,
             "top_asset": top_asset,
             "top_sector": top_sector,
             "model_variant": covariance_result.get("model_variant", "mvp_proxy"),

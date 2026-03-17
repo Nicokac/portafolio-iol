@@ -117,6 +117,8 @@ class TestDashboardView:
         assert 'Modelo activo' in body
         assert 'Volatilidad proxy' in body
         assert 'Contribucion' in body
+        assert 'Delta agregado por sector' in body
+        assert 'Delta agregado por pais' in body
 
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:
