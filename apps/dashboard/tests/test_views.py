@@ -408,6 +408,35 @@ class TestDashboardView:
                 'explanation': 'Plan incremental MVP',
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_candidate_asset_ranking',
+            lambda capital_amount=600000: {
+                'capital_total': capital_amount,
+                'candidate_assets_count': 2,
+                'candidate_assets': [
+                    {
+                        'asset': 'KO',
+                        'block': 'defensive',
+                        'block_label': 'Defensive / resiliente',
+                        'score': 8.4,
+                        'rank': 1,
+                        'reasons': ['defensive_sector_match'],
+                        'main_reason': 'defensive_sector_match',
+                    },
+                    {
+                        'asset': 'SPY',
+                        'block': 'global_index',
+                        'block_label': 'Indice global',
+                        'score': 6.8,
+                        'rank': 2,
+                        'reasons': ['stable_global_exposure'],
+                        'main_reason': 'stable_global_exposure',
+                    },
+                ],
+                'by_block': [],
+                'explanation': 'Ranking incremental MVP',
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -417,6 +446,10 @@ class TestDashboardView:
         assert 'Por qué este bloque recibió este score' in body
         assert 'Señales positivas' in body
         assert 'Señales negativas' in body
+        assert 'Candidatos de activos dentro de los bloques recomendados' in body
+        assert 'Ranking incremental MVP' in body
+        assert 'KO' in body
+        assert 'defensive_sector_match' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

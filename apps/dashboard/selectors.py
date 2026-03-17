@@ -17,6 +17,7 @@ from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.candidate_asset_ranking_service import CandidateAssetRankingService
 from apps.core.services.monthly_allocation_service import MonthlyAllocationService
 from apps.core.services.analytics_v2 import (
     AnalyticsExplanationService,
@@ -1485,6 +1486,18 @@ def get_monthly_allocation_plan(capital_amount: int | float = 600000) -> Dict:
     def build():
         service = MonthlyAllocationService()
         return service.build_plan(capital_amount)
+
+    return _get_cached_selector_result(cache_key, build)
+
+
+def get_candidate_asset_ranking(capital_amount: int | float = 600000) -> Dict:
+    """Devuelve el ranking de activos candidatos dentro de los bloques recomendados."""
+
+    cache_key = f"candidate_asset_ranking:{int(capital_amount)}"
+
+    def build():
+        service = CandidateAssetRankingService()
+        return service.build_ranking(capital_amount)
 
     return _get_cached_selector_result(cache_key, build)
 

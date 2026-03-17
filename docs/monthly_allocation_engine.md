@@ -56,6 +56,36 @@ Las señales salen solo de:
 - stress fragility
 - recommendation engine
 
+## Candidate Asset Ranking Engine
+
+DespuÃ©s de decidir quÃ© bloques conviene reforzar, el ranking de candidatos baja un nivel y ordena activos ya presentes en cartera que mejor encajan dentro de esos bloques.
+
+El motor:
+
+- no cambia la asignaciÃ³n mensual
+- no simula compras
+- no optimiza portafolio
+
+Solo rankea candidatos usando seÃ±ales ya existentes de:
+
+- factor exposure
+- risk contribution
+- stress fragility
+- scenario analysis
+- bloques recomendados/evitados del motor mensual
+
+La salida expone:
+
+- activo
+- bloque sugerido
+- score de idoneidad
+- razones principales del ranking
+
+LimitaciÃ³n deliberada del MVP:
+
+- usa Ãºnicamente activos ya presentes en cartera
+- no abre universo externo de nuevos instrumentos
+
 ## Limitaciones
 
 - no recomienda activos concretos

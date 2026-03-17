@@ -26,6 +26,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_factor_exposure_detail,
+    get_candidate_asset_ranking,
     get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
     get_risk_contribution_detail,
@@ -948,6 +949,49 @@ class TestDashboardSelectors(TestCase):
         assert detail["recommended_blocks"][0]["bucket"] == "defensive"
         assert "score_breakdown" in detail["recommended_blocks"][0]
         assert detail["avoided_blocks"][0]["bucket"] == "tech_growth"
+
+    def test_get_candidate_asset_ranking_reuses_service_output(self):
+        cache.clear()
+
+        expected_ranking = {
+            "capital_total": 600000,
+            "candidate_assets_count": 2,
+            "candidate_assets": [
+                {
+                    "asset": "KO",
+                    "block": "defensive",
+                    "block_label": "Defensive / resiliente",
+                    "score": 8.4,
+                    "rank": 1,
+                    "reasons": ["defensive_sector_match"],
+                    "main_reason": "defensive_sector_match",
+                },
+                {
+                    "asset": "SPY",
+                    "block": "global_index",
+                    "block_label": "Indice global",
+                    "score": 6.8,
+                    "rank": 1,
+                    "reasons": ["stable_global_exposure"],
+                    "main_reason": "stable_global_exposure",
+                },
+            ],
+            "by_block": [],
+            "explanation": "Ranking incremental",
+        }
+
+        class DummyCandidateAssetRankingService:
+            def build_ranking(self, capital_amount):
+                assert capital_amount == 600000
+                return expected_ranking
+
+        with patch("apps.dashboard.selectors.CandidateAssetRankingService", DummyCandidateAssetRankingService):
+            detail = get_candidate_asset_ranking()
+
+        assert detail["capital_total"] == 600000
+        assert detail["candidate_assets_count"] == 2
+        assert detail["candidate_assets"][0]["asset"] == "KO"
+        assert detail["candidate_assets"][0]["main_reason"] == "defensive_sector_match"
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

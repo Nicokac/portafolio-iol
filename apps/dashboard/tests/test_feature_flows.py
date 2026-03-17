@@ -20,7 +20,7 @@ class TestDashboardFeatureFlows:
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo", "analytics_v2_summary"]),
-            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan"]),
+            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan", "candidate_asset_ranking"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
             ("dashboard:metricas", "dashboard/metricas.html", ["kpis", "riesgo_portafolio"]),
         ],
@@ -55,6 +55,7 @@ class TestDashboardFeatureFlows:
         assert "simulation-activo" in content
         assert "monthly-plan-result" in content
         assert "optimization-result" in content
+        assert "Candidatos de activos dentro de los bloques recomendados" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
         auth_client.post(

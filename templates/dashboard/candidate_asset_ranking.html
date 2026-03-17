@@ -1,0 +1,37 @@
+<div class="card border-info-subtle shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Candidatos de activos dentro de los bloques recomendados</h5>
+        <small class="text-muted">Ranking MVP de activos ya presentes en cartera que mejor encajan en los bloques sugeridos.</small>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">{{ candidate_asset_ranking.explanation }}</p>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">Rank</th>
+                        <th>Activo</th>
+                        <th>Bloque</th>
+                        <th class="text-end">Score</th>
+                        <th>Razón principal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in candidate_asset_ranking.candidate_assets %}
+                    <tr>
+                        <td class="text-end">{{ item.rank }}</td>
+                        <td><strong>{{ item.asset }}</strong></td>
+                        <td>{{ item.block_label }}</td>
+                        <td class="text-end">{{ item.score|floatformat:2 }}</td>
+                        <td><code>{{ item.main_reason }}</code></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">Sin activos elegibles para sugerir dentro de los bloques recomendados actuales.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

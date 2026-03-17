@@ -28,6 +28,7 @@ from apps.dashboard.selectors import (
     get_concentracion_sector,
     get_concentracion_sector_agregado,
     get_concentracion_tipo_patrimonial,
+    get_candidate_asset_ranking,
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
     get_dashboard_kpis,
@@ -174,6 +175,7 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['monthly_allocation_plan'] = get_monthly_allocation_plan(capital_amount=600000)
+        context['candidate_asset_ranking'] = get_candidate_asset_ranking(capital_amount=600000)
         return context
 
 
