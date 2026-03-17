@@ -120,6 +120,44 @@ class TestDashboardView:
         assert 'Delta agregado por sector' in body
         assert 'Delta agregado por pais' in body
 
+    def test_risk_contribution_detail_uses_unlocalized_width_for_progress_bar(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_risk_contribution_detail',
+            lambda: {
+                'items': [
+                    {
+                        'rank': 1,
+                        'symbol': 'SPY',
+                        'sector': 'Indice',
+                        'weight_pct': 9.17,
+                        'volatility_proxy': 84.74,
+                        'risk_score': 0.07773,
+                        'contribution_pct': 22.33,
+                        'risk_vs_weight_delta': 13.16,
+                        'used_volatility_fallback': False,
+                    }
+                ],
+                'by_sector': [],
+                'by_country': [],
+                'top_asset': {'symbol': 'SPY'},
+                'top_sector': {'key': 'Indice'},
+                'model_variant': 'mvp_proxy',
+                'covariance_observations': 6,
+                'coverage_pct': 100.0,
+                'portfolio_volatility_proxy': None,
+                'confidence': 'high',
+                'warnings': [],
+                'methodology': 'mvp',
+                'limitations': 'mvp',
+                'covered_symbols': ['SPY'],
+                'excluded_symbols': [],
+            },
+        )
+        response = auth_client.get(reverse('dashboard:risk_contribution_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'style="width: 22.33%"' in body
+
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:
             def run_audit(self, freshness_hours=24):
