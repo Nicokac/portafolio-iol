@@ -37,7 +37,7 @@ def _keystream(secret: bytes, nonce: bytes, length: int) -> bytes:
 def encrypt_token(value: str | None) -> str | None:
     if value in (None, ""):
         return value
-    if isinstance(value, str) and value.startswith(TOKEN_PREFIX):
+    if is_encrypted_token(value):
         return value
 
     plaintext = value.encode("utf-8")
@@ -49,10 +49,14 @@ def encrypt_token(value: str | None) -> str | None:
     return f"{TOKEN_PREFIX}{payload}"
 
 
+def is_encrypted_token(value: str | None) -> bool:
+    return isinstance(value, str) and value.startswith(TOKEN_PREFIX)
+
+
 def decrypt_token(value: str | None) -> str | None:
     if value in (None, ""):
         return value
-    if not isinstance(value, str) or not value.startswith(TOKEN_PREFIX):
+    if not is_encrypted_token(value):
         return value
 
     payload = base64.urlsafe_b64decode(value[len(TOKEN_PREFIX):].encode("ascii"))

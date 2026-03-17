@@ -48,13 +48,35 @@ class TestIOLTokenManager:
         assert IOLToken.objects.count() == 1
 
     def test_get_valid_token_supports_legacy_plaintext_tokens(self):
-        IOLToken.objects.create(
+        token = IOLToken.objects.create(
             access_token='legacy_plain_token',
             refresh_token='legacy_refresh',
             expires_at=timezone.now() + timedelta(hours=1),
         )
         manager = IOLTokenManager()
         assert manager.get_valid_token() == 'legacy_plain_token'
+        assert token.get_refresh_token() == 'legacy_refresh'
+        token.refresh_from_db()
+        assert token.access_token != 'legacy_plain_token'
+        assert token.refresh_token != 'legacy_refresh'
+        assert token.access_token.startswith('enc::')
+        assert token.refresh_token.startswith('enc::')
+
+    def test_get_access_token_keeps_encrypted_tokens_unchanged(self):
+        token = IOLToken.save_token(
+            access_token='encrypted_token',
+            refresh_token='encrypted_refresh',
+            expires_in=3600,
+        )
+        original_access = token.access_token
+        original_refresh = token.refresh_token
+
+        assert token.get_access_token() == 'encrypted_token'
+        assert token.get_refresh_token() == 'encrypted_refresh'
+
+        token.refresh_from_db()
+        assert token.access_token == original_access
+        assert token.refresh_token == original_refresh
 
     def test_refresh_token_returns_none(self):
         manager = IOLTokenManager()

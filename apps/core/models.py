@@ -1,8 +1,13 @@
+import logging
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from apps.core.utils.token_crypto import decrypt_token, encrypt_token
+from apps.core.utils.token_crypto import decrypt_token, encrypt_token, is_encrypted_token
+
+
+logger = logging.getLogger(__name__)
 
 
 class IOLToken(models.Model):
@@ -32,10 +37,25 @@ class IOLToken(models.Model):
         return cls.objects.filter(expires_at__gt=timezone.now()).first()
 
     def get_access_token(self):
-        return decrypt_token(self.access_token)
+        return self._get_and_migrate_token_field("access_token")
 
     def get_refresh_token(self):
-        return decrypt_token(self.refresh_token)
+        return self._get_and_migrate_token_field("refresh_token")
+
+    def _get_and_migrate_token_field(self, field_name: str):
+        raw_value = getattr(self, field_name)
+        if raw_value in (None, ""):
+            return raw_value
+
+        plaintext = decrypt_token(raw_value)
+        if is_encrypted_token(raw_value):
+            return plaintext
+
+        encrypted_value = encrypt_token(plaintext)
+        type(self).objects.filter(pk=self.pk).update(**{field_name: encrypted_value})
+        setattr(self, field_name, encrypted_value)
+        logger.info("Migrated legacy IOL token field to encrypted format", extra={"field_name": field_name})
+        return plaintext
 
     @classmethod
     def save_token(cls, access_token: str, refresh_token: str = None, expires_in: int = 3600):
