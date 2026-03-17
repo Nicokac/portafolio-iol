@@ -266,12 +266,12 @@ class TestDashboardView:
                 assert lookback_days == 30
                 assert integrity_days == 120
                 return {
-                    'last_successful_iol_sync': '2026-03-17T10:00:00',
+                    'last_successful_iol_sync': '2026-03-17 10:00',
                     'iol_sync_status': 'ok',
-                    'latest_asset_snapshot_at': '2026-03-17T10:00:00-03:00',
-                    'latest_account_snapshot_at': '2026-03-17T10:00:00-03:00',
-                    'latest_portfolio_snapshot_date': '2026-03-16',
-                    'days_since_last_portfolio_snapshot': 1,
+                    'latest_asset_snapshot_at': '2026-03-17 10:00',
+                    'latest_account_snapshot_at': '2026-03-17 10:00',
+                    'latest_portfolio_snapshot_date': '2026-03-17',
+                    'days_since_last_portfolio_snapshot': 0,
                     'covariance_readiness': {
                         'status': 'ready',
                         'label': 'Listo para covarianza',
@@ -289,6 +289,7 @@ class TestDashboardView:
                         'total_series': 4,
                         'stale': 1,
                         'missing': 0,
+                        'not_configured': 1,
                         'overall_status': 'warning',
                     },
                     'snapshot_integrity_issues_count': 2,
@@ -306,11 +307,14 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'Resumen unificado del pipeline' in body
         assert 'Último sync IOL exitoso' in body
-        assert '2026-03-17T10:00:00' in body
+        assert '2026-03-17 10:00' in body
+        assert 'Último portfolio snapshot' in body
+        assert '2026-03-17' in body
         assert 'Covariance readiness' in body
         assert '21/20 obs' in body
         assert 'Resumen benchmarks' in body
         assert '2/3' in body
+        assert 'sin configurar 1' in body
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')

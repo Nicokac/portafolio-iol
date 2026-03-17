@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 
 from apps.core.services.analytics_v2 import CovarianceAwareRiskContributionService
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
@@ -8,6 +8,7 @@ from apps.core.services.data_quality.historical_coverage_health import Historica
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from django.utils import timezone
 
 
 class PipelineObservabilityService:
@@ -38,16 +39,14 @@ class PipelineObservabilityService:
         days_since_last_portfolio_snapshot = None
         if latest_portfolio_snapshot_date:
             days_since_last_portfolio_snapshot = (
-                date.today() - date.fromisoformat(latest_portfolio_snapshot_date)
+                timezone.localdate() - datetime.fromisoformat(latest_portfolio_snapshot_date).date()
             ).days
 
         latest_successful_iol_sync = None
         snapshots_info = sync_audit.get("snapshots", {})
         if snapshots_info.get("status") == "ok" and snapshots_info.get("latest_sync") is not None:
             latest_sync = snapshots_info["latest_sync"]
-            latest_successful_iol_sync = (
-                latest_sync.isoformat() if hasattr(latest_sync, "isoformat") else str(latest_sync)
-            )
+            latest_successful_iol_sync = self._format_local_datetime(latest_sync)
 
         usable_observations_count = int(coverage.get("usable_observations_count") or 0)
         available_price_dates_count = int(coverage.get("available_price_dates_count") or 0)
@@ -55,8 +54,8 @@ class PipelineObservabilityService:
         return {
             "last_successful_iol_sync": latest_successful_iol_sync,
             "iol_sync_status": sync_audit.get("status"),
-            "latest_asset_snapshot_at": coverage.get("latest_asset_snapshot_at"),
-            "latest_account_snapshot_at": coverage.get("latest_account_snapshot_at"),
+            "latest_asset_snapshot_at": self._format_local_datetime(coverage.get("latest_asset_snapshot_at")),
+            "latest_account_snapshot_at": self._format_local_datetime(coverage.get("latest_account_snapshot_at")),
             "latest_portfolio_snapshot_date": latest_portfolio_snapshot_date,
             "days_since_last_portfolio_snapshot": days_since_last_portfolio_snapshot,
             "covariance_readiness": self._build_covariance_readiness(
@@ -128,3 +127,16 @@ class PipelineObservabilityService:
             **counts,
             "overall_status": overall_status,
         }
+
+    @staticmethod
+    def _format_local_datetime(value) -> str | None:
+        if not value:
+            return None
+        if isinstance(value, str):
+            try:
+                value = datetime.fromisoformat(value)
+            except ValueError:
+                return value
+        if timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        return timezone.localtime(value).strftime("%Y-%m-%d %H:%M")

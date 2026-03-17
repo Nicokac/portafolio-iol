@@ -87,7 +87,13 @@
                         </tr>
                         <tr>
                             <td><strong>Días desde último portfolio snapshot</strong></td>
-                            <td class="text-end">{{ pipeline_observability.days_since_last_portfolio_snapshot|default:"-" }}</td>
+                            <td class="text-end">
+                                {% if pipeline_observability.days_since_last_portfolio_snapshot is not None %}
+                                {{ pipeline_observability.days_since_last_portfolio_snapshot }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
                         </tr>
                         <tr>
                             <td><strong>Covariance readiness</strong></td>
@@ -115,7 +121,7 @@
                             <td><strong>Resumen macro local</strong></td>
                             <td class="text-end">
                                 {{ pipeline_observability.local_macro_status_summary.ready }}/{{ pipeline_observability.local_macro_status_summary.total_series }}
-                                listas · stale {{ pipeline_observability.local_macro_status_summary.stale }} · missing {{ pipeline_observability.local_macro_status_summary.missing }}
+                                listas · stale {{ pipeline_observability.local_macro_status_summary.stale }} · missing {{ pipeline_observability.local_macro_status_summary.missing }} · sin configurar {{ pipeline_observability.local_macro_status_summary.not_configured }}
                             </td>
                         </tr>
                         <tr>
