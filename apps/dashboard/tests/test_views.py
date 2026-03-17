@@ -528,6 +528,75 @@ class TestDashboardView:
                 ],
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_manual_incremental_portfolio_simulation_comparison',
+            lambda query_params, default_capital_amount=600000: {
+                'submitted': True,
+                'best_proposal_key': 'plan_a',
+                'best_label': 'Plan manual A',
+                'form_state': {
+                    'plans': [
+                        {
+                            'plan_key': 'plan_a',
+                            'label': 'Plan manual A',
+                            'capital_raw': '600000',
+                            'rows': [
+                                {'symbol': 'KO', 'amount_raw': '300000'},
+                                {'symbol': 'MCD', 'amount_raw': '300000'},
+                                {'symbol': '', 'amount_raw': ''},
+                            ],
+                            'warnings': [],
+                        },
+                        {
+                            'plan_key': 'plan_b',
+                            'label': 'Plan manual B',
+                            'capital_raw': '600000',
+                            'rows': [
+                                {'symbol': 'SPY', 'amount_raw': '600000'},
+                                {'symbol': '', 'amount_raw': ''},
+                                {'symbol': '', 'amount_raw': ''},
+                            ],
+                            'warnings': [],
+                        },
+                    ],
+                },
+                'proposals': [
+                    {
+                        'proposal_key': 'plan_a',
+                        'label': 'Plan manual A',
+                        'purchase_plan': [
+                            {'symbol': 'KO', 'amount': 300000},
+                            {'symbol': 'MCD', 'amount': 300000},
+                        ],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.7,
+                                'fragility_change': -3.8,
+                                'scenario_loss_change': 0.9,
+                            },
+                            'interpretation': 'Plan manual A reduce mejor la fragilidad.',
+                        },
+                        'comparison_score': 5.4,
+                    },
+                    {
+                        'proposal_key': 'plan_b',
+                        'label': 'Plan manual B',
+                        'purchase_plan': [
+                            {'symbol': 'SPY', 'amount': 600000},
+                        ],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.2,
+                                'fragility_change': -1.0,
+                                'scenario_loss_change': 0.1,
+                            },
+                            'interpretation': 'Plan manual B es más acotado.',
+                        },
+                        'comparison_score': 2.1,
+                    },
+                ],
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -548,6 +617,11 @@ class TestDashboardView:
         assert 'Comparador de propuestas incrementales' in body
         assert 'Split del bloque más grande' in body
         assert 'Mejor balance' in body
+        assert 'Comparador manual de planes incrementales' in body
+        assert 'Plan manual A' in body
+        assert 'Plan manual B' in body
+        assert 'Comparar planes manuales' in body
+        assert 'Mejor balance manual' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

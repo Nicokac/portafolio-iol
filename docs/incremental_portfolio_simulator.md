@@ -73,3 +73,15 @@ El comparador incremental agrega variantes simples sobre la misma base:
 - integrar comparaciÃ³n directa desde `PlaneaciÃ³n`
 - evaluar mÃºltiples propuestas candidatas
 - comparar simulaciones del top ranking de activos
+
+## Comparador manual
+
+La hoja `Planeacion` tambien permite contrastar dos planes manuales simples.
+
+Reglas del MVP:
+
+- hasta 2 planes
+- hasta 3 lineas por plan
+- cada plan define `symbol` + `amount`
+- el comparador reutiliza el mismo `IncrementalPortfolioSimulator`
+- el resultado se ordena con el mismo score comparativo heuristico usado en el comparador automatico

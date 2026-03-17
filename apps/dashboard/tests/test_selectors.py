@@ -28,6 +28,7 @@ from apps.dashboard.selectors import (
     get_factor_exposure_detail,
     get_incremental_portfolio_simulation,
     get_incremental_portfolio_simulation_comparison,
+    get_manual_incremental_portfolio_simulation_comparison,
     get_candidate_asset_ranking,
     get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
@@ -1138,6 +1139,70 @@ class TestDashboardSelectors(TestCase):
         assert len(detail["proposals"]) == 3
         assert detail["best_proposal_key"] == "split_largest_block_top_two"
         assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
+
+    def test_get_manual_incremental_portfolio_simulation_comparison_ranks_manual_plans(self):
+        cache.clear()
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                symbols = {item["symbol"] for item in proposal["purchase_plan"]}
+                if symbols == {"KO", "MCD"}:
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.7,
+                            "real_expected_return_change": 0.2,
+                            "fragility_change": -3.0,
+                            "scenario_loss_change": 0.9,
+                            "risk_concentration_change": -1.2,
+                        },
+                        "interpretation": "Plan manual A mejora el perfil defensivo.",
+                        "warnings": [],
+                    }
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.2,
+                        "real_expected_return_change": 0.0,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.1,
+                        "risk_concentration_change": -0.1,
+                    },
+                    "interpretation": "Plan manual B aporta mejora acotada.",
+                    "warnings": [],
+                }
+
+        query_params = {
+            "manual_compare": "1",
+            "plan_a_capital": "600000",
+            "plan_a_symbol_1": "KO",
+            "plan_a_amount_1": "300000",
+            "plan_a_symbol_2": "MCD",
+            "plan_a_amount_2": "300000",
+            "plan_b_capital": "600000",
+            "plan_b_symbol_1": "SPY",
+            "plan_b_amount_1": "600000",
+        }
+
+        with patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator):
+            detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
+
+        assert detail["submitted"] is True
+        assert len(detail["proposals"]) == 2
+        assert detail["best_proposal_key"] == "plan_a"
+        assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
+        assert detail["proposals"][0]["purchase_plan"][0]["symbol"] == "KO"
+
+    def test_get_manual_incremental_portfolio_simulation_comparison_handles_empty_input(self):
+        cache.clear()
+
+        detail = get_manual_incremental_portfolio_simulation_comparison({"manual_compare": "1"})
+
+        assert detail["submitted"] is True
+        assert detail["proposals"] == []
+        assert detail["best_proposal_key"] is None
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

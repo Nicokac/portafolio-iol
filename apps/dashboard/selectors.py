@@ -1,6 +1,7 @@
 from typing import Dict, List
 from datetime import timedelta
 import hashlib
+import json
 from django.core.cache import cache
 from django.db.models import Max, Sum
 from django.utils import timezone
@@ -1626,6 +1627,87 @@ def get_incremental_portfolio_simulation_comparison(capital_amount: int | float 
     return _get_cached_selector_result(cache_key, build)
 
 
+def get_manual_incremental_portfolio_simulation_comparison(
+    query_params,
+    *,
+    default_capital_amount: int | float = 600000,
+) -> Dict:
+    """Compara planes incrementales definidos manualmente desde Planeacion."""
+
+    form_state = _build_manual_incremental_comparison_form_state(
+        query_params,
+        default_capital_amount=default_capital_amount,
+    )
+    normalized_plans = form_state["normalized_plans"]
+    if not normalized_plans:
+        return {
+            "submitted": form_state["submitted"],
+            "form_state": form_state,
+            "proposals": [],
+            "best_proposal_key": None,
+            "best_label": None,
+        }
+
+    signature = hashlib.md5(
+        json.dumps(
+            [
+                {
+                    "proposal_key": plan["proposal_key"],
+                    "capital_amount": plan["capital_amount"],
+                    "purchase_plan": plan["purchase_plan"],
+                }
+                for plan in normalized_plans
+            ],
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    cache_key = f"manual_incremental_portfolio_simulation_comparison:{signature}"
+
+    def build():
+        simulator = IncrementalPortfolioSimulator()
+        proposals = []
+        for plan in normalized_plans:
+            simulation = simulator.simulate(
+                {
+                    "capital_amount": plan["capital_amount"],
+                    "purchase_plan": plan["purchase_plan"],
+                }
+            )
+            proposals.append(
+                {
+                    "proposal_key": plan["proposal_key"],
+                    "label": plan["label"],
+                    "purchase_plan": plan["purchase_plan"],
+                    "capital_amount": plan["capital_amount"],
+                    "input_warnings": plan["warnings"],
+                    "simulation": {
+                        "before": simulation["before"],
+                        "after": simulation["after"],
+                        "delta": simulation["delta"],
+                        "interpretation": simulation["interpretation"],
+                        "warnings": simulation.get("warnings", []),
+                    },
+                    "comparison_score": _score_incremental_simulation(simulation),
+                }
+            )
+
+        ranked = sorted(
+            proposals,
+            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
+            reverse=True,
+        )
+        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        return {
+            "submitted": form_state["submitted"],
+            "form_state": form_state,
+            "proposals": ranked,
+            "best_proposal_key": best["proposal_key"] if best else None,
+            "best_label": best["label"] if best else None,
+        }
+
+    return _get_cached_selector_result(cache_key, build)
+
+
 def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
     return {
         str(item.get("block") or ""): item
@@ -1760,6 +1842,96 @@ def _score_incremental_simulation(simulation: Dict) -> float:
     score -= float(delta.get("fragility_change") or 0.0)
     score -= float(delta.get("risk_concentration_change") or 0.0) * 0.5
     return round(score, 2)
+
+
+def _build_manual_incremental_comparison_form_state(
+    query_params,
+    *,
+    default_capital_amount: int | float = 600000,
+) -> Dict:
+    submitted = str(_query_param_value(query_params, "manual_compare", "")).strip() == "1"
+    plans = []
+    normalized_plans = []
+
+    for plan_key, label in (("plan_a", "Plan manual A"), ("plan_b", "Plan manual B")):
+        capital_raw = str(_query_param_value(query_params, f"{plan_key}_capital", "")).strip()
+        rows = []
+        for index in range(1, 4):
+            rows.append(
+                {
+                    "symbol": str(_query_param_value(query_params, f"{plan_key}_symbol_{index}", "")).strip().upper(),
+                    "amount_raw": str(_query_param_value(query_params, f"{plan_key}_amount_{index}", "")).strip(),
+                }
+            )
+
+        warnings = []
+        purchase_plan = []
+        total_amount = 0.0
+        touched_rows = 0
+        for row in rows:
+            symbol = row["symbol"]
+            amount = _coerce_manual_amount(row["amount_raw"])
+            if symbol or row["amount_raw"]:
+                touched_rows += 1
+            if not symbol and not row["amount_raw"]:
+                continue
+            if not symbol:
+                warnings.append("missing_symbol")
+                continue
+            if amount <= 0:
+                warnings.append(f"invalid_amount:{symbol}")
+                continue
+            amount = round(amount, 2)
+            purchase_plan.append({"symbol": symbol, "amount": amount})
+            total_amount += amount
+
+        capital_amount = _coerce_manual_amount(capital_raw)
+        if capital_amount <= 0:
+            capital_amount = total_amount if total_amount > 0 else float(default_capital_amount)
+        capital_amount = round(capital_amount, 2)
+
+        plan_state = {
+            "plan_key": plan_key,
+            "label": label,
+            "capital_raw": capital_raw or str(int(default_capital_amount)),
+            "rows": rows,
+            "warnings": warnings,
+            "has_input": touched_rows > 0 or bool(capital_raw),
+        }
+        plans.append(plan_state)
+
+        if purchase_plan:
+            normalized_plans.append(
+                {
+                    "proposal_key": plan_key,
+                    "label": label,
+                    "capital_amount": capital_amount,
+                    "purchase_plan": purchase_plan,
+                    "warnings": warnings,
+                }
+            )
+
+    return {
+        "submitted": submitted,
+        "plans": plans,
+        "normalized_plans": normalized_plans,
+    }
+
+
+def _query_param_value(query_params, key: str, default=""):
+    getter = getattr(query_params, "get", None)
+    if callable(getter):
+        return getter(key, default)
+    if isinstance(query_params, dict):
+        return query_params.get(key, default)
+    return default
+
+
+def _coerce_manual_amount(value) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def get_analytics_v2_dashboard_summary() -> Dict:

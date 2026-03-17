@@ -40,6 +40,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_macro_local_context,
+    get_manual_incremental_portfolio_simulation_comparison,
     get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
@@ -180,6 +181,12 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         context['candidate_asset_ranking'] = get_candidate_asset_ranking(capital_amount=600000)
         context['incremental_portfolio_simulation'] = get_incremental_portfolio_simulation(capital_amount=600000)
         context['incremental_portfolio_simulation_comparison'] = get_incremental_portfolio_simulation_comparison(capital_amount=600000)
+        context['manual_incremental_portfolio_simulation_comparison'] = (
+            get_manual_incremental_portfolio_simulation_comparison(
+                self.request.GET,
+                default_capital_amount=600000,
+            )
+        )
         return context
 
 

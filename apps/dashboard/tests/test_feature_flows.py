@@ -20,7 +20,7 @@ class TestDashboardFeatureFlows:
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo", "analytics_v2_summary"]),
-            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "incremental_portfolio_simulation_comparison"]),
+            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "incremental_portfolio_simulation_comparison", "manual_incremental_portfolio_simulation_comparison"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
             ("dashboard:metricas", "dashboard/metricas.html", ["kpis", "riesgo_portafolio"]),
         ],
@@ -58,6 +58,7 @@ class TestDashboardFeatureFlows:
         assert "Candidatos de activos dentro de los bloques recomendados" in content
         assert "Impacto incremental simulado" in content
         assert "Comparador de propuestas incrementales" in content
+        assert "Comparador manual de planes incrementales" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
         auth_client.post(
