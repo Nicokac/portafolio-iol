@@ -216,6 +216,10 @@ Ejemplo concreto:
 - `get_risk_contribution_detail()`
   - reutiliza el mismo resultado activo que alimenta el resumen
   - agrega métricas derivadas de lectura, no del modelo
+- `get_scenario_analysis_detail()`
+  - reutiliza `ScenarioAnalysisService` y el catálogo de escenarios MVP
+  - consolida tabla de escenarios, peor escenario y breakdown por activo/sector/país
+  - alimenta `/estrategia/scenario-analysis/` sin recalcular lógica en la vista
 
 ### RecommendationEngine
 

@@ -117,6 +117,9 @@
                 <div class="small mt-2">
                     <span class="badge {% if analytics_v2_summary.scenario_analysis.confidence == 'high' %}bg-success{% elif analytics_v2_summary.scenario_analysis.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.scenario_analysis.confidence }}</span>
                 </div>
+                <div class="mt-3">
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:scenario_analysis_detail' %}">Ver detalle</a>
+                </div>
                 {% if analytics_v2_summary.scenario_analysis.interpretation %}
                 <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.scenario_analysis.interpretation }}</div>
                 {% endif %}

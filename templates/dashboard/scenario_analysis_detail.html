@@ -1,0 +1,209 @@
+﻿{% extends 'base.html' %}
+{% block title %}Scenario Analysis - Portafolio IOL{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="mb-1">Scenario Analysis</h1>
+        <p class="text-muted mb-0">Drill-down analítico del escenario más severo y de la tabla completa de escenarios evaluados sobre el portafolio actual.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Peor escenario</div>
+                <div class="h5 mb-0">{{ scenario_analysis_detail.worst_scenario.label|default:"N/D" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Shock dominante</div>
+                <div class="h5 mb-0">{{ scenario_analysis_detail.worst_scenario.description|default:"Sin detalle" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Impacto estimado</div>
+                <div class="h5 mb-0">
+                    {% if scenario_analysis_detail.worst_scenario %}
+                    {{ scenario_analysis_detail.worst_scenario.total_impact_pct|floatformat:2 }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5">Metodología del peor escenario</h2>
+        <p class="mb-2">{{ scenario_analysis_detail.methodology|default:"Sin detalles metodológicos." }}</p>
+        <p class="text-muted small mb-2">{{ scenario_analysis_detail.limitations|default:"Sin limitaciones informadas." }}</p>
+        {% if scenario_analysis_detail.warnings %}
+        <div class="mt-3">
+            <div class="small text-muted mb-2">Warnings</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for warning in scenario_analysis_detail.warnings %}
+                <span class="badge bg-warning text-dark">{{ warning }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Escenarios evaluados</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">Ranking de severidad</th>
+                        <th>Escenario</th>
+                        <th>Shock aplicado</th>
+                        <th class="text-end">Pérdida estimada</th>
+                        <th class="text-end">Impacto %</th>
+                        <th>Sector más afectado</th>
+                        <th>País dominante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in scenario_analysis_detail.scenarios %}
+                    <tr>
+                        <td class="text-end">{{ item.severity_rank }}</td>
+                        <td><strong>{{ item.label }}</strong></td>
+                        <td>{{ item.description|default:"-" }}</td>
+                        <td class="text-end">{{ item.total_impact_money|floatformat:2 }}</td>
+                        <td class="text-end">{{ item.total_impact_pct|floatformat:2 }}%</td>
+                        <td>{{ item.top_sector.key|default:"-" }}</td>
+                        <td>{{ item.top_country.key|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-muted">Sin escenarios disponibles.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Agregado por sector del peor escenario</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-end">#</th>
+                                <th>Sector</th>
+                                <th class="text-end">Impacto %</th>
+                                <th class="text-end">Impacto $</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in scenario_analysis_detail.worst_sectors %}
+                            <tr>
+                                <td class="text-end">{{ item.rank }}</td>
+                                <td>{{ item.key }}</td>
+                                <td class="text-end">{{ item.impact_pct|floatformat:2 }}%</td>
+                                <td class="text-end">{{ item.impact_money|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-muted">Sin agregados por sector.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Agregado por país del peor escenario</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-end">#</th>
+                                <th>País</th>
+                                <th class="text-end">Impacto %</th>
+                                <th class="text-end">Impacto $</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in scenario_analysis_detail.worst_countries %}
+                            <tr>
+                                <td class="text-end">{{ item.rank }}</td>
+                                <td>{{ item.key }}</td>
+                                <td class="text-end">{{ item.impact_pct|floatformat:2 }}%</td>
+                                <td class="text-end">{{ item.impact_money|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-muted">Sin agregados por país.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5 mb-1">Activos del peor escenario</h2>
+        <p class="text-muted mb-3">La tabla reutiliza el detalle por activo ya calculado para el escenario más severo.</p>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">#</th>
+                        <th>Activo</th>
+                        <th class="text-end">Peso base</th>
+                        <th class="text-end">Impacto bajo escenario</th>
+                        <th class="text-end">Contribución a pérdida</th>
+                        <th>Canal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in scenario_analysis_detail.worst_assets %}
+                    <tr>
+                        <td class="text-end">{{ item.rank }}</td>
+                        <td><strong>{{ item.symbol }}</strong></td>
+                        <td class="text-end">{{ item.market_value|floatformat:2 }}</td>
+                        <td class="text-end">{{ item.estimated_impact_pct|floatformat:2 }}%</td>
+                        <td class="text-end">{{ item.estimated_impact_money|floatformat:2 }}</td>
+                        <td>{{ item.transmission_channel|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-muted">Sin detalle por activo disponible.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

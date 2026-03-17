@@ -178,6 +178,45 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'style="width: 22.33%"' in body
 
+    def test_scenario_analysis_detail_route_accessible_authenticated(self, auth_client):
+        response = auth_client.get(reverse('dashboard:scenario_analysis_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Scenario Analysis' in body
+        assert 'Escenarios evaluados' in body
+        assert 'Peor escenario' in body
+        assert 'Shock aplicado' in body
+        assert 'Agregado por sector del peor escenario' in body
+        assert 'Activos del peor escenario' in body
+
+    def test_scenario_analysis_detail_handles_empty_payload(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_scenario_analysis_detail',
+            lambda: {
+                'scenarios': [],
+                'worst_scenario': None,
+                'worst_assets': [],
+                'worst_sectors': [],
+                'worst_countries': [],
+                'confidence': 'low',
+                'warnings': ['missing_shock'],
+                'methodology': None,
+                'limitations': None,
+            },
+        )
+        response = auth_client.get(reverse('dashboard:scenario_analysis_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Sin escenarios disponibles.' in body
+        assert 'Sin agregados por sector.' in body
+        assert 'Sin detalle por activo disponible.' in body
+
+    def test_estrategia_contains_scenario_analysis_detail_link(self, auth_client):
+        response = auth_client.get(reverse('dashboard:estrategia'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert reverse('dashboard:scenario_analysis_detail') in body
+
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:
             def run_audit(self, freshness_hours=24):

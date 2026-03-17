@@ -26,6 +26,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_portafolio_enriquecido_actual,
     get_risk_contribution_detail,
+    get_scenario_analysis_detail,
     get_riesgo_portafolio,
     get_snapshot_coverage_summary,
     get_riesgo_portafolio_detallado,
@@ -471,6 +472,133 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["risk_vs_weight_delta"] == 25.6
         assert detail["by_country"][0]["risk_vs_weight_delta"] == 25.6
         assert detail["covered_symbols"] == ["MSFT", "SPY", "AAPL"]
+
+    def test_get_scenario_analysis_detail_returns_ranked_scenarios_and_worst_breakdown(self):
+        cache.clear()
+
+        scenario_catalog = [
+            {
+                "scenario_key": "argentina_stress",
+                "label": "Argentina Stress",
+                "description": "Shock local severo",
+            },
+            {
+                "scenario_key": "tech_shock",
+                "label": "Tech Shock",
+                "description": "Caida concentrada en tecnologia",
+            },
+        ]
+        scenario_results = {
+            "argentina_stress": {
+                "total_impact_pct": -4.3,
+                "total_impact_money": -4300.0,
+                "by_asset": [
+                    {
+                        "symbol": "GD30",
+                        "market_value": 1000.0,
+                        "estimated_impact_pct": -12.0,
+                        "estimated_impact_money": -120.0,
+                        "transmission_channel": "country",
+                    }
+                ],
+                "by_sector": [{"key": "Soberano", "impact_pct": -7.2, "impact_money": -720.0}],
+                "by_country": [{"key": "Argentina", "impact_pct": -9.1, "impact_money": -910.0}],
+                "top_negative_contributors": [{"symbol": "GD30"}],
+                "metadata": {
+                    "confidence": "high",
+                    "warnings": [],
+                    "methodology": "scenario_methodology",
+                    "limitations": "scenario_limitations",
+                },
+            },
+            "tech_shock": {
+                "total_impact_pct": -8.1,
+                "total_impact_money": -8100.0,
+                "by_asset": [
+                    {
+                        "symbol": "AAPL",
+                        "market_value": 1500.0,
+                        "estimated_impact_pct": -14.0,
+                        "estimated_impact_money": -210.0,
+                        "transmission_channel": "sector",
+                    }
+                ],
+                "by_sector": [{"key": "Tecnologia", "impact_pct": -11.5, "impact_money": -1150.0}],
+                "by_country": [{"key": "USA", "impact_pct": -8.8, "impact_money": -880.0}],
+                "top_negative_contributors": [{"symbol": "AAPL"}],
+                "metadata": {
+                    "confidence": "medium",
+                    "warnings": ["partial_coverage"],
+                    "methodology": "scenario_methodology",
+                    "limitations": "scenario_limitations",
+                },
+            },
+        }
+
+        class DummyCatalogService:
+            def list_scenarios(self):
+                return scenario_catalog
+
+        class DummyScenarioService:
+            def analyze(self, scenario_key):
+                return scenario_results[scenario_key]
+
+        with (
+            patch("apps.dashboard.selectors.ScenarioCatalogService", DummyCatalogService),
+            patch("apps.dashboard.selectors.ScenarioAnalysisService", DummyScenarioService),
+        ):
+            detail = get_scenario_analysis_detail()
+
+        assert [row["scenario_key"] for row in detail["scenarios"]] == ["tech_shock", "argentina_stress"]
+        assert detail["scenarios"][0]["severity_rank"] == 1
+        assert detail["worst_scenario"]["scenario_key"] == "tech_shock"
+        assert detail["worst_scenario"]["top_sector"]["key"] == "Tecnologia"
+        assert detail["worst_scenario"]["top_country"]["key"] == "USA"
+        assert detail["worst_assets"][0]["symbol"] == "AAPL"
+        assert detail["worst_assets"][0]["market_value"] == 1500.0
+        assert detail["worst_sectors"][0]["key"] == "Tecnologia"
+        assert detail["worst_countries"][0]["key"] == "USA"
+        assert detail["confidence"] == "medium"
+        assert detail["warnings"] == ["partial_coverage"]
+
+    def test_get_scenario_analysis_detail_handles_empty_or_incomplete_results(self):
+        cache.clear()
+
+        scenario_catalog = [
+            {
+                "scenario_key": "flat_scenario",
+                "label": "Flat Scenario",
+                "description": "",
+            }
+        ]
+
+        class DummyCatalogService:
+            def list_scenarios(self):
+                return scenario_catalog
+
+        class DummyScenarioService:
+            def analyze(self, scenario_key):
+                assert scenario_key == "flat_scenario"
+                return {
+                    "total_impact_pct": 0,
+                    "total_impact_money": 0,
+                    "metadata": {"confidence": "low", "warnings": ["missing_shock"]},
+                }
+
+        with (
+            patch("apps.dashboard.selectors.ScenarioCatalogService", DummyCatalogService),
+            patch("apps.dashboard.selectors.ScenarioAnalysisService", DummyScenarioService),
+        ):
+            detail = get_scenario_analysis_detail()
+
+        assert len(detail["scenarios"]) == 1
+        assert detail["scenarios"][0]["severity_rank"] == 1
+        assert detail["scenarios"][0]["total_impact_pct"] == 0.0
+        assert detail["worst_scenario"]["scenario_key"] == "flat_scenario"
+        assert detail["worst_assets"] == []
+        assert detail["worst_sectors"] == []
+        assert detail["worst_countries"] == []
+        assert detail["warnings"] == ["missing_shock"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

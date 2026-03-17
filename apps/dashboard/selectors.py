@@ -24,6 +24,7 @@ from apps.core.services.analytics_v2 import (
     FactorExposureService,
     LocalMacroSignalsService,
     RiskContributionService,
+    ScenarioCatalogService,
     ScenarioAnalysisService,
     StressFragilityService,
 )
@@ -1166,6 +1167,98 @@ def get_risk_contribution_detail() -> Dict:
         }
 
     return _get_cached_selector_result("risk_contribution_detail", build)
+
+
+def get_scenario_analysis_detail() -> Dict:
+    """Devuelve el drill-down analítico completo de scenario analysis."""
+
+    def build():
+        scenario_service = ScenarioAnalysisService()
+        catalog_service = ScenarioCatalogService()
+        scenario_rows = []
+
+        for scenario in catalog_service.list_scenarios():
+            result = scenario_service.analyze(scenario["scenario_key"])
+            top_sector = result.get("by_sector", [{}])[0] if result.get("by_sector") else None
+            top_country = result.get("by_country", [{}])[0] if result.get("by_country") else None
+            scenario_rows.append(
+                {
+                    "scenario_key": scenario["scenario_key"],
+                    "label": scenario.get("label"),
+                    "description": scenario.get("description"),
+                    "category": scenario.get("category"),
+                    "total_impact_pct": float(result.get("total_impact_pct") or 0.0),
+                    "total_impact_money": float(result.get("total_impact_money") or 0.0),
+                    "top_sector": top_sector,
+                    "top_country": top_country,
+                    "by_asset": result.get("by_asset", []),
+                    "by_sector": result.get("by_sector", []),
+                    "by_country": result.get("by_country", []),
+                    "top_negative_contributors": result.get("top_negative_contributors", []),
+                    "metadata": result.get("metadata", {}),
+                }
+            )
+
+        sorted_rows = sorted(
+            scenario_rows,
+            key=lambda item: float(item.get("total_impact_pct") or 0.0),
+        )
+        ranked_rows = [
+            {
+                **item,
+                "severity_rank": index,
+            }
+            for index, item in enumerate(sorted_rows, start=1)
+        ]
+        worst_scenario = ranked_rows[0] if ranked_rows else None
+
+        worst_assets = []
+        worst_sectors = []
+        worst_countries = []
+        if worst_scenario:
+            worst_assets = [
+                {
+                    "rank": index,
+                    "symbol": item.get("symbol"),
+                    "market_value": item.get("market_value"),
+                    "estimated_impact_pct": item.get("estimated_impact_pct"),
+                    "estimated_impact_money": item.get("estimated_impact_money"),
+                    "transmission_channel": item.get("transmission_channel"),
+                }
+                for index, item in enumerate(worst_scenario.get("by_asset", []), start=1)
+            ]
+            worst_sectors = [
+                {
+                    "rank": index,
+                    "key": item.get("key"),
+                    "impact_pct": item.get("impact_pct"),
+                    "impact_money": item.get("impact_money"),
+                }
+                for index, item in enumerate(worst_scenario.get("by_sector", []), start=1)
+            ]
+            worst_countries = [
+                {
+                    "rank": index,
+                    "key": item.get("key"),
+                    "impact_pct": item.get("impact_pct"),
+                    "impact_money": item.get("impact_money"),
+                }
+                for index, item in enumerate(worst_scenario.get("by_country", []), start=1)
+            ]
+
+        return {
+            "scenarios": ranked_rows,
+            "worst_scenario": worst_scenario,
+            "worst_assets": worst_assets,
+            "worst_sectors": worst_sectors,
+            "worst_countries": worst_countries,
+            "confidence": (worst_scenario or {}).get("metadata", {}).get("confidence", "low"),
+            "warnings": (worst_scenario or {}).get("metadata", {}).get("warnings", []),
+            "methodology": (worst_scenario or {}).get("metadata", {}).get("methodology"),
+            "limitations": (worst_scenario or {}).get("metadata", {}).get("limitations"),
+        }
+
+    return _get_cached_selector_result("scenario_analysis_detail", build)
 
 
 def get_analytics_v2_dashboard_summary() -> Dict:
