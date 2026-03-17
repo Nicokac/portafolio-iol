@@ -217,6 +217,44 @@ class TestDashboardView:
         assert response.status_code == 200
         assert reverse('dashboard:scenario_analysis_detail') in body
 
+    def test_factor_exposure_detail_route_accessible_authenticated(self, auth_client):
+        response = auth_client.get(reverse('dashboard:factor_exposure_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Factor Exposure' in body
+        assert 'Exposición agregada por factor' in body
+        assert 'Factor dominante' in body
+        assert 'Activos sin clasificación factorial' in body
+
+    def test_factor_exposure_detail_handles_empty_payload(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_factor_exposure_detail',
+            lambda: {
+                'factors': [],
+                'dominant_factor': None,
+                'dominant_factor_key': None,
+                'underrepresented_factors': [],
+                'unknown_assets': [],
+                'unknown_assets_count': 0,
+                'confidence': 'low',
+                'warnings': ['empty_portfolio'],
+                'methodology': None,
+                'limitations': None,
+                'interpretation': '',
+            },
+        )
+        response = auth_client.get(reverse('dashboard:factor_exposure_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Sin factores disponibles.' in body
+        assert 'Sin activos sin clasificación.' in body
+
+    def test_estrategia_contains_factor_exposure_detail_link(self, auth_client):
+        response = auth_client.get(reverse('dashboard:estrategia'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert reverse('dashboard:factor_exposure_detail') in body
+
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:
             def run_audit(self, freshness_hours=24):

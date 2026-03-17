@@ -1,0 +1,159 @@
+﻿{% extends 'base.html' %}
+{% block title %}Factor Exposure - Portafolio IOL{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="mb-1">Factor Exposure</h1>
+        <p class="text-muted mb-0">Drill-down analítico de la exposición factorial agregada sobre el portafolio clasificado actual.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Factor dominante</div>
+                <div class="h5 mb-0">{{ factor_exposure_detail.dominant_factor_key|default:"N/D"|title }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Exposición dominante</div>
+                <div class="h5 mb-0">
+                    {% if factor_exposure_detail.dominant_factor %}
+                    {{ factor_exposure_detail.dominant_factor.exposure_pct|floatformat:2 }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Activos sin clasificación</div>
+                <div class="h5 mb-0">{{ factor_exposure_detail.unknown_assets_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5">Interpretación del modelo</h2>
+        <p class="mb-2">{{ factor_exposure_detail.interpretation|default:"No hay datos suficientes para interpretar la exposición factorial del portafolio." }}</p>
+        <p class="text-muted small mb-2">{{ factor_exposure_detail.methodology|default:"Sin detalles metodológicos." }}</p>
+        <p class="text-muted small mb-2">{{ factor_exposure_detail.limitations|default:"Sin limitaciones informadas." }}</p>
+        {% if factor_exposure_detail.warnings %}
+        <div class="mt-3">
+            <div class="small text-muted mb-2">Warnings</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for warning in factor_exposure_detail.warnings %}
+                <span class="badge bg-warning text-dark">{{ warning }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Exposición agregada por factor</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">Ranking de exposición</th>
+                        <th>Factor</th>
+                        <th class="text-end">Exposición</th>
+                        <th class="text-end">Contribución relativa</th>
+                        <th>Confianza</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in factor_exposure_detail.factors %}
+                    <tr>
+                        <td class="text-end">{{ item.rank }}</td>
+                        <td><strong>{{ item.factor|title }}</strong></td>
+                        <td class="text-end">{{ item.exposure_pct|floatformat:2 }}%</td>
+                        <td class="text-end">{{ item.contribution_relative_pct|floatformat:2 }}%</td>
+                        <td>{{ item.confidence }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">Sin factores disponibles.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Factores subrepresentados</h2>
+                {% if factor_exposure_detail.underrepresented_factors %}
+                <div class="d-flex flex-wrap gap-2">
+                    {% for factor in factor_exposure_detail.underrepresented_factors %}
+                    <span class="badge bg-secondary">{{ factor|title }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted">Sin factores subrepresentados.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Detalle por activo</h2>
+                <p class="text-muted mb-0">El servicio actual no expone breakdown factorial por activo. Este drill-down reutiliza solo la salida existente del modelo.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Activos sin clasificación factorial</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">#</th>
+                        <th>Símbolo</th>
+                        <th>Peso en cartera</th>
+                        <th>Motivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in factor_exposure_detail.unknown_assets %}
+                    <tr>
+                        <td class="text-end">{{ item.rank }}</td>
+                        <td><strong>{{ item.symbol }}</strong></td>
+                        <td>-</td>
+                        <td>El servicio actual no expone peso ni motivo por activo para unknown assets.</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-muted">Sin activos sin clasificación.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

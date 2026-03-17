@@ -1261,6 +1261,62 @@ def get_scenario_analysis_detail() -> Dict:
     return _get_cached_selector_result("scenario_analysis_detail", build)
 
 
+def get_factor_exposure_detail() -> Dict:
+    """Devuelve el drill-down analitico completo de factor exposure."""
+
+    def build():
+        factor_service = FactorExposureService()
+        explanation_service = AnalyticsExplanationService()
+        result = factor_service.calculate()
+
+        factor_rows = [
+            {
+                "rank": index,
+                "factor": item.get("factor"),
+                "exposure_pct": float(item.get("exposure_pct") or 0.0),
+                "contribution_relative_pct": float(item.get("exposure_pct") or 0.0),
+                "confidence": item.get("confidence", "low"),
+            }
+            for index, item in enumerate(
+                sorted(
+                    result.get("factors", []),
+                    key=lambda entry: float(entry.get("exposure_pct") or 0.0),
+                    reverse=True,
+                ),
+                start=1,
+            )
+        ]
+        dominant_factor_key = result.get("dominant_factor")
+        dominant_factor = next(
+            (item for item in factor_rows if item.get("factor") == dominant_factor_key),
+            None,
+        )
+        unknown_assets = [
+            {
+                "rank": index,
+                "symbol": symbol,
+            }
+            for index, symbol in enumerate(result.get("unknown_assets", []), start=1)
+        ]
+        metadata = result.get("metadata", {})
+
+        return {
+            "factors": factor_rows,
+            "dominant_factor": dominant_factor,
+            "dominant_factor_key": dominant_factor_key,
+            "underrepresented_factors": result.get("underrepresented_factors", []),
+            "unknown_assets": unknown_assets,
+            "unknown_assets_count": len(unknown_assets),
+            "confidence": metadata.get("confidence", "low"),
+            "warnings": metadata.get("warnings", []),
+            "methodology": metadata.get("methodology"),
+            "limitations": metadata.get("limitations"),
+            "interpretation": explanation_service.build_factor_exposure_explanation(result),
+        }
+
+    return _get_cached_selector_result("factor_exposure_detail", build)
+
+
 def get_analytics_v2_dashboard_summary() -> Dict:
     """Resume Analytics v2 para consumo server-rendered en dashboard."""
 

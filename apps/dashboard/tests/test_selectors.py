@@ -24,6 +24,7 @@ from apps.dashboard.selectors import (
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
+    get_factor_exposure_detail,
     get_portafolio_enriquecido_actual,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
@@ -599,6 +600,83 @@ class TestDashboardSelectors(TestCase):
         assert detail["worst_sectors"] == []
         assert detail["worst_countries"] == []
         assert detail["warnings"] == ["missing_shock"]
+
+    def test_get_factor_exposure_detail_returns_ranked_factors_and_unknown_assets(self):
+        cache.clear()
+
+        factor_result = {
+            "factors": [
+                {"factor": "value", "exposure_pct": 20.0, "confidence": "medium"},
+                {"factor": "growth", "exposure_pct": 55.0, "confidence": "high"},
+                {"factor": "defensive", "exposure_pct": 0.0, "confidence": "low"},
+            ],
+            "dominant_factor": "growth",
+            "underrepresented_factors": ["defensive", "dividend"],
+            "unknown_assets": ["XYZ", "ABC"],
+            "metadata": {
+                "confidence": "medium",
+                "warnings": ["unknown_assets_count:2"],
+                "methodology": "factor_methodology",
+                "limitations": "factor_limitations",
+            },
+        }
+
+        class DummyFactorService:
+            def calculate(self):
+                return factor_result
+
+        class DummyExplanationService:
+            def build_factor_exposure_explanation(self, result):
+                assert result is factor_result
+                return "Interpretacion factorial"
+
+        with (
+            patch("apps.dashboard.selectors.FactorExposureService", DummyFactorService),
+            patch("apps.dashboard.selectors.AnalyticsExplanationService", DummyExplanationService),
+        ):
+            detail = get_factor_exposure_detail()
+
+        assert [row["factor"] for row in detail["factors"]] == ["growth", "value", "defensive"]
+        assert detail["factors"][0]["rank"] == 1
+        assert detail["factors"][0]["contribution_relative_pct"] == 55.0
+        assert detail["dominant_factor"]["factor"] == "growth"
+        assert detail["underrepresented_factors"] == ["defensive", "dividend"]
+        assert detail["unknown_assets_count"] == 2
+        assert detail["unknown_assets"][0]["symbol"] == "XYZ"
+        assert detail["interpretation"] == "Interpretacion factorial"
+        assert detail["warnings"] == ["unknown_assets_count:2"]
+
+    def test_get_factor_exposure_detail_handles_empty_or_partial_result(self):
+        cache.clear()
+
+        factor_result = {
+            "factors": [],
+            "dominant_factor": None,
+            "underrepresented_factors": [],
+            "unknown_assets": [],
+            "metadata": {"confidence": "low", "warnings": ["empty_portfolio"]},
+        }
+
+        class DummyFactorService:
+            def calculate(self):
+                return factor_result
+
+        class DummyExplanationService:
+            def build_factor_exposure_explanation(self, result):
+                return ""
+
+        with (
+            patch("apps.dashboard.selectors.FactorExposureService", DummyFactorService),
+            patch("apps.dashboard.selectors.AnalyticsExplanationService", DummyExplanationService),
+        ):
+            detail = get_factor_exposure_detail()
+
+        assert detail["factors"] == []
+        assert detail["dominant_factor"] is None
+        assert detail["unknown_assets"] == []
+        assert detail["unknown_assets_count"] == 0
+        assert detail["confidence"] == "low"
+        assert detail["warnings"] == ["empty_portfolio"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

@@ -220,6 +220,10 @@ Ejemplo concreto:
   - reutiliza `ScenarioAnalysisService` y el catálogo de escenarios MVP
   - consolida tabla de escenarios, peor escenario y breakdown por activo/sector/país
   - alimenta `/estrategia/scenario-analysis/` sin recalcular lógica en la vista
+- `get_factor_exposure_detail()`
+  - reutiliza `FactorExposureService` y `AnalyticsExplanationService`
+  - expone ranking por factor, factores subrepresentados y bloque de unknown assets
+  - alimenta `/estrategia/factor-exposure/` sin recalcular exposiciones en la vista
 
 ### RecommendationEngine
 

@@ -39,6 +39,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_macro_local_context,
     get_portafolio_enriquecido_actual,
+    get_factor_exposure_detail,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
     get_riesgo_portafolio,
@@ -130,6 +131,16 @@ class ScenarioAnalysisDetailView(LoginRequiredMixin, DashboardContextMixin, Temp
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['scenario_analysis_detail'] = get_scenario_analysis_detail()
+        return context
+
+
+class FactorExposureDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/factor_exposure_detail.html'
+    active_section = 'estrategia'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['factor_exposure_detail'] = get_factor_exposure_detail()
         return context
 
 
