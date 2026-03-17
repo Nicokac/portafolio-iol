@@ -16,6 +16,7 @@ from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.observability import record_state
+from apps.core.services.pipeline_observability_service import PipelineObservabilityService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.core.services.security_audit import record_sensitive_action
@@ -155,8 +156,10 @@ class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['benchmark_status'] = BenchmarkSeriesService().get_status_summary()
-        context['local_macro_status'] = LocalMacroSeriesService().get_status_summary()
+        pipeline_observability = PipelineObservabilityService().build_summary(lookback_days=30, integrity_days=120)
+        context['pipeline_observability'] = pipeline_observability
+        context['benchmark_status'] = pipeline_observability['benchmark_status_rows']
+        context['local_macro_status'] = pipeline_observability['local_macro_status_rows']
         context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
         context['snapshot_continuity'] = DailySnapshotContinuityService().build_report(lookback_days=14)
         context['periodic_tasks_count'] = PeriodicTask.objects.count()

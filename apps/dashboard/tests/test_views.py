@@ -260,6 +260,58 @@ class TestDashboardView:
         assert '2026-03-14' in body
         assert 'warning' in body
 
+    def test_ops_shows_unified_pipeline_summary(self, staff_client, monkeypatch):
+        class DummyPipelineObservabilityService:
+            def build_summary(self, lookback_days=30, integrity_days=120):
+                assert lookback_days == 30
+                assert integrity_days == 120
+                return {
+                    'last_successful_iol_sync': '2026-03-17T10:00:00',
+                    'iol_sync_status': 'ok',
+                    'latest_asset_snapshot_at': '2026-03-17T10:00:00-03:00',
+                    'latest_account_snapshot_at': '2026-03-17T10:00:00-03:00',
+                    'latest_portfolio_snapshot_date': '2026-03-16',
+                    'days_since_last_portfolio_snapshot': 1,
+                    'covariance_readiness': {
+                        'status': 'ready',
+                        'label': 'Listo para covarianza',
+                        'minimum_required': 20,
+                    },
+                    'usable_observations_count': 21,
+                    'available_price_dates_count': 28,
+                    'benchmark_status_summary': {
+                        'ready_count': 2,
+                        'total_series': 3,
+                        'overall_status': 'partial',
+                    },
+                    'local_macro_status_summary': {
+                        'ready': 3,
+                        'total_series': 4,
+                        'stale': 1,
+                        'missing': 0,
+                        'overall_status': 'warning',
+                    },
+                    'snapshot_integrity_issues_count': 2,
+                    'required_periodic_tasks': [],
+                    'benchmark_status_rows': [],
+                    'local_macro_status_rows': [],
+                }
+
+        monkeypatch.setattr(
+            'apps.dashboard.views.PipelineObservabilityService',
+            lambda: DummyPipelineObservabilityService(),
+        )
+        response = staff_client.get(reverse('dashboard:ops'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Resumen unificado del pipeline' in body
+        assert 'Último sync IOL exitoso' in body
+        assert '2026-03-17T10:00:00' in body
+        assert 'Covariance readiness' in body
+        assert '21/20 obs' in body
+        assert 'Resumen benchmarks' in body
+        assert '2/3' in body
+
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')
         response = auth_client.post(url, {'ui_mode': 'denso', 'risk_profile': 'agresivo', 'next': '/'})

@@ -53,6 +53,82 @@
     </div>
 </section>
 
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Resumen unificado del pipeline</h5>
+                <span class="badge {% if pipeline_observability.covariance_readiness.status == 'ready' %}text-bg-success{% elif pipeline_observability.covariance_readiness.status == 'partial' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                    {{ pipeline_observability.covariance_readiness.label }}
+                </span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td><strong>Último sync IOL exitoso</strong></td>
+                            <td class="text-end">{{ pipeline_observability.last_successful_iol_sync|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estado sync IOL</strong></td>
+                            <td class="text-end">{{ pipeline_observability.iol_sync_status|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Último asset snapshot</strong></td>
+                            <td class="text-end">{{ pipeline_observability.latest_asset_snapshot_at|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Último account snapshot</strong></td>
+                            <td class="text-end">{{ pipeline_observability.latest_account_snapshot_at|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Último portfolio snapshot</strong></td>
+                            <td class="text-end">{{ pipeline_observability.latest_portfolio_snapshot_date|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Días desde último portfolio snapshot</strong></td>
+                            <td class="text-end">{{ pipeline_observability.days_since_last_portfolio_snapshot|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Covariance readiness</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.covariance_readiness.label }}
+                                ({{ pipeline_observability.usable_observations_count }}/{{ pipeline_observability.covariance_readiness.minimum_required }} obs)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Usable observations</strong></td>
+                            <td class="text-end">{{ pipeline_observability.usable_observations_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Available price dates</strong></td>
+                            <td class="text-end">{{ pipeline_observability.available_price_dates_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Resumen benchmarks</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.benchmark_status_summary.ready_count }}/{{ pipeline_observability.benchmark_status_summary.total_series }}
+                                listos ({{ pipeline_observability.benchmark_status_summary.overall_status }})
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Resumen macro local</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.local_macro_status_summary.ready }}/{{ pipeline_observability.local_macro_status_summary.total_series }}
+                                listas · stale {{ pipeline_observability.local_macro_status_summary.stale }} · missing {{ pipeline_observability.local_macro_status_summary.missing }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Issues integridad snapshots</strong></td>
+                            <td class="text-end">{{ pipeline_observability.snapshot_integrity_issues_count }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section id="ops-benchmarks" class="mb-3">
     <div class="border-start border-4 border-primary ps-3 mb-3">
         <h2 class="mb-1">Benchmarks históricos</h2>
