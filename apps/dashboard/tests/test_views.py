@@ -104,6 +104,18 @@ class TestDashboardView:
         assert 'Gap máximo' in body
         assert 'Posiciones completas' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
+        assert (
+            'El riesgo del portafolio está dominado' in body
+            or 'No hay datos suficientes para interpretar la contribución al riesgo del portafolio.' in body
+        )
+        assert (
+            'El escenario más adverso corresponde a' in body
+            or 'No hay datos suficientes para interpretar el scenario analysis actual.' in body
+        )
+        assert (
+            'La exposición del portafolio está dominada por el factor' in body
+            or 'No hay datos suficientes para interpretar la exposición factorial del portafolio.' in body
+        )
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body
         assert "const syncReasonText = syncReasons.length" in body

@@ -331,6 +331,9 @@ class TestDashboardSelectors(TestCase):
         assert summary["risk_contribution"]["model_variant"] == "covariance_aware"
         assert summary["risk_contribution"]["covariance_observations"] == 64
         assert summary["risk_contribution"]["coverage_pct"] == 96.5
+        assert "MSFT" in summary["risk_contribution"]["interpretation"]
+        assert summary["scenario_analysis"]["interpretation"]
+        assert "growth" in summary["factor_exposure"]["interpretation"]
 
     def test_get_risk_contribution_detail_returns_mvp_proxy_when_covariance_is_not_active(self):
         cache.clear()

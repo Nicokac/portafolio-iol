@@ -18,6 +18,7 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.analytics_v2 import (
+    AnalyticsExplanationService,
     CovarianceAwareRiskContributionService,
     ExpectedReturnService,
     FactorExposureService,
@@ -1177,6 +1178,7 @@ def get_analytics_v2_dashboard_summary() -> Dict:
         risk_result = resolved_risk["active_result"]
         scenario_service = ScenarioAnalysisService()
         factor_service = FactorExposureService()
+        explanation_service = AnalyticsExplanationService()
         stress_service = StressFragilityService()
         expected_return_service = ExpectedReturnService()
         local_macro_service = LocalMacroSignalsService()
@@ -1215,6 +1217,17 @@ def get_analytics_v2_dashboard_summary() -> Dict:
             iter(covariance_risk_result.get("metadata", {}).get("warnings", [])),
             None,
         )
+        worst_scenario = (
+            {
+                "label": "Argentina Stress",
+                **argentina_stress,
+            }
+            if (argentina_stress.get("total_impact_pct") or 0) <= (tech_shock.get("total_impact_pct") or 0)
+            else {
+                "label": "Tech Shock",
+                **tech_shock,
+            }
+        )
 
         return {
             "risk_contribution": {
@@ -1226,6 +1239,7 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                 "covariance_observations": covariance_observations,
                 "coverage_pct": covariance_coverage_pct,
                 "covariance_warning": covariance_warning,
+                "interpretation": explanation_service.build_risk_contribution_explanation(risk_result),
             },
             "scenario_analysis": {
                 "argentina_stress_pct": argentina_stress.get("total_impact_pct"),
@@ -1235,13 +1249,19 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                     tech_shock["metadata"]["confidence"],
                     key=lambda level: {"high": 3, "medium": 2, "low": 1}.get(level, 0),
                 ),
-                "worst_label": "Argentina Stress" if (argentina_stress.get("total_impact_pct") or 0) <= (tech_shock.get("total_impact_pct") or 0) else "Tech Shock",
+                "worst_label": worst_scenario["label"],
+                "interpretation": explanation_service.build_scenario_analysis_explanation(
+                    {
+                        "worst_scenario": worst_scenario,
+                    }
+                ),
             },
             "factor_exposure": {
                 "dominant_factor": dominant_factor_key,
                 "dominant_factor_exposure_pct": dominant_factor.get("exposure_pct") if dominant_factor else None,
                 "unknown_assets_count": len(factor_result.get("unknown_assets", [])),
                 "confidence": factor_result["metadata"]["confidence"],
+                "interpretation": explanation_service.build_factor_exposure_explanation(factor_result),
             },
             "stress_testing": {
                 "scenario_key": fragility.get("scenario_key"),

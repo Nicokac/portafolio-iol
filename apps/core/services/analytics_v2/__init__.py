@@ -1,5 +1,6 @@
 """Shared contracts for Portfolio Analytics v2."""
 
+from .analytics_explanation_service import AnalyticsExplanationService
 from .helpers import (
     aggregate_aliases,
     aggregate_numeric_items,
@@ -49,6 +50,7 @@ from .schemas import (
 )
 
 __all__ = [
+    "AnalyticsExplanationService",
     "aggregate_aliases",
     "aggregate_numeric_items",
     "aggregate_positions_by_field",
