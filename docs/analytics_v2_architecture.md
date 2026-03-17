@@ -1,12 +1,12 @@
-# Analytics v2 - Arquitectura Tecnica
+# Analytics v2 - Arquitectura técnica
 
 ## Objetivo
 
-Definir como se integra Analytics v2 al proyecto actual sin romper v1 y sin duplicar la capa de servicios ya existente.
+Definir cómo se integra `Analytics v2` al proyecto actual sin romper `v1` y sin duplicar la capa de servicios ya existente.
 
 ## Problema arquitectonico
 
-La aplicacion ya tiene:
+La aplicación ya tiene:
 
 - servicios de riesgo
 - servicios de performance
@@ -15,10 +15,10 @@ La aplicacion ya tiene:
 - metadata por activo
 - motor de recomendaciones
 - dashboard server-rendered
-- API interna para metricas
+- API interna para métricas
 
-Analytics v2 no debe crear otra arquitectura paralela.
-Debe ubicarse como una extension modular dentro de `apps/core/services`, con contratos serializables y consumo limpio desde dashboard y API.
+`Analytics v2` no debe crear otra arquitectura paralela.
+Debe ubicarse como una extensión modular dentro de `apps/core/services`, con contratos serializables y consumo limpio desde dashboard y API.
 
 ## Arquitectura actual reutilizable
 
@@ -62,24 +62,25 @@ Namespaces actuales en `apps/core/services`:
 
 ## Decision de arquitectura para v2
 
-Analytics v2 se integrara como una nueva subcarpeta dentro de `apps/core/services`:
+`Analytics v2` se integra como una subcarpeta dentro de `apps/core/services`:
 
 ```text
 apps/core/services/analytics_v2/
 ```
 
-No debe reemplazar servicios existentes de v1.
-Debe convivir con ellos y reutilizar sus salidas cuando sea razonable.
+No reemplaza servicios existentes de `v1`.
+Convive con ellos y reutiliza sus salidas cuando es razonable.
 
-## Estructura propuesta
+## Estructura actual relevante
 
 ```text
 apps/core/services/analytics_v2/
     __init__.py
     schemas.py
     helpers.py
-    adapters.py
+    analytics_explanation_service.py
     risk_contribution_service.py
+    covariance_risk_contribution_service.py
     scenario_analysis_service.py
     factor_exposure_service.py
     stress_fragility_service.py
@@ -113,20 +114,12 @@ Contenido esperado:
 - manejo de faltantes y proxys
 - banderas de confianza
 
-### `adapters.py`
+No existe un `adapters.py` dedicado.
+La adaptación hoy vive en servicios y helpers existentes, por ejemplo:
 
-Contendra adaptadores desde modelos/servicios actuales hacia inputs de v2.
-
-Contenido esperado:
-
-- adaptar posiciones actuales a formato normalizado
-- adaptar snapshots a series consumibles
-- adaptar metadata de `ParametroActivo`
-- adaptar benchmark y macro cuando un modulo lo requiera
-
-Regla:
-- los modulos v2 no deben leer templates ni depender de vistas
-- deben consumir adaptadores o servicios existentes
+- `ScenarioAnalysisService._load_current_positions()`
+- `RiskContributionService._load_current_invested_positions()`
+- helpers de `analytics_v2/helpers.py`
 
 ### `risk_contribution_service.py`
 
@@ -148,131 +141,150 @@ Responsable del modulo MVP 4.
 
 Responsable del modulo MVP 5.
 
-## Contratos de integracion
+## Servicios principales y responsabilidades
 
-### Integracion con dashboard
+### `risk_contribution_service.py`
 
-Analytics v2 no se consumira directamente desde templates.
+- cálculo MVP por activo
+- agregación por sector, país y tipo
+- señales base de riesgo y divergencia
 
-Patron esperado:
+### `covariance_risk_contribution_service.py`
 
-1. servicio v2 produce payload serializable
-2. API o selector lo adapta si hace falta para presentacion
-3. template solo renderiza
+- activa covarianza cuando la historia lo permite
+- cae a `mvp_proxy` cuando no hay historia/cobertura suficiente
+- reutiliza el builder de señales del servicio base
 
-### Integracion con API
+### `scenario_analysis_service.py`
 
-Los endpoints nuevos de v2 deben ubicarse en `apps/api/views.py` y seguir la convencion actual:
+- aplica shocks heurísticos cerrados
+- produce impacto por activo, sector y país
+- genera señales de vulnerabilidad
 
-- validacion simple de query params
-- llamada a servicio
-- metadata metodologica
-- respuesta serializable
+### `factor_exposure_service.py`
 
-Ejemplos futuros:
+- clasifica posiciones por factor proxy
+- agrega exposición clasificada
+- genera señales factoriales
 
-- `/api/analytics-v2/risk-contribution/`
-- `/api/analytics-v2/scenario-analysis/`
-- `/api/analytics-v2/factor-exposure/`
-- `/api/analytics-v2/stress-fragility/`
-- `/api/analytics-v2/expected-return/`
+### `stress_fragility_service.py`
 
-### Integracion con recomendaciones
+- combina escenarios extremos
+- resume pérdida, sectores y activos vulnerables
+- genera señales de fragilidad
 
-`RecommendationEngine` no debe absorber calculos complejos de v2.
+### `expected_return_service.py`
 
-Patron esperado:
+- calcula baseline estructural por buckets
+- usa benchmarks y macro local
+- genera señales de retorno esperado
 
-- v2 produce senales o outputs estructurados
-- `RecommendationEngine` solo consume esas senales
-- la priorizacion final sigue viviendo en el motor de recomendaciones
+### `analytics_explanation_service.py`
 
-### Integracion con rebalanceo
+- transforma resultados ya calculados en interpretación textual
+- no recalcula modelos
+- hoy cubre:
+  - risk contribution
+  - scenario analysis
+  - factor exposure
+  - stress fragility
+  - expected return
 
-`RebalanceEngine` puede consumir salidas de v2 solo como insumo adicional.
-No debe duplicar algoritmos de v2.
+## Contratos de integración
 
-## Regla de compatibilidad con v1
+### Dashboard server-rendered
 
-Analytics v2 debe ser aditivo.
+Patrón actual:
 
-Esto implica:
+```text
+services analytics_v2
+  -> apps/dashboard/selectors.py
+  -> views
+  -> templates
+```
 
-- no cambiar contratos de v1 sin necesidad real
-- no mover servicios actuales fuera de sus ubicaciones actuales
-- no acoplar v2 a templates
-- no reemplazar selectores existentes hasta que haya una necesidad concreta
-- preferir endpoints y consumidores nuevos o claramente aislados
+Ejemplo concreto:
 
-## Flujo tecnico recomendado por modulo
+- `get_analytics_v2_dashboard_summary()`
+  - resuelve el modelo activo de `Risk Contribution`
+  - consulta escenarios, factores, stress, retorno esperado y macro local
+  - agrega interpretaciones
+  - devuelve un summary ya listo para `Estrategia`
 
-Para cada modulo de v2:
+### Drill-downs
 
-1. adaptar datos actuales con `adapters.py`
-2. calcular con helpers/servicio del modulo
-3. devolver schema serializable
-4. agregar tests unitarios propios
-5. exponer integracion via API o capa consumidora especifica
+- `get_risk_contribution_detail()`
+  - reutiliza el mismo resultado activo que alimenta el resumen
+  - agrega métricas derivadas de lectura, no del modelo
 
-## Dependencias permitidas
+### RecommendationEngine
 
-Los modulos de `analytics_v2` pueden depender de:
+Patrón actual:
 
-- modelos existentes
-- `ParametroActivo`
-- snapshots
-- `VolatilityService`
-- `TWRService`
-- `TrackingErrorService`
-- `BenchmarkSeriesService`
-- `LocalMacroSeriesService`
-- helpers de pandas ya usados por el proyecto
-
-No deben depender de:
-
-- templates
-- clases de vista
-- `request`
-- objetos HTTP
-- renderizado UI
-
-## Manejo de faltantes de datos
-
-Cada modulo v2 debe soportar explicitamente:
-
-- portafolio vacio
-- activos sin metadata
-- historia insuficiente
-- benchmark faltante
-- volatilidad faltante
-- clasificacion desconocida
+```text
+services analytics_v2
+  -> build_recommendation_signals()
+  -> RecommendationEngine._analyze_analytics_v2()
+  -> priorización / deduplicación
+  -> Planeación
+```
 
 Regla:
-- no fallar silenciosamente
-- devolver flags o metadata de calidad
-- usar fallback solo si esta documentado
 
-## Riesgos arquitectonicos a evitar
+- el cálculo vive en cada servicio
+- el engine solo consume señales y decide priorización relativa
 
-- duplicar logica ya existente en `selectors.py`
-- duplicar logica de riesgo ya resuelta por servicios de v1
-- mezclar logica de calculo con presentacion
-- crear clases demasiado generales sin uso real
-- meter toda la logica v2 en `RecommendationEngine`
-- usar modelos nuevos sin necesidad demostrada
+## Inputs
 
-## Criterios de aceptacion de la arquitectura v2
+Principales insumos:
 
-La arquitectura tecnica de v2 sera valida si:
+- `ActivoPortafolioSnapshot`
+- `PortfolioSnapshot`
+- `ParametroActivo`
+- `BenchmarkSnapshot`
+- `MacroSeriesSnapshot`
 
-- reutiliza servicios y modelos actuales
-- define una ubicacion clara para modulos nuevos
-- mantiene contratos serializables
-- mantiene bajo acoplamiento con dashboard y API
-- permite agregar modulos sin tocar toda la arquitectura
-- conserva compatibilidad con v1
+## Outputs
 
-## Estado
+Outputs principales:
 
-Documento base de arquitectura tecnica.
-Listo para servir como referencia del siguiente modulo: contratos de datos de Analytics v2.
+- payloads serializables por módulo
+- señales analíticas para recomendaciones
+- interpretaciones automáticas para UI
+- summaries server-rendered para `Estrategia`
+
+## Superficies donde impacta
+
+- `Estrategia`
+  - tarjetas resumen
+  - señales analytics v2
+  - drill-down de risk contribution
+- `Planeación`
+  - recomendaciones combinadas
+- `Ops`
+  - activación del modelo de riesgo
+  - readiness histórica
+- APIs internas existentes
+  - algunas métricas siguen expuestas por endpoints legacy, no por endpoints dedicados `analytics-v2/*`
+
+## Estado actual / brechas
+
+Estado actual:
+
+- la carpeta `analytics_v2/` ya concentra los módulos principales del sistema
+- `Estrategia` ya consume un summary integrado con interpretaciones
+- `RecommendationEngine` ya consume señales de `Analytics v2`
+- existe drill-down de `Risk Contribution`
+
+Brechas:
+
+- no hay endpoints dedicados `analytics-v2/*`
+- solo `Risk Contribution` tiene drill-down propio en UI
+- algunos adapters siguen implícitos dentro de servicios y no en una capa separada
+- la integración con `Planeación` ocurre por recomendaciones, no por vistas analíticas detalladas
+
+## Limitaciones actuales
+
+- parte de la arquitectura fue diseñada como MVP y todavía mezcla adaptación de datos dentro de algunos servicios
+- no toda la analítica avanzada tiene superficie propia de exploración
+- la trazabilidad de outputs en UI depende de selectors server-rendered más que de contratos API dedicados
