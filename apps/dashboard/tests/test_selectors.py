@@ -1471,8 +1471,17 @@ class TestDashboardSelectors(TestCase):
         with patch(
             "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
             return_value=[
-                {"proposal_label": "Plan manual A"},
-                {"proposal_label": "Split KO + MCD"},
+                {
+                    "proposal_label": "Plan manual A",
+                    "capital_amount": 600000,
+                    "purchase_plan": [
+                        {"symbol": "ko", "amount": 200000},
+                        {"symbol": "mcd", "amount": 200000},
+                        {"symbol": "xlu", "amount": 200000},
+                        {"symbol": "ko", "amount": 1000},
+                    ],
+                },
+                {"proposal_label": "Split KO + MCD", "capital_amount": 300000, "purchase_plan": []},
             ],
         ) as mocked:
             detail = get_incremental_proposal_history(user=DummyUser(), limit=5)
@@ -1481,6 +1490,9 @@ class TestDashboardSelectors(TestCase):
         assert detail["count"] == 2
         assert detail["has_history"] is True
         assert detail["items"][0]["proposal_label"] == "Plan manual A"
+        assert "manual_compare=1" in detail["items"][0]["reapply_querystring"]
+        assert "plan_a_symbol_1=KO" in detail["items"][0]["reapply_querystring"]
+        assert detail["items"][0]["reapply_truncated"] is True
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

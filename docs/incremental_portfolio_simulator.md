@@ -145,3 +145,20 @@ Limitaciones:
 - no persiste comparadores completos ni variantes descartadas
 - no hay versionado profundo ni restauracion automatica
 - el historial es operativo y breve, no una bitacora completa de decisiones
+
+## Reaplicacion guiada de snapshots
+
+El historial reciente de `Planeacion` permite reaplicar un snapshot guardado sobre el comparador manual existente.
+
+Reglas del modulo:
+
+- no crea un simulador nuevo
+- traduce el snapshot guardado al querystring que ya entiende el comparador manual
+- precarga `Plan manual A` con capital y hasta 3 lineas del snapshot elegido
+- reutiliza el mismo flujo de simulacion incremental ya disponible en la hoja
+
+Limitaciones:
+
+- la reaplicacion usa solo las primeras 3 lineas del snapshot
+- no reconstruye automaticamente `Plan manual B`
+- no restaura estados de otros comparadores

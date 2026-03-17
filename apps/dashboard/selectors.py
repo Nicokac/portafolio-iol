@@ -2,6 +2,7 @@ from typing import Dict, List
 from datetime import timedelta
 import hashlib
 import json
+from urllib.parse import urlencode
 from django.core.cache import cache
 from django.db.models import Max, Sum
 from django.utils import timezone
@@ -1979,7 +1980,13 @@ def get_preferred_incremental_portfolio_proposal(
 def get_incremental_proposal_history(*, user, limit: int = 5) -> Dict:
     """Retorna historial reciente de propuestas incrementales guardadas por el usuario."""
 
-    items = IncrementalProposalHistoryService().list_recent(user=user, limit=limit)
+    raw_items = IncrementalProposalHistoryService().list_recent(user=user, limit=limit)
+    items = []
+    for item in raw_items:
+        reapply = _build_incremental_snapshot_reapply_payload(item)
+        enriched = dict(item)
+        enriched.update(reapply)
+        items.append(enriched)
     return {
         "items": items,
         "count": len(items),
@@ -1992,6 +1999,30 @@ def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
         str(item.get("block") or ""): item
         for item in candidate_ranking.get("by_block", [])
     }
+
+
+def _build_incremental_snapshot_reapply_payload(item: Dict) -> Dict:
+    purchase_plan = list(item.get("purchase_plan") or [])
+    query_items = [("manual_compare", "1")]
+    capital_amount = item.get("capital_amount")
+    if capital_amount:
+        query_items.append(("plan_a_capital", _stringify_reapply_amount(capital_amount)))
+
+    for index, purchase in enumerate(purchase_plan[:3], start=1):
+        query_items.append((f"plan_a_symbol_{index}", str(purchase.get("symbol") or "").strip().upper()))
+        query_items.append((f"plan_a_amount_{index}", _stringify_reapply_amount(purchase.get("amount") or 0)))
+
+    return {
+        "reapply_querystring": urlencode(query_items),
+        "reapply_truncated": len(purchase_plan) > 3,
+    }
+
+
+def _stringify_reapply_amount(value) -> str:
+    amount = float(value or 0)
+    if amount.is_integer():
+        return str(int(amount))
+    return f"{amount:.2f}"
 
 
 def _extract_best_incremental_proposal(payload: Dict) -> Dict | None:

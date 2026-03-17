@@ -471,6 +471,17 @@
                                     {% if item.selected_context %}
                                     <div class="small text-muted">{{ item.selected_context }}</div>
                                     {% endif %}
+                                    <div class="mt-2">
+                                        <a
+                                            href="{% url 'dashboard:planeacion' %}?{{ item.reapply_querystring }}#planeacion-aportes"
+                                            class="btn btn-outline-secondary btn-sm"
+                                        >
+                                            Reaplicar en comparador manual
+                                        </a>
+                                    </div>
+                                    {% if item.reapply_truncated %}
+                                    <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
+                                    {% endif %}
                                 </td>
                                 <td>{{ item.source_label|default:"-" }}</td>
                                 <td>
