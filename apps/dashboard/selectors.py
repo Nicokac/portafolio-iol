@@ -18,6 +18,7 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.candidate_asset_ranking_service import CandidateAssetRankingService
+from apps.core.services.incremental_portfolio_simulator import IncrementalPortfolioSimulator
 from apps.core.services.monthly_allocation_service import MonthlyAllocationService
 from apps.core.services.analytics_v2 import (
     AnalyticsExplanationService,
@@ -1498,6 +1499,83 @@ def get_candidate_asset_ranking(capital_amount: int | float = 600000) -> Dict:
     def build():
         service = CandidateAssetRankingService()
         return service.build_ranking(capital_amount)
+
+    return _get_cached_selector_result(cache_key, build)
+
+
+def get_incremental_portfolio_simulation(capital_amount: int | float = 600000) -> Dict:
+    """Construye una simulacion incremental default usando top candidato por bloque recomendado."""
+
+    cache_key = f"incremental_portfolio_simulation:{int(capital_amount)}"
+
+    def build():
+        monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
+        candidate_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+
+        by_block = {
+            str(item.get("block") or ""): item
+            for item in candidate_ranking.get("by_block", [])
+        }
+        purchase_amounts: Dict[str, float] = {}
+        selected_candidates = []
+        unmapped_blocks = []
+
+        for block in monthly_plan.get("recommended_blocks", []):
+            bucket = str(block.get("bucket") or "")
+            amount = float(block.get("suggested_amount") or 0.0)
+            block_candidates = by_block.get(bucket, {}).get("candidates", [])
+            if amount <= 0 or not block_candidates:
+                unmapped_blocks.append(block.get("label", bucket))
+                continue
+
+            top_candidate = block_candidates[0]
+            symbol = top_candidate.get("asset")
+            purchase_amounts[symbol] = purchase_amounts.get(symbol, 0.0) + amount
+            selected_candidates.append(
+                {
+                    "symbol": symbol,
+                    "block": bucket,
+                    "block_label": block.get("label", bucket),
+                    "amount": amount,
+                    "candidate_score": top_candidate.get("score"),
+                    "candidate_reason": top_candidate.get("main_reason"),
+                }
+            )
+
+        purchase_plan = [
+            {"symbol": symbol, "amount": round(amount, 2)}
+            for symbol, amount in purchase_amounts.items()
+        ]
+
+        if not purchase_plan:
+            return {
+                "capital_amount": float(capital_amount),
+                "purchase_plan": [],
+                "selected_candidates": [],
+                "unmapped_blocks": unmapped_blocks,
+                "before": {},
+                "after": {},
+                "delta": {
+                    "expected_return_change": None,
+                    "real_expected_return_change": None,
+                    "fragility_change": None,
+                    "scenario_loss_change": None,
+                    "risk_concentration_change": None,
+                },
+                "interpretation": "No hay candidatos suficientes para simular una propuesta incremental por defecto.",
+                "warnings": ["no_candidate_purchase_plan"],
+            }
+
+        result = IncrementalPortfolioSimulator().simulate(
+            {
+                "capital_amount": capital_amount,
+                "purchase_plan": purchase_plan,
+            }
+        )
+        result["selected_candidates"] = selected_candidates
+        result["unmapped_blocks"] = unmapped_blocks
+        result["selection_basis"] = "top_candidate_per_recommended_block"
+        return result
 
     return _get_cached_selector_result(cache_key, build)
 

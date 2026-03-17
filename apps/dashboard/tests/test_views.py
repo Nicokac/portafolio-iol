@@ -437,6 +437,52 @@ class TestDashboardView:
                 'explanation': 'Ranking incremental MVP',
             },
         )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_portfolio_simulation',
+            lambda capital_amount=600000: {
+                'capital_amount': float(capital_amount),
+                'selected_candidates': [
+                    {
+                        'symbol': 'KO',
+                        'block': 'defensive',
+                        'block_label': 'Defensive / resiliente',
+                        'amount': 350000,
+                        'candidate_score': 8.4,
+                        'candidate_reason': 'defensive_sector_match',
+                    },
+                    {
+                        'symbol': 'SPY',
+                        'block': 'global_index',
+                        'block_label': 'Indice global',
+                        'amount': 250000,
+                        'candidate_score': 6.8,
+                        'candidate_reason': 'stable_global_exposure',
+                    },
+                ],
+                'before': {
+                    'expected_return_pct': 8.0,
+                    'real_expected_return_pct': 1.0,
+                    'fragility_score': 64.0,
+                    'worst_scenario_loss_pct': -12.0,
+                },
+                'after': {
+                    'expected_return_pct': 8.6,
+                    'real_expected_return_pct': 1.3,
+                    'fragility_score': 60.5,
+                    'worst_scenario_loss_pct': -11.2,
+                },
+                'delta': {
+                    'expected_return_change': 0.6,
+                    'real_expected_return_change': 0.3,
+                    'fragility_change': -3.5,
+                    'scenario_loss_change': 0.8,
+                    'risk_concentration_change': -1.1,
+                },
+                'interpretation': 'La compra reduce la fragilidad del portafolio.',
+                'warnings': [],
+                'unmapped_blocks': [],
+            },
+        )
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert response.status_code == 200
@@ -450,6 +496,10 @@ class TestDashboardView:
         assert 'Ranking incremental MVP' in body
         assert 'KO' in body
         assert 'defensive_sector_match' in body
+        assert 'Impacto incremental simulado' in body
+        assert 'La compra reduce la fragilidad del portafolio.' in body
+        assert 'Expected return' in body
+        assert 'Fragility' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

@@ -276,6 +276,95 @@
             </div>
         </div>
         {% include 'dashboard/candidate_asset_ranking.html' %}
+        <div class="card border-success-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Impacto incremental simulado</h5>
+                <small class="text-muted">Comparación before/after usando el top candidato por bloque recomendado.</small>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">{{ incremental_portfolio_simulation.interpretation }}</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Compra propuesta</div>
+                            {% if incremental_portfolio_simulation.selected_candidates %}
+                            <ul class="mb-0 text-muted">
+                                {% for item in incremental_portfolio_simulation.selected_candidates %}
+                                <li>
+                                    <strong>{{ item.symbol }}</strong>
+                                    · {{ item.block_label }}
+                                    · {{ item.amount|currency:0 }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <div class="text-muted">Sin candidatos suficientes para construir una simulación por defecto.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">Before</div>
+                            <ul class="mb-0 text-muted">
+                                <li>Expected return: {{ incremental_portfolio_simulation.before.expected_return_pct|default:"-" }}%</li>
+                                <li>Real expected: {{ incremental_portfolio_simulation.before.real_expected_return_pct|default:"-" }}%</li>
+                                <li>Fragility: {{ incremental_portfolio_simulation.before.fragility_score|default:"-" }}</li>
+                                <li>Worst scenario: {{ incremental_portfolio_simulation.before.worst_scenario_loss_pct|default:"-" }}%</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-2">After</div>
+                            <ul class="mb-0 text-muted">
+                                <li>Expected return: {{ incremental_portfolio_simulation.after.expected_return_pct|default:"-" }}%</li>
+                                <li>Real expected: {{ incremental_portfolio_simulation.after.real_expected_return_pct|default:"-" }}%</li>
+                                <li>Fragility: {{ incremental_portfolio_simulation.after.fragility_score|default:"-" }}</li>
+                                <li>Worst scenario: {{ incremental_portfolio_simulation.after.worst_scenario_loss_pct|default:"-" }}%</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-end">Delta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Expected return</td>
+                                <td class="text-end">{{ incremental_portfolio_simulation.delta.expected_return_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Real expected return</td>
+                                <td class="text-end">{{ incremental_portfolio_simulation.delta.real_expected_return_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Fragility</td>
+                                <td class="text-end">{{ incremental_portfolio_simulation.delta.fragility_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Worst scenario loss</td>
+                                <td class="text-end">{{ incremental_portfolio_simulation.delta.scenario_loss_change|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td>Top risk concentration</td>
+                                <td class="text-end">{{ incremental_portfolio_simulation.delta.risk_concentration_change|default:"-" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                {% if incremental_portfolio_simulation.unmapped_blocks %}
+                <div class="small text-muted mt-3">
+                    Bloques sin candidato suficiente para esta simulación:
+                    {{ incremental_portfolio_simulation.unmapped_blocks|join:", " }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card">

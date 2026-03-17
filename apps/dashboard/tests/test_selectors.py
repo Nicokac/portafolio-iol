@@ -26,6 +26,7 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_factor_exposure_detail,
+    get_incremental_portfolio_simulation,
     get_candidate_asset_ranking,
     get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
@@ -992,6 +993,68 @@ class TestDashboardSelectors(TestCase):
         assert detail["candidate_assets_count"] == 2
         assert detail["candidate_assets"][0]["asset"] == "KO"
         assert detail["candidate_assets"][0]["main_reason"] == "defensive_sector_match"
+
+    def test_get_incremental_portfolio_simulation_builds_default_purchase_plan(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 350000},
+                {"bucket": "global_index", "label": "Indice global", "suggested_amount": 250000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [{"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"}],
+                },
+                {
+                    "block": "global_index",
+                    "candidates": [{"asset": "SPY", "score": 6.8, "main_reason": "stable_global_exposure"}],
+                },
+            ]
+        }
+        simulator_result = {
+            "capital_amount": 600000.0,
+            "purchase_plan": [
+                {"symbol": "KO", "amount": 350000.0},
+                {"symbol": "SPY", "amount": 250000.0},
+            ],
+            "before": {"expected_return_pct": 8.0},
+            "after": {"expected_return_pct": 8.6},
+            "delta": {
+                "expected_return_change": 0.6,
+                "real_expected_return_change": 0.2,
+                "fragility_change": -3.0,
+                "scenario_loss_change": 0.7,
+                "risk_concentration_change": -1.4,
+            },
+            "interpretation": "La compra reduce la fragilidad del portafolio.",
+            "warnings": [],
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                assert proposal["capital_amount"] == 600000
+                assert proposal["purchase_plan"] == [
+                    {"symbol": "KO", "amount": 350000.0},
+                    {"symbol": "SPY", "amount": 250000.0},
+                ]
+                return simulator_result
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+        ):
+            detail = get_incremental_portfolio_simulation()
+
+        assert detail["selected_candidates"][0]["symbol"] == "KO"
+        assert detail["selected_candidates"][1]["symbol"] == "SPY"
+        assert detail["delta"]["fragility_change"] == -3.0
+        assert detail["selection_basis"] == "top_candidate_per_recommended_block"
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

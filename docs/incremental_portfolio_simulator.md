@@ -45,6 +45,15 @@ Reutiliza:
 - `interpretation`
 - `warnings`
 
+## Integración actual
+
+En `Planeación`, el MVP se usa con una regla simple:
+
+1. tomar los bloques recomendados por el motor mensual
+2. elegir el top candidato de cada bloque desde `Candidate Asset Ranking Engine`
+3. construir un `purchase_plan` default
+4. mostrar comparaciÃ³n `before/after` server-rendered
+
 ## Limitaciones
 
 - simula un Ãºnico plan de compra por vez
