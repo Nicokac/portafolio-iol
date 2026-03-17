@@ -424,6 +424,87 @@
                 </div>
             </div>
         </div>
+        <div class="card border-info-subtle shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Comparador incremental por candidato</h5>
+                <small class="text-muted">Contraste directo entre candidatos del mismo bloque usando el monto sugerido para ese bloque.</small>
+            </div>
+            <div class="card-body">
+                {% if candidate_incremental_portfolio_comparison.available_blocks %}
+                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                    <input type="hidden" name="candidate_compare" value="1">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-6">
+                            <label class="form-label" for="candidate_compare_block">Bloque a comparar</label>
+                            <select class="form-select" id="candidate_compare_block" name="candidate_compare_block">
+                                {% for block in candidate_incremental_portfolio_comparison.available_blocks %}
+                                <option value="{{ block.bucket }}" {% if block.bucket == candidate_incremental_portfolio_comparison.selected_block %}selected{% endif %}>
+                                    {{ block.label }} · {{ block.suggested_amount|currency:0 }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
+                            <button type="submit" class="btn btn-outline-info w-100">Comparar candidatos</button>
+                        </div>
+                        <div class="col-lg-3">
+                            <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
+                        </div>
+                    </div>
+                </form>
+                {% if candidate_incremental_portfolio_comparison.best_label %}
+                <p class="text-muted mb-3">
+                    Mejor candidato actual para <strong>{{ candidate_incremental_portfolio_comparison.selected_label }}</strong>:
+                    <strong>{{ candidate_incremental_portfolio_comparison.best_label }}</strong>
+                </p>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Activo</th>
+                                <th>Razón principal</th>
+                                <th class="text-end">Score ranking</th>
+                                <th class="text-end">Δ Expected</th>
+                                <th class="text-end">Δ Fragility</th>
+                                <th class="text-end">Δ Worst Scenario</th>
+                                <th class="text-end">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proposal in candidate_incremental_portfolio_comparison.proposals %}
+                            <tr {% if proposal.proposal_key == candidate_incremental_portfolio_comparison.best_proposal_key %}class="table-success"{% endif %}>
+                                <td>
+                                    <strong>{{ proposal.label }}</strong>
+                                    {% if proposal.proposal_key == candidate_incremental_portfolio_comparison.best_proposal_key %}
+                                    <span class="badge bg-success ms-1">Mejor balance</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ proposal.candidate.main_reason|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.candidate.score|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.expected_return_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.fragility_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.simulation.delta.scenario_loss_change|default:"-" }}</td>
+                                <td class="text-end">{{ proposal.comparison_score|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="7" class="bg-light">
+                                    <div class="small text-muted">{{ proposal.simulation.interpretation }}</div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-muted">Sin candidatos comparables para este bloque.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted">No hay bloques recomendados con candidatos suficientes para comparar.</div>
+                {% endif %}
+            </div>
+        </div>
         <div class="card border-dark-subtle shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Comparador manual de planes incrementales</h5>

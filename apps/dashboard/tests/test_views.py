@@ -529,6 +529,53 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_candidate_incremental_portfolio_comparison',
+            lambda query_params, capital_amount=600000: {
+                'submitted': True,
+                'available_blocks': [
+                    {'bucket': 'defensive', 'label': 'Defensive / resiliente', 'suggested_amount': 300000},
+                    {'bucket': 'global_index', 'label': 'Indice global', 'suggested_amount': 300000},
+                ],
+                'selected_block': 'defensive',
+                'selected_label': 'Defensive / resiliente',
+                'block_amount': 300000,
+                'best_proposal_key': 'KO',
+                'best_label': 'KO',
+                'proposals': [
+                    {
+                        'proposal_key': 'KO',
+                        'label': 'KO',
+                        'candidate': {'score': 8.4, 'main_reason': 'defensive_sector_match'},
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.5,
+                                'fragility_change': -2.5,
+                                'scenario_loss_change': 0.7,
+                            },
+                            'interpretation': 'KO mejora más la resiliencia.',
+                        },
+                        'comparison_score': 4.7,
+                    },
+                    {
+                        'proposal_key': 'MCD',
+                        'label': 'MCD',
+                        'candidate': {'score': 7.7, 'main_reason': 'dividend_profile'},
+                        'purchase_plan': [{'symbol': 'MCD', 'amount': 300000}],
+                        'simulation': {
+                            'delta': {
+                                'expected_return_change': 0.4,
+                                'fragility_change': -1.8,
+                                'scenario_loss_change': 0.5,
+                            },
+                            'interpretation': 'MCD mejora moderadamente.',
+                        },
+                        'comparison_score': 3.5,
+                    },
+                ],
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_manual_incremental_portfolio_simulation_comparison',
             lambda query_params, default_capital_amount=600000: {
                 'submitted': True,
@@ -617,6 +664,9 @@ class TestDashboardView:
         assert 'Comparador de propuestas incrementales' in body
         assert 'Split del bloque más grande' in body
         assert 'Mejor balance' in body
+        assert 'Comparador incremental por candidato' in body
+        assert 'Bloque a comparar' in body
+        assert 'KO mejora más la resiliencia.' in body
         assert 'Comparador manual de planes incrementales' in body
         assert 'Plan manual A' in body
         assert 'Plan manual B' in body

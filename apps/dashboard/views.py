@@ -29,6 +29,7 @@ from apps.dashboard.selectors import (
     get_concentracion_sector_agregado,
     get_concentracion_tipo_patrimonial,
     get_candidate_asset_ranking,
+    get_candidate_incremental_portfolio_comparison,
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
     get_dashboard_kpis,
@@ -181,6 +182,10 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         context['candidate_asset_ranking'] = get_candidate_asset_ranking(capital_amount=600000)
         context['incremental_portfolio_simulation'] = get_incremental_portfolio_simulation(capital_amount=600000)
         context['incremental_portfolio_simulation_comparison'] = get_incremental_portfolio_simulation_comparison(capital_amount=600000)
+        context['candidate_incremental_portfolio_comparison'] = get_candidate_incremental_portfolio_comparison(
+            self.request.GET,
+            capital_amount=600000,
+        )
         context['manual_incremental_portfolio_simulation_comparison'] = (
             get_manual_incremental_portfolio_simulation_comparison(
                 self.request.GET,

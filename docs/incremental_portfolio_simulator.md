@@ -85,3 +85,15 @@ Reglas del MVP:
 - cada plan define `symbol` + `amount`
 - el comparador reutiliza el mismo `IncrementalPortfolioSimulator`
 - el resultado se ordena con el mismo score comparativo heuristico usado en el comparador automatico
+
+## Comparador incremental por candidato
+
+La hoja `Planeacion` permite ahora elegir un bloque recomendado y contrastar sus candidatos principales uno contra otro.
+
+Reglas del MVP:
+
+- usa el `suggested_amount` del bloque elegido
+- compara hasta 3 candidatos del mismo bloque
+- cada candidato se simula como compra individual
+- reutiliza `CandidateAssetRankingService` + `IncrementalPortfolioSimulator`
+- ordena por el mismo score comparativo heuristico del simulador incremental

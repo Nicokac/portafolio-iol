@@ -1708,11 +1708,132 @@ def get_manual_incremental_portfolio_simulation_comparison(
     return _get_cached_selector_result(cache_key, build)
 
 
+def get_candidate_incremental_portfolio_comparison(
+    query_params,
+    *,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Compara candidatos individuales dentro de un bloque recomendado."""
+
+    monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
+    candidate_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+    comparable_blocks = _build_comparable_candidate_blocks(monthly_plan, candidate_ranking)
+    requested_block = str(_query_param_value(query_params, "candidate_compare_block", "")).strip()
+    submitted = str(_query_param_value(query_params, "candidate_compare", "")).strip() == "1"
+
+    selected_block = requested_block if requested_block in {item["bucket"] for item in comparable_blocks} else None
+    if selected_block is None and comparable_blocks:
+        selected_block = comparable_blocks[0]["bucket"]
+
+    if selected_block is None:
+        return {
+            "submitted": submitted,
+            "available_blocks": comparable_blocks,
+            "selected_block": None,
+            "selected_label": None,
+            "block_amount": None,
+            "proposals": [],
+            "best_proposal_key": None,
+            "best_label": None,
+        }
+
+    selected_block_data = next(item for item in comparable_blocks if item["bucket"] == selected_block)
+    signature = hashlib.md5(
+        json.dumps(
+            {
+                "selected_block": selected_block,
+                "block_amount": selected_block_data["suggested_amount"],
+                "candidates": selected_block_data["candidates"],
+            },
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    cache_key = f"candidate_incremental_portfolio_comparison:{signature}"
+
+    def build():
+        simulator = IncrementalPortfolioSimulator()
+        proposals = []
+        for candidate in selected_block_data["candidates"][:3]:
+            purchase_plan = [
+                {
+                    "symbol": candidate["asset"],
+                    "amount": round(float(selected_block_data["suggested_amount"]), 2),
+                }
+            ]
+            simulation = simulator.simulate(
+                {
+                    "capital_amount": float(selected_block_data["suggested_amount"]),
+                    "purchase_plan": purchase_plan,
+                }
+            )
+            proposals.append(
+                {
+                    "proposal_key": candidate["asset"],
+                    "label": candidate["asset"],
+                    "candidate": candidate,
+                    "purchase_plan": purchase_plan,
+                    "simulation": {
+                        "before": simulation["before"],
+                        "after": simulation["after"],
+                        "delta": simulation["delta"],
+                        "interpretation": simulation["interpretation"],
+                        "warnings": simulation.get("warnings", []),
+                    },
+                    "comparison_score": _score_incremental_simulation(simulation),
+                }
+            )
+
+        ranked = sorted(
+            proposals,
+            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
+            reverse=True,
+        )
+        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        return {
+            "submitted": submitted,
+            "available_blocks": comparable_blocks,
+            "selected_block": selected_block,
+            "selected_label": selected_block_data["label"],
+            "block_amount": selected_block_data["suggested_amount"],
+            "proposals": ranked,
+            "best_proposal_key": best["proposal_key"] if best else None,
+            "best_label": best["label"] if best else None,
+        }
+
+    return _get_cached_selector_result(cache_key, build)
+
+
 def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
     return {
         str(item.get("block") or ""): item
         for item in candidate_ranking.get("by_block", [])
     }
+
+
+def _build_comparable_candidate_blocks(monthly_plan: Dict, candidate_ranking: Dict) -> list[Dict]:
+    by_block = _candidate_blocks_map(candidate_ranking)
+    comparable_blocks = []
+    for block in monthly_plan.get("recommended_blocks", []):
+        bucket = str(block.get("bucket") or "")
+        candidates = by_block.get(bucket, {}).get("candidates", [])
+        if not candidates:
+            continue
+        comparable_blocks.append(
+            {
+                "bucket": bucket,
+                "label": block.get("label", bucket),
+                "suggested_amount": float(block.get("suggested_amount") or 0.0),
+                "candidates": [
+                    {
+                        "asset": candidate.get("asset"),
+                        "score": candidate.get("score"),
+                        "main_reason": candidate.get("main_reason"),
+                    }
+                    for candidate in candidates[:3]
+                ],
+            }
+        )
+    return comparable_blocks
 
 
 def _build_purchase_plan_variant(monthly_plan: Dict, candidate_ranking: Dict, *, candidate_index: int) -> Dict:

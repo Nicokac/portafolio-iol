@@ -28,6 +28,7 @@ from apps.dashboard.selectors import (
     get_factor_exposure_detail,
     get_incremental_portfolio_simulation,
     get_incremental_portfolio_simulation_comparison,
+    get_candidate_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
     get_candidate_asset_ranking,
     get_monthly_allocation_plan,
@@ -1203,6 +1204,108 @@ class TestDashboardSelectors(TestCase):
         assert detail["submitted"] is True
         assert detail["proposals"] == []
         assert detail["best_proposal_key"] is None
+
+    def test_get_candidate_incremental_portfolio_comparison_ranks_candidates_within_block(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 300000},
+                {"bucket": "global_index", "label": "Indice global", "suggested_amount": 300000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "MCD", "score": 7.7, "main_reason": "dividend_profile"},
+                        {"asset": "XLU", "score": 7.1, "main_reason": "utilities_defensive"},
+                    ],
+                },
+                {
+                    "block": "global_index",
+                    "candidates": [
+                        {"asset": "SPY", "score": 6.8, "main_reason": "stable_global_exposure"},
+                    ],
+                },
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                symbol = proposal["purchase_plan"][0]["symbol"]
+                if symbol == "KO":
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.5,
+                            "real_expected_return_change": 0.2,
+                            "fragility_change": -2.5,
+                            "scenario_loss_change": 0.7,
+                            "risk_concentration_change": -0.8,
+                        },
+                        "interpretation": "KO mejora más la resiliencia.",
+                        "warnings": [],
+                    }
+                if symbol == "MCD":
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.4,
+                            "real_expected_return_change": 0.1,
+                            "fragility_change": -1.5,
+                            "scenario_loss_change": 0.5,
+                            "risk_concentration_change": -0.4,
+                        },
+                        "interpretation": "MCD mejora moderadamente.",
+                        "warnings": [],
+                    }
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.2,
+                        "real_expected_return_change": 0.0,
+                        "fragility_change": -0.9,
+                        "scenario_loss_change": 0.2,
+                        "risk_concentration_change": -0.2,
+                    },
+                    "interpretation": "XLU aporta mejora acotada.",
+                    "warnings": [],
+                }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+        ):
+            detail = get_candidate_incremental_portfolio_comparison(
+                {"candidate_compare": "1", "candidate_compare_block": "defensive"}
+            )
+
+        assert detail["submitted"] is True
+        assert detail["selected_block"] == "defensive"
+        assert detail["best_proposal_key"] == "KO"
+        assert len(detail["proposals"]) == 3
+        assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
+
+    def test_get_candidate_incremental_portfolio_comparison_handles_no_candidates(self):
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: {"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: {"by_block": []}),
+        ):
+            detail = get_candidate_incremental_portfolio_comparison({"candidate_compare": "1"})
+
+        assert detail["submitted"] is True
+        assert detail["available_blocks"] == []
+        assert detail["proposals"] == []
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""
