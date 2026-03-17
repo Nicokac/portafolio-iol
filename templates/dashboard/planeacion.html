@@ -444,6 +444,47 @@
         </div>
         <div class="card border-secondary-subtle shadow-sm mb-4">
             <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">Resumen ejecutivo de seguimiento incremental</h5>
+                <small class="text-muted">Lectura compacta para decidir si conviene seguir, revisar o fijar referencia sobre la propuesta actual.</small>
+            </div>
+            <div class="card-body border-bottom">
+                <p class="text-muted mb-3">{{ incremental_followup_executive_summary.headline }}</p>
+                {% if incremental_followup_executive_summary.has_summary %}
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Estado ejecutivo</div>
+                            <div>
+                                <strong>
+                                    {% if incremental_followup_executive_summary.status == "aligned" %}
+                                    Alineado
+                                    {% elif incremental_followup_executive_summary.status == "review" %}
+                                    Revisar
+                                    {% elif incremental_followup_executive_summary.status == "watch" %}
+                                    Seguir de cerca
+                                    {% elif incremental_followup_executive_summary.status == "no_baseline" %}
+                                    Falta baseline
+                                    {% else %}
+                                    Pendiente
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    {% for item in incremental_followup_executive_summary.summary_items %}
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">{{ item.label }}</div>
+                            <div><strong>{{ item.value }}</strong></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted">Todavía no hay suficiente contexto incremental para construir el resumen ejecutivo.</div>
+                {% endif %}
+            </div>
+            <div class="card-header bg-light border-bottom">
                 <h5 class="mb-0">Baseline incremental de seguimiento</h5>
                 <small class="text-muted">Snapshot guardado que queda como referencia operativa para seguimiento manual.</small>
             </div>

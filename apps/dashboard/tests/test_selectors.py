@@ -33,6 +33,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_history,
     get_incremental_proposal_tracking_baseline,
     get_incremental_baseline_drift,
+    get_incremental_followup_executive_summary,
     get_incremental_snapshot_vs_current_comparison,
     get_candidate_split_incremental_portfolio_comparison,
     get_manual_incremental_portfolio_simulation_comparison,
@@ -1636,6 +1637,76 @@ class TestDashboardSelectors(TestCase):
         assert detail["summary"]["status"] == "unavailable"
         assert detail["alerts"] == []
         assert "Todavia no hay un baseline incremental activo" in detail["explanation"]
+
+    def test_get_incremental_followup_executive_summary_synthesizes_review_state(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Propuesta actual",
+                        "comparison_score": 3.8,
+                    }
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={
+                    "item": {
+                        "proposal_label": "Baseline defensivo",
+                        "comparison_score": 4.5,
+                    },
+                    "has_baseline": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={
+                    "summary": {
+                        "status": "unfavorable",
+                        "favorable_count": 1,
+                        "unfavorable_count": 3,
+                    }
+                },
+            ),
+        ):
+            detail = get_incremental_followup_executive_summary({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["status"] == "review"
+        assert detail["has_summary"] is True
+        assert "conviene revisarla" in detail["headline"]
+        summary = {item["label"]: item["value"] for item in detail["summary_items"]}
+        assert summary["Propuesta actual"] == "Propuesta actual"
+        assert summary["Baseline activo"] == "Baseline defensivo"
+        assert summary["Estado de drift"] == "Drift desfavorable"
+        assert summary["Score actual - baseline"] == -0.7
+
+    def test_get_incremental_followup_executive_summary_handles_missing_preferred(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={"preferred": None},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": None, "has_baseline": False},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={"summary": {"status": "unavailable", "favorable_count": 0, "unfavorable_count": 0}},
+            ),
+        ):
+            detail = get_incremental_followup_executive_summary({}, user=DummyUser(), capital_amount=600000)
+
+        assert detail["status"] == "pending"
+        assert detail["has_summary"] is False
+        assert "Todavia no hay una propuesta incremental preferida" in detail["headline"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

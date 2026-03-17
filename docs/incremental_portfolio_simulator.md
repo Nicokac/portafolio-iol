@@ -267,3 +267,31 @@ Limitaciones:
 - son alertas efimeras, no historicas
 - no reemplazan el bloque de drift detallado
 - no se integran al centro global de alertas del dashboard
+
+## Resumen ejecutivo de seguimiento incremental
+
+La hoja `Planeacion` sintetiza una lectura ejecutiva sobre:
+
+- propuesta incremental preferida actual
+- baseline incremental activo
+- drift entre ambos
+
+Objetivo:
+
+- resolver rapido si la situacion esta:
+  - alineada
+  - para seguimiento cercano
+  - para revision
+  - pendiente por falta de baseline o propuesta
+
+Reglas del modulo:
+
+- no agrega scoring nuevo
+- reutiliza `comparison_score` y el resumen de drift existente
+- compacta el estado en una sola lectura server-rendered
+
+Limitaciones:
+
+- resume, no reemplaza el detalle analitico
+- la decision ejecutiva sigue siendo heuristica
+- no persiste una bitacora de estados ejecutivos

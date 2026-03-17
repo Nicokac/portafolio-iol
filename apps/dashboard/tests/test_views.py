@@ -754,6 +754,25 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_followup_executive_summary',
+            lambda query_params, user, capital_amount=600000: {
+                'status': 'aligned',
+                'headline': 'La propuesta actual se mantiene alineada con el baseline activo.',
+                'summary_items': [
+                    {'label': 'Propuesta actual', 'value': 'Split KO + MCD'},
+                    {'label': 'Baseline activo', 'value': 'Plan baseline'},
+                    {'label': 'Estado de drift', 'value': 'Drift favorable'},
+                    {'label': 'Score actual - baseline', 'value': 0.8},
+                ],
+                'preferred': {'proposal_label': 'Split KO + MCD'},
+                'baseline': {'proposal_label': 'Plan baseline'},
+                'drift': {},
+                'has_preferred': True,
+                'has_baseline': True,
+                'has_summary': True,
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_baseline_drift',
             lambda query_params, user, capital_amount=600000: {
                 'baseline': {'proposal_label': 'Plan baseline'},
@@ -847,6 +866,8 @@ class TestDashboardView:
         assert 'Fragility' in body
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
+        assert 'Resumen ejecutivo de seguimiento incremental' in body
+        assert 'La propuesta actual se mantiene alineada con el baseline activo.' in body
         assert 'Baseline incremental de seguimiento' in body
         assert 'Plan baseline' in body
         assert 'Drift vs propuesta preferida actual' in body

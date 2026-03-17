@@ -2037,6 +2037,50 @@ def get_incremental_baseline_drift(
     }
 
 
+def get_incremental_followup_executive_summary(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Sintetiza una lectura ejecutiva de seguimiento incremental para Planeacion."""
+
+    preferred_payload = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=capital_amount)
+    baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
+    drift_payload = get_incremental_baseline_drift(query_params, user=user, capital_amount=capital_amount)
+
+    preferred = preferred_payload.get("preferred")
+    baseline = baseline_payload.get("item")
+    drift_status = drift_payload.get("summary", {}).get("status", "unavailable")
+
+    if preferred is None:
+        status = "pending"
+    elif baseline is None:
+        status = "no_baseline"
+    elif drift_status == "unfavorable":
+        status = "review"
+    elif drift_status == "mixed":
+        status = "watch"
+    elif drift_status in {"favorable", "stable"}:
+        status = "aligned"
+    else:
+        status = "watch"
+
+    headline = _build_incremental_followup_headline(status, preferred, baseline)
+    summary_items = _build_incremental_followup_summary_items(preferred, baseline, drift_payload)
+    return {
+        "status": status,
+        "headline": headline,
+        "summary_items": summary_items,
+        "preferred": preferred,
+        "baseline": baseline,
+        "drift": drift_payload,
+        "has_preferred": preferred is not None,
+        "has_baseline": baseline is not None,
+        "has_summary": bool(preferred or baseline),
+    }
+
+
 def get_incremental_snapshot_vs_current_comparison(
     query_params,
     *,
@@ -2322,6 +2366,78 @@ def _build_incremental_baseline_drift_alerts(
             }
         )
     return alerts
+
+
+def _build_incremental_followup_headline(status: str, preferred: Dict | None, baseline: Dict | None) -> str:
+    if status == "pending":
+        return "Todavia no hay una propuesta incremental preferida para seguimiento."
+    if status == "no_baseline":
+        return (
+            f"La propuesta actual ({preferred['proposal_label']}) ya esta lista para seguimiento, "
+            "pero todavia no definiste un baseline activo."
+        )
+    if status == "review":
+        return (
+            f"La propuesta actual ({preferred['proposal_label']}) se desvio en forma desfavorable respecto del baseline "
+            f"({baseline['proposal_label']}) y conviene revisarla antes de adoptarla."
+        )
+    if status == "watch":
+        return (
+            f"La propuesta actual ({preferred['proposal_label']}) muestra drift mixto frente al baseline "
+            f"({baseline['proposal_label']}) y requiere seguimiento cercano."
+        )
+    return (
+        f"La propuesta actual ({preferred['proposal_label']}) se mantiene alineada con el baseline "
+        f"({baseline['proposal_label']})."
+    )
+
+
+def _build_incremental_followup_summary_items(
+    preferred: Dict | None,
+    baseline: Dict | None,
+    drift_payload: Dict,
+) -> list[Dict]:
+    summary = drift_payload.get("summary", {})
+    preferred_score = _coerce_optional_float((preferred or {}).get("comparison_score"))
+    baseline_score = _coerce_optional_float((baseline or {}).get("comparison_score"))
+    score_diff = None if preferred_score is None or baseline_score is None else round(preferred_score - baseline_score, 4)
+    return [
+        {
+            "label": "Propuesta actual",
+            "value": (preferred or {}).get("proposal_label") or "-",
+        },
+        {
+            "label": "Baseline activo",
+            "value": (baseline or {}).get("proposal_label") or "-",
+        },
+        {
+            "label": "Estado de drift",
+            "value": _format_incremental_followup_status(summary.get("status", "unavailable")),
+        },
+        {
+            "label": "Score actual - baseline",
+            "value": score_diff if score_diff is not None else "-",
+        },
+        {
+            "label": "Métricas favorables",
+            "value": summary.get("favorable_count", 0),
+        },
+        {
+            "label": "Métricas desfavorables",
+            "value": summary.get("unfavorable_count", 0),
+        },
+    ]
+
+
+def _format_incremental_followup_status(status: str) -> str:
+    mapping = {
+        "favorable": "Drift favorable",
+        "unfavorable": "Drift desfavorable",
+        "mixed": "Drift mixto",
+        "stable": "Sin drift material",
+        "unavailable": "Sin comparacion",
+    }
+    return mapping.get(status, "Sin clasificar")
 
 
 def _build_incremental_snapshot_reapply_payload(item: Dict) -> Dict:
