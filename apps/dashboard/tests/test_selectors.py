@@ -334,6 +334,8 @@ class TestDashboardSelectors(TestCase):
         assert "MSFT" in summary["risk_contribution"]["interpretation"]
         assert summary["scenario_analysis"]["interpretation"]
         assert "growth" in summary["factor_exposure"]["interpretation"]
+        assert "fragilidad" in summary["stress_testing"]["interpretation"].lower()
+        assert "retorno esperado estructural" in summary["expected_return"]["interpretation"].lower()
 
     def test_get_risk_contribution_detail_returns_mvp_proxy_when_covariance_is_not_active(self):
         cache.clear()

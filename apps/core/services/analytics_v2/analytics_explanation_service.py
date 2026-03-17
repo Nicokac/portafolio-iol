@@ -106,3 +106,53 @@ class AnalyticsExplanationService:
             unknown_text = " No hay activos relevantes fuera del universo factorial clasificado."
 
         return f"{base}{unknown_text}"
+
+    @staticmethod
+    def build_stress_fragility_explanation(result: dict) -> str:
+        fragility_score = result.get("fragility_score")
+        total_loss_pct = result.get("total_loss_pct")
+        vulnerable_sectors = result.get("vulnerable_sectors") or []
+
+        if fragility_score is None or total_loss_pct is None:
+            return "No hay datos suficientes para interpretar la fragilidad bajo stress del portafolio."
+
+        if vulnerable_sectors and vulnerable_sectors[0].get("key"):
+            sector_text = f" El daño se concentra primero en {vulnerable_sectors[0]['key']}."
+        else:
+            sector_text = ""
+
+        return (
+            f"La cartera muestra una fragilidad de {float(fragility_score):.0f} puntos bajo stress, "
+            f"con pérdida estimada de {float(total_loss_pct):.2f}%."
+            f"{sector_text}"
+        )
+
+    @staticmethod
+    def build_expected_return_explanation(result: dict) -> str:
+        expected_return_pct = result.get("expected_return_pct")
+        real_expected_return_pct = result.get("real_expected_return_pct")
+        buckets = result.get("by_bucket") or []
+
+        if expected_return_pct is None:
+            return "No hay datos suficientes para interpretar el retorno esperado estructural."
+
+        dominant_bucket = max(
+            buckets,
+            key=lambda item: float(item.get("weight_pct") or 0.0),
+            default=None,
+        )
+
+        if dominant_bucket and dominant_bucket.get("label"):
+            bucket_text = f" El bucket dominante es {dominant_bucket['label']}."
+        else:
+            bucket_text = ""
+
+        if real_expected_return_pct is not None:
+            real_text = f" El retorno real esperado se ubica en {float(real_expected_return_pct):.2f}%."
+        else:
+            real_text = " No hay referencia real completa porque falta inflación actual."
+
+        return (
+            f"El retorno esperado estructural del portafolio se ubica en {float(expected_return_pct):.2f}%."
+            f"{real_text}{bucket_text}"
+        )

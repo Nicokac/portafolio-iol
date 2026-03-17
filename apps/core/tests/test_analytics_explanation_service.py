@@ -66,3 +66,38 @@ def test_explanation_service_handles_missing_data_without_breaking():
     assert "No hay datos suficientes" in service.build_risk_contribution_explanation({})
     assert "No hay datos suficientes" in service.build_scenario_analysis_explanation({})
     assert "No hay datos suficientes" in service.build_factor_exposure_explanation({})
+    assert "No hay datos suficientes" in service.build_stress_fragility_explanation({})
+    assert "No hay datos suficientes" in service.build_expected_return_explanation({})
+
+
+def test_build_stress_fragility_explanation_mentions_score_loss_and_sector():
+    result = {
+        "fragility_score": 22,
+        "total_loss_pct": -0.8,
+        "vulnerable_sectors": [
+            {"key": "Tecnologia", "impact_pct": -0.5},
+        ],
+    }
+
+    text = AnalyticsExplanationService().build_stress_fragility_explanation(result)
+
+    assert "22 puntos" in text
+    assert "-0.80%" in text
+    assert "Tecnologia" in text
+
+
+def test_build_expected_return_explanation_mentions_nominal_real_and_bucket():
+    result = {
+        "expected_return_pct": 12.6,
+        "real_expected_return_pct": -15.4,
+        "by_bucket": [
+            {"label": "Equity beta / CEDEAR", "weight_pct": 48.0},
+            {"label": "Renta fija AR", "weight_pct": 24.0},
+        ],
+    }
+
+    text = AnalyticsExplanationService().build_expected_return_explanation(result)
+
+    assert "12.60%" in text
+    assert "-15.40%" in text
+    assert "Equity beta / CEDEAR" in text

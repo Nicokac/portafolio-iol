@@ -11,6 +11,8 @@ Agregar explicaciones determinísticas para resultados analíticos ya calculados
 - `Risk Contribution`
 - `Scenario Analysis`
 - `Factor Exposure`
+- `Stress Fragility`
+- `Expected Return`
 
 ## Integración
 
@@ -21,6 +23,8 @@ Campos expuestos:
 - `risk_contribution.interpretation`
 - `scenario_analysis.interpretation`
 - `factor_exposure.interpretation`
+- `stress_testing.interpretation`
+- `expected_return.interpretation`
 
 ## Restricciones
 
@@ -33,4 +37,5 @@ Campos expuestos:
 
 - las explicaciones son heurísticas y resumidas
 - no reemplazan un drill-down detallado
-- por ahora no cubren `Stress Fragility` ni `Expected Return`
+- las interpretaciones siguen siendo de resumen
+- no reemplazan lectura metodológica detallada por bucket o por stress

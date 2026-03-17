@@ -155,6 +155,9 @@
                 <div class="small mt-2">
                     <span class="badge {% if analytics_v2_summary.stress_testing.confidence == 'high' %}bg-success{% elif analytics_v2_summary.stress_testing.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.stress_testing.confidence }}</span>
                 </div>
+                {% if analytics_v2_summary.stress_testing.interpretation %}
+                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.stress_testing.interpretation }}</div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -180,6 +183,9 @@
                 <div class="small mt-2">
                     <span class="badge {% if analytics_v2_summary.expected_return.confidence == 'high' %}bg-success{% elif analytics_v2_summary.expected_return.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.expected_return.confidence }}</span>
                 </div>
+                {% if analytics_v2_summary.expected_return.interpretation %}
+                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.expected_return.interpretation }}</div>
+                {% endif %}
             </div>
         </div>
     </div>

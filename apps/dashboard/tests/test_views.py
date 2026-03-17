@@ -116,6 +116,14 @@ class TestDashboardView:
             'La exposición del portafolio está dominada por el factor' in body
             or 'No hay datos suficientes para interpretar la exposición factorial del portafolio.' in body
         )
+        assert (
+            'La cartera muestra una fragilidad de' in body
+            or 'No hay datos suficientes para interpretar la fragilidad bajo stress del portafolio.' in body
+        )
+        assert (
+            'El retorno esperado estructural del portafolio se ubica en' in body
+            or 'No hay datos suficientes para interpretar el retorno esperado estructural.' in body
+        )
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body
         assert "const syncReasonText = syncReasons.length" in body

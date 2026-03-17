@@ -1268,12 +1268,14 @@ def get_analytics_v2_dashboard_summary() -> Dict:
                 "fragility_score": fragility.get("fragility_score"),
                 "total_loss_pct": fragility.get("total_loss_pct"),
                 "confidence": fragility["metadata"]["confidence"],
+                "interpretation": explanation_service.build_stress_fragility_explanation(fragility),
             },
             "expected_return": {
                 "expected_return_pct": expected_return_result.get("expected_return_pct"),
                 "real_expected_return_pct": expected_return_result.get("real_expected_return_pct"),
                 "confidence": expected_return_result["metadata"]["confidence"],
                 "warnings_count": len(expected_return_result["metadata"].get("warnings", [])),
+                "interpretation": explanation_service.build_expected_return_explanation(expected_return_result),
             },
             "local_macro": {
                 "argentina_weight_pct": local_macro_result.get("summary", {}).get("argentina_weight_pct"),
