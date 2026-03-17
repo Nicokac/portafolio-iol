@@ -28,6 +28,7 @@ from apps.dashboard.selectors import (
     get_portafolio_enriquecido_actual,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
+    get_stress_fragility_detail,
     get_riesgo_portafolio,
     get_snapshot_coverage_summary,
     get_riesgo_portafolio_detallado,
@@ -676,6 +677,148 @@ class TestDashboardSelectors(TestCase):
         assert detail["unknown_assets"] == []
         assert detail["unknown_assets_count"] == 0
         assert detail["confidence"] == "low"
+        assert detail["warnings"] == ["empty_portfolio"]
+
+    def test_get_stress_fragility_detail_returns_ranked_stresses_and_breakdowns(self):
+        cache.clear()
+
+        stress_catalog = [
+            {
+                "stress_key": "usa_crash_severe",
+                "label": "Crash USA severo",
+                "description": "Stress USA",
+            },
+            {
+                "stress_key": "local_crisis_severe",
+                "label": "Crisis local severa",
+                "description": "Stress local",
+            },
+        ]
+        stress_results = {
+            "usa_crash_severe": {
+                "scenario_key": "usa_crash_severe",
+                "fragility_score": 18.0,
+                "total_loss_pct": -5.1,
+                "total_loss_money": -5100.0,
+                "vulnerable_assets": [
+                    {
+                        "symbol": "SPY",
+                        "market_value": 1000.0,
+                        "estimated_impact_pct": -12.0,
+                        "estimated_impact_money": -120.0,
+                        "transmission_channel": "market",
+                    }
+                ],
+                "vulnerable_sectors": [{"key": "Indice", "impact_pct": -4.8, "impact_money": -480.0}],
+                "vulnerable_countries": [{"key": "USA", "impact_pct": -5.1, "impact_money": -510.0}],
+                "metadata": {
+                    "confidence": "high",
+                    "warnings": [],
+                    "methodology": "stress_methodology",
+                    "limitations": "stress_limitations",
+                },
+            },
+            "local_crisis_severe": {
+                "scenario_key": "local_crisis_severe",
+                "fragility_score": 42.0,
+                "total_loss_pct": -12.4,
+                "total_loss_money": -12400.0,
+                "vulnerable_assets": [
+                    {
+                        "symbol": "GD30",
+                        "market_value": 900.0,
+                        "estimated_impact_pct": -18.0,
+                        "estimated_impact_money": -162.0,
+                        "transmission_channel": "country+fx",
+                    }
+                ],
+                "vulnerable_sectors": [{"key": "Soberano", "impact_pct": -8.2, "impact_money": -820.0}],
+                "vulnerable_countries": [{"key": "Argentina", "impact_pct": -12.4, "impact_money": -1240.0}],
+                "metadata": {
+                    "confidence": "medium",
+                    "warnings": ["legacy_mappings:argentina_crisis"],
+                    "methodology": "stress_methodology",
+                    "limitations": "stress_limitations",
+                },
+            },
+        }
+
+        class DummyStressCatalogService:
+            def list_stresses(self):
+                return stress_catalog
+
+        class DummyStressService:
+            def calculate(self, stress_key):
+                return stress_results[stress_key]
+
+        class DummyExplanationService:
+            def build_stress_fragility_explanation(self, result):
+                assert result["scenario_key"] == "local_crisis_severe"
+                return "Interpretacion stress"
+
+        with (
+            patch("apps.dashboard.selectors.StressCatalogService", DummyStressCatalogService),
+            patch("apps.dashboard.selectors.StressFragilityService", DummyStressService),
+            patch("apps.dashboard.selectors.AnalyticsExplanationService", DummyExplanationService),
+        ):
+            detail = get_stress_fragility_detail()
+
+        assert [row["stress_key"] for row in detail["stresses"]] == ["local_crisis_severe", "usa_crash_severe"]
+        assert detail["stresses"][0]["severity_rank"] == 1
+        assert detail["worst_stress"]["stress_key"] == "local_crisis_severe"
+        assert detail["worst_stress"]["top_sector"]["key"] == "Soberano"
+        assert detail["worst_stress"]["top_country"]["key"] == "Argentina"
+        assert detail["worst_assets"][0]["symbol"] == "GD30"
+        assert detail["worst_sectors"][0]["key"] == "Soberano"
+        assert detail["worst_countries"][0]["key"] == "Argentina"
+        assert detail["confidence"] == "medium"
+        assert detail["warnings"] == ["legacy_mappings:argentina_crisis"]
+        assert detail["interpretation"] == "Interpretacion stress"
+
+    def test_get_stress_fragility_detail_handles_empty_or_partial_result(self):
+        cache.clear()
+
+        stress_catalog = [
+            {
+                "stress_key": "flat_stress",
+                "label": "Flat Stress",
+                "description": "",
+            }
+        ]
+
+        class DummyStressCatalogService:
+            def list_stresses(self):
+                return stress_catalog
+
+        class DummyStressService:
+            def calculate(self, stress_key):
+                assert stress_key == "flat_stress"
+                return {
+                    "scenario_key": "flat_stress",
+                    "fragility_score": 0,
+                    "total_loss_pct": 0,
+                    "total_loss_money": 0,
+                    "metadata": {"confidence": "low", "warnings": ["empty_portfolio"]},
+                }
+
+        class DummyExplanationService:
+            def build_stress_fragility_explanation(self, result):
+                return ""
+
+        with (
+            patch("apps.dashboard.selectors.StressCatalogService", DummyStressCatalogService),
+            patch("apps.dashboard.selectors.StressFragilityService", DummyStressService),
+            patch("apps.dashboard.selectors.AnalyticsExplanationService", DummyExplanationService),
+        ):
+            detail = get_stress_fragility_detail()
+
+        assert len(detail["stresses"]) == 1
+        assert detail["stresses"][0]["severity_rank"] == 1
+        assert detail["stresses"][0]["total_loss_pct"] == 0.0
+        assert detail["worst_stress"]["stress_key"] == "flat_stress"
+        assert detail["worst_assets"] == []
+        assert detail["worst_sectors"] == []
+        assert detail["worst_countries"] == []
         assert detail["warnings"] == ["empty_portfolio"]
 
     def test_concentracion_por_pais(self):

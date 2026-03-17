@@ -1,0 +1,230 @@
+﻿{% extends 'base.html' %}
+{% block title %}Stress Fragility - Portafolio IOL{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="mb-1">Stress Fragility</h1>
+        <p class="text-muted mb-0">Drill-down analítico de la fragilidad bajo stresses extremos ya calculados sobre el portafolio actual.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Peor stress</div>
+                <div class="h5 mb-0">{{ stress_fragility_detail.worst_stress.label|default:"N/D" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Stress score</div>
+                <div class="h5 mb-0">
+                    {% if stress_fragility_detail.worst_stress %}
+                    {{ stress_fragility_detail.worst_stress.fragility_score|floatformat:0 }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Pérdida estimada total</div>
+                <div class="h5 mb-0">
+                    {% if stress_fragility_detail.worst_stress %}
+                    {{ stress_fragility_detail.worst_stress.total_loss_money|floatformat:2 }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Impacto %</div>
+                <div class="h5 mb-0">
+                    {% if stress_fragility_detail.worst_stress %}
+                    {{ stress_fragility_detail.worst_stress.total_loss_pct|floatformat:2 }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5">Interpretación del modelo</h2>
+        <p class="mb-2">{{ stress_fragility_detail.interpretation|default:"No hay datos suficientes para interpretar la fragilidad bajo stress del portafolio." }}</p>
+        <p class="text-muted small mb-2">{{ stress_fragility_detail.methodology|default:"Sin detalles metodológicos." }}</p>
+        <p class="text-muted small mb-2">{{ stress_fragility_detail.limitations|default:"Sin limitaciones informadas." }}</p>
+        {% if stress_fragility_detail.warnings %}
+        <div class="mt-3">
+            <div class="small text-muted mb-2">Warnings</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for warning in stress_fragility_detail.warnings %}
+                <span class="badge bg-warning text-dark">{{ warning }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Stresses evaluados</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">Ranking de severidad</th>
+                        <th>Stress / escenario</th>
+                        <th class="text-end">Stress score</th>
+                        <th class="text-end">Pérdida estimada</th>
+                        <th class="text-end">Impacto %</th>
+                        <th>Sector más vulnerable</th>
+                        <th>País dominante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in stress_fragility_detail.stresses %}
+                    <tr>
+                        <td class="text-end">{{ item.severity_rank }}</td>
+                        <td>
+                            <strong>{{ item.label }}</strong>
+                            <div class="small text-muted">{{ item.description|default:"-" }}</div>
+                        </td>
+                        <td class="text-end">{{ item.fragility_score|floatformat:0 }}</td>
+                        <td class="text-end">{{ item.total_loss_money|floatformat:2 }}</td>
+                        <td class="text-end">{{ item.total_loss_pct|floatformat:2 }}%</td>
+                        <td>{{ item.top_sector.key|default:"-" }}</td>
+                        <td>{{ item.top_country.key|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-muted">Sin stress disponible.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Breakdown por sector</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-end">#</th>
+                                <th>Sector</th>
+                                <th class="text-end">Contribución a fragilidad</th>
+                                <th class="text-end">Peso relativo dentro del stress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in stress_fragility_detail.worst_sectors %}
+                            <tr>
+                                <td class="text-end">{{ item.rank }}</td>
+                                <td>{{ item.key }}</td>
+                                <td class="text-end">{{ item.impact_money|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.impact_pct|floatformat:2 }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-muted">Sin breakdown por sector.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Breakdown por país</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-end">#</th>
+                                <th>País</th>
+                                <th class="text-end">Contribución a fragilidad</th>
+                                <th class="text-end">Peso relativo dentro del stress</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in stress_fragility_detail.worst_countries %}
+                            <tr>
+                                <td class="text-end">{{ item.rank }}</td>
+                                <td>{{ item.key }}</td>
+                                <td class="text-end">{{ item.impact_money|floatformat:2 }}</td>
+                                <td class="text-end">{{ item.impact_pct|floatformat:2 }}%</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-muted">Sin breakdown por país.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Breakdown por activo</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th class="text-end">#</th>
+                        <th>Activo</th>
+                        <th class="text-end">Impacto / contribución</th>
+                        <th class="text-end">Impacto %</th>
+                        <th>Canal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in stress_fragility_detail.worst_assets %}
+                    <tr>
+                        <td class="text-end">{{ item.rank }}</td>
+                        <td><strong>{{ item.symbol }}</strong></td>
+                        <td class="text-end">{{ item.estimated_impact_money|floatformat:2 }}</td>
+                        <td class="text-end">{{ item.estimated_impact_pct|floatformat:2 }}%</td>
+                        <td>{{ item.transmission_channel|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">Sin breakdown por activo.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -255,6 +255,45 @@ class TestDashboardView:
         assert response.status_code == 200
         assert reverse('dashboard:factor_exposure_detail') in body
 
+    def test_stress_fragility_detail_route_accessible_authenticated(self, auth_client):
+        response = auth_client.get(reverse('dashboard:stress_fragility_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Stress Fragility' in body
+        assert 'Stresses evaluados' in body
+        assert 'Stress score' in body
+        assert 'Breakdown por sector' in body
+        assert 'Breakdown por activo' in body
+
+    def test_stress_fragility_detail_handles_empty_payload(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_stress_fragility_detail',
+            lambda: {
+                'stresses': [],
+                'worst_stress': None,
+                'worst_assets': [],
+                'worst_sectors': [],
+                'worst_countries': [],
+                'confidence': 'low',
+                'warnings': ['empty_portfolio'],
+                'methodology': None,
+                'limitations': None,
+                'interpretation': '',
+            },
+        )
+        response = auth_client.get(reverse('dashboard:stress_fragility_detail'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Sin stress disponible.' in body
+        assert 'Sin breakdown por sector.' in body
+        assert 'Sin breakdown por activo.' in body
+
+    def test_estrategia_contains_stress_fragility_detail_link(self, auth_client):
+        response = auth_client.get(reverse('dashboard:estrategia'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert reverse('dashboard:stress_fragility_detail') in body
+
     def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
         class DummySyncAuditService:
             def run_audit(self, freshness_hours=24):

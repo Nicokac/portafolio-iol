@@ -224,6 +224,10 @@ Ejemplo concreto:
   - reutiliza `FactorExposureService` y `AnalyticsExplanationService`
   - expone ranking por factor, factores subrepresentados y bloque de unknown assets
   - alimenta `/estrategia/factor-exposure/` sin recalcular exposiciones en la vista
+- `get_stress_fragility_detail()`
+  - reutiliza `StressFragilityService`, `StressCatalogService` y `AnalyticsExplanationService`
+  - compara stresses cerrados del catálogo y expone el breakdown del stress más severo
+  - alimenta `/estrategia/stress-fragility/` sin recalcular fragilidad en la vista
 
 ### RecommendationEngine
 

@@ -42,6 +42,7 @@ from apps.dashboard.selectors import (
     get_factor_exposure_detail,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
+    get_stress_fragility_detail,
     get_riesgo_portafolio,
     get_riesgo_portafolio_detallado,
     get_snapshot_coverage_summary,
@@ -141,6 +142,16 @@ class FactorExposureDetailView(LoginRequiredMixin, DashboardContextMixin, Templa
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['factor_exposure_detail'] = get_factor_exposure_detail()
+        return context
+
+
+class StressFragilityDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/stress_fragility_detail.html'
+    active_section = 'estrategia'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['stress_fragility_detail'] = get_stress_fragility_detail()
         return context
 
 

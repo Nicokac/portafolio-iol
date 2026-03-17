@@ -26,6 +26,7 @@ from apps.core.services.analytics_v2 import (
     RiskContributionService,
     ScenarioCatalogService,
     ScenarioAnalysisService,
+    StressCatalogService,
     StressFragilityService,
 )
 
@@ -1315,6 +1316,100 @@ def get_factor_exposure_detail() -> Dict:
         }
 
     return _get_cached_selector_result("factor_exposure_detail", build)
+
+
+def get_stress_fragility_detail() -> Dict:
+    """Devuelve el drill-down analitico completo de stress fragility."""
+
+    def build():
+        stress_service = StressFragilityService()
+        stress_catalog_service = StressCatalogService()
+        explanation_service = AnalyticsExplanationService()
+
+        stress_rows = []
+        for stress in stress_catalog_service.list_stresses():
+            result = stress_service.calculate(stress["stress_key"])
+            top_sector = result.get("vulnerable_sectors", [{}])[0] if result.get("vulnerable_sectors") else None
+            top_country = result.get("vulnerable_countries", [{}])[0] if result.get("vulnerable_countries") else None
+            stress_rows.append(
+                {
+                    "stress_key": stress["stress_key"],
+                    "scenario_key": result.get("scenario_key", stress["stress_key"]),
+                    "label": stress.get("label"),
+                    "description": stress.get("description"),
+                    "fragility_score": float(result.get("fragility_score") or 0.0),
+                    "total_loss_pct": float(result.get("total_loss_pct") or 0.0),
+                    "total_loss_money": float(result.get("total_loss_money") or 0.0),
+                    "top_sector": top_sector,
+                    "top_country": top_country,
+                    "vulnerable_assets": result.get("vulnerable_assets", []),
+                    "vulnerable_sectors": result.get("vulnerable_sectors", []),
+                    "vulnerable_countries": result.get("vulnerable_countries", []),
+                    "metadata": result.get("metadata", {}),
+                }
+            )
+
+        sorted_rows = sorted(
+            stress_rows,
+            key=lambda item: float(item.get("total_loss_pct") or 0.0),
+        )
+        ranked_rows = [
+            {
+                **item,
+                "severity_rank": index,
+            }
+            for index, item in enumerate(sorted_rows, start=1)
+        ]
+        worst_stress = ranked_rows[0] if ranked_rows else None
+
+        worst_assets = []
+        worst_sectors = []
+        worst_countries = []
+        if worst_stress:
+            worst_assets = [
+                {
+                    "rank": index,
+                    "symbol": item.get("symbol"),
+                    "market_value": item.get("market_value"),
+                    "estimated_impact_pct": item.get("estimated_impact_pct"),
+                    "estimated_impact_money": item.get("estimated_impact_money"),
+                    "transmission_channel": item.get("transmission_channel"),
+                }
+                for index, item in enumerate(worst_stress.get("vulnerable_assets", []), start=1)
+            ]
+            worst_sectors = [
+                {
+                    "rank": index,
+                    "key": item.get("key"),
+                    "impact_pct": item.get("impact_pct"),
+                    "impact_money": item.get("impact_money"),
+                }
+                for index, item in enumerate(worst_stress.get("vulnerable_sectors", []), start=1)
+            ]
+            worst_countries = [
+                {
+                    "rank": index,
+                    "key": item.get("key"),
+                    "impact_pct": item.get("impact_pct"),
+                    "impact_money": item.get("impact_money"),
+                }
+                for index, item in enumerate(worst_stress.get("vulnerable_countries", []), start=1)
+            ]
+
+        return {
+            "stresses": ranked_rows,
+            "worst_stress": worst_stress,
+            "worst_assets": worst_assets,
+            "worst_sectors": worst_sectors,
+            "worst_countries": worst_countries,
+            "confidence": (worst_stress or {}).get("metadata", {}).get("confidence", "low"),
+            "warnings": (worst_stress or {}).get("metadata", {}).get("warnings", []),
+            "methodology": (worst_stress or {}).get("metadata", {}).get("methodology"),
+            "limitations": (worst_stress or {}).get("metadata", {}).get("limitations"),
+            "interpretation": explanation_service.build_stress_fragility_explanation(worst_stress or {}),
+        }
+
+    return _get_cached_selector_result("stress_fragility_detail", build)
 
 
 def get_analytics_v2_dashboard_summary() -> Dict:
