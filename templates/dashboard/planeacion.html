@@ -6,7 +6,7 @@
 
 <div class="alert alert-secondary mb-4">
     <strong>Objetivo de esta hoja:</strong>
-    <span class="text-muted">simular decisiones, generar planes de aportes, optimizar asignaciones y ajustar parámetros de estrategia sin mezclar lectura operativa del portafolio.</span>
+    <span class="text-muted">resolver primero qué hacer con el aporte mensual. Simulación, optimización y parámetros quedan como soporte secundario para validar o ajustar la decisión.</span>
 </div>
 
 <div class="card border-0 bg-light mb-4">
@@ -15,9 +15,9 @@
             <span class="text-muted small me-2">Navegación rápida:</span>
             <a class="btn btn-sm btn-outline-info" href="#planeacion-aportes">Aportes</a>
             <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">Diagnóstico y recomendaciones</a>
-            <a class="btn btn-sm btn-outline-success" href="#simulacion">Simulación</a>
-            <a class="btn btn-sm btn-outline-warning" href="#optimizacion">Optimización</a>
-            <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">Parámetros</a>
+            <a class="btn btn-sm btn-outline-success" href="#simulacion">Simulación táctica</a>
+            <a class="btn btn-sm btn-outline-warning" href="#optimizacion">Optimización teórica</a>
+            <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">Config base</a>
             <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
         </div>
     </div>
@@ -28,14 +28,14 @@
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h2 class="h5 mb-1">Mapa de trabajo</h2>
-                <p class="text-muted mb-0">La lectura recomendada ahora arranca por Aportes. Diagnóstico, simulación, optimización y parámetros quedan como soporte.</p>
+                <p class="text-muted mb-0">La lectura recomendada ahora arranca por Aportes. Diagnóstico ayuda a priorizar; simulación, optimización y parámetros quedan como soporte secundario.</p>
             </div>
             <ul class="nav nav-pills gap-2" id="planeacion-tab-nav">
                 <li class="nav-item"><button type="button" class="nav-link active" data-planeacion-tab="planeacion-aportes">Aportes</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="parametros-estrategia">Parámetros</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación táctica</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización teórica</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="parametros-estrategia">Config base</button></li>
             </ul>
         </div>
     </div>
@@ -76,10 +76,14 @@
     <div class="planeacion-panel d-none" data-planeacion-panel="simulacion">
         <section id="simulacion" class="mt-1 mb-4">
             <div class="border-start border-4 border-success ps-3">
-                <h2 class="mb-1">Simulación</h2>
-                <p class="text-muted mb-0">Probar compras, ventas y rebalanceos hipotéticos antes de ejecutar cambios reales.</p>
+                <h2 class="mb-1">Simulación táctica</h2>
+                <p class="text-muted mb-0">Soporte secundario para validar operaciones puntuales o rebalanceos fuera del flujo principal de aportes.</p>
             </div>
         </section>
+        <div class="alert alert-light border mb-4">
+            <strong>Cuándo usar este bloque:</strong>
+            <span class="text-muted">después de definir la idea de aporte en la pestaña Aportes, o cuando necesitás revisar una compra, venta o rebalanceo puntual por separado.</span>
+        </div>
         <div class="row mb-4">
             <div class="col-lg-8">
                 <div class="card">
@@ -1084,10 +1088,14 @@
     <div class="planeacion-panel d-none" data-planeacion-panel="optimizacion">
         <section id="optimizacion" class="mt-1 mb-4">
             <div class="border-start border-4 border-warning ps-3">
-                <h2 class="mb-1">Optimización</h2>
-                <p class="text-muted mb-0">Asignaciones óptimas por distintos métodos.</p>
+                <h2 class="mb-1">Optimización teórica</h2>
+                <p class="text-muted mb-0">Soporte secundario para contrastar la propuesta mensual contra asignaciones teóricas o target de cartera.</p>
             </div>
         </section>
+        <div class="alert alert-light border mb-4">
+            <strong>Cómo leerlo:</strong>
+            <span class="text-muted">estos métodos sirven para contraste y exploración. No reemplazan el motor incremental ni la propuesta preferida visible en Aportes.</span>
+        </div>
         <div class="row mb-4">
             <div class="col-md-6">
                 <div class="card">
@@ -1129,8 +1137,8 @@
     <div class="planeacion-panel d-none" data-planeacion-panel="parametros-estrategia">
         <section id="parametros-estrategia" class="mt-1 mb-4">
             <div class="border-start border-4 border-secondary ps-3">
-                <h2 class="mb-1">Parámetros de estrategia</h2>
-                <p class="text-muted mb-0">Configuración editable de pesos objetivo.</p>
+                <h2 class="mb-1">Configuración base</h2>
+                <p class="text-muted mb-0">Ajustes estructurales de pesos objetivo. No forman parte de la lectura principal del aporte mensual.</p>
             </div>
         </section>
         <div class="row mb-4">

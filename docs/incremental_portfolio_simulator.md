@@ -569,6 +569,17 @@ Jerarquia visible actual dentro de `Aportes`:
   - ultima decision manual
   - historial reciente de propuestas guardadas
 
+Bloques legacy que siguen en la hoja pero ya no ocupan el camino principal:
+
+- simulacion tactica
+- optimizacion teorica
+- configuracion base
+
+Criterio de exposicion:
+
+- sirven como soporte para validar o contrastar decisiones
+- no deben competir visualmente con el flujo principal del aporte mensual
+
 Bloques operativos retirados del render principal:
 
 - checklist de adopcion
