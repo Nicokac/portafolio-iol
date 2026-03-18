@@ -52,7 +52,7 @@ Drill-downs hoy visibles:
 - plan mensual custom
 - optimizacion `Risk Parity`, `Markowitz` y `Target Allocation`
 - motor MVP de asignacion mensual incremental
-- ranking de activos candidatos dentro de bloques recomendados
+- ranking de activos candidatos como shortlist previa a la propuesta incremental sugerida
 - simulacion incremental `before/after`
 - comparadores incrementales automaticos, por candidato, por split y manuales
 - propuesta incremental preferida

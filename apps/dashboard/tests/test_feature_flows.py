@@ -58,8 +58,9 @@ class TestDashboardFeatureFlows:
         assert "simulation-activo" in content
         assert "monthly-plan-result" in content
         assert "optimization-result" in content
-        assert "Candidatos de activos dentro de los bloques recomendados" in content
+        assert "Activos candidatos para construir la propuesta" in content
         assert "N\u00facleo de decisi\u00f3n" in content
+        assert "La decisión sugerida consolidada queda en el bloque siguiente." in content
         assert "Lectura sugerida del cierre:" in content
         assert "Decisi\u00f3n sugerida: propuesta incremental preferida" in content
         assert "Validaci\u00f3n before/after del impacto incremental" in content

@@ -521,8 +521,9 @@ class TestDashboardView:
         assert 'Por qué este bloque recibió este score' in body
         assert 'Señales positivas' in body
         assert 'Señales negativas' in body
-        assert 'Candidatos de activos dentro de los bloques recomendados' in body
+        assert 'Activos candidatos para construir la propuesta' in body
         assert 'Ranking incremental MVP' in body
+        assert 'La decisión sugerida consolidada queda en el bloque siguiente.' in body
         assert 'KO' in body
         assert 'Núcleo de decisión' in body
         assert 'Lectura sugerida del cierre:' in body
