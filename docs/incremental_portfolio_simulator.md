@@ -63,6 +63,7 @@ El comparador incremental agrega variantes simples sobre la misma base:
 Jerarquia actual en `Planeacion`:
 
 - el nucleo visible arriba responde `que comprar`, `que impacto tiene` y `cual propuesta incremental parece mejor`
+- dentro de ese nucleo, la propuesta incremental preferida funciona como decision sugerida y la simulacion before/after queda como validacion inmediata del impacto
 - la exploracion comparativa queda como lectura secundaria
 - el seguimiento y governance permanece en la misma hoja, pero el historial accionable queda subordinado como trazabilidad operativa
 

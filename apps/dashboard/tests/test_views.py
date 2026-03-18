@@ -525,11 +525,13 @@ class TestDashboardView:
         assert 'Ranking incremental MVP' in body
         assert 'KO' in body
         assert 'Núcleo de decisión' in body
-        assert 'Impacto incremental simulado' in body
+        assert 'Lectura sugerida del cierre:' in body
+        assert 'Decisión sugerida: propuesta incremental preferida' in body
+        assert 'Validación before/after del impacto incremental' in body
         assert 'La compra reduce la fragilidad del portafolio.' in body
         assert 'Expected return' in body
         assert 'Fragility' in body
-        assert 'Propuesta incremental preferida' in body
+        assert 'Propuesta incremental preferida' not in body
         assert 'Guardar propuesta preferida' in body
         assert 'Exploración y comparación' in body
         assert 'Orden sugerido:' in body

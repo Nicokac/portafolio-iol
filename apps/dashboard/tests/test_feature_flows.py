@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 from django.contrib.auth.models import User
 from django.test import Client
 from django.urls import reverse
@@ -51,45 +51,46 @@ class TestDashboardFeatureFlows:
         content = response.content.decode("utf-8")
 
         assert response.status_code == 200
-        assert "resolver primero qué hacer con el aporte mensual" in content
-        assert "Diagnóstico previo al aporte" in content
-        assert "Señales de diagnóstico y priorización" in content
+        assert "resolver primero qu\u00e9 hacer con el aporte mensual" in content
+        assert "Diagn\u00f3stico previo al aporte" in content
+        assert "Se\u00f1ales de diagn\u00f3stico y priorizaci\u00f3n" in content
         assert "recommendations-container" in content
         assert "simulation-activo" in content
         assert "monthly-plan-result" in content
         assert "optimization-result" in content
         assert "Candidatos de activos dentro de los bloques recomendados" in content
-        assert "Núcleo de decisión" in content
-        assert "Impacto incremental simulado" in content
-        assert "Propuesta incremental preferida" in content
-        assert "Exploración y comparación" in content
+        assert "N\u00facleo de decisi\u00f3n" in content
+        assert "Lectura sugerida del cierre:" in content
+        assert "Decisi\u00f3n sugerida: propuesta incremental preferida" in content
+        assert "Validaci\u00f3n before/after del impacto incremental" in content
+        assert "Exploraci\u00f3n y comparaci\u00f3n" in content
         assert "Orden sugerido:" in content
         assert "Resumen ejecutivo unificado" in content
         assert "Seguimiento y governance" in content
         assert "Seguimiento operativo incremental" in content
         assert "Historial operativo y acciones manuales" in content
         assert "Historial reciente de propuestas guardadas" in content
-        assert "Checklist de adopción de propuesta incremental" not in content
-        assert "Workflow de decisión manual" not in content
+        assert "Checklist de adopciÃ³n de propuesta incremental" not in content
+        assert "Workflow de decisiÃ³n manual" not in content
         assert "Resumen ejecutivo de seguimiento incremental" not in content
         assert "Baseline incremental de seguimiento" not in content
-        assert "Semaforización operativa del backlog incremental" not in content
+        assert "SemaforizaciÃ³n operativa del backlog incremental" not in content
         assert "Resumen operativo del frente de backlog y baseline" not in content
         assert "Drift vs propuesta preferida actual" not in content
         assert "Backlog pendiente vs baseline activo" not in content
-        assert "Priorización operativa" not in content
+        assert "PriorizaciÃ³n operativa" not in content
         assert "Alertas de drift" not in content
         assert "Snapshot guardado vs propuesta actual" not in content
-        assert "Aceptar visibles" in content or "Todavía no guardaste propuestas incrementales preferidas." in content
+        assert "Aceptar visibles" in content or "Todav\u00eda no guardaste propuestas incrementales preferidas." in content
         assert "Comparador de propuestas incrementales" in content
         assert "Comparador incremental por candidato" in content
         assert "Comparador incremental por split de bloque" in content
         assert "Comparador manual de planes incrementales" in content
         assert "Herramienta secundaria: plan mensual por perfil" in content
         assert "Plan mensual por perfil" in content
-        assert "Simulación táctica" in content
-        assert "Optimización teórica" in content
-        assert "Configuración base" in content
+        assert "Simulaci\u00f3n t\u00e1ctica" in content
+        assert "Optimizaci\u00f3n te\u00f3rica" in content
+        assert "Configuraci\u00f3n base" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
         auth_client.post(
@@ -101,3 +102,5 @@ class TestDashboardFeatureFlows:
 
         assert response.status_code == 200
         assert 'class="profile-agresivo"' in content
+
+

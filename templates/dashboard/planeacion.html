@@ -292,10 +292,14 @@
             </div>
         </div>
         {% include 'dashboard/candidate_asset_ranking.html' %}
+        <div class="alert alert-light border mb-4">
+            <strong>Lectura sugerida del cierre:</strong>
+            <span class="text-muted">primero mirá la propuesta incremental preferida como decisión sugerida. Después usá la simulación before/after para validar el impacto esperado antes de ejecutar el aporte.</span>
+        </div>
         <div class="card border-success shadow-sm mb-4">
             <div class="card-header bg-light">
-                <h5 class="mb-0">Propuesta incremental preferida</h5>
-                <small class="text-muted">Síntesis de la mejor construcción disponible entre los comparadores activos.</small>
+                <h5 class="mb-0">Decisión sugerida: propuesta incremental preferida</h5>
+                <small class="text-muted">Síntesis de la mejor construcción disponible entre los comparadores activos, como lectura principal para decidir el aporte.</small>
             </div>
             <div class="card-body">
                 <p class="text-muted mb-3">{{ preferred_incremental_portfolio_proposal.explanation }}</p>
@@ -371,8 +375,8 @@
         </div>
         <div class="card border-success-subtle shadow-sm mb-4">
             <div class="card-header bg-light">
-                <h5 class="mb-0">Impacto incremental simulado</h5>
-                <small class="text-muted">Comparación before/after de referencia usando el top candidato por bloque recomendado.</small>
+                <h5 class="mb-0">Validación before/after del impacto incremental</h5>
+                <small class="text-muted">Comparación de referencia para validar cómo cambia el portafolio si aplicás una compra incremental construida con los candidatos sugeridos.</small>
             </div>
             <div class="card-body">
                 <p class="text-muted mb-3">{{ incremental_portfolio_simulation.interpretation }}</p>
