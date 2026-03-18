@@ -193,6 +193,14 @@ def test_local_macro_series_service_builds_context_summary_with_country_risk():
         source="fx_json",
         external_id="riesgo_pais_arg",
         frequency="daily",
+        fecha=date(2026, 2, 14),
+        value=1200.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="riesgo_pais_arg",
+        source="fx_json",
+        external_id="riesgo_pais_arg",
+        frequency="daily",
         fecha=date(2026, 3, 16),
         value=1350.0,
     )
@@ -201,6 +209,9 @@ def test_local_macro_series_service_builds_context_summary_with_country_risk():
 
     assert context["riesgo_pais_arg"] == 1350.0
     assert context["riesgo_pais_arg_date"].isoformat() == "2026-03-16"
+    assert context["riesgo_pais_arg_change_30d"] == 150.0
+    assert context["riesgo_pais_arg_change_pct_30d"] == 12.5
+    assert context["riesgo_pais_arg_base_date_30d"].isoformat() == "2026-02-14"
 
 
 @pytest.mark.django_db

@@ -60,6 +60,7 @@ class TestDashboardView:
         assert 'USD oficial mayorista BCRA' in body
         assert 'Riesgo país Argentina' in body
         assert 'Fuente: ArgentinaDatos' in body
+        assert 'Cambio 30d:' in body
 
     def test_analisis_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:analisis')

@@ -34,6 +34,7 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
 - `local_sovereign_hard_dollar_dependence`
 - `local_fx_gap_high`
 - `local_country_risk_high`
+- `local_country_risk_deteriorating`
 
 ## Metodologia
 
@@ -49,6 +50,8 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
 - `badlar_real_carry_pct = BADLAR - IPC yoy`
 - `fx_gap_pct = (MEP / oficial - 1) * 100`
 - `riesgo_pais_arg`: ultimo valor persistido de la serie local configurada
+- `riesgo_pais_arg_change_30d`: cambio en puntos contra la ultima referencia disponible con al menos 30 dias de lookback
+- `riesgo_pais_arg_change_pct_30d`: cambio porcentual sobre esa misma referencia
 
 ## Limitaciones
 
@@ -57,3 +60,4 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
 - no usa break-even de inflacion
 - no separa hard dollar vs tasa fija local con una taxonomia mas fina
 - MEP y riesgo pais solo se usan si la serie ya existe en `MacroSeriesSnapshot`
+- el deterioro de riesgo pais usa una comparacion simple contra la ultima observacion disponible a 30 dias, sin suavizados ni ventanas multiples

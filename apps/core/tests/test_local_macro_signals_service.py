@@ -159,6 +159,38 @@ def test_local_macro_signals_detects_high_country_risk_with_sovereign_weight():
     assert keyed["local_country_risk_high"]["evidence"]["riesgo_pais_arg"] == 1250.0
 
 
+def test_local_macro_signals_detects_country_risk_deterioration_with_material_local_exposure():
+    positions = [
+        build_position(symbol="GD30", market_value=240.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="AL30", market_value=140.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="SPY", market_value=620.0, sector="Indice", country="USA", asset_type="equity", strategic_bucket="Growth", patrimonial_type="Equity", currency="USD"),
+    ]
+    positions_loader = Mock()
+    positions_loader._load_current_positions.return_value = positions
+    positions_loader._is_cash_like_position.return_value = False
+
+    macro_service = Mock()
+    macro_service.get_context_summary.return_value = {
+        "badlar_privada": 28.0,
+        "ipc_nacional_variation_yoy": 36.0,
+        "ipc_nacional_variation_ytd": 9.0,
+        "usdars_oficial": 1000.0,
+        "riesgo_pais_arg": 1280.0,
+        "riesgo_pais_arg_change_30d": 220.0,
+        "riesgo_pais_arg_change_pct_30d": 20.75,
+    }
+    service = LocalMacroSignalsService(positions_loader=positions_loader, macro_service=macro_service)
+
+    result = service.calculate()
+    signals = service.build_recommendation_signals()
+
+    assert result["summary"]["riesgo_pais_arg_change_30d"] == 220.0
+    assert result["summary"]["riesgo_pais_arg_change_pct_30d"] == 20.75
+    keyed = {signal["signal_key"]: signal for signal in signals}
+    assert "local_country_risk_deteriorating" in keyed
+    assert keyed["local_country_risk_deteriorating"]["evidence"]["riesgo_pais_arg_change_30d"] == 220.0
+
+
 def test_local_macro_signals_detects_single_name_concentration_in_local_sovereigns():
     positions = [
         build_position(symbol="GD30", market_value=300.0, sector="Soberano", country="Argentina", asset_type="bond"),

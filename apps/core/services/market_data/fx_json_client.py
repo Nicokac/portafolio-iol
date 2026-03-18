@@ -31,17 +31,46 @@ class FXJSONClient:
         )
 
     def fetch_riesgo_pais(self) -> list[dict]:
+        if not self.country_risk_url:
+            raise OptionalSourceUnavailableError("RIESGO_PAIS_API_URL is required")
+
         headers = {}
         if self.country_risk_api_key:
             headers[self.country_risk_api_key_header] = self.country_risk_api_key
-        return self._fetch_configured_scalar(
-            url=self.country_risk_url,
-            value_path=self.country_risk_value_path,
-            date_path=self.country_risk_date_path,
-            missing_url_error="RIESGO_PAIS_API_URL is required",
-            missing_value_error=f"Missing configured value path for riesgo pais: {self.country_risk_value_path}",
-            headers=headers or None,
-        )
+        request_kwargs = {"timeout": 30}
+        if headers:
+            request_kwargs["headers"] = headers
+
+        response = requests.get(self.country_risk_url, **request_kwargs)
+        response.raise_for_status()
+        payload = response.json()
+
+        if isinstance(payload, list):
+            rows = []
+            for item in payload:
+                value = self._extract_path(item, self.country_risk_value_path)
+                if value is None:
+                    raise ValueError(f"Missing configured value path for riesgo pais: {self.country_risk_value_path}")
+                raw_date = self._extract_path(item, self.country_risk_date_path) if self.country_risk_date_path else None
+                rows.append(
+                    {
+                        "fecha": self._parse_date(raw_date),
+                        "value": float(value),
+                    }
+                )
+            return rows
+
+        value = self._extract_path(payload, self.country_risk_value_path)
+        if value is None:
+            raise ValueError(f"Missing configured value path for riesgo pais: {self.country_risk_value_path}")
+
+        raw_date = self._extract_path(payload, self.country_risk_date_path) if self.country_risk_date_path else None
+        return [
+            {
+                "fecha": self._parse_date(raw_date),
+                "value": float(value),
+            }
+        ]
 
     def _fetch_configured_scalar(
         self,

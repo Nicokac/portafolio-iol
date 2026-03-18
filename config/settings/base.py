@@ -177,7 +177,7 @@ USDARS_MEP_API_VALUE_PATH = config('USDARS_MEP_API_VALUE_PATH', default='venta')
 USDARS_MEP_API_DATE_PATH = config('USDARS_MEP_API_DATE_PATH', default='')
 RIESGO_PAIS_API_URL = config(
     'RIESGO_PAIS_API_URL',
-    default='https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo',
+    default='https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais',
 )
 RIESGO_PAIS_API_VALUE_PATH = config('RIESGO_PAIS_API_VALUE_PATH', default='valor')
 RIESGO_PAIS_API_DATE_PATH = config('RIESGO_PAIS_API_DATE_PATH', default='fecha')

@@ -62,23 +62,26 @@ def test_fx_json_client_fetches_country_risk_from_configured_json(mock_get, sett
 
 @patch("apps.core.services.market_data.fx_json_client.requests.get")
 def test_fx_json_client_fetches_country_risk_from_argentinadatos_shape_without_api_key(mock_get, settings):
-    settings.RIESGO_PAIS_API_URL = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo"
+    settings.RIESGO_PAIS_API_URL = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais"
     settings.RIESGO_PAIS_API_VALUE_PATH = "valor"
     settings.RIESGO_PAIS_API_DATE_PATH = "fecha"
     settings.RIESGO_PAIS_API_KEY = ""
 
     mock_response = Mock()
-    mock_response.json.return_value = {
-        "fecha": "2026-03-17",
-        "valor": 742,
-    }
+    mock_response.json.return_value = [
+        {"fecha": "2026-03-16", "valor": 730},
+        {"fecha": "2026-03-17", "valor": 742},
+    ]
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
     rows = FXJSONClient().fetch_riesgo_pais()
 
-    assert rows == [{"fecha": date(2026, 3, 17), "value": 742.0}]
+    assert rows == [
+        {"fecha": date(2026, 3, 16), "value": 730.0},
+        {"fecha": date(2026, 3, 17), "value": 742.0},
+    ]
     mock_get.assert_called_once_with(
-        "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo",
+        "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais",
         timeout=30,
     )

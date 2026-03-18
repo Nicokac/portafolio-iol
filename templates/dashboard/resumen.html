@@ -250,6 +250,18 @@
                 </div>
                 <div class="text-body-secondary small">Fuente: ArgentinaDatos</div>
                 <div class="text-body-secondary small">Último dato {% if macro_local.riesgo_pais_arg_date %}{{ macro_local.riesgo_pais_arg_date }}{% else %}-{% endif %}</div>
+                <div class="text-body-secondary small">
+                    Cambio 30d:
+                    {% if macro_local.riesgo_pais_arg_change_30d is not None %}
+                    {{ macro_local.riesgo_pais_arg_change_30d|floatformat:0 }}
+                    pts
+                    {% if macro_local.riesgo_pais_arg_change_pct_30d is not None %}
+                    ({{ macro_local.riesgo_pais_arg_change_pct_30d|pct:1 }})
+                    {% endif %}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

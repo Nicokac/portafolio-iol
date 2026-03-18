@@ -115,6 +115,7 @@ class LocalMacroSeriesService:
             float(usdars_latest.value) > 0
         ):
             fx_gap_pct = ((float(usdars_mep_latest.value) / float(usdars_latest.value)) - 1) * 100
+        riesgo_pais_change_30d = self._calculate_series_change("riesgo_pais_arg", lookback_days=30)
         portfolio_ytd = self._calculate_portfolio_ytd(ipc_variation_ytd)
         badlar_ytd = self._calculate_badlar_ytd()
         portfolio_excess_ytd_vs_badlar = None
@@ -132,6 +133,14 @@ class LocalMacroSeriesService:
             "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
             "riesgo_pais_arg": float(riesgo_pais_latest.value) if riesgo_pais_latest else None,
             "riesgo_pais_arg_date": riesgo_pais_latest.fecha if riesgo_pais_latest else None,
+            "riesgo_pais_arg_change_30d": (
+                round(riesgo_pais_change_30d["change"], 2) if riesgo_pais_change_30d.get("change") is not None else None
+            ),
+            "riesgo_pais_arg_change_pct_30d": (
+                round(riesgo_pais_change_30d["change_pct"], 2)
+                if riesgo_pais_change_30d.get("change_pct") is not None else None
+            ),
+            "riesgo_pais_arg_base_date_30d": riesgo_pais_change_30d.get("base_date"),
             "badlar_privada": float(badlar_latest.value) if badlar_latest else None,
             "badlar_privada_date": badlar_latest.fecha if badlar_latest else None,
             "badlar_ytd": round(badlar_ytd, 2) if badlar_ytd is not None else None,
@@ -381,6 +390,32 @@ class LocalMacroSeriesService:
         period_returns = (df["value"].astype(float) / 100.0) / 252.0
         cumulative = (1 + period_returns).prod() - 1
         return cumulative * 100
+
+    def _calculate_series_change(self, series_key: str, *, lookback_days: int) -> dict:
+        latest_snapshot = self._get_latest_snapshot(series_key)
+        if latest_snapshot is None:
+            return {"change": None, "change_pct": None, "base_date": None}
+
+        cutoff_date = latest_snapshot.fecha - pd.Timedelta(days=lookback_days)
+        base_snapshot = (
+            MacroSeriesSnapshot.objects.filter(series_key=series_key, fecha__lte=cutoff_date)
+            .order_by("-fecha")
+            .first()
+        )
+        if base_snapshot is None:
+            return {"change": None, "change_pct": None, "base_date": None}
+
+        latest_value = float(latest_snapshot.value)
+        base_value = float(base_snapshot.value)
+        change_pct = None
+        if base_value != 0:
+            change_pct = ((latest_value / base_value) - 1) * 100
+
+        return {
+            "change": latest_value - base_value,
+            "change_pct": change_pct,
+            "base_date": base_snapshot.fecha,
+        }
 
     def _fetch_rows(self, config: dict) -> list[dict]:
         if config["source"] == "bcra":

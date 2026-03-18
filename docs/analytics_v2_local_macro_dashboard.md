@@ -35,5 +35,6 @@ Reglas de integracion:
 
 - reutiliza `LocalMacroSeriesService.get_context_summary()`
 - consume `riesgo_pais_arg` y `riesgo_pais_arg_date`
+- consume tambien `riesgo_pais_arg_change_30d` y `riesgo_pais_arg_change_pct_30d`
 - muestra la referencia como dato operativo breve
 - documenta la fuente actual como `ArgentinaDatos`
