@@ -521,14 +521,17 @@ class TestDashboardView:
         assert 'Candidatos de activos dentro de los bloques recomendados' in body
         assert 'Ranking incremental MVP' in body
         assert 'KO' in body
+        assert 'Núcleo de decisión' in body
         assert 'Impacto incremental simulado' in body
         assert 'La compra reduce la fragilidad del portafolio.' in body
         assert 'Expected return' in body
         assert 'Fragility' in body
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
+        assert 'Exploración y comparación' in body
         assert 'Resumen ejecutivo unificado de decisión incremental' in body
         assert 'La propuesta actual requiere validación antes de adoptar el aporte incremental.' in body
+        assert 'Seguimiento y governance' in body
         assert 'Seguimiento operativo incremental' in body
         assert 'Plan baseline' in body
         assert 'La ultima decision manual registrada es aceptada sobre Plan manual A.' in body

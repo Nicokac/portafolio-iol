@@ -546,18 +546,28 @@ Limitaciones:
 
 ## Racionalizacion de la UI de Planeacion
 
-La hoja `Planeacion` se recorto para volver a priorizar decision sobre workflow.
+La hoja `Planeacion` se reordeno para que la lectura recomendada arranque por `Aportes` y responda mas rapido la pregunta:
 
-Superficie visible actual:
+- que bloques reforzar
+- que activos mirar
+- cual propuesta incremental parece mejor
+- que impacto tendria esa compra
 
-- propuesta de compra mensual
-- ranking de candidatos
-- simulacion incremental default
-- propuesta incremental preferida
-- resumen ejecutivo unificado de decision incremental
-- seguimiento operativo incremental
-- historial reciente de propuestas guardadas
-- comparadores incrementales
+Jerarquia visible actual dentro de `Aportes`:
+
+- nucleo de decision:
+  - propuesta de compra mensual
+  - ranking de candidatos
+  - propuesta incremental preferida
+  - simulacion incremental default
+- exploracion secundaria:
+  - resumen ejecutivo unificado
+  - comparadores incrementales
+  - plan manual y herramientas alternativas
+- seguimiento y governance:
+  - baseline activo
+  - ultima decision manual
+  - historial reciente de propuestas guardadas
 
 Bloques operativos retirados del render principal:
 
@@ -573,7 +583,7 @@ Bloques operativos retirados del render principal:
 Criterio:
 
 - mantener visible el nucleo decisional
-- dejar el workflow manual basico disponible via historial y baseline
+- dejar exploracion y workflow manual disponibles, pero subordinados
 - evitar duplicar varias lecturas derivadas del mismo estado incremental
 
 ## Deuda tecnica detectada

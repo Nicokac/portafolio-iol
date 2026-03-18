@@ -56,9 +56,12 @@ class TestDashboardFeatureFlows:
         assert "monthly-plan-result" in content
         assert "optimization-result" in content
         assert "Candidatos de activos dentro de los bloques recomendados" in content
+        assert "Núcleo de decisión" in content
         assert "Impacto incremental simulado" in content
         assert "Propuesta incremental preferida" in content
+        assert "Exploración y comparación" in content
         assert "Resumen ejecutivo unificado" in content
+        assert "Seguimiento y governance" in content
         assert "Seguimiento operativo incremental" in content
         assert "Historial reciente de propuestas guardadas" in content
         assert "Checklist de adopción de propuesta incremental" not in content

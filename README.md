@@ -45,6 +45,7 @@ Drill-downs hoy visibles:
 
 ### Planeacion y decision incremental
 
+- tab `Aportes` como punto de entrada recomendado de la hoja
 - recomendaciones combinadas
 - sugerencias de rebalanceo
 - simulacion de compra, venta y rebalanceo
@@ -56,6 +57,7 @@ Drill-downs hoy visibles:
 - comparadores incrementales automaticos, por candidato, por split y manuales
 - propuesta incremental preferida
 - historial reciente de propuestas guardadas y decision manual
+- exploracion y seguimiento relegados a secciones secundarias dentro de `Planeacion`
 
 ### Observabilidad y gobierno de datos
 
