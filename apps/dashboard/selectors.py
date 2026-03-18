@@ -2466,52 +2466,6 @@ def get_incremental_adoption_checklist(
     }
 
 
-def get_incremental_snapshot_vs_current_comparison(
-    query_params,
-    *,
-    user,
-    capital_amount: int | float = 600000,
-    history_limit: int = 10,
-) -> Dict:
-    """Compara un snapshot incremental guardado contra la propuesta preferida actual."""
-
-    history = get_incremental_proposal_history(user=user, limit=history_limit)
-    preferred_payload = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=capital_amount)
-    preferred = preferred_payload.get("preferred")
-
-    selected_snapshot_id = str(_query_param_value(query_params, "saved_proposal_id", "")).strip()
-    selected_snapshot = None
-    if history["items"]:
-        if selected_snapshot_id:
-            selected_snapshot = next(
-                (item for item in history["items"] if str(item.get("id")) == selected_snapshot_id),
-                None,
-            )
-        if selected_snapshot is None:
-            selected_snapshot = history["items"][0]
-
-    comparison = None
-    if selected_snapshot and preferred:
-        comparison = _build_incremental_snapshot_comparison(selected_snapshot, preferred)
-
-    return {
-        "available_snapshots": [
-            {
-                "id": item.get("id"),
-                "label": item.get("proposal_label"),
-                "created_at": item.get("created_at"),
-            }
-            for item in history["items"]
-        ],
-        "selected_snapshot_id": str(selected_snapshot.get("id")) if selected_snapshot else None,
-        "selected_snapshot": selected_snapshot,
-        "current_preferred": preferred,
-        "comparison": comparison,
-        "has_comparison": comparison is not None,
-        "explanation": _build_incremental_snapshot_comparison_explanation(selected_snapshot, preferred, comparison),
-    }
-
-
 def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
     return {
         str(item.get("block") or ""): item
@@ -2628,32 +2582,6 @@ def _resolve_incremental_snapshot_winner(saved_score: float | None, current_scor
     if current_score < saved_score:
         return "saved"
     return "tie"
-
-
-def _build_incremental_snapshot_comparison_explanation(saved_item: Dict | None, current_item: Dict | None, comparison: Dict | None) -> str:
-    if not saved_item and not current_item:
-        return "Todavia no hay snapshots guardados ni propuesta preferida actual para comparar."
-    if not saved_item:
-        return "Todavia no hay un snapshot guardado para comparar contra la propuesta preferida actual."
-    if not current_item:
-        return "Todavia no hay una propuesta preferida actual construible para comparar contra el snapshot guardado."
-    if comparison is None:
-        return "No fue posible construir la comparacion entre snapshot guardado y propuesta actual."
-    winner = comparison.get("winner")
-    if winner == "current":
-        return (
-            f"La propuesta preferida actual ({current_item['proposal_label']}) mejora el score comparativo frente al snapshot "
-            f"guardado ({saved_item['proposal_label']})."
-        )
-    if winner == "saved":
-        return (
-            f"El snapshot guardado ({saved_item['proposal_label']}) todavia supera a la propuesta preferida actual "
-            f"({current_item['proposal_label']}) bajo el score comparativo actual."
-        )
-    return (
-        f"El snapshot guardado ({saved_item['proposal_label']}) y la propuesta preferida actual "
-        f"({current_item['proposal_label']}) quedan empatados bajo el score comparativo actual."
-    )
 
 
 def _build_incremental_baseline_drift_explanation(
