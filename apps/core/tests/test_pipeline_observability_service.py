@@ -1,4 +1,4 @@
-from datetime import datetime, timezone as dt_timezone
+from datetime import date, datetime, timezone as dt_timezone
 
 from django.utils import timezone
 
@@ -62,7 +62,7 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["latest_asset_snapshot_at"] == "2026-03-17 10:00"
     assert summary["latest_account_snapshot_at"] == "2026-03-17 10:00"
     assert summary["latest_portfolio_snapshot_date"] == "2026-03-16"
-    assert summary["days_since_last_portfolio_snapshot"] == 1
+    assert summary["days_since_last_portfolio_snapshot"] == (timezone.localdate() - date(2026, 3, 16)).days
     assert summary["usable_observations_count"] == 21
     assert summary["available_price_dates_count"] == 28
     assert summary["covariance_readiness"]["status"] == "ready"

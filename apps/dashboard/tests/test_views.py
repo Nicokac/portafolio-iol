@@ -373,327 +373,75 @@ class TestDashboardView:
             'apps.dashboard.views.get_monthly_allocation_plan',
             lambda capital_amount=600000: {
                 'capital_total': capital_amount,
-                'recommended_blocks_count': 2,
-                'criterion': 'rules_based_analytics_v2_mvp',
+                'recommended_blocks_count': 1,
+                'criterion': 'signals_first',
+                'explanation': 'Plan incremental MVP',
                 'recommended_blocks': [
                     {
-                        'label': 'Defensive / resiliente',
-                        'suggested_amount': 350000,
-                        'suggested_pct': 58.33,
-                        'score': 4.5,
-                        'reason': 'cubre defensive_gap',
+                        'label': 'Tecnología / growth',
+                        'suggested_amount': 600000,
+                        'suggested_pct': 100.0,
+                        'score': 3.4,
+                        'reason': 'Se prioriza retorno esperado estructural.',
                         'score_breakdown': {
-                            'positive_signals': [
-                                {'signal': 'factor_defensive_gap', 'impact': '+3.00', 'source': 'factor_exposure'}
-                            ],
-                            'negative_signals': [],
-                            'notes': 'Score explicable MVP',
+                            'positive_signals': [{'signal': 'expected_return_bucket_preferred', 'impact': '+1.2', 'source': 'expected_return'}],
+                            'negative_signals': [{'signal': 'risk_concentration_tech', 'impact': '-0.4', 'source': 'risk_contribution'}],
+                            'notes': 'Bloque simple de ejemplo.',
                         },
-                    },
-                    {
-                        'label': 'Dividend / ingresos pasivos',
-                        'suggested_amount': 250000,
-                        'suggested_pct': 41.67,
-                        'score': 3.0,
-                        'reason': 'cubre dividend_gap',
-                        'score_breakdown': {
-                            'positive_signals': [],
-                            'negative_signals': [
-                                {'signal': 'scenario_vulnerability_tech', 'impact': '-1.00', 'source': 'scenario_analysis'}
-                            ],
-                            'notes': 'Score explicable MVP',
-                        },
-                    },
+                    }
                 ],
-                'avoided_blocks': [
-                    {'label': 'Tecnología / growth', 'reason': 'ya domina el riesgo'}
-                ],
-                'explanation': 'Plan incremental MVP',
+                'avoided_blocks': [],
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_candidate_asset_ranking',
             lambda capital_amount=600000: {
-                'capital_total': capital_amount,
-                'candidate_assets_count': 2,
                 'candidate_assets': [
-                    {
-                        'asset': 'KO',
-                        'block': 'defensive',
-                        'block_label': 'Defensive / resiliente',
-                        'score': 8.4,
-                        'rank': 1,
-                        'reasons': ['defensive_sector_match'],
-                        'main_reason': 'defensive_sector_match',
-                    },
-                    {
-                        'asset': 'SPY',
-                        'block': 'global_index',
-                        'block_label': 'Indice global',
-                        'score': 6.8,
-                        'rank': 2,
-                        'reasons': ['stable_global_exposure'],
-                        'main_reason': 'stable_global_exposure',
-                    },
+                    {'asset': 'KO', 'block': 'defensive', 'score': 8.4, 'rank': 1, 'reasons': ['defensive_sector_match'], 'main_reason': 'defensive_sector_match'}
                 ],
-                'by_block': [],
+                'candidate_assets_count': 1,
+                'by_block': {},
                 'explanation': 'Ranking incremental MVP',
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_portfolio_simulation',
             lambda capital_amount=600000: {
-                'capital_amount': float(capital_amount),
-                'selected_candidates': [
-                    {
-                        'symbol': 'KO',
-                        'block': 'defensive',
-                        'block_label': 'Defensive / resiliente',
-                        'amount': 350000,
-                        'candidate_score': 8.4,
-                        'candidate_reason': 'defensive_sector_match',
-                    },
-                    {
-                        'symbol': 'SPY',
-                        'block': 'global_index',
-                        'block_label': 'Indice global',
-                        'amount': 250000,
-                        'candidate_score': 6.8,
-                        'candidate_reason': 'stable_global_exposure',
-                    },
-                ],
-                'before': {
-                    'expected_return_pct': 8.0,
-                    'real_expected_return_pct': 1.0,
-                    'fragility_score': 64.0,
-                    'worst_scenario_loss_pct': -12.0,
-                },
-                'after': {
-                    'expected_return_pct': 8.6,
-                    'real_expected_return_pct': 1.3,
-                    'fragility_score': 60.5,
-                    'worst_scenario_loss_pct': -11.2,
-                },
-                'delta': {
-                    'expected_return_change': 0.6,
-                    'real_expected_return_change': 0.3,
-                    'fragility_change': -3.5,
-                    'scenario_loss_change': 0.8,
-                    'risk_concentration_change': -1.1,
-                },
+                'selected_candidates': [{'symbol': 'KO', 'block_label': 'Defensive / resiliente', 'amount': 600000}],
+                'before': {'expected_return_pct': 8.0, 'real_expected_return_pct': 2.0, 'fragility_score': 18.0, 'worst_scenario_loss_pct': -12.0},
+                'after': {'expected_return_pct': 8.5, 'real_expected_return_pct': 2.2, 'fragility_score': 16.0, 'worst_scenario_loss_pct': -11.5},
+                'delta': {'expected_return_change': 0.5, 'real_expected_return_change': 0.2, 'fragility_change': -2.0, 'scenario_loss_change': 0.5, 'risk_concentration_change': -0.3},
                 'interpretation': 'La compra reduce la fragilidad del portafolio.',
-                'warnings': [],
                 'unmapped_blocks': [],
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_portfolio_simulation_comparison',
             lambda capital_amount=600000: {
-                'capital_amount': float(capital_amount),
-                'best_proposal_key': 'split_largest_block_top_two',
-                'best_label': 'Split del bloque más grande',
-                'proposals': [
-                    {
-                        'proposal_key': 'split_largest_block_top_two',
-                        'label': 'Split del bloque más grande',
-                        'selected_candidates': [
-                            {'symbol': 'KO', 'amount': 175000},
-                            {'symbol': 'PEP', 'amount': 175000},
-                            {'symbol': 'SPY', 'amount': 250000},
-                        ],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.7,
-                                'fragility_change': -4.0,
-                                'scenario_loss_change': 0.9,
-                            },
-                            'interpretation': 'Mejor equilibrio defensivo.',
-                        },
-                        'comparison_score': 5.1,
-                    },
-                    {
-                        'proposal_key': 'top_candidate_per_block',
-                        'label': 'Top candidato por bloque',
-                        'selected_candidates': [
-                            {'symbol': 'KO', 'amount': 350000},
-                            {'symbol': 'SPY', 'amount': 250000},
-                        ],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.6,
-                                'fragility_change': -3.5,
-                                'scenario_loss_change': 0.8,
-                            },
-                            'interpretation': 'Alternativa base.',
-                        },
-                        'comparison_score': 4.3,
-                    },
-                ],
+                'best_label': 'Top candidato por bloque',
+                'proposals': [{'proposal_label': 'Split del bloque más grande', 'label': 'Split del bloque más grande', 'comparison_score': 3.1, 'purchase_summary': 'KO · 600000', 'simulation': {'delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}}}],
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_candidate_incremental_portfolio_comparison',
             lambda query_params, capital_amount=600000: {
-                'submitted': True,
-                'available_blocks': [
-                    {'bucket': 'defensive', 'label': 'Defensive / resiliente', 'suggested_amount': 300000},
-                    {'bucket': 'global_index', 'label': 'Indice global', 'suggested_amount': 300000},
-                ],
-                'selected_block': 'defensive',
-                'selected_label': 'Defensive / resiliente',
-                'block_amount': 300000,
-                'best_proposal_key': 'KO',
-                'best_label': 'KO',
-                'proposals': [
-                    {
-                        'proposal_key': 'KO',
-                        'label': 'KO',
-                        'candidate': {'score': 8.4, 'main_reason': 'defensive_sector_match'},
-                        'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.5,
-                                'fragility_change': -2.5,
-                                'scenario_loss_change': 0.7,
-                            },
-                            'interpretation': 'KO mejora más la resiliencia.',
-                        },
-                        'comparison_score': 4.7,
-                    },
-                    {
-                        'proposal_key': 'MCD',
-                        'label': 'MCD',
-                        'candidate': {'score': 7.7, 'main_reason': 'dividend_profile'},
-                        'purchase_plan': [{'symbol': 'MCD', 'amount': 300000}],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.4,
-                                'fragility_change': -1.8,
-                                'scenario_loss_change': 0.5,
-                            },
-                            'interpretation': 'MCD mejora moderadamente.',
-                        },
-                        'comparison_score': 3.5,
-                    },
-                ],
+                'selected_block_label': 'Defensive / resiliente',
+                'comparisons': [{'candidate_symbol': 'KO', 'headline': 'KO mejora más la resiliencia.', 'comparison_score': 3.4, 'simulation': {'delta': {'expected_return_change': 0.3, 'fragility_change': -1.4, 'scenario_loss_change': 0.2}}}],
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_candidate_split_incremental_portfolio_comparison',
             lambda query_params, capital_amount=600000: {
-                'submitted': True,
-                'available_blocks': [
-                    {'bucket': 'defensive', 'label': 'Defensive / resiliente', 'suggested_amount': 300000},
-                ],
-                'selected_block': 'defensive',
-                'selected_label': 'Defensive / resiliente',
-                'block_amount': 300000,
-                'best_proposal_key': 'split_top_two',
-                'best_label': 'Split KO + MCD',
-                'proposals': [
-                    {
-                        'proposal_key': 'split_top_two',
-                        'label': 'Split KO + MCD',
-                        'purchase_plan': [
-                            {'symbol': 'KO', 'amount': 150000},
-                            {'symbol': 'MCD', 'amount': 150000},
-                        ],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.5,
-                                'fragility_change': -2.1,
-                                'scenario_loss_change': 0.7,
-                            },
-                            'interpretation': 'El split mejora mejor el balance riesgo/retorno.',
-                        },
-                        'comparison_score': 4.2,
-                    },
-                    {
-                        'proposal_key': 'single_top_candidate',
-                        'label': 'Concentrado en KO',
-                        'purchase_plan': [
-                            {'symbol': 'KO', 'amount': 300000},
-                        ],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.3,
-                                'fragility_change': -1.2,
-                                'scenario_loss_change': 0.3,
-                            },
-                            'interpretation': 'KO solo mejora de forma acotada.',
-                        },
-                        'comparison_score': 2.5,
-                    },
-                ],
+                'selected_block_label': 'Defensive / resiliente',
+                'proposals': [{'proposal_label': 'Split KO + MCD', 'label': 'Split KO + MCD', 'comparison_score': 3.6, 'simulation': {'delta': {'expected_return_change': 0.5, 'fragility_change': -1.8, 'scenario_loss_change': 0.4}}}],
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_manual_incremental_portfolio_simulation_comparison',
             lambda query_params, default_capital_amount=600000: {
-                'submitted': True,
-                'best_proposal_key': 'plan_a',
-                'best_label': 'Plan manual A',
-                'form_state': {
-                    'plans': [
-                        {
-                            'plan_key': 'plan_a',
-                            'label': 'Plan manual A',
-                            'capital_raw': '600000',
-                            'rows': [
-                                {'symbol': 'KO', 'amount_raw': '300000'},
-                                {'symbol': 'MCD', 'amount_raw': '300000'},
-                                {'symbol': '', 'amount_raw': ''},
-                            ],
-                            'warnings': [],
-                        },
-                        {
-                            'plan_key': 'plan_b',
-                            'label': 'Plan manual B',
-                            'capital_raw': '600000',
-                            'rows': [
-                                {'symbol': 'SPY', 'amount_raw': '600000'},
-                                {'symbol': '', 'amount_raw': ''},
-                                {'symbol': '', 'amount_raw': ''},
-                            ],
-                            'warnings': [],
-                        },
-                    ],
-                },
-                'proposals': [
-                    {
-                        'proposal_key': 'plan_a',
-                        'label': 'Plan manual A',
-                        'purchase_plan': [
-                            {'symbol': 'KO', 'amount': 300000},
-                            {'symbol': 'MCD', 'amount': 300000},
-                        ],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.7,
-                                'fragility_change': -3.8,
-                                'scenario_loss_change': 0.9,
-                            },
-                            'interpretation': 'Plan manual A reduce mejor la fragilidad.',
-                        },
-                        'comparison_score': 5.4,
-                    },
-                    {
-                        'proposal_key': 'plan_b',
-                        'label': 'Plan manual B',
-                        'purchase_plan': [
-                            {'symbol': 'SPY', 'amount': 600000},
-                        ],
-                        'simulation': {
-                            'delta': {
-                                'expected_return_change': 0.2,
-                                'fragility_change': -1.0,
-                                'scenario_loss_change': 0.1,
-                            },
-                            'interpretation': 'Plan manual B es más acotado.',
-                        },
-                        'comparison_score': 2.1,
-                    },
-                ],
+                'submitted': False,
+                'proposals': [],
+                'form_state': {'capital_amount': default_capital_amount},
             },
         )
         monkeypatch.setattr(
@@ -704,20 +452,8 @@ class TestDashboardView:
                     'selected_context': 'Defensive / resiliente',
                     'proposal_label': 'Split KO + MCD',
                     'comparison_score': 5.2,
-                    'purchase_plan': [
-                        {'symbol': 'KO', 'amount': 150000},
-                        {'symbol': 'MCD', 'amount': 150000},
-                    ],
-                    'simulation': {
-                        'delta': {
-                            'expected_return_change': 0.5,
-                            'real_expected_return_change': 0.2,
-                            'fragility_change': -2.1,
-                            'scenario_loss_change': 0.7,
-                            'risk_concentration_change': -0.6,
-                        },
-                        'interpretation': 'El split mejora mejor el balance riesgo/retorno.',
-                    },
+                    'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
+                    'simulation': {'delta': {'expected_return_change': 0.5, 'real_expected_return_change': 0.2, 'fragility_change': -2.1, 'scenario_loss_change': 0.7, 'risk_concentration_change': -0.6}, 'interpretation': 'El split mejora mejor el balance riesgo/retorno.'},
                 },
                 'has_manual_override': False,
                 'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
@@ -726,54 +462,27 @@ class TestDashboardView:
         monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_proposal_history',
             lambda user, limit=5, decision_status=None: {
-                'items': [
-                    {
-                        'proposal_label': 'Plan guardado 1',
-                        'source_label': 'Comparador manual',
-                        'selected_context': 'Plan manual enviado por el usuario',
-                        'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
-                        'simulation_delta': {
-                            'expected_return_change': 0.4,
-                            'fragility_change': -1.5,
-                            'scenario_loss_change': 0.3,
-                        },
-                        'manual_decision_status_label': 'Aceptada',
-                        'created_at': '2026-03-17 11:00',
-                    }
-                ],
+                'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
                 'count': 1,
                 'has_history': True,
                 'active_filter': 'all',
                 'active_filter_label': 'Todos',
-                'decision_counts': {'total': 1, 'pending': 0, 'accepted': 1, 'deferred': 0, 'rejected': 0},
-                'available_filters': [
-                    {'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True},
-                    {'key': 'accepted', 'label': 'Aceptada', 'count': 1, 'selected': False},
-                ],
+                'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
+                'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
                 'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_proposal_tracking_baseline',
             lambda user: {
-                'item': {
-                    'proposal_label': 'Plan baseline',
-                    'source_label': 'Comparador manual',
-                    'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
-                    'created_at': '2026-03-17 11:00',
-                },
+                'item': {'proposal_label': 'Plan baseline', 'source_label': 'Comparador manual', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'created_at': '2026-03-17 11:00'},
                 'has_baseline': True,
             },
         )
         monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_manual_decision_summary',
             lambda user: {
-                'item': {
-                    'proposal_label': 'Plan manual A',
-                    'manual_decision_status': 'accepted',
-                    'manual_decision_note': 'Lista para ejecutar',
-                    'manual_decided_at': '2026-03-17 12:00',
-                },
+                'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
                 'has_decision': True,
                 'status': 'accepted',
                 'status_label': 'Aceptada',
@@ -781,238 +490,23 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_pending_backlog_vs_baseline',
-            lambda user, limit=5: {
-                'baseline': {'proposal_label': 'Plan baseline'},
-                'items': [
-                    {
-                        'snapshot': {
-                            'proposal_label': 'Pendiente A',
-                            'selected_context': 'Defensive / resiliente',
-                            'is_backlog_front': False,
-                            'id': 7,
-                        },
-                        'summary': {
-                            'favorable_count': 3,
-                            'unfavorable_count': 1,
-                        },
-                        'status_label': 'Drift favorable',
-                        'score_difference': 0.7,
-                        'beats_baseline': True,
-                        'loses_vs_baseline': False,
-                        'ties_baseline': False,
-                    }
-                ],
-                'count': 1,
-                'pending_count': 1,
-                'has_baseline': True,
-                'has_pending_backlog': True,
-                'has_comparable_items': True,
-                'better_count': 1,
-                'worse_count': 0,
-                'tie_count': 0,
-                'best_candidate': {
-                    'snapshot': {
-                        'proposal_label': 'Pendiente A',
-                        'selected_context': 'Defensive / resiliente',
-                        'is_backlog_front': False,
-                    }
-                },
-                'headline': 'Hay 1 snapshot pendiente: 1 supera el baseline, 0 quedan por debajo y 0 empatan.',
-                'explanation': 'El backlog pendiente ya contiene al menos una alternativa superior al baseline activo: Pendiente A.',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_backlog_prioritization',
-            lambda user, limit=5: {
-                'baseline': {'proposal_label': 'Plan baseline'},
-                'items': [
-                    {
-                        'snapshot': {
-                            'proposal_label': 'Pendiente A',
-                            'selected_context': 'Defensive / resiliente',
-                            'is_backlog_front': False,
-                            'manual_decision_status': 'pending',
-                            'id': 7,
-                        },
-                        'priority': 'high',
-                        'priority_label': 'Alta',
-                        'score_difference': 0.7,
-                        'next_action': 'Revisar primero Pendiente A como candidata a reemplazar el baseline.',
-                    }
-                ],
-                'count': 1,
-                'counts': {'high': 1, 'medium': 0, 'low': 0},
-                'top_item': {
-                    'snapshot': {
-                        'proposal_label': 'Pendiente A',
-                    },
-                    'priority': 'high',
-                },
-                'has_priorities': True,
-                'headline': 'Backlog priorizado: 1 alta, 0 media y 0 baja. Primero revisar Pendiente A.',
-                'explanation': 'El backlog ya contiene alternativas que superan el baseline activo; Pendiente A queda arriba por prioridad.',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_backlog_front_summary',
-            lambda user, limit=5: {
-                'status': 'manual_front',
-                'baseline': {'proposal_label': 'Plan baseline'},
-                'front_item': {
-                    'snapshot': {'proposal_label': 'Pendiente A', 'is_backlog_front': True},
-                    'priority_label': 'Alta',
-                    'score_difference': 0.7,
-                },
-                'counts': {'high': 1, 'medium': 0, 'low': 0},
-                'has_summary': True,
-                'headline': 'Pendiente A lidera el backlog por marcacion manual frente al baseline Plan baseline.',
-                'items': [
-                    {'label': 'Baseline activo', 'value': 'Plan baseline'},
-                    {'label': 'Frente del backlog', 'value': 'Pendiente A'},
-                    {'label': 'Prioridad del frente', 'value': 'Alta'},
-                    {'label': 'Score vs baseline', 'value': 0.7},
-                ],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_backlog_operational_semaphore',
-            lambda query_params, user, capital_amount=600000, limit=5: {
-                'status': 'yellow',
-                'label': 'Amarillo',
-                'headline': 'Pendiente A ya supera al baseline activo.',
-                'items': [
-                    {'label': 'Drift vs baseline', 'value': 'Sin drift material'},
-                    {'label': 'Frente del backlog', 'value': 'Pendiente A'},
-                    {'label': 'Pendientes alta prioridad', 'value': 1},
-                ],
-                'has_signal': True,
-            },
-        )
-        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_decision_executive_summary',
             lambda query_params, user, capital_amount=600000, limit=5: {
                 'status': 'review_backlog',
-                'headline': 'Pendiente A lidera el backlog y conviene revisarlo antes de adoptar la propuesta actual.',
+                'headline': 'La propuesta actual requiere validación antes de adoptar el aporte incremental.',
                 'items': [
                     {'label': 'Semáforo operativo', 'value': 'Amarillo'},
                     {'label': 'Checklist de adopción', 'value': '5/5'},
-                    {'label': 'Estado ejecutivo actual', 'value': 'aligned'},
-                    {'label': 'Frente del backlog', 'value': 'Pendiente A'},
+                    {'label': 'Estado ejecutivo actual', 'value': 'review_backlog'},
+                    {'label': 'Frente del backlog', 'value': 'Plan guardado 1'},
                 ],
                 'has_summary': True,
             },
         )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_followup_executive_summary',
-            lambda query_params, user, capital_amount=600000: {
-                'status': 'aligned',
-                'headline': 'La propuesta actual se mantiene alineada con el baseline activo.',
-                'summary_items': [
-                    {'label': 'Propuesta actual', 'value': 'Split KO + MCD'},
-                    {'label': 'Baseline activo', 'value': 'Plan baseline'},
-                    {'label': 'Estado de drift', 'value': 'Drift favorable'},
-                    {'label': 'Score actual - baseline', 'value': 0.8},
-                ],
-                'preferred': {'proposal_label': 'Split KO + MCD'},
-                'baseline': {'proposal_label': 'Plan baseline'},
-                'drift': {},
-                'has_preferred': True,
-                'has_baseline': True,
-                'has_summary': True,
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_adoption_checklist',
-            lambda query_params, user, capital_amount=600000: {
-                'status': 'ready',
-                'adoption_ready': True,
-                'passed_count': 5,
-                'total_count': 5,
-                'headline': 'La propuesta actual supera el checklist operativo y puede pasar a decision manual.',
-                'items': [
-                    {'label': 'Existe propuesta incremental preferida', 'passed': True, 'detail': 'Split KO + MCD'},
-                    {'label': 'La propuesta tiene compra resumida', 'passed': True, 'detail': 'KO (150000), MCD (150000)'},
-                ],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_baseline_drift',
-            lambda query_params, user, capital_amount=600000: {
-                'baseline': {'proposal_label': 'Plan baseline'},
-                'current_preferred': {'proposal_label': 'Split KO + MCD'},
-                'comparison': {
-                    'metrics': [
-                        {
-                            'key': 'expected_return_change',
-                            'label': 'Expected return',
-                            'saved_value': 0.4,
-                            'current_value': 0.5,
-                            'difference': 0.1,
-                            'direction': 'favorable',
-                        },
-                        {
-                            'key': 'fragility_change',
-                            'label': 'Fragility',
-                            'saved_value': -1.5,
-                            'current_value': -2.1,
-                            'difference': -0.6,
-                            'direction': 'favorable',
-                        },
-                    ],
-                },
-                'summary': {
-                    'status': 'favorable',
-                    'favorable_count': 2,
-                    'unfavorable_count': 0,
-                    'changed_count': 2,
-                    'material_metrics': [
-                        {'key': 'expected_return_change', 'direction': 'favorable'},
-                        {'key': 'fragility_change', 'direction': 'favorable'},
-                    ],
-                },
-                'alerts': [
-                    {
-                        'severity': 'info',
-                        'title': 'No hay drift material',
-                        'message': 'La propuesta actual se mantiene alineada con el baseline activo.',
-                    }
-                ],
-                'alerts_count': 1,
-                'has_alerts': True,
-                'has_drift': True,
-                'has_baseline': True,
-                'explanation': 'La propuesta preferida actual mejora el baseline activo en las metricas incrementales relevantes.',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_snapshot_vs_current_comparison',
-            lambda query_params, user, capital_amount=600000: {
-                'available_snapshots': [
-                    {'id': 1, 'label': 'Plan guardado 1', 'created_at': '2026-03-17 11:00'}
-                ],
-                'selected_snapshot_id': '1',
-                'selected_snapshot': {'proposal_label': 'Plan guardado 1'},
-                'current_preferred': {'proposal_label': 'Split KO + MCD'},
-                'comparison': {
-                    'score_saved': 4.2,
-                    'score_current': 5.2,
-                    'score_difference': 1.0,
-                    'metrics': [
-                        {
-                            'label': 'Expected return',
-                            'saved_value': 0.4,
-                            'current_value': 0.5,
-                            'difference': 0.1,
-                        }
-                    ],
-                },
-                'has_comparison': True,
-                'explanation': 'La propuesta preferida actual mejora el score comparativo frente al snapshot guardado.',
-            },
-        )
+
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
+
         assert response.status_code == 200
         assert 'Propuesta de compra mensual' in body
         assert 'Plan incremental MVP' in body
@@ -1023,7 +517,6 @@ class TestDashboardView:
         assert 'Candidatos de activos dentro de los bloques recomendados' in body
         assert 'Ranking incremental MVP' in body
         assert 'KO' in body
-        assert 'defensive_sector_match' in body
         assert 'Impacto incremental simulado' in body
         assert 'La compra reduce la fragilidad del portafolio.' in body
         assert 'Expected return' in body
@@ -1031,271 +524,36 @@ class TestDashboardView:
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
         assert 'Resumen ejecutivo unificado de decisión incremental' in body
-        assert 'Pendiente A lidera el backlog y conviene revisarlo antes de adoptar la propuesta actual.' in body
-        assert 'Checklist de adopción de propuesta incremental' in body
-        assert 'La propuesta actual supera el checklist operativo y puede pasar a decision manual.' in body
-        assert 'Adopcion habilitada' in body
-        assert 'Workflow de decisión manual' in body
-        assert 'La ultima decision manual registrada es aceptada sobre Plan manual A.' in body
-        assert 'Resumen ejecutivo de seguimiento incremental' in body
-        assert 'La propuesta actual se mantiene alineada con el baseline activo.' in body
-        assert 'Baseline incremental de seguimiento' in body
-        assert 'Semaforización operativa del backlog incremental' in body
-        assert 'Pendiente A ya supera al baseline activo.' in body
-        assert 'Amarillo' in body
-        assert 'Resumen operativo del frente de backlog y baseline' in body
-        assert 'Pendiente A lidera el backlog por marcacion manual frente al baseline Plan baseline.' in body
+        assert 'La propuesta actual requiere validación antes de adoptar el aporte incremental.' in body
+        assert 'Seguimiento operativo incremental' in body
         assert 'Plan baseline' in body
-        assert 'Drift vs propuesta preferida actual' in body
-        assert 'Backlog pendiente vs baseline activo' in body
-        assert 'Pendiente A' in body
-        assert 'Prioridad operativa' in body
-        assert 'Priorización operativa del backlog incremental' in body
-        assert 'Revisar primero Pendiente A como candidata a reemplazar el baseline.' in body
-        assert 'Poner al frente' in body
-        assert 'Alertas de drift' in body
-        assert 'Drift favorable' in body
-        assert 'Promover a baseline' in body
+        assert 'La ultima decision manual registrada es aceptada sobre Plan manual A.' in body
         assert 'Historial reciente de propuestas guardadas' in body
         assert 'Filtrar por decisión manual' in body
         assert 'Aceptar visibles' in body
         assert 'Diferir visibles' in body
         assert 'Rechazar visibles' in body
-        assert 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.' in body
         assert 'Plan guardado 1' in body
-        assert 'Aceptar' in body
-        assert 'Diferir' in body
-        assert 'Rechazar' in body
+        assert 'Promover a baseline' in body
         assert 'Reaplicar en comparador manual' in body
-        assert 'Snapshot guardado vs propuesta actual' in body
-        assert 'Comparar snapshot' in body
         assert 'Comparador por split' in body
         assert 'Split KO + MCD' in body
         assert 'Comparador de propuestas incrementales' in body
         assert 'Split del bloque más grande' in body
-        assert 'Mejor balance' in body
         assert 'Comparador incremental por candidato' in body
-        assert 'Bloque a comparar' in body
-        assert 'KO mejora más la resiliencia.' in body
         assert 'Comparador incremental por split de bloque' in body
-        assert 'Bloque a dividir' in body
-        assert 'El split mejora mejor el balance riesgo/retorno.' in body
         assert 'Comparador manual de planes incrementales' in body
-        assert 'Plan manual A' in body
-        assert 'Plan manual B' in body
-        assert 'Comparar planes manuales' in body
-        assert 'Mejor balance manual' in body
-
-    def test_save_incremental_proposal_requires_authentication(self, client):
-        response = client.post(reverse('dashboard:save_incremental_proposal'))
-        assert response.status_code == 302
-        assert '/accounts/login/' in response['Location']
-
-    def test_save_incremental_proposal_persists_snapshot(self, auth_client, monkeypatch):
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
-            lambda query_params, capital_amount=600000: {
-                'preferred': {
-                    'source_key': 'manual_plan',
-                    'source_label': 'Comparador manual',
-                    'proposal_key': 'plan_a',
-                    'proposal_label': 'Plan manual A',
-                    'selected_context': 'Plan manual enviado por el usuario',
-                    'comparison_score': 5.4,
-                    'purchase_plan': [
-                        {'symbol': 'KO', 'amount': 300000},
-                        {'symbol': 'MCD', 'amount': 300000},
-                    ],
-                    'simulation': {
-                        'delta': {'expected_return_change': 0.7, 'fragility_change': -3.8},
-                        'interpretation': 'Plan manual A reduce mejor la fragilidad.',
-                    },
-                },
-                'explanation': 'Sintesis manual.',
-            },
-        )
-
-        response = auth_client.post(
-            reverse('dashboard:save_incremental_proposal'),
-            {'source_query': 'manual_compare=1'},
-        )
-
-        assert response.status_code == 302
-        snapshot = IncrementalProposalSnapshot.objects.get()
-        assert snapshot.proposal_label == 'Plan manual A'
-        audit = SensitiveActionAudit.objects.get(action='save_incremental_proposal')
-        assert audit.status == 'success'
-        messages = list(get_messages(response.wsgi_request))
-        assert any('Propuesta incremental guardada' in str(message) for message in messages)
-
-    def test_save_incremental_proposal_rejects_missing_preferred(self, auth_client, monkeypatch):
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
-            lambda query_params, capital_amount=600000: {
-                'preferred': None,
-                'explanation': 'Sin propuesta.',
-            },
-        )
-
-        response = auth_client.post(reverse('dashboard:save_incremental_proposal'), {'source_query': ''})
-
-        assert response.status_code == 302
-        assert IncrementalProposalSnapshot.objects.count() == 0
-        audit = SensitiveActionAudit.objects.get(action='save_incremental_proposal')
-        assert audit.status == 'denied'
-
-    def test_promote_incremental_baseline_requires_authentication(self, client):
-        response = client.post(reverse('dashboard:promote_incremental_baseline'))
-        assert response.status_code == 302
-        assert '/accounts/login/' in response['Location']
-
-    def test_promote_incremental_baseline_marks_snapshot(self, auth_client, user):
-        snapshot = IncrementalProposalSnapshot.objects.create(
-            user=user,
-            source_key='manual_plan',
-            source_label='Comparador manual',
-            proposal_key='plan_a',
-            proposal_label='Plan manual A',
-            capital_amount=600000,
-            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
-            simulation_delta={},
-        )
-
-        response = auth_client.post(reverse('dashboard:promote_incremental_baseline'), {'snapshot_id': snapshot.id})
-
-        assert response.status_code == 302
-        snapshot.refresh_from_db()
-        assert snapshot.is_tracking_baseline is True
-        audit = SensitiveActionAudit.objects.get(action='promote_incremental_baseline')
-        assert audit.status == 'success'
-
-    def test_promote_incremental_baseline_rejects_unknown_snapshot(self, auth_client):
-        response = auth_client.post(reverse('dashboard:promote_incremental_baseline'), {'snapshot_id': 999999})
-
-        assert response.status_code == 302
-        audit = SensitiveActionAudit.objects.get(action='promote_incremental_baseline')
-        assert audit.status == 'failed'
-
-    def test_promote_incremental_backlog_front_requires_authentication(self, client):
-        response = client.post(reverse('dashboard:promote_incremental_backlog_front'))
-        assert response.status_code == 302
-        assert '/accounts/login/' in response['Location']
-
-    def test_promote_incremental_backlog_front_marks_snapshot(self, auth_client, user):
-        snapshot = IncrementalProposalSnapshot.objects.create(
-            user=user,
-            source_key='manual_plan',
-            source_label='Comparador manual',
-            proposal_key='plan_a',
-            proposal_label='Plan manual A',
-            capital_amount=600000,
-            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
-            simulation_delta={},
-        )
-
-        response = auth_client.post(reverse('dashboard:promote_incremental_backlog_front'), {'snapshot_id': snapshot.id})
-
-        assert response.status_code == 302
-        snapshot.refresh_from_db()
-        assert snapshot.is_backlog_front is True
-        audit = SensitiveActionAudit.objects.get(action='promote_incremental_backlog_front')
-        assert audit.status == 'success'
-
-    def test_promote_incremental_backlog_front_rejects_invalid_snapshot(self, auth_client):
-        response = auth_client.post(reverse('dashboard:promote_incremental_backlog_front'), {'snapshot_id': 999999})
-
-        assert response.status_code == 302
-        audit = SensitiveActionAudit.objects.get(action='promote_incremental_backlog_front')
-        assert audit.status == 'failed'
-
-    def test_decide_incremental_proposal_requires_authentication(self, client):
-        response = client.post(reverse('dashboard:decide_incremental_proposal'))
-        assert response.status_code == 302
-        assert '/accounts/login/' in response['Location']
-
-    def test_decide_incremental_proposal_updates_snapshot(self, auth_client, user):
-        snapshot = IncrementalProposalSnapshot.objects.create(
-            user=user,
-            source_key='manual_plan',
-            source_label='Comparador manual',
-            proposal_key='plan_a',
-            proposal_label='Plan manual A',
-            capital_amount=600000,
-            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
-            simulation_delta={},
-        )
-
-        response = auth_client.post(
-            reverse('dashboard:decide_incremental_proposal'),
-            {'snapshot_id': snapshot.id, 'decision_status': 'accepted', 'decision_note': 'Lista para ejecutar'},
-        )
-
-        assert response.status_code == 302
-        snapshot.refresh_from_db()
-        assert snapshot.manual_decision_status == 'accepted'
-        assert snapshot.manual_decision_note == 'Lista para ejecutar'
-        audit = SensitiveActionAudit.objects.get(action='decide_incremental_proposal')
-        assert audit.status == 'success'
-
-    def test_decide_incremental_proposal_rejects_invalid_snapshot(self, auth_client):
-        response = auth_client.post(
-            reverse('dashboard:decide_incremental_proposal'),
-            {'snapshot_id': 999999, 'decision_status': 'accepted'},
-        )
-
-        assert response.status_code == 302
-        audit = SensitiveActionAudit.objects.get(action='decide_incremental_proposal')
-        assert audit.status == 'failed'
-
-    def test_bulk_decide_incremental_proposal_requires_authentication(self, client):
-        response = client.post(reverse('dashboard:bulk_decide_incremental_proposal'))
-        assert response.status_code == 302
-        assert '/accounts/login/' in response['Location']
-
-    def test_bulk_decide_incremental_proposal_updates_visible_snapshots(self, auth_client, user):
-        first = IncrementalProposalSnapshot.objects.create(
-            user=user,
-            source_key='manual_plan',
-            source_label='Comparador manual',
-            proposal_key='plan_a',
-            proposal_label='Plan manual A',
-            capital_amount=600000,
-            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
-            simulation_delta={},
-        )
-        second = IncrementalProposalSnapshot.objects.create(
-            user=user,
-            source_key='manual_plan',
-            source_label='Comparador manual',
-            proposal_key='plan_b',
-            proposal_label='Plan manual B',
-            capital_amount=600000,
-            purchase_plan=[{'symbol': 'MCD', 'amount': 300000}],
-            simulation_delta={},
-        )
-
-        response = auth_client.post(
-            reverse('dashboard:bulk_decide_incremental_proposal'),
-            {'decision_status': 'accepted', 'decision_status_filter': 'pending'},
-        )
-
-        assert response.status_code == 302
-        first.refresh_from_db()
-        second.refresh_from_db()
-        assert first.manual_decision_status == 'accepted'
-        assert second.manual_decision_status == 'accepted'
-        audit = SensitiveActionAudit.objects.get(action='bulk_decide_incremental_proposal')
-        assert audit.status == 'success'
-
-    def test_bulk_decide_incremental_proposal_rejects_empty_visible_selection(self, auth_client):
-        response = auth_client.post(
-            reverse('dashboard:bulk_decide_incremental_proposal'),
-            {'decision_status': 'accepted', 'decision_status_filter': 'accepted'},
-        )
-
-        assert response.status_code == 302
-        audit = SensitiveActionAudit.objects.get(action='bulk_decide_incremental_proposal')
-        assert audit.status == 'failed'
+        assert 'Checklist de adopción de propuesta incremental' not in body
+        assert 'Workflow de decisión manual' not in body
+        assert 'Resumen ejecutivo de seguimiento incremental' not in body
+        assert 'Baseline incremental de seguimiento' not in body
+        assert 'Semaforización operativa del backlog incremental' not in body
+        assert 'Resumen operativo del frente de backlog y baseline' not in body
+        assert 'Drift vs propuesta preferida actual' not in body
+        assert 'Backlog pendiente vs baseline activo' not in body
+        assert 'Priorización operativa del backlog incremental' not in body
+        assert 'Alertas de drift' not in body
+        assert 'Snapshot guardado vs propuesta actual' not in body
 
     def test_planeacion_accepts_reapplied_snapshot_query_in_manual_comparator(self, auth_client):
         response = auth_client.get(

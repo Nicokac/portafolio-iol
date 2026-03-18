@@ -564,3 +564,35 @@ Limitaciones:
 - es una sintesis heuristica
 - no crea score nuevo ni persistencia adicional
 - no reemplaza el detalle de checklist, drift o backlog
+
+## Racionalizacion de la UI de Planeacion
+
+La hoja `Planeacion` se recorto para volver a priorizar decision sobre workflow.
+
+Superficie visible actual:
+
+- propuesta de compra mensual
+- ranking de candidatos
+- simulacion incremental default
+- propuesta incremental preferida
+- resumen ejecutivo unificado de decision incremental
+- seguimiento operativo incremental
+- historial reciente de propuestas guardadas
+- comparadores incrementales
+
+Bloques operativos retirados del render principal:
+
+- checklist de adopcion
+- resumen ejecutivo de seguimiento
+- semaforo operativo del backlog
+- resumen del frente de backlog
+- drift detallado vs baseline
+- backlog pendiente vs baseline
+- priorizacion operativa explicita
+- comparacion snapshot guardado vs propuesta actual
+
+Criterio:
+
+- mantener visible el nucleo decisional
+- dejar el workflow manual basico disponible via historial y baseline
+- evitar duplicar varias lecturas derivadas del mismo estado incremental
