@@ -655,3 +655,28 @@ Queda fuera de alcance:
 - unificar toda la logica incremental en un servicio nuevo
 - cambiar los contratos de los selectors subyacentes
 - mover workflow incremental fuera de `Planeacion`
+
+## Contrato incremental comun
+
+Los selectors incrementales de dashboard exponen ahora un shape base compartido para propuestas y snapshots:
+
+- `proposal_key`
+- `proposal_label`
+- `label`
+- `purchase_plan`
+- `purchase_summary`
+- `comparison_score`
+- `simulation`
+- `simulation_delta`
+
+Objetivo:
+
+- bajar friccion entre comparadores
+- simplificar la propuesta preferida
+- facilitar comparacion con snapshots historicos
+
+Compatibilidad:
+
+- se mantienen las claves historicas existentes
+- `proposal_label` y `label` conviven como aliases compatibles
+- `simulation_delta` queda disponible tanto en snapshots como en propuestas comparadas

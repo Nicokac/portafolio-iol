@@ -1567,26 +1567,28 @@ def get_incremental_portfolio_simulation_comparison(capital_amount: int | float 
             proposal = builder(monthly_plan, candidate_ranking)
             if not proposal["purchase_plan"]:
                 proposals.append(
-                    {
-                        "proposal_key": proposal_key,
-                        "label": label,
-                        "purchase_plan": [],
-                        "selected_candidates": [],
-                        "unmapped_blocks": proposal["unmapped_blocks"],
-                        "simulation": {
-                            "before": {},
-                            "after": {},
-                            "delta": {
-                                "expected_return_change": None,
-                                "real_expected_return_change": None,
-                                "fragility_change": None,
-                                "scenario_loss_change": None,
-                                "risk_concentration_change": None,
+                    _normalize_incremental_proposal_item(
+                        {
+                            "proposal_key": proposal_key,
+                            "label": label,
+                            "purchase_plan": [],
+                            "selected_candidates": [],
+                            "unmapped_blocks": proposal["unmapped_blocks"],
+                            "simulation": {
+                                "before": {},
+                                "after": {},
+                                "delta": {
+                                    "expected_return_change": None,
+                                    "real_expected_return_change": None,
+                                    "fragility_change": None,
+                                    "scenario_loss_change": None,
+                                    "risk_concentration_change": None,
+                                },
+                                "interpretation": "No hay candidatos suficientes para construir esta variante.",
                             },
-                            "interpretation": "No hay candidatos suficientes para construir esta variante.",
-                        },
-                        "comparison_score": None,
-                    }
+                            "comparison_score": None,
+                        }
+                    )
                 )
                 continue
 
@@ -1597,20 +1599,22 @@ def get_incremental_portfolio_simulation_comparison(capital_amount: int | float 
                 }
             )
             proposals.append(
-                {
-                    "proposal_key": proposal_key,
-                    "label": label,
-                    "purchase_plan": proposal["purchase_plan"],
-                    "selected_candidates": proposal["selected_candidates"],
-                    "unmapped_blocks": proposal["unmapped_blocks"],
-                    "simulation": {
-                        "before": simulation["before"],
-                        "after": simulation["after"],
-                        "delta": simulation["delta"],
-                        "interpretation": simulation["interpretation"],
-                    },
-                    "comparison_score": _score_incremental_simulation(simulation),
-                }
+                _normalize_incremental_proposal_item(
+                    {
+                        "proposal_key": proposal_key,
+                        "label": label,
+                        "purchase_plan": proposal["purchase_plan"],
+                        "selected_candidates": proposal["selected_candidates"],
+                        "unmapped_blocks": proposal["unmapped_blocks"],
+                        "simulation": {
+                            "before": simulation["before"],
+                            "after": simulation["after"],
+                            "delta": simulation["delta"],
+                            "interpretation": simulation["interpretation"],
+                        },
+                        "comparison_score": _score_incremental_simulation(simulation),
+                    }
+                )
             )
 
         ranked = sorted(
@@ -1676,21 +1680,23 @@ def get_manual_incremental_portfolio_simulation_comparison(
                 }
             )
             proposals.append(
-                {
-                    "proposal_key": plan["proposal_key"],
-                    "label": plan["label"],
-                    "purchase_plan": plan["purchase_plan"],
-                    "capital_amount": plan["capital_amount"],
-                    "input_warnings": plan["warnings"],
-                    "simulation": {
-                        "before": simulation["before"],
-                        "after": simulation["after"],
-                        "delta": simulation["delta"],
-                        "interpretation": simulation["interpretation"],
-                        "warnings": simulation.get("warnings", []),
-                    },
-                    "comparison_score": _score_incremental_simulation(simulation),
-                }
+                _normalize_incremental_proposal_item(
+                    {
+                        "proposal_key": plan["proposal_key"],
+                        "label": plan["label"],
+                        "purchase_plan": plan["purchase_plan"],
+                        "capital_amount": plan["capital_amount"],
+                        "input_warnings": plan["warnings"],
+                        "simulation": {
+                            "before": simulation["before"],
+                            "after": simulation["after"],
+                            "delta": simulation["delta"],
+                            "interpretation": simulation["interpretation"],
+                            "warnings": simulation.get("warnings", []),
+                        },
+                        "comparison_score": _score_incremental_simulation(simulation),
+                    }
+                )
             )
 
         ranked = sorted(
@@ -1769,20 +1775,22 @@ def get_candidate_incremental_portfolio_comparison(
                 }
             )
             proposals.append(
-                {
-                    "proposal_key": candidate["asset"],
-                    "label": candidate["asset"],
-                    "candidate": candidate,
-                    "purchase_plan": purchase_plan,
-                    "simulation": {
-                        "before": simulation["before"],
-                        "after": simulation["after"],
-                        "delta": simulation["delta"],
-                        "interpretation": simulation["interpretation"],
-                        "warnings": simulation.get("warnings", []),
-                    },
-                    "comparison_score": _score_incremental_simulation(simulation),
-                }
+                _normalize_incremental_proposal_item(
+                    {
+                        "proposal_key": candidate["asset"],
+                        "label": candidate["asset"],
+                        "candidate": candidate,
+                        "purchase_plan": purchase_plan,
+                        "simulation": {
+                            "before": simulation["before"],
+                            "after": simulation["after"],
+                            "delta": simulation["delta"],
+                            "interpretation": simulation["interpretation"],
+                            "warnings": simulation.get("warnings", []),
+                        },
+                        "comparison_score": _score_incremental_simulation(simulation),
+                    }
+                )
             )
 
         ranked = sorted(
@@ -1883,20 +1891,22 @@ def get_candidate_split_incremental_portfolio_comparison(
                 }
             )
             proposals.append(
-                {
-                    "proposal_key": variant["proposal_key"],
-                    "label": variant["label"],
-                    "purchase_plan": variant["purchase_plan"],
-                    "composition": variant["composition"],
-                    "simulation": {
-                        "before": simulation["before"],
-                        "after": simulation["after"],
-                        "delta": simulation["delta"],
-                        "interpretation": simulation["interpretation"],
-                        "warnings": simulation.get("warnings", []),
-                    },
-                    "comparison_score": _score_incremental_simulation(simulation),
-                }
+                _normalize_incremental_proposal_item(
+                    {
+                        "proposal_key": variant["proposal_key"],
+                        "label": variant["label"],
+                        "purchase_plan": variant["purchase_plan"],
+                        "composition": variant["composition"],
+                        "simulation": {
+                            "before": simulation["before"],
+                            "after": simulation["after"],
+                            "delta": simulation["delta"],
+                            "interpretation": simulation["interpretation"],
+                            "warnings": simulation.get("warnings", []),
+                        },
+                        "comparison_score": _score_incremental_simulation(simulation),
+                    }
+                )
             )
 
         ranked = sorted(
@@ -1945,17 +1955,19 @@ def get_preferred_incremental_portfolio_proposal(
         if best_item is None:
             continue
         candidates.append(
-            {
-                "source_key": source_key,
-                "source_label": label,
-                "proposal_key": best_item["proposal_key"],
-                "proposal_label": best_item["label"],
-                "purchase_plan": best_item.get("purchase_plan", []),
-                "comparison_score": best_item.get("comparison_score"),
-                "simulation": best_item.get("simulation", {}),
-                "selected_context": _build_preferred_proposal_context(source_key, payload),
-                "priority_rank": _preferred_source_priority_rank(source_key, payload),
-            }
+            _normalize_incremental_proposal_item(
+                {
+                    "source_key": source_key,
+                    "source_label": label,
+                    "proposal_key": best_item["proposal_key"],
+                    "proposal_label": best_item.get("proposal_label") or best_item.get("label"),
+                    "purchase_plan": best_item.get("purchase_plan", []),
+                    "comparison_score": best_item.get("comparison_score"),
+                    "simulation": best_item.get("simulation", {}),
+                    "selected_context": _build_preferred_proposal_context(source_key, payload),
+                    "priority_rank": _preferred_source_priority_rank(source_key, payload),
+                }
+            )
         )
 
     best = None
@@ -1987,7 +1999,7 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
     items = []
     for item in raw_items:
         reapply = _build_incremental_snapshot_reapply_payload(item)
-        enriched = dict(item)
+        enriched = _normalize_incremental_proposal_item(item)
         enriched["manual_decision_status_label"] = _format_incremental_manual_decision_status(
             str(item.get("manual_decision_status") or "pending")
         )
@@ -2506,8 +2518,8 @@ def _candidate_blocks_map(candidate_ranking: Dict) -> Dict[str, Dict]:
 def _build_incremental_snapshot_comparison(saved_item: Dict, current_item: Dict) -> Dict:
     saved_score = _coerce_optional_float(saved_item.get("comparison_score"))
     current_score = _coerce_optional_float(current_item.get("comparison_score"))
-    saved_delta = dict(saved_item.get("simulation_delta") or {})
-    current_delta = dict((current_item.get("simulation") or {}).get("delta") or {})
+    saved_delta = dict(saved_item.get("simulation_delta") or (saved_item.get("simulation") or {}).get("delta") or {})
+    current_delta = dict(current_item.get("simulation_delta") or (current_item.get("simulation") or {}).get("delta") or {})
 
     metrics = []
     for key, label in (
@@ -3238,6 +3250,23 @@ def _extract_best_incremental_proposal(payload: Dict) -> Dict | None:
         if proposal.get("proposal_key") == best_key:
             return proposal
     return None
+
+
+def _normalize_incremental_proposal_item(item: Dict | None) -> Dict:
+    normalized = dict(item or {})
+    proposal_label = normalized.get("proposal_label") or normalized.get("label") or ""
+    normalized["proposal_label"] = proposal_label
+    normalized["label"] = normalized.get("label") or proposal_label
+    purchase_plan = list(normalized.get("purchase_plan") or [])
+    normalized["purchase_plan"] = purchase_plan
+    normalized["purchase_summary"] = normalized.get("purchase_summary") or _format_incremental_purchase_plan_summary(
+        purchase_plan
+    )
+    simulation = dict(normalized.get("simulation") or {})
+    simulation_delta = dict(normalized.get("simulation_delta") or simulation.get("delta") or {})
+    normalized["simulation"] = simulation
+    normalized["simulation_delta"] = simulation_delta
+    return normalized
 
 
 def _preferred_source_priority_rank(source_key: str, payload: Dict) -> int:

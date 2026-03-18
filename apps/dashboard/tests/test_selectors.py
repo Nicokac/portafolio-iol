@@ -1155,6 +1155,9 @@ class TestDashboardSelectors(TestCase):
         assert len(detail["proposals"]) == 3
         assert detail["best_proposal_key"] == "split_largest_block_top_two"
         assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
+        assert detail["proposals"][0]["proposal_label"] == detail["proposals"][0]["label"]
+        assert "expected_return_change" in detail["proposals"][0]["simulation_delta"]
+        assert detail["proposals"][0]["purchase_summary"]
 
     def test_get_manual_incremental_portfolio_simulation_comparison_ranks_manual_plans(self):
         cache.clear()
@@ -1210,6 +1213,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["best_proposal_key"] == "plan_a"
         assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
         assert detail["proposals"][0]["purchase_plan"][0]["symbol"] == "KO"
+        assert detail["proposals"][0]["proposal_label"] == "Plan manual A"
+        assert detail["proposals"][0]["simulation_delta"]["expected_return_change"] == 0.7
 
     def test_get_manual_incremental_portfolio_simulation_comparison_handles_empty_input(self):
         cache.clear()
@@ -1308,6 +1313,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["best_proposal_key"] == "KO"
         assert len(detail["proposals"]) == 3
         assert detail["proposals"][0]["comparison_score"] >= detail["proposals"][1]["comparison_score"]
+        assert detail["proposals"][0]["proposal_label"] == "KO"
+        assert detail["proposals"][0]["simulation_delta"]["fragility_change"] == -2.5
 
     def test_get_candidate_incremental_portfolio_comparison_handles_no_candidates(self):
         cache.clear()
@@ -1387,6 +1394,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["selected_block"] == "defensive"
         assert detail["best_proposal_key"] == "split_top_two"
         assert len(detail["proposals"]) == 2
+        assert detail["proposals"][0]["proposal_label"] == detail["proposals"][0]["label"]
+        assert detail["proposals"][0]["simulation_delta"]["expected_return_change"] == 0.5
 
     def test_get_candidate_split_incremental_portfolio_comparison_handles_missing_top_two(self):
         cache.clear()
@@ -1462,6 +1471,9 @@ class TestDashboardSelectors(TestCase):
         assert detail["preferred"]["source_key"] == "manual_plan"
         assert detail["preferred"]["proposal_label"] == "Plan manual A"
         assert detail["has_manual_override"] is True
+        assert detail["preferred"]["label"] == "Plan manual A"
+        assert detail["preferred"]["simulation_delta"] == {}
+        assert detail["preferred"]["purchase_summary"] == "SPY (600000)"
 
     def test_get_preferred_incremental_portfolio_proposal_handles_no_candidates(self):
         cache.clear()
@@ -1506,6 +1518,9 @@ class TestDashboardSelectors(TestCase):
         assert detail["has_history"] is True
         assert detail["active_filter"] == "all"
         assert detail["items"][0]["proposal_label"] == "Plan manual A"
+        assert detail["items"][0]["label"] == "Plan manual A"
+        assert detail["items"][0]["purchase_summary"] == "ko (200000), mcd (200000), xlu (200000)"
+        assert detail["items"][0]["simulation_delta"] == {}
         assert "manual_compare=1" in detail["items"][0]["reapply_querystring"]
         assert "plan_a_symbol_1=KO" in detail["items"][0]["reapply_querystring"]
         assert detail["items"][0]["reapply_truncated"] is True
