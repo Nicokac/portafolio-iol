@@ -14,7 +14,7 @@
         <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="text-muted small me-2">Navegación rápida:</span>
             <a class="btn btn-sm btn-outline-info" href="#planeacion-aportes">Aportes</a>
-            <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">Diagnóstico y recomendaciones</a>
+            <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">Diagnóstico previo</a>
             <a class="btn btn-sm btn-outline-success" href="#simulacion">Simulación táctica</a>
             <a class="btn btn-sm btn-outline-warning" href="#optimizacion">Optimización teórica</a>
             <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">Config base</a>
@@ -28,11 +28,11 @@
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h2 class="h5 mb-1">Mapa de trabajo</h2>
-                <p class="text-muted mb-0">La lectura recomendada ahora arranca por Aportes. Diagnóstico ayuda a priorizar; simulación, optimización y parámetros quedan como soporte secundario.</p>
+                <p class="text-muted mb-0">La lectura recomendada ahora arranca por Aportes. El diagnóstico previo solo ayuda a priorizar contexto antes de decidir el aporte; el resto queda como soporte secundario.</p>
             </div>
             <ul class="nav nav-pills gap-2" id="planeacion-tab-nav">
                 <li class="nav-item"><button type="button" class="nav-link active" data-planeacion-tab="planeacion-aportes">Aportes</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico</button></li>
+                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico previo</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación táctica</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización teórica</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="parametros-estrategia">Config base</button></li>
@@ -45,20 +45,24 @@
     <div class="planeacion-panel d-none" data-planeacion-panel="recomendaciones">
         <section id="recomendaciones" class="mb-4">
             <div class="border-start border-4 border-primary ps-3 mb-4">
-                <h2 class="mb-1">Diagnóstico y recomendaciones</h2>
-                <p class="text-muted mb-0">Integración de recomendaciones, alertas y rebalanceo para priorizar acciones.</p>
+                <h2 class="mb-1">Diagnóstico previo al aporte</h2>
+                <p class="text-muted mb-0">Contexto previo con recomendaciones, alertas y rebalanceo para entender qué tensiones ya existen antes de decidir el aporte mensual.</p>
             </div>
         </section>
         <div class="alert alert-light border mb-4">
             <strong>Lectura de liquidez.</strong>
             <span class="text-muted">Liquidez total = liquidez operativa + cash management. Esta hoja usa esa definición cuando evalúa si la cartera está demasiado defensiva.</span>
         </div>
+        <div class="alert alert-primary border mb-4">
+            <strong>Cómo usar este bloque:</strong>
+            <span class="text-muted">leelo como diagnóstico previo. Sirve para detectar urgencias o desequilibrios, pero la decisión principal del aporte sigue estando en la pestaña Aportes.</span>
+        </div>
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">Acciones Recomendadas</h5>
-                        <small>Integración de recomendaciones, alertas y rebalanceo</small>
+                        <h5 class="mb-0">Señales de diagnóstico y priorización</h5>
+                        <small>Integración de recomendaciones, alertas y rebalanceo como soporte previo al aporte.</small>
                     </div>
                     <div class="card-body">
                         <div id="recommendations-container">
@@ -1037,50 +1041,62 @@
                 {% endif %}
             </div>
         </div>
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Plan de Aportes Mensuales</h5>
-                        <small>Distribución automática de nuevos capitales</small>
+        <details class="mb-4">
+            <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
+                Herramienta secundaria: plan mensual por perfil
+                <span class="text-muted fw-normal small ms-2">Generador legacy para contraste rápido, fuera del flujo incremental principal.</span>
+            </summary>
+            <div class="mt-3">
+                <div class="alert alert-light border mb-4">
+                    <strong>Cómo leerlo:</strong>
+                    <span class="text-muted">este bloque sirve para contrastar la propuesta incremental actual contra una distribución más genérica por perfil. No reemplaza el motor mensual guiado por Analytics v2.</span>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">Plan mensual por perfil</h5>
+                                <small>Distribución automática genérica de nuevos capitales</small>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="monthly-amount" class="form-label">Aporte Mensual ($)</label>
+                                    <input type="number" class="form-control" id="monthly-amount" placeholder="500000" min="10000">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="risk-profile" class="form-label">Perfil de Riesgo</label>
+                                    <select class="form-select" id="risk-profile">
+                                        <option value="conservador">Conservador</option>
+                                        <option value="moderado" selected>Moderado</option>
+                                        <option value="agresivo">Agresivo</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-info w-100" onclick="runMonthlyPlan()">Generar plan de contraste</button>
+                                <div id="monthly-plan-result" class="mt-3" style="display: none;">
+                                    <hr>
+                                    <h6>Distribución sugerida</h6>
+                                    <div id="monthly-plan-details"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="monthly-amount" class="form-label">Aporte Mensual ($)</label>
-                            <input type="number" class="form-control" id="monthly-amount" placeholder="500000" min="10000">
-                        </div>
-                        <div class="mb-3">
-                            <label for="risk-profile" class="form-label">Perfil de Riesgo</label>
-                            <select class="form-select" id="risk-profile">
-                                <option value="conservador">Conservador</option>
-                                <option value="moderado" selected>Moderado</option>
-                                <option value="agresivo">Agresivo</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-info w-100" onclick="runMonthlyPlan()">Generar Plan</button>
-                        <div id="monthly-plan-result" class="mt-3" style="display: none;">
-                            <hr>
-                            <h6>Distribución Sugerida</h6>
-                            <div id="monthly-plan-details"></div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-info-subtle">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Cuándo usarlo</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="mb-0 text-muted">
+                                    <li>Usalo como contraste rápido si querés una referencia genérica por perfil.</li>
+                                    <li>Comparalo contra la propuesta incremental visible arriba antes de ejecutar cambios.</li>
+                                    <li>Si ambos difieren mucho, el flujo principal sigue siendo revisar el núcleo decisional y no este bloque legacy.</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card h-100 border-info-subtle">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">Uso recomendado</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="mb-0 text-muted">
-                            <li>Usá este bloque cuando entra capital nuevo y no querés rebalancear toda la cartera.</li>
-                            <li>Compará el plan sugerido contra el bloque de optimización antes de ejecutar cambios estructurales.</li>
-                            <li>Si la liquidez es baja, priorizá aportes sobre ventas.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </details>
             </div>
         </details>
     </div>

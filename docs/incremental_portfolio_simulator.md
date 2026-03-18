@@ -574,6 +574,7 @@ Bloques legacy que siguen en la hoja pero ya no ocupan el camino principal:
 - simulacion tactica
 - optimizacion teorica
 - configuracion base
+- plan mensual por perfil
 
 Criterio de exposicion:
 

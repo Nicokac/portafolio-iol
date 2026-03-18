@@ -59,6 +59,7 @@ Drill-downs hoy visibles:
 - historial reciente de propuestas guardadas y decision manual
 - exploracion y seguimiento relegados a secciones secundarias dentro de `Planeacion`
 - simulacion, optimizacion y configuracion base presentadas como soporte secundario frente al flujo principal de `Aportes`
+- plan mensual custom legacy relegado a herramienta secundaria de contraste dentro de `Aportes`
 
 ### Observabilidad y gobierno de datos
 

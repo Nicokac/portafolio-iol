@@ -52,6 +52,8 @@ class TestDashboardFeatureFlows:
 
         assert response.status_code == 200
         assert "resolver primero qué hacer con el aporte mensual" in content
+        assert "Diagnóstico previo al aporte" in content
+        assert "Señales de diagnóstico y priorización" in content
         assert "recommendations-container" in content
         assert "simulation-activo" in content
         assert "monthly-plan-result" in content
@@ -81,6 +83,8 @@ class TestDashboardFeatureFlows:
         assert "Comparador incremental por candidato" in content
         assert "Comparador incremental por split de bloque" in content
         assert "Comparador manual de planes incrementales" in content
+        assert "Herramienta secundaria: plan mensual por perfil" in content
+        assert "Plan mensual por perfil" in content
         assert "Simulación táctica" in content
         assert "Optimización teórica" in content
         assert "Configuración base" in content

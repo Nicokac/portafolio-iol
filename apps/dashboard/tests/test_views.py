@@ -513,6 +513,8 @@ class TestDashboardView:
 
         assert response.status_code == 200
         assert 'resolver primero qué hacer con el aporte mensual' in body
+        assert 'Diagnóstico previo al aporte' in body
+        assert 'Señales de diagnóstico y priorización' in body
         assert 'Propuesta de compra mensual' in body
         assert 'Plan incremental MVP' in body
         assert 'Tecnología / growth' in body
@@ -551,6 +553,9 @@ class TestDashboardView:
         assert 'Comparador incremental por candidato' in body
         assert 'Comparador incremental por split de bloque' in body
         assert 'Comparador manual de planes incrementales' in body
+        assert 'Herramienta secundaria: plan mensual por perfil' in body
+        assert 'Plan mensual por perfil' in body
+        assert 'Generar plan de contraste' in body
         assert 'Simulación táctica' in body
         assert 'Optimización teórica' in body
         assert 'Configuración base' in body
