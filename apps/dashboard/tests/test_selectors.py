@@ -1,7 +1,7 @@
 from django.test import TestCase
 from decimal import Decimal
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 from django.core.cache import cache
 from django.db import connection
 from django.test import override_settings
@@ -38,6 +38,7 @@ from apps.dashboard.selectors import (
     get_incremental_backlog_front_summary,
     get_incremental_backlog_operational_semaphore,
     get_incremental_decision_executive_summary,
+    get_planeacion_incremental_context,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -2288,6 +2289,93 @@ class TestDashboardSelectors(TestCase):
         assert detail["status"] == "review_backlog"
         assert detail["items"][3]["value"] == "Pendiente A"
         assert "Pendiente A lidera el backlog" in detail["headline"]
+
+    def test_get_planeacion_incremental_context_concentrates_incremental_contract(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                return_value={"capital_total": 600000},
+            ) as monthly_plan,
+            patch(
+                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                return_value={"candidate_assets_count": 2},
+            ) as candidate_ranking,
+            patch(
+                "apps.dashboard.selectors.get_incremental_portfolio_simulation",
+                return_value={"interpretation": "ok"},
+            ) as simulation,
+            patch(
+                "apps.dashboard.selectors.get_incremental_portfolio_simulation_comparison",
+                return_value={"best_label": "Top candidato por bloque"},
+            ) as simulation_comparison,
+            patch(
+                "apps.dashboard.selectors.get_candidate_incremental_portfolio_comparison",
+                return_value={"selected_block": "defensive"},
+            ) as candidate_comparison,
+            patch(
+                "apps.dashboard.selectors.get_candidate_split_incremental_portfolio_comparison",
+                return_value={"selected_block": "defensive"},
+            ) as split_comparison,
+            patch(
+                "apps.dashboard.selectors.get_manual_incremental_portfolio_simulation_comparison",
+                return_value={"submitted": False},
+            ) as manual_comparison,
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={"preferred": {"proposal_label": "Split KO + MCD"}},
+            ) as preferred,
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={"count": 1, "active_filter": "pending"},
+            ) as history,
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"has_baseline": True},
+            ) as baseline,
+            patch(
+                "apps.dashboard.selectors.get_incremental_manual_decision_summary",
+                return_value={"has_decision": True},
+            ) as decision_summary,
+            patch(
+                "apps.dashboard.selectors.get_incremental_decision_executive_summary",
+                return_value={"status": "review_backlog"},
+            ) as executive_summary,
+        ):
+            detail = get_planeacion_incremental_context(
+                {"decision_status_filter": "pending"},
+                user=DummyUser(),
+                capital_amount=700000,
+                history_limit=7,
+            )
+
+        assert detail["monthly_allocation_plan"]["capital_total"] == 600000
+        assert detail["candidate_asset_ranking"]["candidate_assets_count"] == 2
+        assert detail["incremental_portfolio_simulation"]["interpretation"] == "ok"
+        assert detail["incremental_portfolio_simulation_comparison"]["best_label"] == "Top candidato por bloque"
+        assert detail["candidate_incremental_portfolio_comparison"]["selected_block"] == "defensive"
+        assert detail["candidate_split_incremental_portfolio_comparison"]["selected_block"] == "defensive"
+        assert detail["manual_incremental_portfolio_simulation_comparison"]["submitted"] is False
+        assert detail["preferred_incremental_portfolio_proposal"]["preferred"]["proposal_label"] == "Split KO + MCD"
+        assert detail["incremental_proposal_history"]["active_filter"] == "pending"
+        assert detail["incremental_proposal_tracking_baseline"]["has_baseline"] is True
+        assert detail["incremental_manual_decision_summary"]["has_decision"] is True
+        assert detail["incremental_decision_executive_summary"]["status"] == "review_backlog"
+
+        monthly_plan.assert_called_once_with(capital_amount=700000)
+        candidate_ranking.assert_called_once_with(capital_amount=700000)
+        simulation.assert_called_once_with(capital_amount=700000)
+        simulation_comparison.assert_called_once_with(capital_amount=700000)
+        candidate_comparison.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
+        split_comparison.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
+        manual_comparison.assert_called_once_with({"decision_status_filter": "pending"}, default_capital_amount=700000)
+        preferred.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
+        history.assert_called_once_with(user=ANY, limit=7, decision_status="pending")
+        baseline.assert_called_once_with(user=ANY)
+        decision_summary.assert_called_once_with(user=ANY)
+        executive_summary.assert_called_once_with({"decision_status_filter": "pending"}, user=ANY, capital_amount=700000, limit=7)
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

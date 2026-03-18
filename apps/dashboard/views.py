@@ -30,10 +30,8 @@ from apps.dashboard.selectors import (
     get_concentracion_sector,
     get_concentracion_sector_agregado,
     get_concentracion_tipo_patrimonial,
-    get_candidate_asset_ranking,
-    get_candidate_incremental_portfolio_comparison,
+    get_planeacion_incremental_context,
     get_preferred_incremental_portfolio_proposal,
-    get_candidate_split_incremental_portfolio_comparison,
     get_concentracion_moneda,
     get_concentracion_moneda_operativa,
     get_dashboard_kpis,
@@ -45,16 +43,9 @@ from apps.dashboard.selectors import (
     get_evolucion_historica,
     get_expected_return_detail,
     get_incremental_proposal_history,
-    get_incremental_proposal_tracking_baseline,
-    get_incremental_manual_decision_summary,
-    get_incremental_decision_executive_summary,
     get_macro_local_context,
-    get_manual_incremental_portfolio_simulation_comparison,
-    get_monthly_allocation_plan,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
-    get_incremental_portfolio_simulation,
-    get_incremental_portfolio_simulation_comparison,
     get_risk_contribution_detail,
     get_scenario_analysis_detail,
     get_stress_fragility_detail,
@@ -186,46 +177,13 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['monthly_allocation_plan'] = get_monthly_allocation_plan(capital_amount=600000)
-        context['candidate_asset_ranking'] = get_candidate_asset_ranking(capital_amount=600000)
-        context['incremental_portfolio_simulation'] = get_incremental_portfolio_simulation(capital_amount=600000)
-        context['incremental_portfolio_simulation_comparison'] = get_incremental_portfolio_simulation_comparison(capital_amount=600000)
-        context['candidate_incremental_portfolio_comparison'] = get_candidate_incremental_portfolio_comparison(
-            self.request.GET,
-            capital_amount=600000,
-        )
-        context['candidate_split_incremental_portfolio_comparison'] = (
-            get_candidate_split_incremental_portfolio_comparison(
+        context.update(
+            get_planeacion_incremental_context(
                 self.request.GET,
+                user=self.request.user,
                 capital_amount=600000,
+                history_limit=5,
             )
-        )
-        context['manual_incremental_portfolio_simulation_comparison'] = (
-            get_manual_incremental_portfolio_simulation_comparison(
-                self.request.GET,
-                default_capital_amount=600000,
-            )
-        )
-        context['preferred_incremental_portfolio_proposal'] = get_preferred_incremental_portfolio_proposal(
-            self.request.GET,
-            capital_amount=600000,
-        )
-        context['incremental_proposal_history'] = get_incremental_proposal_history(
-            user=self.request.user,
-            limit=5,
-            decision_status=self.request.GET.get('decision_status_filter'),
-        )
-        context['incremental_proposal_tracking_baseline'] = get_incremental_proposal_tracking_baseline(
-            user=self.request.user,
-        )
-        context['incremental_manual_decision_summary'] = get_incremental_manual_decision_summary(
-            user=self.request.user,
-        )
-        context['incremental_decision_executive_summary'] = get_incremental_decision_executive_summary(
-            self.request.GET,
-            user=self.request.user,
-            capital_amount=600000,
-            limit=5,
         )
         return context
 

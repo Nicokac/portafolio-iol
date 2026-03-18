@@ -627,3 +627,31 @@ No abordado en este modulo:
 - refactor mayor de `selectors.py`
 - migracion de workflow manual a una vista separada
 - eliminacion de selectors legacy todavia reutilizables
+
+## Fachada incremental de Planeacion
+
+Para bajar acoplamiento en la capa dashboard, `PlaneacionView` consume ahora una unica fachada:
+
+- `get_planeacion_incremental_context(...)`
+
+Responsabilidad:
+
+- concentrar el contrato incremental visible de la hoja
+- delegar en los selectors ya existentes sin cambiar su logica
+- mantener serializacion y forwarding consistente de:
+  - `capital_amount`
+  - `query_params`
+  - `history_limit`
+  - `user`
+
+Objetivo del refactor:
+
+- reducir wiring repetido en la view
+- simplificar tests de `Planeacion`
+- dejar un unico punto de entrada para futuros ajustes de superficie incremental
+
+Queda fuera de alcance:
+
+- unificar toda la logica incremental en un servicio nuevo
+- cambiar los contratos de los selectors subyacentes
+- mover workflow incremental fuera de `Planeacion`

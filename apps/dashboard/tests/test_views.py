@@ -362,6 +362,41 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
+    def test_planeacion_uses_incremental_context_facade(self, auth_client, monkeypatch):
+        captured = {}
+
+        def fake_planeacion_context(query_params, user, capital_amount=600000, history_limit=5):
+            captured["decision_status_filter"] = query_params.get("decision_status_filter")
+            captured["user_id"] = user.id
+            captured["capital_amount"] = capital_amount
+            captured["history_limit"] = history_limit
+            return {
+                "monthly_allocation_plan": {"recommended_blocks": [], "avoided_blocks": [], "explanation": ""},
+                "candidate_asset_ranking": {"candidate_assets": [], "candidate_assets_count": 0, "by_block": {}, "explanation": ""},
+                "incremental_portfolio_simulation": {"selected_candidates": [], "before": {}, "after": {}, "delta": {}, "interpretation": "", "unmapped_blocks": []},
+                "incremental_portfolio_simulation_comparison": {"proposals": [], "best_label": None},
+                "candidate_incremental_portfolio_comparison": {"available_blocks": [], "proposals": [], "best_label": None},
+                "candidate_split_incremental_portfolio_comparison": {"available_blocks": [], "proposals": [], "best_label": None},
+                "manual_incremental_portfolio_simulation_comparison": {"submitted": False, "proposals": [], "form_state": {"capital_amount": 600000}},
+                "preferred_incremental_portfolio_proposal": {"preferred": None, "explanation": "", "has_manual_override": False},
+                "incremental_proposal_history": {"items": [], "count": 0, "has_history": False, "active_filter": "pending", "active_filter_label": "Pendientes", "decision_counts": {"total": 0, "pending": 0, "accepted": 0, "deferred": 0, "rejected": 0}, "available_filters": [], "headline": ""},
+                "incremental_proposal_tracking_baseline": {"item": None, "has_baseline": False},
+                "incremental_manual_decision_summary": {"item": None, "has_decision": False, "status": "pending", "status_label": "Pendiente", "headline": ""},
+                "incremental_decision_executive_summary": {"status": "pending", "headline": "", "items": [], "has_summary": False},
+            }
+
+        monkeypatch.setattr("apps.dashboard.views.get_planeacion_incremental_context", fake_planeacion_context)
+
+        response = auth_client.get(reverse("dashboard:planeacion"), {"decision_status_filter": "pending"})
+
+        assert response.status_code == 200
+        assert captured == {
+            "decision_status_filter": "pending",
+            "user_id": int(auth_client.session["_auth_user_id"]),
+            "capital_amount": 600000,
+            "history_limit": 5,
+        }
+
     def test_planeacion_explains_total_liquidity_definition(self, auth_client):
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
@@ -370,137 +405,106 @@ class TestDashboardView:
 
     def test_planeacion_shows_monthly_allocation_proposal(self, auth_client, monkeypatch):
         monkeypatch.setattr(
-            'apps.dashboard.views.get_monthly_allocation_plan',
-            lambda capital_amount=600000: {
-                'capital_total': capital_amount,
-                'recommended_blocks_count': 1,
-                'criterion': 'signals_first',
-                'explanation': 'Plan incremental MVP',
-                'recommended_blocks': [
-                    {
-                        'label': 'Tecnología / growth',
-                        'suggested_amount': 600000,
-                        'suggested_pct': 100.0,
-                        'score': 3.4,
-                        'reason': 'Se prioriza retorno esperado estructural.',
-                        'score_breakdown': {
-                            'positive_signals': [{'signal': 'expected_return_bucket_preferred', 'impact': '+1.2', 'source': 'expected_return'}],
-                            'negative_signals': [{'signal': 'risk_concentration_tech', 'impact': '-0.4', 'source': 'risk_contribution'}],
-                            'notes': 'Bloque simple de ejemplo.',
-                        },
-                    }
-                ],
-                'avoided_blocks': [],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_candidate_asset_ranking',
-            lambda capital_amount=600000: {
-                'candidate_assets': [
-                    {'asset': 'KO', 'block': 'defensive', 'score': 8.4, 'rank': 1, 'reasons': ['defensive_sector_match'], 'main_reason': 'defensive_sector_match'}
-                ],
-                'candidate_assets_count': 1,
-                'by_block': {},
-                'explanation': 'Ranking incremental MVP',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_portfolio_simulation',
-            lambda capital_amount=600000: {
-                'selected_candidates': [{'symbol': 'KO', 'block_label': 'Defensive / resiliente', 'amount': 600000}],
-                'before': {'expected_return_pct': 8.0, 'real_expected_return_pct': 2.0, 'fragility_score': 18.0, 'worst_scenario_loss_pct': -12.0},
-                'after': {'expected_return_pct': 8.5, 'real_expected_return_pct': 2.2, 'fragility_score': 16.0, 'worst_scenario_loss_pct': -11.5},
-                'delta': {'expected_return_change': 0.5, 'real_expected_return_change': 0.2, 'fragility_change': -2.0, 'scenario_loss_change': 0.5, 'risk_concentration_change': -0.3},
-                'interpretation': 'La compra reduce la fragilidad del portafolio.',
-                'unmapped_blocks': [],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_portfolio_simulation_comparison',
-            lambda capital_amount=600000: {
-                'best_label': 'Top candidato por bloque',
-                'proposals': [{'proposal_label': 'Split del bloque más grande', 'label': 'Split del bloque más grande', 'comparison_score': 3.1, 'purchase_summary': 'KO · 600000', 'simulation': {'delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}}}],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_candidate_incremental_portfolio_comparison',
-            lambda query_params, capital_amount=600000: {
-                'selected_block_label': 'Defensive / resiliente',
-                'comparisons': [{'candidate_symbol': 'KO', 'headline': 'KO mejora más la resiliencia.', 'comparison_score': 3.4, 'simulation': {'delta': {'expected_return_change': 0.3, 'fragility_change': -1.4, 'scenario_loss_change': 0.2}}}],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_candidate_split_incremental_portfolio_comparison',
-            lambda query_params, capital_amount=600000: {
-                'selected_block_label': 'Defensive / resiliente',
-                'proposals': [{'proposal_label': 'Split KO + MCD', 'label': 'Split KO + MCD', 'comparison_score': 3.6, 'simulation': {'delta': {'expected_return_change': 0.5, 'fragility_change': -1.8, 'scenario_loss_change': 0.4}}}],
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_manual_incremental_portfolio_simulation_comparison',
-            lambda query_params, default_capital_amount=600000: {
-                'submitted': False,
-                'proposals': [],
-                'form_state': {'capital_amount': default_capital_amount},
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
-            lambda query_params, capital_amount=600000: {
-                'preferred': {
-                    'source_label': 'Comparador por split',
-                    'selected_context': 'Defensive / resiliente',
-                    'proposal_label': 'Split KO + MCD',
-                    'comparison_score': 5.2,
-                    'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
-                    'simulation': {'delta': {'expected_return_change': 0.5, 'real_expected_return_change': 0.2, 'fragility_change': -2.1, 'scenario_loss_change': 0.7, 'risk_concentration_change': -0.6}, 'interpretation': 'El split mejora mejor el balance riesgo/retorno.'},
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'monthly_allocation_plan': {
+                    'capital_total': capital_amount,
+                    'recommended_blocks_count': 1,
+                    'criterion': 'signals_first',
+                    'explanation': 'Plan incremental MVP',
+                    'recommended_blocks': [
+                        {
+                            'label': 'Tecnología / growth',
+                            'suggested_amount': 600000,
+                            'suggested_pct': 100.0,
+                            'score': 3.4,
+                            'reason': 'Se prioriza retorno esperado estructural.',
+                            'score_breakdown': {
+                                'positive_signals': [{'signal': 'expected_return_bucket_preferred', 'impact': '+1.2', 'source': 'expected_return'}],
+                                'negative_signals': [{'signal': 'risk_concentration_tech', 'impact': '-0.4', 'source': 'risk_contribution'}],
+                                'notes': 'Bloque simple de ejemplo.',
+                            },
+                        }
+                    ],
+                    'avoided_blocks': [],
                 },
-                'has_manual_override': False,
-                'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_proposal_history',
-            lambda user, limit=5, decision_status=None: {
-                'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
-                'count': 1,
-                'has_history': True,
-                'active_filter': 'all',
-                'active_filter_label': 'Todos',
-                'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
-                'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
-                'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_proposal_tracking_baseline',
-            lambda user: {
-                'item': {'proposal_label': 'Plan baseline', 'source_label': 'Comparador manual', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'created_at': '2026-03-17 11:00'},
-                'has_baseline': True,
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_manual_decision_summary',
-            lambda user: {
-                'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
-                'has_decision': True,
-                'status': 'accepted',
-                'status_label': 'Aceptada',
-                'headline': 'La ultima decision manual registrada es aceptada sobre Plan manual A.',
-            },
-        )
-        monkeypatch.setattr(
-            'apps.dashboard.views.get_incremental_decision_executive_summary',
-            lambda query_params, user, capital_amount=600000, limit=5: {
-                'status': 'review_backlog',
-                'headline': 'La propuesta actual requiere validación antes de adoptar el aporte incremental.',
-                'items': [
-                    {'label': 'Semáforo operativo', 'value': 'Amarillo'},
-                    {'label': 'Checklist de adopción', 'value': '5/5'},
-                    {'label': 'Estado ejecutivo actual', 'value': 'review_backlog'},
-                    {'label': 'Frente del backlog', 'value': 'Plan guardado 1'},
-                ],
-                'has_summary': True,
+                'candidate_asset_ranking': {
+                    'candidate_assets': [
+                        {'asset': 'KO', 'block': 'defensive', 'score': 8.4, 'rank': 1, 'reasons': ['defensive_sector_match'], 'main_reason': 'defensive_sector_match'}
+                    ],
+                    'candidate_assets_count': 1,
+                    'by_block': {},
+                    'explanation': 'Ranking incremental MVP',
+                },
+                'incremental_portfolio_simulation': {
+                    'selected_candidates': [{'symbol': 'KO', 'block_label': 'Defensive / resiliente', 'amount': 600000}],
+                    'before': {'expected_return_pct': 8.0, 'real_expected_return_pct': 2.0, 'fragility_score': 18.0, 'worst_scenario_loss_pct': -12.0},
+                    'after': {'expected_return_pct': 8.5, 'real_expected_return_pct': 2.2, 'fragility_score': 16.0, 'worst_scenario_loss_pct': -11.5},
+                    'delta': {'expected_return_change': 0.5, 'real_expected_return_change': 0.2, 'fragility_change': -2.0, 'scenario_loss_change': 0.5, 'risk_concentration_change': -0.3},
+                    'interpretation': 'La compra reduce la fragilidad del portafolio.',
+                    'unmapped_blocks': [],
+                },
+                'incremental_portfolio_simulation_comparison': {
+                    'best_label': 'Top candidato por bloque',
+                    'proposals': [{'proposal_label': 'Split del bloque más grande', 'label': 'Split del bloque más grande', 'comparison_score': 3.1, 'purchase_summary': 'KO · 600000', 'simulation': {'delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}}}],
+                },
+                'candidate_incremental_portfolio_comparison': {
+                    'selected_block_label': 'Defensive / resiliente',
+                    'comparisons': [{'candidate_symbol': 'KO', 'headline': 'KO mejora más la resiliencia.', 'comparison_score': 3.4, 'simulation': {'delta': {'expected_return_change': 0.3, 'fragility_change': -1.4, 'scenario_loss_change': 0.2}}}],
+                },
+                'candidate_split_incremental_portfolio_comparison': {
+                    'selected_block_label': 'Defensive / resiliente',
+                    'proposals': [{'proposal_label': 'Split KO + MCD', 'label': 'Split KO + MCD', 'comparison_score': 3.6, 'simulation': {'delta': {'expected_return_change': 0.5, 'fragility_change': -1.8, 'scenario_loss_change': 0.4}}}],
+                },
+                'manual_incremental_portfolio_simulation_comparison': {
+                    'submitted': False,
+                    'proposals': [],
+                    'form_state': {'capital_amount': history_limit * 120000},
+                },
+                'preferred_incremental_portfolio_proposal': {
+                    'preferred': {
+                        'source_label': 'Comparador por split',
+                        'selected_context': 'Defensive / resiliente',
+                        'proposal_label': 'Split KO + MCD',
+                        'comparison_score': 5.2,
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
+                        'simulation': {'delta': {'expected_return_change': 0.5, 'real_expected_return_change': 0.2, 'fragility_change': -2.1, 'scenario_loss_change': 0.7, 'risk_concentration_change': -0.6}, 'interpretation': 'El split mejora mejor el balance riesgo/retorno.'},
+                    },
+                    'has_manual_override': False,
+                    'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
+                },
+                'incremental_proposal_history': {
+                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
+                    'count': 1,
+                    'has_history': True,
+                    'active_filter': 'all',
+                    'active_filter_label': 'Todos',
+                    'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
+                    'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
+                    'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
+                },
+                'incremental_proposal_tracking_baseline': {
+                    'item': {'proposal_label': 'Plan baseline', 'source_label': 'Comparador manual', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'created_at': '2026-03-17 11:00'},
+                    'has_baseline': True,
+                },
+                'incremental_manual_decision_summary': {
+                    'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
+                    'has_decision': True,
+                    'status': 'accepted',
+                    'status_label': 'Aceptada',
+                    'headline': 'La ultima decision manual registrada es aceptada sobre Plan manual A.',
+                },
+                'incremental_decision_executive_summary': {
+                    'status': 'review_backlog',
+                    'headline': 'La propuesta actual requiere validación antes de adoptar el aporte incremental.',
+                    'items': [
+                        {'label': 'Semáforo operativo', 'value': 'Amarillo'},
+                        {'label': 'Checklist de adopción', 'value': '5/5'},
+                        {'label': 'Estado ejecutivo actual', 'value': 'review_backlog'},
+                        {'label': 'Frente del backlog', 'value': 'Plan guardado 1'},
+                    ],
+                    'has_summary': True,
+                },
             },
         )
 

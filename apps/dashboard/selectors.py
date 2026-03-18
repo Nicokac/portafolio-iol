@@ -2287,6 +2287,58 @@ def get_incremental_decision_executive_summary(
     }
 
 
+def get_planeacion_incremental_context(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+    history_limit: int = 5,
+) -> Dict:
+    """Concentra el contrato incremental consumido por Planeacion en una sola fachada."""
+
+    return {
+        "monthly_allocation_plan": get_monthly_allocation_plan(capital_amount=capital_amount),
+        "candidate_asset_ranking": get_candidate_asset_ranking(capital_amount=capital_amount),
+        "incremental_portfolio_simulation": get_incremental_portfolio_simulation(capital_amount=capital_amount),
+        "incremental_portfolio_simulation_comparison": get_incremental_portfolio_simulation_comparison(
+            capital_amount=capital_amount
+        ),
+        "candidate_incremental_portfolio_comparison": get_candidate_incremental_portfolio_comparison(
+            query_params,
+            capital_amount=capital_amount,
+        ),
+        "candidate_split_incremental_portfolio_comparison": get_candidate_split_incremental_portfolio_comparison(
+            query_params,
+            capital_amount=capital_amount,
+        ),
+        "manual_incremental_portfolio_simulation_comparison": get_manual_incremental_portfolio_simulation_comparison(
+            query_params,
+            default_capital_amount=capital_amount,
+        ),
+        "preferred_incremental_portfolio_proposal": get_preferred_incremental_portfolio_proposal(
+            query_params,
+            capital_amount=capital_amount,
+        ),
+        "incremental_proposal_history": get_incremental_proposal_history(
+            user=user,
+            limit=history_limit,
+            decision_status=_query_param_value(query_params, "decision_status_filter"),
+        ),
+        "incremental_proposal_tracking_baseline": get_incremental_proposal_tracking_baseline(
+            user=user,
+        ),
+        "incremental_manual_decision_summary": get_incremental_manual_decision_summary(
+            user=user,
+        ),
+        "incremental_decision_executive_summary": get_incremental_decision_executive_summary(
+            query_params,
+            user=user,
+            capital_amount=capital_amount,
+            limit=history_limit,
+        ),
+    }
+
+
 def get_incremental_followup_executive_summary(
     query_params,
     *,
