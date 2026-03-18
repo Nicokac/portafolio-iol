@@ -1,46 +1,154 @@
-# Portafolio IOL - Plataforma de Gestion Patrimonial Cuantitativa
+# Portafolio IOL - Plataforma de gestion patrimonial cuantitativa
 
-Aplicacion Django para sincronizar datos de InvertirOnline, construir snapshots historicos, calcular metricas de riesgo/performance y operar una capa analitica patrimonial desde dashboard y API interna.
+Aplicacion Django para sincronizar datos de InvertirOnline, construir snapshots historicos, calcular metricas de riesgo y performance, y exponer una capa operativa de analitica patrimonial desde UI y API interna.
 
 ## Estado actual
-- Fase actual: P8 base completada + hardening de seguridad/testing
-- Stack: Django 5.2, DRF, Bootstrap 5, Chart.js, Celery, Redis
-- Entorno objetivo: Render (Free tier) y Docker local
-- Cobertura de tests actual: ~97%
+
+- Stack principal: Django 5.2, DRF, Bootstrap 5, Chart.js, Celery, Redis
+- Cobertura actual de tests: ~88%
+- Entorno local por defecto: SQLite
+- Entorno objetivo de despliegue: Docker / Render
+
+El producto hoy ya expone:
+
+- `Resumen` diario
+- `Estrategia` con `Analytics v2`
+- `Analisis`, `Performance` y `Metricas`
+- `Planeacion` con simulacion, optimizacion y capa incremental
+- `Ops` para observabilidad staff
+
+## Capacidades principales
+
+### Dashboard y lectura patrimonial
+
+- KPIs diarios de patrimonio, liquidez, concentracion y exposicion
+- evolucion historica del portafolio
+- alertas activas
+- contexto macro local resumido
+
+### Analytics v2
+
+- `Risk Contribution`
+- `Scenario Analysis`
+- `Factor Exposure`
+- `Stress Fragility`
+- `Expected Return`
+- interpretaciones automaticas y senales combinadas
+
+Drill-downs hoy visibles:
+
+- `/estrategia/risk-contribution/`
+- `/estrategia/scenario-analysis/`
+- `/estrategia/factor-exposure/`
+- `/estrategia/stress-fragility/`
+- `/estrategia/expected-return/`
+
+### Planeacion y decision incremental
+
+- recomendaciones combinadas
+- sugerencias de rebalanceo
+- simulacion de compra, venta y rebalanceo
+- plan mensual custom
+- optimizacion `Risk Parity`, `Markowitz` y `Target Allocation`
+- motor MVP de asignacion mensual incremental
+- ranking de activos candidatos dentro de bloques recomendados
+- simulacion incremental `before/after`
+- comparadores incrementales automaticos, por candidato, por split y manuales
+- propuesta incremental preferida
+- historial reciente de propuestas guardadas y decision manual
+
+### Observabilidad y gobierno de datos
+
+- dashboard `Ops` para staff
+- sync audit de IOL
+- integridad de snapshots
+- continuidad diaria
+- resumen unificado del pipeline
+- estado de benchmarks y macro local
 
 ## Arquitectura
-- Ingestion: `IOLSyncService` (cuentas, portafolio, operaciones)
-- Persistencia: snapshots en `PortfolioSnapshot`, `ActivoPortafolioSnapshot`, `ResumenCuentaSnapshot`
-- Analitica: servicios de riesgo, performance, benchmarking, attribution, liquidez, data quality y optimizacion
-- Entrega: Dashboard Django + API interna DRF (`/api/...`)
 
-Ver diagrama: `docs/architecture_diagram.md`
+- Ingestion:
+  - `IOLSyncService`
+  - clientes de market data externos
+- Persistencia:
+  - `PortfolioSnapshot`
+  - `ActivoPortafolioSnapshot`
+  - `ResumenCuentaSnapshot`
+  - `BenchmarkSnapshot`
+  - `MacroSeriesSnapshot`
+  - `IncrementalProposalSnapshot`
+- Analitica:
+  - riesgo
+  - performance
+  - benchmarking
+  - liquidez
+  - recomendaciones
+  - `Analytics v2`
+- Entrega:
+  - dashboard Django server-rendered
+  - API interna DRF bajo `/api/...`
 
-## Funcionalidades principales
-- Dashboard consolidado de patrimonio y riesgo
-- Centro de Performance
-- Centro de Metricas Analiticas
-- VaR/CVaR, volatilidad, stress testing
-- Attribution por activo/sector/pais/tipo patrimonial
-- Benchmarking (Tracking Error, Information Ratio)
-- Liquidez operativa y dias estimados de liquidacion
-- Auditoria de metadata de activos
-- Integridad de snapshots y auditoria de sincronizacion IOL
-- Simulador, optimizacion (Markowitz, Risk Parity) y plan mensual
-- Acciones manuales desde UI para `Actualizar IOL` y `Generar Snapshot`
-- Dashboard Ops restringido a `staff`
+Ver tambien:
+
+- `docs/architecture_diagram.md`
+- `docs/portfolio_analytics_v2_spec.md`
+- `docs/analytics_v2_feature_exposure_checklist.md`
+
+## Macro local
+
+La app ya persiste y expone un contexto macro local reutilizable.
+
+Series principales:
+
+- `usdars_oficial`
+- `ipc_nacional`
+- `badlar_privada`
+- `usdars_mep` opcional
+- `fx_gap_pct` derivada cuando hay MEP
+- `riesgo_pais_arg`
+
+Integraciones actuales:
+
+- `riesgo_pais_arg` usa por default ArgentinaDatos:
+  - `https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais`
+- `Resumen` muestra card dedicada de riesgo pais con cambio 30d
+- `LocalMacroSignalsService` ya expone senales simples como:
+  - `local_country_risk_high`
+  - `local_country_risk_deteriorating`
+  - `local_fx_gap_high`
+  - `local_fx_gap_deteriorating`
 
 ## Operacion diaria
-- `Actualizar IOL`: sincroniza estado de cuenta, portafolio y operaciones.
-- `Generar Snapshot`: fuerza una foto agregada diaria del portafolio.
-- Si el sync de IOL termina correctamente, el snapshot diario se intenta generar automaticamente.
-- Si faltan migraciones de seguridad/auditoria, ejecutar `python manage.py migrate` antes de usar acciones manuales.
 
-## Endpoints clave
-- `GET /api/metrics/performance/`
+Acciones manuales visibles para `staff`:
+
+- `Actualizar IOL`
+- `Generar Snapshot`
+- `Sincronizar benchmarks`
+- `Sincronizar macro local`
+
+Flujo practico:
+
+1. sincronizar IOL
+2. generar o validar snapshot
+3. revisar `Resumen` y `Estrategia`
+4. usar `Planeacion` para simulacion, aportes y decision incremental
+5. usar `Ops` si hay dudas de datos o estado del pipeline
+
+Si hay migraciones pendientes, aplicarlas antes de usar acciones manuales o modulos nuevos:
+
+```bash
+python manage.py migrate
+```
+
+## Endpoints internos utiles
+
+- `GET /api/metrics/returns/`
+- `GET /api/metrics/volatility/`
+- `GET /api/metrics/benchmarking/`
 - `GET /api/metrics/var/`
 - `GET /api/metrics/cvar/`
-- `GET /api/metrics/benchmarking/`
 - `GET /api/metrics/liquidity/`
 - `GET /api/metrics/data-quality/`
 - `GET /api/metrics/snapshot-integrity/`
@@ -50,89 +158,93 @@ Ver diagrama: `docs/architecture_diagram.md`
 - `POST /api/simulation/purchase/`
 - `POST /api/simulation/sale/`
 - `POST /api/simulation/rebalance/`
-
-## Metodologia financiera
-Documento tecnico: `docs/financial_methodology.md`
+- `POST /api/optimizer/risk-parity/`
+- `POST /api/optimizer/markowitz/`
+- `POST /api/optimizer/target-allocation/`
 
 ## Variables de entorno
-Copiar `.env.example` y completar al menos:
-- `SECRET_KEY`
-- `IOL_API_KEY` (si aplica)
-- `IOL_USERNAME`
-- `IOL_PASSWORD`
-- `DATABASE_URL` (recomendado en prod)
-- `REDIS_URL`
 
-Variables opcionales para FX local / `USDARS MEP`:
-- `USDARS_MEP_API_URL` recomendado:
-  - `https://dolarapi.com/v1/dolares/bolsa`
-- `USDARS_MEP_API_VALUE_PATH` recomendado:
-  - `venta`
-- `USDARS_MEP_API_DATE_PATH` recomendado:
-  - `fechaActualizacion`
+Minimas para uso local:
 
-Si no se configuran:
-- el sync macro local sigue funcionando
-- `usdars_mep` queda en estado `Sin configurar` / `skipped`
-- la brecha FX no se calcula
-
-## Ejecucion local (sin Docker)
-```bash
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-pip install -r requirements/dev.txt
-python manage.py migrate
-python manage.py runserver
-```
-
-Credenciales y variables minimas:
 - `SECRET_KEY`
 - `IOL_USERNAME`
 - `IOL_PASSWORD`
 - `IOL_BASE_URL=https://api.invertironline.com`
 
-Opcional para señales locales FX:
-- `USDARS_MEP_API_URL=https://dolarapi.com/v1/dolares/bolsa`
-- `USDARS_MEP_API_VALUE_PATH=venta`
-- `USDARS_MEP_API_DATE_PATH=fechaActualizacion`
+Opcionales para macro local:
 
-## Ejecucion con Docker
+- `USDARS_MEP_API_URL`
+- `USDARS_MEP_API_VALUE_PATH`
+- `USDARS_MEP_API_DATE_PATH`
+- `RIESGO_PAIS_API_URL`
+- `RIESGO_PAIS_API_VALUE_PATH`
+- `RIESGO_PAIS_API_DATE_PATH`
+- `RIESGO_PAIS_API_KEY`
+- `RIESGO_PAIS_API_KEY_HEADER`
+
+Defaults relevantes:
+
+- `RIESGO_PAIS_API_URL` ya apunta por default a ArgentinaDatos
+- `RIESGO_PAIS_API_VALUE_PATH=valor`
+- `RIESGO_PAIS_API_DATE_PATH=fecha`
+
+Si no se configura `USDARS_MEP_API_URL`:
+
+- el sync macro local sigue funcionando
+- `usdars_mep` queda como fuente opcional no disponible
+- la brecha FX no se calcula
+
+## Ejecucion local
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements/dev.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+## Docker
+
 ```bash
 docker compose up --build
 ```
-Servicios: `django`, `postgres`, `redis`, `celery`, `celery-beat`.
+
+Servicios esperados:
+
+- `django`
+- `postgres`
+- `redis`
+- `celery`
+- `celery-beat`
 
 ## Testing y calidad
+
 ```bash
 python -m pytest --ignore=scripts/
 ruff check .
 ruff format --check .
+python manage.py check
 ```
-Meta de cobertura: `>= 80%`.
 
-Notas:
-- Los scripts manuales bajo `scripts/` no forman parte de la suite automatica.
-- La suite actual cubre seguridad, API, comandos, snapshots, riesgo, performance y dashboard.
+Meta de cobertura exigida por el repo:
 
-## CI/CD
-GitHub Actions ejecuta:
-- lint
-- tests + coverage
-- django checks
-- security checks
-- docker build
+- `>= 80%`
 
-## Roadmap
-- P0-P6: base analitica, riesgo cuantitativo, attribution, benchmarking, liquidez, gobierno de datos, estrategia cuantitativa
-- P7: hardening + observabilidad + productizacion
-- P8: integracion analitica en dashboard y centros de performance/metricas
-- Proximo paso inmediato: integracion de benchmarks historicos externos para reemplazar proxies estaticos
+## Roadmap corto
 
-## Capturas
-Agregar capturas en `docs/screenshots/`:
-- `dashboard-overview.png`
-- `risk-panel.png`
-- `data-quality-panel.png`
+Estado funcional actual:
+
+- `Analytics v2` base expuesto en `Estrategia`
+- macro local con riesgo pais y brecha FX
+- stack incremental visible en `Planeacion`
+
+Siguiente trabajo recomendado:
+
+- racionalizar dependencias internas del stack incremental
+- abrir nuevos modulos solo si agregan valor real a la decision de inversion
+- evitar volver a sobrecargar `Planeacion` con capas operativas redundantes
 
 ## Disclaimer
+
 Herramienta de analisis y soporte de decision. No constituye asesoramiento financiero.

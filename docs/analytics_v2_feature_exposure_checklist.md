@@ -50,10 +50,10 @@ La meta no es listar archivos sin contexto, sino responder qué capacidades real
 | Estrategia | Macro local resumido | UI completa | `Estrategia` | `LocalMacroSignalsService` | Carry, CER, FX, riesgo país y perfil soberano local visibles. |
 | Estrategia | Señales Analytics v2 | UI completa | `Estrategia` | servicios Analytics v2 combinados | Lista de señales ordenadas por severidad. |
 | Estrategia | Risk contribution detallado por activo/sector/país | UI completa | `/estrategia/risk-contribution/` | `get_risk_contribution_detail()`, servicios de risk contribution | Drill-down visible con detalle por activo y agregados por sector/país. |
-| Estrategia | Scenario analysis detallado | No expuesta | Sin superficie dedicada | `ScenarioAnalysisService` | No hay tabla/pantalla detallada por escenario. |
-| Estrategia | Factor exposure detallado | No expuesta | Sin superficie dedicada | `FactorExposureService` | No hay vista analítica detallada. |
-| Estrategia | Stress fragility detallado | No expuesta | Sin superficie dedicada | `StressFragilityService` | Solo se consume el resumen. |
-| Estrategia | Expected return detallado | No expuesta | Sin superficie dedicada | `ExpectedReturnService` | No hay vista o endpoint específico dedicado. |
+| Estrategia | Scenario analysis detallado | UI completa | `/estrategia/scenario-analysis/` | `get_scenario_analysis_detail()`, `ScenarioAnalysisService` | Drill-down visible con shocks, agregados y contribuyentes. |
+| Estrategia | Factor exposure detallado | UI completa | `/estrategia/factor-exposure/` | `get_factor_exposure_detail()`, `FactorExposureService` | Drill-down visible con factores, dominancia y activos clasificados/unknown. |
+| Estrategia | Stress fragility detallado | UI completa | `/estrategia/stress-fragility/` | `get_stress_fragility_detail()`, `StressFragilityService` | Drill-down visible con score, pérdidas y vulnerabilidad por bloque. |
+| Estrategia | Expected return detallado | UI completa | `/estrategia/expected-return/` | `get_expected_return_detail()`, `ExpectedReturnService` | Drill-down visible con buckets, retorno nominal/real y composición esperada. |
 | Análisis | Hoja Análisis | UI completa | `/analisis/` | selectors dashboard | Vista de composición, concentración y riesgo. |
 | Análisis | Distribución sectorial | UI completa | `Análisis` | `get_distribucion_sector()` | Visible en tablas/gráficos. |
 | Análisis | Distribución geográfica | UI completa | `Análisis` | `get_distribucion_pais()` | Visible sobre bases distintas. |
@@ -84,6 +84,17 @@ La meta no es listar archivos sin contexto, sino responder qué capacidades real
 | Planeación | Simulación de compra | UI completa | `Planeación` + `/api/simulation/purchase/` | `PortfolioSimulator` | Accionable desde la UI. |
 | Planeación | Simulación de venta | UI completa | `Planeación` + `/api/simulation/sale/` | `PortfolioSimulator` | Accionable desde la UI. |
 | Planeación | Simulación de rebalanceo | UI completa | `Planeación` + `/api/simulation/rebalance/` | `PortfolioSimulator` | Accionable desde la UI. |
+| Planeación | Propuesta de compra mensual incremental | UI completa | `Planeación` | `MonthlyAllocationService`, `get_monthly_allocation_plan()` | Traduce Analytics v2 y señales en bloques recomendados, montos y score explicable. |
+| Planeación | Ranking de activos candidatos | UI completa | `Planeación` | `CandidateAssetRankingService`, `get_candidate_asset_ranking()` | Ordena activos existentes dentro de los bloques recomendados. |
+| Planeación | Simulación incremental before/after | UI completa | `Planeación` | `IncrementalPortfolioSimulator`, `get_incremental_portfolio_simulation()` | Muestra impacto incremental simulado sobre expected return, fragilidad y peor escenario. |
+| Planeación | Comparador de propuestas incrementales | UI completa | `Planeación` | selectors incrementales de dashboard | Contrasta variantes automáticas del mismo aporte mensual. |
+| Planeación | Comparador incremental por candidato | UI completa | `Planeación` | selectors incrementales de dashboard | Compara top candidatos dentro de un mismo bloque recomendado. |
+| Planeación | Comparador incremental por split de bloque | UI completa | `Planeación` | selectors incrementales de dashboard | Compara concentrar el bloque en un activo vs repartirlo entre los top 2. |
+| Planeación | Comparador manual de planes incrementales | UI completa | `Planeación` | selectors incrementales de dashboard | Permite contrastar dos planes cargados manualmente en memoria. |
+| Planeación | Propuesta incremental preferida | UI completa | `Planeación` | `get_preferred_incremental_portfolio_proposal()` | Sintetiza una única propuesta preferida entre los comparadores disponibles. |
+| Planeación | Resumen ejecutivo unificado de decisión incremental | UI completa | `Planeación` | `get_incremental_decision_executive_summary()` | Resume si conviene adoptar, sostener baseline o revisar backlog antes de mover el aporte. |
+| Planeación | Seguimiento operativo incremental | UI completa | `Planeación` | historial incremental, baseline y decisión manual | Expone baseline activo, última decisión y snapshots recientes con acciones visibles. |
+| Planeación | Historial reciente de propuestas guardadas | UI completa | `Planeación` | `IncrementalProposalHistoryService`, `get_incremental_proposal_history()` | Historial operativo con filtros, decisiones manuales y acciones masivas sobre filas visibles. |
 | Planeación | Plan mensual custom | UI completa | `Planeación` + `/api/monthly-plan/custom/` | `MonthlyInvestmentPlanner` | Accionable desde la UI. |
 | Planeación | Plan mensual básico | API-only | `/api/monthly-plan/basic/` | `MonthlyInvestmentPlanner` | Existe endpoint, no gatillo visible específico en la UI actual. |
 | Planeación | Optimización risk parity | UI completa | `Planeación` + `/api/optimizer/risk-parity/` | `PortfolioOptimizer` | Accionable desde la UI. |
@@ -129,9 +140,10 @@ La app ya expone en UI, de forma usable:
 - acciones staff de sincronización
 - simuladores y optimizadores usados desde Planeación
 - preferencias y vistas legacy/listados
-- drill-down de `Risk Contribution`
+- drill-downs de `Risk Contribution`, `Scenario Analysis`, `Factor Exposure`, `Stress Fragility` y `Expected Return`
 - interpretaciones automáticas en tarjetas de `Analytics v2`
 - resumen unificado del pipeline en `Ops`
+- motor incremental visible en `Planeación` con propuesta mensual, ranking de activos, simulación before/after y comparadores
 
 ### API-only
 
@@ -151,10 +163,6 @@ Hoy quedan principalmente como `API-only`:
 
 Hoy siguen sin superficie propia:
 
-- drill-down detallado de `Scenario Analysis`
-- drill-down detallado de `Factor Exposure`
-- drill-down detallado de `Stress Fragility`
-- drill-down detallado de `Expected Return`
 - endpoints dedicados `analytics-v2/*`
 - auditoría histórica de snapshots como feature autónoma
 - resumen de salud histórica como feature autónoma
@@ -171,6 +179,5 @@ La app ya no es solo un dashboard descriptivo:
 
 La principal brecha ya no es “falta UI”, sino decidir si conviene abrir:
 
-- drill-downs analíticos adicionales
 - endpoints dedicados por dominio
-- o mayor trazabilidad operativa y analítica sin multiplicar superficies
+- o mayor trazabilidad operativa y analítica sin volver a sobrecargar `Planeación`
