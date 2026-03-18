@@ -2120,6 +2120,47 @@ def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict
     }
 
 
+def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
+    """Ordena el backlog pendiente en prioridades operativas explicitas."""
+
+    backlog_payload = get_incremental_pending_backlog_vs_baseline(user=user, limit=limit)
+    items = []
+    for item in backlog_payload.get("items", []):
+        priority = _classify_incremental_backlog_priority(item)
+        enriched = dict(item)
+        enriched["priority"] = priority
+        enriched["priority_label"] = _format_incremental_backlog_priority(priority)
+        enriched["next_action"] = _build_incremental_backlog_next_action(priority, item)
+        items.append(enriched)
+
+    ordered_items = sorted(
+        items,
+        key=lambda item: (
+            _incremental_backlog_priority_order(item["priority"]),
+            -(item.get("score_difference") if item.get("score_difference") is not None else float("-inf")),
+            item["snapshot"].get("proposal_label") or "",
+        ),
+    )
+
+    counts = {
+        "high": sum(1 for item in ordered_items if item["priority"] == "high"),
+        "medium": sum(1 for item in ordered_items if item["priority"] == "medium"),
+        "low": sum(1 for item in ordered_items if item["priority"] == "low"),
+    }
+    top_item = ordered_items[0] if ordered_items else None
+
+    return {
+        "baseline": backlog_payload.get("baseline"),
+        "items": ordered_items,
+        "count": len(ordered_items),
+        "counts": counts,
+        "top_item": top_item,
+        "has_priorities": bool(ordered_items),
+        "headline": _build_incremental_backlog_prioritization_headline(backlog_payload, counts, top_item),
+        "explanation": _build_incremental_backlog_prioritization_explanation(backlog_payload, counts, top_item),
+    }
+
+
 def get_incremental_followup_executive_summary(
     query_params,
     *,
@@ -2712,6 +2753,73 @@ def _build_incremental_pending_backlog_explanation(
         f"El backlog pendiente frente al baseline activo ({baseline_item.get('proposal_label') or 'sin etiqueta'}) "
         "muestra resultados mixtos y conviene revisar primero las alternativas con mejor score."
     )
+
+
+def _classify_incremental_backlog_priority(item: Dict) -> str:
+    if item.get("beats_baseline"):
+        return "high"
+    if item.get("ties_baseline"):
+        return "medium"
+    return "low"
+
+
+def _format_incremental_backlog_priority(priority: str) -> str:
+    mapping = {
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Baja",
+    }
+    return mapping.get(priority, "Baja")
+
+
+def _incremental_backlog_priority_order(priority: str) -> int:
+    mapping = {
+        "high": 0,
+        "medium": 1,
+        "low": 2,
+    }
+    return mapping.get(priority, 3)
+
+
+def _build_incremental_backlog_next_action(priority: str, item: Dict) -> str:
+    proposal_label = item.get("snapshot", {}).get("proposal_label") or "este snapshot"
+    if priority == "high":
+        return f"Revisar primero {proposal_label} como candidata a reemplazar el baseline."
+    if priority == "medium":
+        return f"Mantener {proposal_label} en observacion; hoy empata con el baseline."
+    return f"Dejar {proposal_label} al final del backlog operativo mientras no mejore su comparacion."
+
+
+def _build_incremental_backlog_prioritization_headline(backlog_payload: Dict, counts: Dict, top_item: Dict | None) -> str:
+    if not backlog_payload.get("has_baseline") and not backlog_payload.get("has_pending_backlog"):
+        return "Todavia no hay backlog pendiente priorizable ni baseline activo."
+    if not backlog_payload.get("has_baseline"):
+        return "Hay backlog pendiente, pero falta baseline activo para priorizarlo con criterio comparativo."
+    if not backlog_payload.get("has_pending_backlog"):
+        return "No hay snapshots pendientes para priorizar contra el baseline activo."
+    if top_item is None:
+        return "No fue posible priorizar el backlog pendiente contra el baseline activo."
+    return (
+        f"Backlog priorizado: {counts.get('high', 0)} alta, {counts.get('medium', 0)} media y "
+        f"{counts.get('low', 0)} baja. Primero revisar {top_item.get('snapshot', {}).get('proposal_label') or 'el snapshot prioritario'}."
+    )
+
+
+def _build_incremental_backlog_prioritization_explanation(backlog_payload: Dict, counts: Dict, top_item: Dict | None) -> str:
+    if not backlog_payload.get("has_baseline") and not backlog_payload.get("has_pending_backlog"):
+        return "Todavia no hay insumos para una priorizacion operativa del backlog incremental."
+    if not backlog_payload.get("has_baseline"):
+        return "La priorizacion explicita del backlog requiere primero un baseline incremental activo."
+    if not backlog_payload.get("has_pending_backlog"):
+        return "No hay backlog pendiente por ordenar en este momento."
+    if counts.get("high", 0) > 0 and top_item is not None:
+        return (
+            f"El backlog ya contiene alternativas que superan el baseline activo; "
+            f"{top_item.get('snapshot', {}).get('proposal_label') or 'la primera opcion'} queda arriba por prioridad."
+        )
+    if counts.get("medium", 0) > 0:
+        return "El backlog no mejora el baseline, pero incluye alternativas que hoy empatan y conviene seguir de cerca."
+    return "El backlog pendiente actual queda por debajo del baseline activo y puede revisarse al final."
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:

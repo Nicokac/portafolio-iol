@@ -34,6 +34,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_tracking_baseline,
     get_incremental_manual_decision_summary,
     get_incremental_pending_backlog_vs_baseline,
+    get_incremental_backlog_prioritization,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -1947,6 +1948,74 @@ class TestDashboardSelectors(TestCase):
         assert detail["better_count"] == 0
         assert "todavia no existe baseline activo" in detail["headline"].lower()
         assert "Conviene fijar un baseline" in detail["explanation"]
+
+    def test_get_incremental_backlog_prioritization_orders_items_by_priority(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+            return_value={
+                "baseline": {"proposal_label": "Baseline activo"},
+                "items": [
+                    {
+                        "snapshot": {"proposal_label": "Pendiente baja"},
+                        "score_difference": -0.4,
+                        "beats_baseline": False,
+                        "loses_vs_baseline": True,
+                        "ties_baseline": False,
+                    },
+                    {
+                        "snapshot": {"proposal_label": "Pendiente alta"},
+                        "score_difference": 0.6,
+                        "beats_baseline": True,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": False,
+                    },
+                    {
+                        "snapshot": {"proposal_label": "Pendiente media"},
+                        "score_difference": 0.0,
+                        "beats_baseline": False,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": True,
+                    },
+                ],
+                "has_baseline": True,
+                "has_pending_backlog": True,
+            },
+        ):
+            detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
+
+        assert detail["has_priorities"] is True
+        assert detail["counts"] == {"high": 1, "medium": 1, "low": 1}
+        assert [item["snapshot"]["proposal_label"] for item in detail["items"]] == [
+            "Pendiente alta",
+            "Pendiente media",
+            "Pendiente baja",
+        ]
+        assert detail["top_item"]["priority"] == "high"
+        assert "Backlog priorizado" in detail["headline"]
+        assert "superan el baseline activo" in detail["explanation"]
+
+    def test_get_incremental_backlog_prioritization_handles_missing_inputs(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+            return_value={
+                "baseline": None,
+                "items": [],
+                "has_baseline": False,
+                "has_pending_backlog": False,
+            },
+        ):
+            detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
+
+        assert detail["has_priorities"] is False
+        assert detail["top_item"] is None
+        assert "Todavia no hay backlog pendiente priorizable" in detail["headline"]
+        assert "Todavia no hay insumos" in detail["explanation"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

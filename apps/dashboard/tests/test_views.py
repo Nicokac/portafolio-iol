@@ -817,6 +817,35 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_backlog_prioritization',
+            lambda user, limit=5: {
+                'baseline': {'proposal_label': 'Plan baseline'},
+                'items': [
+                    {
+                        'snapshot': {
+                            'proposal_label': 'Pendiente A',
+                            'selected_context': 'Defensive / resiliente',
+                        },
+                        'priority': 'high',
+                        'priority_label': 'Alta',
+                        'score_difference': 0.7,
+                        'next_action': 'Revisar primero Pendiente A como candidata a reemplazar el baseline.',
+                    }
+                ],
+                'count': 1,
+                'counts': {'high': 1, 'medium': 0, 'low': 0},
+                'top_item': {
+                    'snapshot': {
+                        'proposal_label': 'Pendiente A',
+                    },
+                    'priority': 'high',
+                },
+                'has_priorities': True,
+                'headline': 'Backlog priorizado: 1 alta, 0 media y 0 baja. Primero revisar Pendiente A.',
+                'explanation': 'El backlog ya contiene alternativas que superan el baseline activo; Pendiente A queda arriba por prioridad.',
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_followup_executive_summary',
             lambda query_params, user, capital_amount=600000: {
                 'status': 'aligned',
@@ -956,6 +985,8 @@ class TestDashboardView:
         assert 'Backlog pendiente vs baseline activo' in body
         assert 'Pendiente A' in body
         assert 'Prioridad operativa' in body
+        assert 'Priorización operativa del backlog incremental' in body
+        assert 'Revisar primero Pendiente A como candidata a reemplazar el baseline.' in body
         assert 'Alertas de drift' in body
         assert 'Drift favorable' in body
         assert 'Promover a baseline' in body

@@ -757,6 +757,68 @@
                 </div>
                 {% endif %}
             </div>
+            <div class="card-body border-bottom bg-light-subtle">
+                <h6 class="mb-2">Priorización operativa del backlog incremental</h6>
+                <p class="text-muted mb-3">{{ incremental_backlog_prioritization.headline }}</p>
+                <p class="text-muted mb-3">{{ incremental_backlog_prioritization.explanation }}</p>
+                {% if incremental_backlog_prioritization.has_priorities %}
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Prioridad alta</div>
+                            <div><strong>{{ incremental_backlog_prioritization.counts.high }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Prioridad media</div>
+                            <div><strong>{{ incremental_backlog_prioritization.counts.medium }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Prioridad baja</div>
+                            <div><strong>{{ incremental_backlog_prioritization.counts.low }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Snapshot</th>
+                                <th>Prioridad</th>
+                                <th class="text-end">Score vs baseline</th>
+                                <th>Próximo paso</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in incremental_backlog_prioritization.items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.snapshot.proposal_label }}</strong>
+                                    {% if item.snapshot.selected_context %}
+                                    <div class="small text-muted">{{ item.snapshot.selected_context }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.priority == "high" %}
+                                    <span class="badge bg-success">Alta</span>
+                                    {% elif item.priority == "medium" %}
+                                    <span class="badge bg-warning text-dark">Media</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Baja</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ item.score_difference|default:"-" }}</td>
+                                <td>{{ item.next_action }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
             <div class="card-header bg-light">
                 <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
                 <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>

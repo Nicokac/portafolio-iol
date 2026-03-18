@@ -444,3 +444,34 @@ Limitaciones:
 - compara solo backlog pendiente visible
 - no reordena ni persiste prioridades nuevas
 - sigue usando score y deltas ya existentes
+
+## Priorizacion operativa explicita del backlog incremental
+
+La hoja `Planeacion` agrega una lectura ordenada del backlog pendiente para que el usuario vea rapido que revisar primero.
+
+Objetivo:
+
+- transformar la comparacion backlog vs baseline en prioridad accionable
+- ordenar snapshots pendientes sin cambiar score ni decision manual
+- mantener el workflow operativo en la misma superficie
+
+Reglas del MVP:
+
+- prioridad `alta`:
+  - el snapshot pendiente supera al baseline activo
+- prioridad `media`:
+  - el snapshot pendiente empata con el baseline
+- prioridad `baja`:
+  - el snapshot pendiente queda por debajo del baseline
+
+Salida:
+
+- conteo por prioridad
+- top item operativo
+- proximo paso sugerido por snapshot
+
+Limitaciones:
+
+- la prioridad es derivada y heuristica
+- no persiste orden nuevo del backlog
+- no reemplaza la decision manual final
