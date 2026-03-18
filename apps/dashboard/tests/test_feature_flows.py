@@ -67,6 +67,7 @@ class TestDashboardFeatureFlows:
         assert "Resumen ejecutivo unificado" in content
         assert "Seguimiento y governance" in content
         assert "Seguimiento operativo incremental" in content
+        assert "Historial operativo y acciones manuales" in content
         assert "Historial reciente de propuestas guardadas" in content
         assert "Checklist de adopción de propuesta incremental" not in content
         assert "Workflow de decisión manual" not in content

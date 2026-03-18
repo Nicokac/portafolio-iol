@@ -548,143 +548,154 @@
                     </div>
                 </div>
             </div>
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
-                <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>
-            </div>
             <div class="card-body">
-                <p class="text-muted mb-3">{{ incremental_proposal_history.headline }}</p>
-                {% if incremental_proposal_history.decision_counts.total %}
-                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-lg-5">
-                            <label class="form-label" for="decision_status_filter">Filtrar por decisión manual</label>
-                            <select class="form-select" id="decision_status_filter" name="decision_status_filter">
-                                {% for option in incremental_proposal_history.available_filters %}
-                                <option value="{% if option.key != 'all' %}{{ option.key }}{% endif %}" {% if option.selected %}selected{% endif %}>
-                                    {{ option.label }} · {{ option.count }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-lg-3">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar filtro</button>
-                        </div>
-                    </div>
-                </form>
-                {% endif %}
-                {% if incremental_proposal_history.has_history %}
-                <form method="post" action="{% url 'dashboard:bulk_decide_incremental_proposal' %}" class="mb-3">
-                    {% csrf_token %}
-                    <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="submit" name="decision_status" value="accepted" class="btn btn-outline-success btn-sm">
-                            Aceptar visibles
-                        </button>
-                        <button type="submit" name="decision_status" value="deferred" class="btn btn-outline-warning btn-sm">
-                            Diferir visibles
-                        </button>
-                        <button type="submit" name="decision_status" value="rejected" class="btn btn-outline-danger btn-sm">
-                            Rechazar visibles
-                        </button>
-                    </div>
-                </form>
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Propuesta</th>
-                                <th>Origen</th>
-                                <th>Compra resumida</th>
-                                <th>Decision manual</th>
-                                <th class="text-end">Δ Expected</th>
-                                <th class="text-end">Δ Fragility</th>
-                                <th class="text-end">Δ Worst Scenario</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in incremental_proposal_history.items %}
-                            <tr>
-                                <td>{{ item.created_at|date:"d M Y H:i" }}</td>
-                                <td>
-                                    <strong>{{ item.proposal_label }}</strong>
-                                    {% if item.selected_context %}
-                                    <div class="small text-muted">{{ item.selected_context }}</div>
-                                    {% endif %}
-                                    <div class="mt-2">
-                                        <a
-                                            href="{% url 'dashboard:planeacion' %}?{{ item.reapply_querystring }}#planeacion-aportes"
-                                            class="btn btn-outline-secondary btn-sm"
-                                        >
-                                            Reaplicar en comparador manual
-                                        </a>
-                                        {% if item.manual_decision_status == "pending" and not item.is_backlog_front %}
-                                        <form method="post" action="{% url 'dashboard:promote_incremental_backlog_front' %}" class="d-inline-block ms-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
-                                            <button type="submit" class="btn btn-outline-info btn-sm">Poner al frente</button>
-                                        </form>
-                                        {% endif %}
-                                        <form method="post" action="{% url 'dashboard:promote_incremental_baseline' %}" class="d-inline-block ms-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
-                                            <button type="submit" class="btn btn-outline-primary btn-sm">
-                                                {% if item.is_tracking_baseline %}Baseline activo{% else %}Promover a baseline{% endif %}
-                                            </button>
-                                        </form>
-                                        <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
-                                            <input type="hidden" name="decision_status" value="accepted">
-                                            <button type="submit" class="btn btn-outline-success btn-sm">Aceptar</button>
-                                        </form>
-                                        <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
-                                            <input type="hidden" name="decision_status" value="deferred">
-                                            <button type="submit" class="btn btn-outline-warning btn-sm">Diferir</button>
-                                        </form>
-                                        <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
-                                            <input type="hidden" name="decision_status" value="rejected">
-                                            <button type="submit" class="btn btn-outline-danger btn-sm">Rechazar</button>
-                                        </form>
+                <p class="text-muted mb-3">El historial y las acciones manuales quedan disponibles solo como trazabilidad operativa. No forman parte de la lectura principal del aporte mensual.</p>
+                <details>
+                    <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
+                        Historial operativo y acciones manuales
+                        <span class="text-muted fw-normal small ms-2">Snapshots guardados, filtros y workflow manual solo cuando necesitás gestionar seguimiento.</span>
+                    </summary>
+                    <div class="mt-3">
+                        <div class="border rounded p-3">
+                            <div class="mb-3">
+                                <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
+                                <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>
+                            </div>
+                            <p class="text-muted mb-3">{{ incremental_proposal_history.headline }}</p>
+                            {% if incremental_proposal_history.decision_counts.total %}
+                            <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-5">
+                                        <label class="form-label" for="decision_status_filter">Filtrar por decisión manual</label>
+                                        <select class="form-select" id="decision_status_filter" name="decision_status_filter">
+                                            {% for option in incremental_proposal_history.available_filters %}
+                                            <option value="{% if option.key != 'all' %}{{ option.key }}{% endif %}" {% if option.selected %}selected{% endif %}>
+                                                {{ option.label }} · {{ option.count }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
                                     </div>
-                                    {% if item.reapply_truncated %}
-                                    <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
-                                    {% endif %}
-                                </td>
-                                <td>{{ item.source_label|default:"-" }}</td>
-                                <td>
-                                    {% for purchase in item.purchase_plan %}
-                                    <div class="small">{{ purchase.symbol }} · {{ purchase.amount|currency:0 }}</div>
-                                    {% endfor %}
-                                </td>
-                                <td>
-                                    <div><strong>{{ item.manual_decision_status_label|default:"Pendiente" }}</strong></div>
-                                    {% if item.is_backlog_front %}
-                                    <div class="small text-primary">{{ item.is_backlog_front_label }}</div>
-                                    {% endif %}
-                                    {% if item.manual_decided_at %}
-                                    <div class="small text-muted">{{ item.manual_decided_at|date:"d M Y H:i" }}</div>
-                                    {% endif %}
-                                    {% if item.manual_decision_note %}
-                                    <div class="small text-muted">{{ item.manual_decision_note }}</div>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">{{ item.simulation_delta.expected_return_change|default:"-" }}</td>
-                                <td class="text-end">{{ item.simulation_delta.fragility_change|default:"-" }}</td>
-                                <td class="text-end">{{ item.simulation_delta.scenario_loss_change|default:"-" }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-muted">Todavía no guardaste propuestas incrementales preferidas.</div>
-                {% endif %}
+                                    <div class="col-lg-3">
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar filtro</button>
+                                    </div>
+                                </div>
+                            </form>
+                            {% endif %}
+                            {% if incremental_proposal_history.has_history %}
+                            <form method="post" action="{% url 'dashboard:bulk_decide_incremental_proposal' %}" class="mb-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="submit" name="decision_status" value="accepted" class="btn btn-outline-success btn-sm">
+                                        Aceptar visibles
+                                    </button>
+                                    <button type="submit" name="decision_status" value="deferred" class="btn btn-outline-warning btn-sm">
+                                        Diferir visibles
+                                    </button>
+                                    <button type="submit" name="decision_status" value="rejected" class="btn btn-outline-danger btn-sm">
+                                        Rechazar visibles
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Propuesta</th>
+                                            <th>Origen</th>
+                                            <th>Compra resumida</th>
+                                            <th>Decision manual</th>
+                                            <th class="text-end">Δ Expected</th>
+                                            <th class="text-end">Δ Fragility</th>
+                                            <th class="text-end">Δ Worst Scenario</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in incremental_proposal_history.items %}
+                                        <tr>
+                                            <td>{{ item.created_at|date:"d M Y H:i" }}</td>
+                                            <td>
+                                                <strong>{{ item.proposal_label }}</strong>
+                                                {% if item.selected_context %}
+                                                <div class="small text-muted">{{ item.selected_context }}</div>
+                                                {% endif %}
+                                                <div class="mt-2">
+                                                    <a
+                                                        href="{% url 'dashboard:planeacion' %}?{{ item.reapply_querystring }}#planeacion-aportes"
+                                                        class="btn btn-outline-secondary btn-sm"
+                                                    >
+                                                        Reaplicar en comparador manual
+                                                    </a>
+                                                    {% if item.manual_decision_status == "pending" and not item.is_backlog_front %}
+                                                    <form method="post" action="{% url 'dashboard:promote_incremental_backlog_front' %}" class="d-inline-block ms-2">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                                        <button type="submit" class="btn btn-outline-info btn-sm">Poner al frente</button>
+                                                    </form>
+                                                    {% endif %}
+                                                    <form method="post" action="{% url 'dashboard:promote_incremental_baseline' %}" class="d-inline-block ms-2">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                                                            {% if item.is_tracking_baseline %}Baseline activo{% else %}Promover a baseline{% endif %}
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                                        <input type="hidden" name="decision_status" value="accepted">
+                                                        <button type="submit" class="btn btn-outline-success btn-sm">Aceptar</button>
+                                                    </form>
+                                                    <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                                        <input type="hidden" name="decision_status" value="deferred">
+                                                        <button type="submit" class="btn btn-outline-warning btn-sm">Diferir</button>
+                                                    </form>
+                                                    <form method="post" action="{% url 'dashboard:decide_incremental_proposal' %}" class="d-inline-block ms-2">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                                        <input type="hidden" name="decision_status" value="rejected">
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm">Rechazar</button>
+                                                    </form>
+                                                </div>
+                                                {% if item.reapply_truncated %}
+                                                <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ item.source_label|default:"-" }}</td>
+                                            <td>
+                                                {% for purchase in item.purchase_plan %}
+                                                <div class="small">{{ purchase.symbol }} · {{ purchase.amount|currency:0 }}</div>
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                <div><strong>{{ item.manual_decision_status_label|default:"Pendiente" }}</strong></div>
+                                                {% if item.is_backlog_front %}
+                                                <div class="small text-primary">{{ item.is_backlog_front_label }}</div>
+                                                {% endif %}
+                                                {% if item.manual_decided_at %}
+                                                <div class="small text-muted">{{ item.manual_decided_at|date:"d M Y H:i" }}</div>
+                                                {% endif %}
+                                                {% if item.manual_decision_note %}
+                                                <div class="small text-muted">{{ item.manual_decision_note }}</div>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">{{ item.simulation_delta.expected_return_change|default:"-" }}</td>
+                                            <td class="text-end">{{ item.simulation_delta.fragility_change|default:"-" }}</td>
+                                            <td class="text-end">{{ item.simulation_delta.scenario_loss_change|default:"-" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-muted">Todavía no guardaste propuestas incrementales preferidas.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </details>
             </div>
         </div>
             </div>

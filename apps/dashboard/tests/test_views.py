@@ -539,6 +539,8 @@ class TestDashboardView:
         assert 'Seguimiento operativo incremental' in body
         assert 'Plan baseline' in body
         assert 'La ultima decision manual registrada es aceptada sobre Plan manual A.' in body
+        assert 'Historial operativo y acciones manuales' in body
+        assert 'No forman parte de la lectura principal del aporte mensual.' in body
         assert 'Historial reciente de propuestas guardadas' in body
         assert 'Filtrar por decisión manual' in body
         assert 'Aceptar visibles' in body

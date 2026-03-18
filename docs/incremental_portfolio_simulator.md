@@ -60,6 +60,12 @@ El comparador incremental agrega variantes simples sobre la misma base:
 - segundo candidato si existe
 - split del bloque mÃ¡s grande entre top 2 candidatos
 
+Jerarquia actual en `Planeacion`:
+
+- el nucleo visible arriba responde `que comprar`, `que impacto tiene` y `cual propuesta incremental parece mejor`
+- la exploracion comparativa queda como lectura secundaria
+- el seguimiento y governance permanece en la misma hoja, pero el historial accionable queda subordinado como trazabilidad operativa
+
 ## Limitaciones
 
 - simula un Ãºnico plan de compra por vez
