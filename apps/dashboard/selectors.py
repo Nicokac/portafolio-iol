@@ -2197,6 +2197,43 @@ def get_incremental_backlog_front_summary(*, user, limit: int = 5) -> Dict:
     }
 
 
+def get_incremental_backlog_operational_semaphore(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+    limit: int = 5,
+) -> Dict:
+    """Clasifica el estado operativo incremental en semaforo reutilizando baseline, drift y backlog."""
+
+    drift_payload = get_incremental_baseline_drift(query_params, user=user, capital_amount=capital_amount)
+    front_summary = get_incremental_backlog_front_summary(user=user, limit=limit)
+    prioritization = get_incremental_backlog_prioritization(user=user, limit=limit)
+
+    drift_status = drift_payload.get("summary", {}).get("status", "unavailable")
+    front_status = front_summary.get("status", "empty")
+    high_count = int(prioritization.get("counts", {}).get("high", 0))
+
+    if drift_status == "unfavorable":
+        status = "red"
+    elif front_status == "candidate_over_baseline" or high_count > 0:
+        status = "yellow"
+    elif front_status == "manual_front":
+        status = "yellow"
+    elif drift_status in {"favorable", "stable"} and front_status in {"baseline_only", "empty"}:
+        status = "green"
+    else:
+        status = "gray"
+
+    return {
+        "status": status,
+        "label": _format_incremental_operational_semaphore(status),
+        "headline": _build_incremental_operational_semaphore_headline(status, front_summary, drift_payload),
+        "items": _build_incremental_operational_semaphore_items(drift_payload, front_summary, prioritization),
+        "has_signal": bool(drift_payload.get("has_baseline") or front_summary.get("has_summary")),
+    }
+
+
 def get_incremental_followup_executive_summary(
     query_params,
     *,
@@ -2928,6 +2965,47 @@ def _build_incremental_backlog_front_summary_items(
         {
             "label": "Pendientes alta prioridad",
             "value": prioritization_payload.get("counts", {}).get("high", 0),
+        },
+    ]
+
+
+def _format_incremental_operational_semaphore(status: str) -> str:
+    mapping = {
+        "green": "Verde",
+        "yellow": "Amarillo",
+        "red": "Rojo",
+        "gray": "Sin señal",
+    }
+    return mapping.get(status, "Sin señal")
+
+
+def _build_incremental_operational_semaphore_headline(status: str, front_summary: Dict, drift_payload: Dict) -> str:
+    if status == "red":
+        return "Semáforo rojo: la propuesta actual empeora frente al baseline y conviene frenar cambios."
+    if status == "yellow":
+        return front_summary.get("headline") or "Semáforo amarillo: hay backlog incremental que merece revisión."
+    if status == "green":
+        return "Semáforo verde: el baseline actual se mantiene sólido y no hay backlog urgente por delante."
+    return drift_payload.get("explanation") or "Todavía no hay suficiente señal operativa incremental."
+
+
+def _build_incremental_operational_semaphore_items(
+    drift_payload: Dict,
+    front_summary: Dict,
+    prioritization: Dict,
+) -> list[Dict]:
+    return [
+        {
+            "label": "Drift vs baseline",
+            "value": _format_incremental_followup_status(drift_payload.get("summary", {}).get("status", "unavailable")),
+        },
+        {
+            "label": "Frente del backlog",
+            "value": ((front_summary.get("front_item") or {}).get("snapshot") or {}).get("proposal_label") or "-",
+        },
+        {
+            "label": "Pendientes alta prioridad",
+            "value": prioritization.get("counts", {}).get("high", 0),
         },
     ]
 

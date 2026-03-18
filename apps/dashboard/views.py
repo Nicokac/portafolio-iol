@@ -50,6 +50,7 @@ from apps.dashboard.selectors import (
     get_incremental_pending_backlog_vs_baseline,
     get_incremental_backlog_prioritization,
     get_incremental_backlog_front_summary,
+    get_incremental_backlog_operational_semaphore,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -237,6 +238,12 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         )
         context['incremental_backlog_front_summary'] = get_incremental_backlog_front_summary(
             user=self.request.user,
+            limit=5,
+        )
+        context['incremental_backlog_operational_semaphore'] = get_incremental_backlog_operational_semaphore(
+            self.request.GET,
+            user=self.request.user,
+            capital_amount=600000,
             limit=5,
         )
         context['incremental_followup_executive_summary'] = get_incremental_followup_executive_summary(

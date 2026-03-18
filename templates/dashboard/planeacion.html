@@ -585,6 +585,38 @@
                 <h5 class="mb-0">Baseline incremental de seguimiento</h5>
                 <small class="text-muted">Snapshot guardado que queda como referencia operativa para seguimiento manual.</small>
             </div>
+            <div class="card-body border-bottom">
+                <h6 class="mb-2">Semaforización operativa del backlog incremental</h6>
+                <p class="text-muted mb-3">{{ incremental_backlog_operational_semaphore.headline }}</p>
+                {% if incremental_backlog_operational_semaphore.has_signal %}
+                <div class="row g-3 align-items-stretch">
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Estado</div>
+                            <div>
+                                {% if incremental_backlog_operational_semaphore.status == "green" %}
+                                <span class="badge bg-success">Verde</span>
+                                {% elif incremental_backlog_operational_semaphore.status == "yellow" %}
+                                <span class="badge bg-warning text-dark">Amarillo</span>
+                                {% elif incremental_backlog_operational_semaphore.status == "red" %}
+                                <span class="badge bg-danger">Rojo</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Sin señal</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% for item in incremental_backlog_operational_semaphore.items %}
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">{{ item.label }}</div>
+                            <div><strong>{{ item.value|default:"-" }}</strong></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
             <div class="card-body border-bottom bg-light-subtle">
                 <h6 class="mb-2">Resumen operativo del frente de backlog y baseline</h6>
                 <p class="text-muted mb-3">{{ incremental_backlog_front_summary.headline }}</p>

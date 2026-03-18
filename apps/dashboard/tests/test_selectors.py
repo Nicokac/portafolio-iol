@@ -36,6 +36,7 @@ from apps.dashboard.selectors import (
     get_incremental_pending_backlog_vs_baseline,
     get_incremental_backlog_prioritization,
     get_incremental_backlog_front_summary,
+    get_incremental_backlog_operational_semaphore,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -2102,6 +2103,95 @@ class TestDashboardSelectors(TestCase):
         assert detail["status"] == "empty"
         assert detail["has_summary"] is False
         assert "Todavia no hay baseline activo" in detail["headline"]
+
+    def test_get_incremental_backlog_operational_semaphore_marks_red_with_unfavorable_drift(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={
+                    "summary": {"status": "unfavorable"},
+                    "has_baseline": True,
+                    "explanation": "La propuesta actual empeora frente al baseline.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                return_value={"status": "baseline_only", "has_summary": True, "front_item": None, "headline": "Baseline activo sin backlog urgente."},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                return_value={"counts": {"high": 0, "medium": 0, "low": 0}},
+            ),
+        ):
+            detail = get_incremental_backlog_operational_semaphore({}, user=DummyUser(), capital_amount=600000, limit=5)
+
+        assert detail["status"] == "red"
+        assert detail["label"] == "Rojo"
+        assert "Semáforo rojo" in detail["headline"]
+
+    def test_get_incremental_backlog_operational_semaphore_marks_yellow_with_high_priority_backlog(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={
+                    "summary": {"status": "stable"},
+                    "has_baseline": True,
+                    "explanation": "Sin drift material.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                return_value={
+                    "status": "candidate_over_baseline",
+                    "has_summary": True,
+                    "front_item": {"snapshot": {"proposal_label": "Pendiente A"}},
+                    "headline": "Pendiente A ya supera al baseline activo.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                return_value={"counts": {"high": 1, "medium": 0, "low": 0}},
+            ),
+        ):
+            detail = get_incremental_backlog_operational_semaphore({}, user=DummyUser(), capital_amount=600000, limit=5)
+
+        assert detail["status"] == "yellow"
+        assert detail["label"] == "Amarillo"
+        assert "Pendiente A" in detail["headline"]
+
+    def test_get_incremental_backlog_operational_semaphore_marks_green_when_baseline_holds(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                return_value={
+                    "summary": {"status": "favorable"},
+                    "has_baseline": True,
+                    "explanation": "La propuesta actual mejora el baseline activo.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                return_value={"status": "baseline_only", "has_summary": True, "front_item": None, "headline": "Baseline activo sin backlog urgente."},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                return_value={"counts": {"high": 0, "medium": 0, "low": 0}},
+            ),
+        ):
+            detail = get_incremental_backlog_operational_semaphore({}, user=DummyUser(), capital_amount=600000, limit=5)
+
+        assert detail["status"] == "green"
+        assert detail["label"] == "Verde"
+        assert "Semáforo verde" in detail["headline"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

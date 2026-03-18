@@ -504,3 +504,32 @@ Limitaciones:
 - no agrega logica nueva de priorizacion
 - no reemplaza el detalle de backlog ni el historial
 - sigue siendo una sintesis heuristica de lectura
+
+## Semaforizacion operativa del backlog incremental
+
+La hoja `Planeacion` agrega un semaforo simple para leer rapido el estado operativo incremental.
+
+Objetivo:
+
+- sintetizar drift, baseline y backlog en una señal unica
+- ayudar a decidir si conviene revisar backlog o sostener baseline
+- mantener una lectura server-rendered y explicable
+
+Reglas del MVP:
+
+- `rojo`:
+  - drift desfavorable frente al baseline
+- `amarillo`:
+  - existe backlog alta prioridad
+  - o el frente del backlog supera al baseline
+  - o el frente fue promovido manualmente
+- `verde`:
+  - drift favorable/estable y sin backlog urgente
+- `gris`:
+  - señal insuficiente
+
+Limitaciones:
+
+- es una lectura operativa, no un score nuevo
+- depende de estados ya derivados
+- no reemplaza detalle de drift ni priorizacion

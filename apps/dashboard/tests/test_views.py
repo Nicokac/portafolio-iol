@@ -873,6 +873,20 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_backlog_operational_semaphore',
+            lambda query_params, user, capital_amount=600000, limit=5: {
+                'status': 'yellow',
+                'label': 'Amarillo',
+                'headline': 'Pendiente A ya supera al baseline activo.',
+                'items': [
+                    {'label': 'Drift vs baseline', 'value': 'Sin drift material'},
+                    {'label': 'Frente del backlog', 'value': 'Pendiente A'},
+                    {'label': 'Pendientes alta prioridad', 'value': 1},
+                ],
+                'has_signal': True,
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_followup_executive_summary',
             lambda query_params, user, capital_amount=600000: {
                 'status': 'aligned',
@@ -1007,6 +1021,9 @@ class TestDashboardView:
         assert 'Resumen ejecutivo de seguimiento incremental' in body
         assert 'La propuesta actual se mantiene alineada con el baseline activo.' in body
         assert 'Baseline incremental de seguimiento' in body
+        assert 'Semaforización operativa del backlog incremental' in body
+        assert 'Pendiente A ya supera al baseline activo.' in body
+        assert 'Amarillo' in body
         assert 'Resumen operativo del frente de backlog y baseline' in body
         assert 'Pendiente A lidera el backlog por marcacion manual frente al baseline Plan baseline.' in body
         assert 'Plan baseline' in body
