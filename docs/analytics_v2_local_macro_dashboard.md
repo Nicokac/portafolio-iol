@@ -26,3 +26,14 @@ Hacer visible una lectura local breve y reusable en `Estrategia` sin mover lógi
 - no muestra riesgo país
 - no agrega gráfico propio todavía
 - usa la lectura heurística del servicio local ya implementado
+
+## Riesgo pais en Resumen
+
+`Resumen` ahora expone una card dedicada de `Riesgo pais Argentina` dentro del bloque de contexto macro local.
+
+Reglas de integracion:
+
+- reutiliza `LocalMacroSeriesService.get_context_summary()`
+- consume `riesgo_pais_arg` y `riesgo_pais_arg_date`
+- muestra la referencia como dato operativo breve
+- documenta la fuente actual como `ArgentinaDatos`

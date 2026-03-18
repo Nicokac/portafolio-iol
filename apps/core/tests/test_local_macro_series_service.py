@@ -200,6 +200,7 @@ def test_local_macro_series_service_builds_context_summary_with_country_risk():
     context = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_context_summary()
 
     assert context["riesgo_pais_arg"] == 1350.0
+    assert context["riesgo_pais_arg_date"].isoformat() == "2026-03-16"
 
 
 @pytest.mark.django_db

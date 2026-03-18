@@ -237,6 +237,22 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Último valor de riesgo país Argentina persistido localmente desde ArgentinaDatos. Sirve como referencia rápida de stress soberano local.">Riesgo país Argentina</div>
+                <div class="kpi-value {% if macro_local.riesgo_pais_arg is not None and macro_local.riesgo_pais_arg >= 1200 %}text-danger{% elif macro_local.riesgo_pais_arg is not None and macro_local.riesgo_pais_arg >= 800 %}text-warning-emphasis{% elif macro_local.riesgo_pais_arg is not None %}text-success{% else %}text-muted{% endif %}">
+                    {% if macro_local.riesgo_pais_arg is not None %}
+                    {{ macro_local.riesgo_pais_arg|floatformat:0 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">Fuente: ArgentinaDatos</div>
+                <div class="text-body-secondary small">Último dato {% if macro_local.riesgo_pais_arg_date %}{{ macro_local.riesgo_pais_arg_date }}{% else %}-{% endif %}</div>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section class="row g-3 mb-4">
