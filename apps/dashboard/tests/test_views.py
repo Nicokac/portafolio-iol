@@ -786,6 +786,8 @@ class TestDashboardView:
                         'snapshot': {
                             'proposal_label': 'Pendiente A',
                             'selected_context': 'Defensive / resiliente',
+                            'is_backlog_front': False,
+                            'id': 7,
                         },
                         'summary': {
                             'favorable_count': 3,
@@ -810,6 +812,7 @@ class TestDashboardView:
                     'snapshot': {
                         'proposal_label': 'Pendiente A',
                         'selected_context': 'Defensive / resiliente',
+                        'is_backlog_front': False,
                     }
                 },
                 'headline': 'Hay 1 snapshot pendiente: 1 supera el baseline, 0 quedan por debajo y 0 empatan.',
@@ -825,6 +828,9 @@ class TestDashboardView:
                         'snapshot': {
                             'proposal_label': 'Pendiente A',
                             'selected_context': 'Defensive / resiliente',
+                            'is_backlog_front': False,
+                            'manual_decision_status': 'pending',
+                            'id': 7,
                         },
                         'priority': 'high',
                         'priority_label': 'Alta',
@@ -987,6 +993,7 @@ class TestDashboardView:
         assert 'Prioridad operativa' in body
         assert 'Priorización operativa del backlog incremental' in body
         assert 'Revisar primero Pendiente A como candidata a reemplazar el baseline.' in body
+        assert 'Poner al frente' in body
         assert 'Alertas de drift' in body
         assert 'Drift favorable' in body
         assert 'Promover a baseline' in body
@@ -1108,6 +1115,38 @@ class TestDashboardView:
 
         assert response.status_code == 302
         audit = SensitiveActionAudit.objects.get(action='promote_incremental_baseline')
+        assert audit.status == 'failed'
+
+    def test_promote_incremental_backlog_front_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:promote_incremental_backlog_front'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    def test_promote_incremental_backlog_front_marks_snapshot(self, auth_client, user):
+        snapshot = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key='manual_plan',
+            source_label='Comparador manual',
+            proposal_key='plan_a',
+            proposal_label='Plan manual A',
+            capital_amount=600000,
+            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
+            simulation_delta={},
+        )
+
+        response = auth_client.post(reverse('dashboard:promote_incremental_backlog_front'), {'snapshot_id': snapshot.id})
+
+        assert response.status_code == 302
+        snapshot.refresh_from_db()
+        assert snapshot.is_backlog_front is True
+        audit = SensitiveActionAudit.objects.get(action='promote_incremental_backlog_front')
+        assert audit.status == 'success'
+
+    def test_promote_incremental_backlog_front_rejects_invalid_snapshot(self, auth_client):
+        response = auth_client.post(reverse('dashboard:promote_incremental_backlog_front'), {'snapshot_id': 999999})
+
+        assert response.status_code == 302
+        audit = SensitiveActionAudit.objects.get(action='promote_incremental_backlog_front')
         assert audit.status == 'failed'
 
     def test_decide_incremental_proposal_requires_authentication(self, client):

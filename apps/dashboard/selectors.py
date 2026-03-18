@@ -1991,6 +1991,7 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
         enriched["manual_decision_status_label"] = _format_incremental_manual_decision_status(
             str(item.get("manual_decision_status") or "pending")
         )
+        enriched["is_backlog_front_label"] = "Al frente del backlog" if item.get("is_backlog_front") else ""
         enriched.update(reapply)
         items.append(enriched)
     return {
@@ -2136,6 +2137,7 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
     ordered_items = sorted(
         items,
         key=lambda item: (
+            0 if item["snapshot"].get("is_backlog_front") else 1,
             _incremental_backlog_priority_order(item["priority"]),
             -(item.get("score_difference") if item.get("score_difference") is not None else float("-inf")),
             item["snapshot"].get("proposal_label") or "",
@@ -2783,6 +2785,8 @@ def _incremental_backlog_priority_order(priority: str) -> int:
 
 def _build_incremental_backlog_next_action(priority: str, item: Dict) -> str:
     proposal_label = item.get("snapshot", {}).get("proposal_label") or "este snapshot"
+    if item.get("snapshot", {}).get("is_backlog_front"):
+        return f"{proposal_label} ya esta marcado al frente del backlog para revision prioritaria."
     if priority == "high":
         return f"Revisar primero {proposal_label} como candidata a reemplazar el baseline."
     if priority == "medium":
@@ -2799,6 +2803,11 @@ def _build_incremental_backlog_prioritization_headline(backlog_payload: Dict, co
         return "No hay snapshots pendientes para priorizar contra el baseline activo."
     if top_item is None:
         return "No fue posible priorizar el backlog pendiente contra el baseline activo."
+    if top_item.get("snapshot", {}).get("is_backlog_front"):
+        return (
+            f"Backlog priorizado con frente manual: {top_item.get('snapshot', {}).get('proposal_label') or 'snapshot al frente'} "
+            "queda primero para revision operativa."
+        )
     return (
         f"Backlog priorizado: {counts.get('high', 0)} alta, {counts.get('medium', 0)} media y "
         f"{counts.get('low', 0)} baja. Primero revisar {top_item.get('snapshot', {}).get('proposal_label') or 'el snapshot prioritario'}."
@@ -2812,6 +2821,11 @@ def _build_incremental_backlog_prioritization_explanation(backlog_payload: Dict,
         return "La priorizacion explicita del backlog requiere primero un baseline incremental activo."
     if not backlog_payload.get("has_pending_backlog"):
         return "No hay backlog pendiente por ordenar en este momento."
+    if top_item is not None and top_item.get("snapshot", {}).get("is_backlog_front"):
+        return (
+            f"{top_item.get('snapshot', {}).get('proposal_label') or 'El snapshot elegido'} fue promovido manualmente "
+            "al frente del backlog y queda primero en la lectura operativa."
+        )
     if counts.get("high", 0) > 0 and top_item is not None:
         return (
             f"El backlog ya contiene alternativas que superan el baseline activo; "

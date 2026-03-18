@@ -99,6 +99,36 @@ class IncrementalProposalHistoryService:
             return None
         return self.serialize(snapshot)
 
+    def promote_to_backlog_front(self, *, user, snapshot_id: int | str) -> dict:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            raise ValueError("authenticated_user_required")
+
+        snapshot = IncrementalProposalSnapshot.objects.filter(user=user, pk=snapshot_id).first()
+        if snapshot is None:
+            raise ValueError("snapshot_not_found")
+        if snapshot.manual_decision_status != "pending":
+            raise ValueError("snapshot_not_pending")
+
+        IncrementalProposalSnapshot.objects.filter(user=user, is_backlog_front=True).exclude(pk=snapshot.pk).update(
+            is_backlog_front=False
+        )
+        if not snapshot.is_backlog_front:
+            snapshot.is_backlog_front = True
+            snapshot.save(update_fields=["is_backlog_front"])
+        return self.serialize(snapshot)
+
+    def get_backlog_front(self, *, user) -> dict | None:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            return None
+        snapshot = (
+            IncrementalProposalSnapshot.objects.filter(user=user, is_backlog_front=True, manual_decision_status="pending")
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if snapshot is None:
+            return None
+        return self.serialize(snapshot)
+
     def decide_snapshot(self, *, user, snapshot_id: int | str, decision_status: str, note: str = "") -> dict:
         if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
             raise ValueError("authenticated_user_required")
@@ -114,7 +144,9 @@ class IncrementalProposalHistoryService:
         snapshot.manual_decision_status = normalized_status
         snapshot.manual_decision_note = str(note or "").strip()[:240]
         snapshot.manual_decided_at = timezone.now()
-        snapshot.save(update_fields=["manual_decision_status", "manual_decision_note", "manual_decided_at"])
+        if normalized_status != "pending":
+            snapshot.is_backlog_front = False
+        snapshot.save(update_fields=["manual_decision_status", "manual_decision_note", "manual_decided_at", "is_backlog_front"])
         return self.serialize(snapshot)
 
     def decide_many_snapshots(self, *, user, snapshot_ids: list[int | str], decision_status: str, note: str = "") -> dict:
@@ -145,6 +177,7 @@ class IncrementalProposalHistoryService:
             manual_decision_status=normalized_status,
             manual_decision_note=str(note or "").strip()[:240],
             manual_decided_at=decided_at,
+            is_backlog_front=False,
         )
         return {
             "updated_count": int(updated),
@@ -182,6 +215,7 @@ class IncrementalProposalHistoryService:
             "simulation_interpretation": snapshot.simulation_interpretation,
             "explanation": snapshot.explanation,
             "is_tracking_baseline": bool(snapshot.is_tracking_baseline),
+            "is_backlog_front": bool(snapshot.is_backlog_front),
             "manual_decision_status": snapshot.manual_decision_status,
             "manual_decision_note": snapshot.manual_decision_note,
             "manual_decided_at": snapshot.manual_decided_at,

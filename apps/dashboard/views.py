@@ -405,6 +405,38 @@ class PromoteIncrementalProposalBaselineView(LoginRequiredMixin, View):
         return redirect(redirect_url)
 
 
+class PromoteIncrementalBacklogFrontView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        snapshot_id = request.POST.get('snapshot_id')
+        redirect_url = f"{reverse('dashboard:planeacion')}#planeacion-aportes"
+
+        try:
+            promoted = IncrementalProposalHistoryService().promote_to_backlog_front(
+                user=request.user,
+                snapshot_id=snapshot_id,
+            )
+        except ValueError as exc:
+            record_sensitive_action(
+                request,
+                action='promote_incremental_backlog_front',
+                status='failed',
+                details={'reason': str(exc), 'snapshot_id': snapshot_id},
+            )
+            messages.error(request, "No fue posible promover el snapshot al frente del backlog incremental.")
+            return redirect(redirect_url)
+
+        record_sensitive_action(
+            request,
+            action='promote_incremental_backlog_front',
+            status='success',
+            details={'snapshot_id': promoted['id'], 'proposal_label': promoted['proposal_label']},
+        )
+        messages.success(request, f"Snapshot al frente del backlog: {promoted['proposal_label']}.")
+        return redirect(redirect_url)
+
+
 class DecideIncrementalProposalView(LoginRequiredMixin, View):
     http_method_names = ['post']
 

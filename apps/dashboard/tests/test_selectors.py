@@ -1959,21 +1959,21 @@ class TestDashboardSelectors(TestCase):
                 "baseline": {"proposal_label": "Baseline activo"},
                 "items": [
                     {
-                        "snapshot": {"proposal_label": "Pendiente baja"},
+                        "snapshot": {"proposal_label": "Pendiente baja", "is_backlog_front": False},
                         "score_difference": -0.4,
                         "beats_baseline": False,
                         "loses_vs_baseline": True,
                         "ties_baseline": False,
                     },
                     {
-                        "snapshot": {"proposal_label": "Pendiente alta"},
+                        "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
                         "score_difference": 0.6,
                         "beats_baseline": True,
                         "loses_vs_baseline": False,
                         "ties_baseline": False,
                     },
                     {
-                        "snapshot": {"proposal_label": "Pendiente media"},
+                        "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
                         "score_difference": 0.0,
                         "beats_baseline": False,
                         "loses_vs_baseline": False,
@@ -2016,6 +2016,41 @@ class TestDashboardSelectors(TestCase):
         assert detail["top_item"] is None
         assert "Todavia no hay backlog pendiente priorizable" in detail["headline"]
         assert "Todavia no hay insumos" in detail["explanation"]
+
+    def test_get_incremental_backlog_prioritization_prefers_manual_front_snapshot(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+            return_value={
+                "baseline": {"proposal_label": "Baseline activo"},
+                "items": [
+                    {
+                        "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
+                        "score_difference": 0.6,
+                        "beats_baseline": True,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": False,
+                    },
+                    {
+                        "snapshot": {"proposal_label": "Pendiente manual", "is_backlog_front": True},
+                        "score_difference": 0.0,
+                        "beats_baseline": False,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": True,
+                    },
+                ],
+                "has_baseline": True,
+                "has_pending_backlog": True,
+            },
+        ):
+            detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
+
+        assert detail["top_item"]["snapshot"]["proposal_label"] == "Pendiente manual"
+        assert detail["items"][0]["priority"] == "medium"
+        assert "frente manual" in detail["headline"].lower()
+        assert "promovido manualmente" in detail["explanation"].lower()
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

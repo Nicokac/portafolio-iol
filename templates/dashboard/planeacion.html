@@ -800,6 +800,9 @@
                                     {% if item.snapshot.selected_context %}
                                     <div class="small text-muted">{{ item.snapshot.selected_context }}</div>
                                     {% endif %}
+                                    {% if item.snapshot.is_backlog_front %}
+                                    <div class="small text-primary">Al frente del backlog</div>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if item.priority == "high" %}
@@ -811,7 +814,16 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end">{{ item.score_difference|default:"-" }}</td>
-                                <td>{{ item.next_action }}</td>
+                                <td>
+                                    <div>{{ item.next_action }}</div>
+                                    {% if item.snapshot.manual_decision_status == "pending" and not item.snapshot.is_backlog_front %}
+                                    <form method="post" action="{% url 'dashboard:promote_incremental_backlog_front' %}" class="mt-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="snapshot_id" value="{{ item.snapshot.id }}">
+                                        <button type="submit" class="btn btn-outline-info btn-sm">Poner al frente</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -890,6 +902,13 @@
                                         >
                                             Reaplicar en comparador manual
                                         </a>
+                                        {% if item.manual_decision_status == "pending" and not item.is_backlog_front %}
+                                        <form method="post" action="{% url 'dashboard:promote_incremental_backlog_front' %}" class="d-inline-block ms-2">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="snapshot_id" value="{{ item.id }}">
+                                            <button type="submit" class="btn btn-outline-info btn-sm">Poner al frente</button>
+                                        </form>
+                                        {% endif %}
                                         <form method="post" action="{% url 'dashboard:promote_incremental_baseline' %}" class="d-inline-block ms-2">
                                             {% csrf_token %}
                                             <input type="hidden" name="snapshot_id" value="{{ item.id }}">
@@ -928,6 +947,9 @@
                                 </td>
                                 <td>
                                     <div><strong>{{ item.manual_decision_status_label|default:"Pendiente" }}</strong></div>
+                                    {% if item.is_backlog_front %}
+                                    <div class="small text-primary">{{ item.is_backlog_front_label }}</div>
+                                    {% endif %}
                                     {% if item.manual_decided_at %}
                                     <div class="small text-muted">{{ item.manual_decided_at|date:"d M Y H:i" }}</div>
                                     {% endif %}

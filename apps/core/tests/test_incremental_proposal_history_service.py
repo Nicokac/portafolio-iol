@@ -130,6 +130,72 @@ def test_promote_to_tracking_baseline_sets_unique_active_snapshot():
 
 
 @pytest.mark.django_db
+def test_promote_to_backlog_front_sets_unique_pending_snapshot():
+    user = User.objects.create_user(username="history-front", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    promoted = service.promote_to_backlog_front(user=user, snapshot_id=first["id"])
+    assert promoted["is_backlog_front"] is True
+
+    promoted = service.promote_to_backlog_front(user=user, snapshot_id=second["id"])
+    assert promoted["proposal_label"] == "Plan B"
+    assert service.get_backlog_front(user=user)["proposal_label"] == "Plan B"
+
+    flags = list(
+        IncrementalProposalSnapshot.objects.filter(user=user).order_by("id").values_list("proposal_label", "is_backlog_front")
+    )
+    assert flags == [("Plan A", False), ("Plan B", True)]
+
+
+@pytest.mark.django_db
+def test_promote_to_backlog_front_rejects_non_pending_snapshot():
+    user = User.objects.create_user(username="history-front-reject", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    saved = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    service.decide_snapshot(user=user, snapshot_id=saved["id"], decision_status="accepted")
+
+    with pytest.raises(ValueError):
+        service.promote_to_backlog_front(user=user, snapshot_id=saved["id"])
+
+
+@pytest.mark.django_db
 def test_decide_snapshot_persists_manual_decision():
     user = User.objects.create_user(username="history-decision", password="testpass123")
     service = IncrementalProposalHistoryService()
@@ -154,6 +220,7 @@ def test_decide_snapshot_persists_manual_decision():
     assert snapshot.manual_decision_status == "accepted"
     assert snapshot.manual_decision_note == "Lista para ejecutar"
     assert snapshot.manual_decided_at is not None
+    assert snapshot.is_backlog_front is False
 
 
 @pytest.mark.django_db
@@ -316,6 +383,7 @@ def test_decide_many_snapshots_updates_visible_selection():
         },
         capital_amount=100000,
     )
+    service.promote_to_backlog_front(user=user, snapshot_id=first["id"])
 
     result = service.decide_many_snapshots(
         user=user,
@@ -328,6 +396,7 @@ def test_decide_many_snapshots_updates_visible_selection():
         IncrementalProposalSnapshot.objects.filter(user=user).order_by("id").values_list("manual_decision_status", flat=True)
     )
     assert statuses == ["deferred", "deferred"]
+    assert service.get_backlog_front(user=user) is None
 
 
 @pytest.mark.django_db

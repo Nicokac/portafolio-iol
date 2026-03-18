@@ -270,6 +270,7 @@ class IncrementalProposalSnapshot(models.Model):
     simulation_interpretation = models.TextField(blank=True, default="")
     explanation = models.TextField(blank=True, default="")
     is_tracking_baseline = models.BooleanField(default=False)
+    is_backlog_front = models.BooleanField(default=False)
     manual_decision_status = models.CharField(max_length=16, choices=DECISION_STATUS_CHOICES, default="pending")
     manual_decision_note = models.CharField(max_length=240, blank=True, default="")
     manual_decided_at = models.DateTimeField(null=True, blank=True)
