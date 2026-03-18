@@ -18,6 +18,10 @@ class LocalMacroSignalsService:
     VERY_HIGH_SOVEREIGN_RISK_THRESHOLD = 15.0
     HIGH_FX_GAP_THRESHOLD = 15.0
     VERY_HIGH_FX_GAP_THRESHOLD = 30.0
+    FX_GAP_DETERIORATION_POINTS_THRESHOLD = 5.0
+    VERY_HIGH_FX_GAP_DETERIORATION_POINTS_THRESHOLD = 10.0
+    FX_GAP_DETERIORATION_PCT_THRESHOLD = 25.0
+    VERY_HIGH_FX_GAP_DETERIORATION_PCT_THRESHOLD = 50.0
     HIGH_COUNTRY_RISK_THRESHOLD = 900.0
     VERY_HIGH_COUNTRY_RISK_THRESHOLD = 1400.0
     COUNTRY_RISK_DETERIORATION_POINTS_THRESHOLD = 150.0
@@ -96,6 +100,8 @@ class LocalMacroSignalsService:
         usdars_oficial = self._as_float(context.get("usdars_oficial"))
         usdars_mep = self._as_float(context.get("usdars_mep"))
         fx_gap_pct = self._as_float(context.get("fx_gap_pct"))
+        fx_gap_change_30d = self._as_float(context.get("fx_gap_change_30d"))
+        fx_gap_change_pct_30d = self._as_float(context.get("fx_gap_change_pct_30d"))
         riesgo_pais_arg = self._as_float(context.get("riesgo_pais_arg"))
         riesgo_pais_arg_change_30d = self._as_float(context.get("riesgo_pais_arg_change_30d"))
         riesgo_pais_arg_change_pct_30d = self._as_float(context.get("riesgo_pais_arg_change_pct_30d"))
@@ -135,6 +141,10 @@ class LocalMacroSignalsService:
                 "usdars_oficial": round(usdars_oficial, 2) if usdars_oficial is not None else None,
                 "usdars_mep": round(usdars_mep, 2) if usdars_mep is not None else None,
                 "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
+                "fx_gap_change_30d": round(fx_gap_change_30d, 2) if fx_gap_change_30d is not None else None,
+                "fx_gap_change_pct_30d": (
+                    round(fx_gap_change_pct_30d, 2) if fx_gap_change_pct_30d is not None else None
+                ),
                 "riesgo_pais_arg": round(riesgo_pais_arg, 2) if riesgo_pais_arg is not None else None,
                 "riesgo_pais_arg_change_30d": (
                     round(riesgo_pais_arg_change_30d, 2) if riesgo_pais_arg_change_30d is not None else None
@@ -180,6 +190,8 @@ class LocalMacroSignalsService:
         badlar_real_carry_pct = summary.get("badlar_real_carry_pct")
         ipc_yoy_pct = summary.get("ipc_yoy_pct")
         fx_gap_pct = summary.get("fx_gap_pct")
+        fx_gap_change_30d = summary.get("fx_gap_change_30d")
+        fx_gap_change_pct_30d = summary.get("fx_gap_change_pct_30d")
         riesgo_pais_arg = summary.get("riesgo_pais_arg")
         riesgo_pais_arg_change_30d = summary.get("riesgo_pais_arg_change_30d")
         riesgo_pais_arg_change_pct_30d = summary.get("riesgo_pais_arg_change_pct_30d")
@@ -244,6 +256,40 @@ class LocalMacroSignalsService:
                     evidence={
                         "argentina_weight_pct": round(argentina_weight_pct, 2),
                         "fx_gap_pct": round(float(fx_gap_pct), 2),
+                        "usdars_oficial": round(float(summary.get("usdars_oficial") or 0.0), 2),
+                        "usdars_mep": round(float(summary.get("usdars_mep") or 0.0), 2),
+                    },
+                )
+            )
+
+        if (
+            fx_gap_change_30d is not None
+            and fx_gap_change_pct_30d is not None
+            and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
+            and (
+                float(fx_gap_change_30d) >= self.FX_GAP_DETERIORATION_POINTS_THRESHOLD
+                or float(fx_gap_change_pct_30d) >= self.FX_GAP_DETERIORATION_PCT_THRESHOLD
+            )
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_fx_gap_deteriorating",
+                    severity=(
+                        "high"
+                        if (
+                            float(fx_gap_change_30d) >= self.VERY_HIGH_FX_GAP_DETERIORATION_POINTS_THRESHOLD
+                            or float(fx_gap_change_pct_30d) >= self.VERY_HIGH_FX_GAP_DETERIORATION_PCT_THRESHOLD
+                        )
+                        else "medium"
+                    ),
+                    title="Brecha cambiaria en deterioro reciente",
+                    description="La brecha entre dólar oficial y MEP viene ampliándose con fuerza mientras la cartera mantiene exposición local material.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "argentina_weight_pct": round(argentina_weight_pct, 2),
+                        "fx_gap_pct": round(float(fx_gap_pct or 0.0), 2),
+                        "fx_gap_change_30d": round(float(fx_gap_change_30d), 2),
+                        "fx_gap_change_pct_30d": round(float(fx_gap_change_pct_30d), 2),
                         "usdars_oficial": round(float(summary.get("usdars_oficial") or 0.0), 2),
                         "usdars_mep": round(float(summary.get("usdars_mep") or 0.0), 2),
                     },

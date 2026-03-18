@@ -168,8 +168,24 @@ def test_local_macro_series_service_builds_optional_fx_gap_when_mep_exists():
         source="bcra",
         external_id="5",
         frequency="daily",
+        fecha=date(2026, 2, 10),
+        value=1000.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="usdars_oficial",
+        source="bcra",
+        external_id="5",
+        frequency="daily",
         fecha=date(2026, 3, 13),
         value=1000.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="usdars_mep",
+        source="manual",
+        external_id="mep",
+        frequency="daily",
+        fecha=date(2026, 2, 10),
+        value=1100.0,
     )
     MacroSeriesSnapshot.objects.create(
         series_key="usdars_mep",
@@ -184,6 +200,9 @@ def test_local_macro_series_service_builds_optional_fx_gap_when_mep_exists():
 
     assert context["usdars_mep"] == 1180.0
     assert context["fx_gap_pct"] == 18.0
+    assert context["fx_gap_change_30d"] == 8.0
+    assert context["fx_gap_change_pct_30d"] == 80.0
+    assert context["fx_gap_base_date_30d"].isoformat() == "2026-02-10"
 
 
 @pytest.mark.django_db

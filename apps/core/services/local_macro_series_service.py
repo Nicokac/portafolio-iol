@@ -115,6 +115,7 @@ class LocalMacroSeriesService:
             float(usdars_latest.value) > 0
         ):
             fx_gap_pct = ((float(usdars_mep_latest.value) / float(usdars_latest.value)) - 1) * 100
+        fx_gap_change_30d = self._calculate_fx_gap_change(lookback_days=30)
         riesgo_pais_change_30d = self._calculate_series_change("riesgo_pais_arg", lookback_days=30)
         portfolio_ytd = self._calculate_portfolio_ytd(ipc_variation_ytd)
         badlar_ytd = self._calculate_badlar_ytd()
@@ -131,6 +132,13 @@ class LocalMacroSeriesService:
             "usdars_mep": float(usdars_mep_latest.value) if usdars_mep_latest else None,
             "usdars_mep_date": usdars_mep_latest.fecha if usdars_mep_latest else None,
             "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
+            "fx_gap_change_30d": (
+                round(fx_gap_change_30d["change"], 2) if fx_gap_change_30d.get("change") is not None else None
+            ),
+            "fx_gap_change_pct_30d": (
+                round(fx_gap_change_30d["change_pct"], 2) if fx_gap_change_30d.get("change_pct") is not None else None
+            ),
+            "fx_gap_base_date_30d": fx_gap_change_30d.get("base_date"),
             "riesgo_pais_arg": float(riesgo_pais_latest.value) if riesgo_pais_latest else None,
             "riesgo_pais_arg_date": riesgo_pais_latest.fecha if riesgo_pais_latest else None,
             "riesgo_pais_arg_change_30d": (
@@ -415,6 +423,45 @@ class LocalMacroSeriesService:
             "change": latest_value - base_value,
             "change_pct": change_pct,
             "base_date": base_snapshot.fecha,
+        }
+
+    def _calculate_fx_gap_change(self, *, lookback_days: int) -> dict:
+        latest_official = self._get_latest_snapshot("usdars_oficial")
+        latest_mep = self._get_latest_snapshot("usdars_mep")
+        if latest_official is None or latest_mep is None:
+            return {"change": None, "change_pct": None, "base_date": None}
+
+        latest_official_value = float(latest_official.value)
+        if latest_official_value <= 0:
+            return {"change": None, "change_pct": None, "base_date": None}
+        latest_gap = ((float(latest_mep.value) / latest_official_value) - 1) * 100
+
+        cutoff_date = min(latest_official.fecha, latest_mep.fecha) - pd.Timedelta(days=lookback_days)
+        base_official = (
+            MacroSeriesSnapshot.objects.filter(series_key="usdars_oficial", fecha__lte=cutoff_date)
+            .order_by("-fecha")
+            .first()
+        )
+        base_mep = (
+            MacroSeriesSnapshot.objects.filter(series_key="usdars_mep", fecha__lte=cutoff_date)
+            .order_by("-fecha")
+            .first()
+        )
+        if base_official is None or base_mep is None:
+            return {"change": None, "change_pct": None, "base_date": None}
+
+        base_official_value = float(base_official.value)
+        if base_official_value <= 0:
+            return {"change": None, "change_pct": None, "base_date": None}
+        base_gap = ((float(base_mep.value) / base_official_value) - 1) * 100
+        change_pct = None
+        if base_gap != 0:
+            change_pct = ((latest_gap / base_gap) - 1) * 100
+
+        return {
+            "change": latest_gap - base_gap,
+            "change_pct": change_pct,
+            "base_date": min(base_official.fecha, base_mep.fecha),
         }
 
     def _fetch_rows(self, config: dict) -> list[dict]:
