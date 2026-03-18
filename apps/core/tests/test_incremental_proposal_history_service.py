@@ -286,3 +286,54 @@ def test_get_decision_counts_returns_operational_summary():
         "deferred": 1,
         "rejected": 1,
     }
+
+
+@pytest.mark.django_db
+def test_decide_many_snapshots_updates_visible_selection():
+    user = User.objects.create_user(username="history-bulk", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    result = service.decide_many_snapshots(
+        user=user,
+        snapshot_ids=[first["id"], second["id"]],
+        decision_status="deferred",
+    )
+
+    assert result["updated_count"] == 2
+    statuses = list(
+        IncrementalProposalSnapshot.objects.filter(user=user).order_by("id").values_list("manual_decision_status", flat=True)
+    )
+    assert statuses == ["deferred", "deferred"]
+
+
+@pytest.mark.django_db
+def test_decide_many_snapshots_rejects_empty_selection():
+    user = User.objects.create_user(username="history-bulk-empty", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    with pytest.raises(ValueError):
+        service.decide_many_snapshots(user=user, snapshot_ids=[], decision_status="accepted")

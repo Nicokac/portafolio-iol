@@ -919,6 +919,9 @@ class TestDashboardView:
         assert 'Promover a baseline' in body
         assert 'Historial reciente de propuestas guardadas' in body
         assert 'Filtrar por decisión manual' in body
+        assert 'Aceptar visibles' in body
+        assert 'Diferir visibles' in body
+        assert 'Rechazar visibles' in body
         assert 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.' in body
         assert 'Plan guardado 1' in body
         assert 'Aceptar' in body
@@ -1071,6 +1074,56 @@ class TestDashboardView:
 
         assert response.status_code == 302
         audit = SensitiveActionAudit.objects.get(action='decide_incremental_proposal')
+        assert audit.status == 'failed'
+
+    def test_bulk_decide_incremental_proposal_requires_authentication(self, client):
+        response = client.post(reverse('dashboard:bulk_decide_incremental_proposal'))
+        assert response.status_code == 302
+        assert '/accounts/login/' in response['Location']
+
+    def test_bulk_decide_incremental_proposal_updates_visible_snapshots(self, auth_client, user):
+        first = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key='manual_plan',
+            source_label='Comparador manual',
+            proposal_key='plan_a',
+            proposal_label='Plan manual A',
+            capital_amount=600000,
+            purchase_plan=[{'symbol': 'KO', 'amount': 300000}],
+            simulation_delta={},
+        )
+        second = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key='manual_plan',
+            source_label='Comparador manual',
+            proposal_key='plan_b',
+            proposal_label='Plan manual B',
+            capital_amount=600000,
+            purchase_plan=[{'symbol': 'MCD', 'amount': 300000}],
+            simulation_delta={},
+        )
+
+        response = auth_client.post(
+            reverse('dashboard:bulk_decide_incremental_proposal'),
+            {'decision_status': 'accepted', 'decision_status_filter': 'pending'},
+        )
+
+        assert response.status_code == 302
+        first.refresh_from_db()
+        second.refresh_from_db()
+        assert first.manual_decision_status == 'accepted'
+        assert second.manual_decision_status == 'accepted'
+        audit = SensitiveActionAudit.objects.get(action='bulk_decide_incremental_proposal')
+        assert audit.status == 'success'
+
+    def test_bulk_decide_incremental_proposal_rejects_empty_visible_selection(self, auth_client):
+        response = auth_client.post(
+            reverse('dashboard:bulk_decide_incremental_proposal'),
+            {'decision_status': 'accepted', 'decision_status_filter': 'accepted'},
+        )
+
+        assert response.status_code == 302
+        audit = SensitiveActionAudit.objects.get(action='bulk_decide_incremental_proposal')
         assert audit.status == 'failed'
 
     def test_planeacion_accepts_reapplied_snapshot_query_in_manual_comparator(self, auth_client):

@@ -388,3 +388,27 @@ Limitaciones:
 - el filtro es solo de lectura
 - no agrega persistencia nueva
 - no reemplaza una vista historica dedicada
+
+## Acciones masivas minimas sobre historial
+
+La hoja `Planeacion` permite aplicar una decision manual comun a los snapshots actualmente visibles en el historial filtrado.
+
+Objetivo:
+
+- acelerar cierre operativo del backlog incremental
+- reutilizar el mismo historial y los mismos estados ya existentes
+
+Reglas del MVP:
+
+- la accion masiva opera solo sobre las filas visibles
+- respeta el filtro activo del historial
+- permite marcar visibles como:
+  - `accepted`
+  - `deferred`
+  - `rejected`
+
+Limitaciones:
+
+- no permite seleccionar filas arbitrarias
+- no hay confirmacion avanzada ni preview del lote
+- no actualiza notas en bloque desde UI

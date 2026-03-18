@@ -117,6 +117,43 @@ class IncrementalProposalHistoryService:
         snapshot.save(update_fields=["manual_decision_status", "manual_decision_note", "manual_decided_at"])
         return self.serialize(snapshot)
 
+    def decide_many_snapshots(self, *, user, snapshot_ids: list[int | str], decision_status: str, note: str = "") -> dict:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            raise ValueError("authenticated_user_required")
+
+        normalized_status = str(decision_status or "").strip().lower()
+        if normalized_status not in self.MANUAL_DECISION_STATUSES:
+            raise ValueError("invalid_decision_status")
+
+        normalized_ids = []
+        for raw_id in snapshot_ids or []:
+            try:
+                normalized_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        normalized_ids = list(dict.fromkeys(normalized_ids))
+        if not normalized_ids:
+            raise ValueError("empty_snapshot_selection")
+
+        queryset = IncrementalProposalSnapshot.objects.filter(user=user, id__in=normalized_ids)
+        matched_ids = list(queryset.values_list("id", flat=True))
+        if not matched_ids:
+            raise ValueError("snapshot_not_found")
+
+        decided_at = timezone.now()
+        updated = queryset.update(
+            manual_decision_status=normalized_status,
+            manual_decision_note=str(note or "").strip()[:240],
+            manual_decided_at=decided_at,
+        )
+        return {
+            "updated_count": int(updated),
+            "snapshot_ids": matched_ids,
+            "decision_status": normalized_status,
+            "manual_decision_note": str(note or "").strip()[:240],
+            "decided_at": decided_at,
+        }
+
     def get_latest_manual_decision(self, *, user) -> dict | None:
         if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
             return None

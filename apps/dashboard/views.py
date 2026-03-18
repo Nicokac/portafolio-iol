@@ -438,6 +438,57 @@ class DecideIncrementalProposalView(LoginRequiredMixin, View):
         return redirect(redirect_url)
 
 
+class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        decision_status = request.POST.get('decision_status')
+        decision_status_filter = request.POST.get('decision_status_filter', '')
+        history = get_incremental_proposal_history(
+            user=request.user,
+            limit=5,
+            decision_status=decision_status_filter or None,
+        )
+        snapshot_ids = [item.get('id') for item in history.get('items', []) if item.get('id') is not None]
+        redirect_url = reverse('dashboard:planeacion')
+        if decision_status_filter:
+            redirect_url = f"{redirect_url}?decision_status_filter={decision_status_filter}#planeacion-aportes"
+        else:
+            redirect_url = f"{redirect_url}#planeacion-aportes"
+
+        try:
+            result = IncrementalProposalHistoryService().decide_many_snapshots(
+                user=request.user,
+                snapshot_ids=snapshot_ids,
+                decision_status=decision_status,
+            )
+        except ValueError as exc:
+            record_sensitive_action(
+                request,
+                action='bulk_decide_incremental_proposal',
+                status='failed',
+                details={'reason': str(exc), 'decision_status': decision_status, 'filter': decision_status_filter},
+            )
+            messages.error(request, "No fue posible registrar la decisión masiva sobre el historial incremental visible.")
+            return redirect(redirect_url)
+
+        record_sensitive_action(
+            request,
+            action='bulk_decide_incremental_proposal',
+            status='success',
+            details={
+                'decision_status': result['decision_status'],
+                'updated_count': result['updated_count'],
+                'filter': decision_status_filter or 'all',
+            },
+        )
+        messages.success(
+            request,
+            f"Decisión masiva aplicada a {result['updated_count']} snapshot(s) visibles.",
+        )
+        return redirect(redirect_url)
+
+
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     raise_exception = True
 

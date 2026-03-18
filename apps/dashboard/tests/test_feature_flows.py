@@ -65,6 +65,7 @@ class TestDashboardFeatureFlows:
         assert "Drift vs propuesta preferida actual" in content
         assert "Alertas de drift" in content
         assert "Historial reciente de propuestas guardadas" in content
+        assert "Aceptar visibles" in content or "Todavía no guardaste propuestas incrementales preferidas." in content
         assert "Snapshot guardado vs propuesta actual" in content
         assert "Comparador de propuestas incrementales" in content
         assert "Comparador incremental por candidato" in content
