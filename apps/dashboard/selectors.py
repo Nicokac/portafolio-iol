@@ -1999,7 +1999,7 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
     items = []
     for item in raw_items:
         reapply = _build_incremental_snapshot_reapply_payload(item)
-        enriched = _normalize_incremental_proposal_item(item)
+        enriched = service.normalize_serialized_snapshot(item)
         enriched["manual_decision_status_label"] = _format_incremental_manual_decision_status(
             str(item.get("manual_decision_status") or "pending")
         )

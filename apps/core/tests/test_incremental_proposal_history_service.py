@@ -31,10 +31,14 @@ def test_save_preferred_proposal_persists_snapshot():
 
     snapshot = IncrementalProposalSnapshot.objects.get()
     assert saved["proposal_label"] == "Plan manual A"
+    assert saved["label"] == "Plan manual A"
     assert snapshot.user == user
     assert snapshot.purchase_plan[0]["symbol"] == "KO"
     assert float(snapshot.capital_amount) == 600000.0
     assert snapshot.simulation_delta["fragility_change"] == -0.3
+    assert saved["purchase_summary"] == "KO (200000.0), MCD (200000.0)"
+    assert saved["simulation"]["delta"]["fragility_change"] == -0.3
+    assert saved["simulation"]["interpretation"] == "Mejora el balance defensivo."
 
 
 @pytest.mark.django_db
@@ -71,6 +75,51 @@ def test_list_recent_returns_empty_for_anonymous_user():
     service = IncrementalProposalHistoryService()
 
     assert service.list_recent(user=AnonymousUser(), limit=5) == []
+
+
+@pytest.mark.django_db
+def test_serialize_exposes_common_incremental_contract():
+    user = User.objects.create_user(username="history-contract", password="testpass123")
+    snapshot = IncrementalProposalSnapshot.objects.create(
+        user=user,
+        source_key="manual_plan",
+        source_label="Comparador manual",
+        proposal_key="plan_a",
+        proposal_label="Plan manual A",
+        selected_context="Plan manual enviado por el usuario",
+        capital_amount="600000.00",
+        comparison_score="4.5000",
+        purchase_plan=[{"symbol": "KO", "amount": 200000.0}, {"symbol": "MCD", "amount": 200000.0}],
+        simulation_delta={"expected_return_change": 0.12, "fragility_change": -0.3},
+        simulation_interpretation="Mejora el balance defensivo.",
+    )
+
+    serialized = IncrementalProposalHistoryService().serialize(snapshot)
+
+    assert serialized["proposal_label"] == "Plan manual A"
+    assert serialized["label"] == "Plan manual A"
+    assert serialized["purchase_summary"] == "KO (200000.0), MCD (200000.0)"
+    assert serialized["simulation"]["delta"]["expected_return_change"] == 0.12
+    assert serialized["simulation"]["interpretation"] == "Mejora el balance defensivo."
+    assert serialized["simulation_delta"]["fragility_change"] == -0.3
+
+
+def test_normalize_serialized_snapshot_adds_common_aliases():
+    service = IncrementalProposalHistoryService()
+
+    normalized = service.normalize_serialized_snapshot(
+        {
+            "proposal_label": "Plan manual A",
+            "purchase_plan": [{"symbol": "ko", "amount": 200000}, {"symbol": "mcd", "amount": 200000}],
+            "simulation_delta": {"expected_return_change": 0.12},
+        }
+    )
+
+    assert normalized["proposal_label"] == "Plan manual A"
+    assert normalized["label"] == "Plan manual A"
+    assert normalized["purchase_summary"] == "ko (200000), mcd (200000)"
+    assert normalized["simulation"]["delta"]["expected_return_change"] == 0.12
+    assert normalized["simulation"]["interpretation"] == ""
 
 
 @pytest.mark.django_db

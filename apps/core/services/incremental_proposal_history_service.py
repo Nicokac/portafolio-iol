@@ -201,25 +201,51 @@ class IncrementalProposalHistoryService:
         return self.serialize(snapshot)
 
     def serialize(self, snapshot: IncrementalProposalSnapshot) -> dict:
+        return self.normalize_serialized_snapshot(
+            {
+                "id": snapshot.pk,
+                "source_key": snapshot.source_key,
+                "source_label": snapshot.source_label,
+                "proposal_key": snapshot.proposal_key,
+                "proposal_label": snapshot.proposal_label,
+                "selected_context": snapshot.selected_context,
+                "capital_amount": float(snapshot.capital_amount),
+                "comparison_score": float(snapshot.comparison_score) if snapshot.comparison_score is not None else None,
+                "purchase_plan": list(snapshot.purchase_plan or []),
+                "simulation_delta": dict(snapshot.simulation_delta or {}),
+                "simulation_interpretation": snapshot.simulation_interpretation,
+                "explanation": snapshot.explanation,
+                "is_tracking_baseline": bool(snapshot.is_tracking_baseline),
+                "is_backlog_front": bool(snapshot.is_backlog_front),
+                "manual_decision_status": snapshot.manual_decision_status,
+                "manual_decision_note": snapshot.manual_decision_note,
+                "manual_decided_at": snapshot.manual_decided_at,
+                "created_at": snapshot.created_at,
+            }
+        )
+
+    def normalize_serialized_snapshot(self, payload: dict | None) -> dict:
+        data = dict(payload or {})
+        purchase_plan = list(data.get("purchase_plan") or [])
+        simulation = dict(data.get("simulation") or {})
+        simulation_delta = dict(data.get("simulation_delta") or simulation.get("delta") or {})
+        simulation_interpretation = str(
+            data.get("simulation_interpretation") or simulation.get("interpretation") or ""
+        )
+        proposal_label = str(data.get("proposal_label") or data.get("label") or "")
         return {
-            "id": snapshot.pk,
-            "source_key": snapshot.source_key,
-            "source_label": snapshot.source_label,
-            "proposal_key": snapshot.proposal_key,
-            "proposal_label": snapshot.proposal_label,
-            "selected_context": snapshot.selected_context,
-            "capital_amount": float(snapshot.capital_amount),
-            "comparison_score": float(snapshot.comparison_score) if snapshot.comparison_score is not None else None,
-            "purchase_plan": list(snapshot.purchase_plan or []),
-            "simulation_delta": dict(snapshot.simulation_delta or {}),
-            "simulation_interpretation": snapshot.simulation_interpretation,
-            "explanation": snapshot.explanation,
-            "is_tracking_baseline": bool(snapshot.is_tracking_baseline),
-            "is_backlog_front": bool(snapshot.is_backlog_front),
-            "manual_decision_status": snapshot.manual_decision_status,
-            "manual_decision_note": snapshot.manual_decision_note,
-            "manual_decided_at": snapshot.manual_decided_at,
-            "created_at": snapshot.created_at,
+            **data,
+            "proposal_label": proposal_label,
+            "label": str(data.get("label") or proposal_label),
+            "purchase_plan": purchase_plan,
+            "purchase_summary": str(data.get("purchase_summary") or self._build_purchase_plan_summary(purchase_plan)),
+            "simulation": {
+                **simulation,
+                "delta": simulation_delta,
+                "interpretation": simulation_interpretation,
+            },
+            "simulation_delta": simulation_delta,
+            "simulation_interpretation": simulation_interpretation,
         }
 
     def _prune_user_history(self, *, user_id: int) -> None:
@@ -240,6 +266,16 @@ class IncrementalProposalHistoryService:
                 continue
             normalized.append({"symbol": symbol, "amount": float(amount)})
         return normalized
+
+    def _build_purchase_plan_summary(self, purchase_plan: list[dict]) -> str:
+        if not purchase_plan:
+            return ""
+        first_items = [
+            f"{item.get('symbol')} ({item.get('amount')})"
+            for item in purchase_plan[:3]
+            if item.get("symbol")
+        ]
+        return ", ".join(first_items)
 
     def _coerce_decimal(self, value) -> Decimal:
         try:

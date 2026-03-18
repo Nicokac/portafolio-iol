@@ -680,3 +680,25 @@ Compatibilidad:
 - se mantienen las claves historicas existentes
 - `proposal_label` y `label` conviven como aliases compatibles
 - `simulation_delta` queda disponible tanto en snapshots como en propuestas comparadas
+
+## Serializacion del historial incremental
+
+La normalizacion base de snapshots incrementales vive ahora en:
+
+- `IncrementalProposalHistoryService.serialize(...)`
+
+Ese punto devuelve el contrato comun minimo para snapshots persistidos:
+
+- `proposal_label`
+- `label`
+- `purchase_plan`
+- `purchase_summary`
+- `comparison_score`
+- `simulation`
+- `simulation_delta`
+
+El selector de historial en dashboard solo agrega enriquecimiento de lectura:
+
+- labels de decision manual
+- flag visible de backlog front
+- querystring de reaplicacion
