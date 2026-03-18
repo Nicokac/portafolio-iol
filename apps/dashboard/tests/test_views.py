@@ -778,6 +778,45 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_pending_backlog_vs_baseline',
+            lambda user, limit=5: {
+                'baseline': {'proposal_label': 'Plan baseline'},
+                'items': [
+                    {
+                        'snapshot': {
+                            'proposal_label': 'Pendiente A',
+                            'selected_context': 'Defensive / resiliente',
+                        },
+                        'summary': {
+                            'favorable_count': 3,
+                            'unfavorable_count': 1,
+                        },
+                        'status_label': 'Drift favorable',
+                        'score_difference': 0.7,
+                        'beats_baseline': True,
+                        'loses_vs_baseline': False,
+                        'ties_baseline': False,
+                    }
+                ],
+                'count': 1,
+                'pending_count': 1,
+                'has_baseline': True,
+                'has_pending_backlog': True,
+                'has_comparable_items': True,
+                'better_count': 1,
+                'worse_count': 0,
+                'tie_count': 0,
+                'best_candidate': {
+                    'snapshot': {
+                        'proposal_label': 'Pendiente A',
+                        'selected_context': 'Defensive / resiliente',
+                    }
+                },
+                'headline': 'Hay 1 snapshot pendiente: 1 supera el baseline, 0 quedan por debajo y 0 empatan.',
+                'explanation': 'El backlog pendiente ya contiene al menos una alternativa superior al baseline activo: Pendiente A.',
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_followup_executive_summary',
             lambda query_params, user, capital_amount=600000: {
                 'status': 'aligned',
@@ -914,6 +953,9 @@ class TestDashboardView:
         assert 'Baseline incremental de seguimiento' in body
         assert 'Plan baseline' in body
         assert 'Drift vs propuesta preferida actual' in body
+        assert 'Backlog pendiente vs baseline activo' in body
+        assert 'Pendiente A' in body
+        assert 'Prioridad operativa' in body
         assert 'Alertas de drift' in body
         assert 'Drift favorable' in body
         assert 'Promover a baseline' in body

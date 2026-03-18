@@ -2062,6 +2062,64 @@ def get_incremental_baseline_drift(
     }
 
 
+def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict:
+    """Compara el backlog pendiente de snapshots contra el baseline incremental activo."""
+
+    baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
+    pending_history = get_incremental_proposal_history(user=user, limit=limit, decision_status="pending")
+
+    baseline = baseline_payload.get("item")
+    pending_items = list(pending_history.get("items") or [])
+    comparisons = []
+    for item in pending_items:
+        comparison = _build_incremental_snapshot_comparison(baseline, item) if baseline else None
+        summary = _build_incremental_baseline_drift_summary(comparison)
+        comparisons.append(
+            {
+                "snapshot": item,
+                "comparison": comparison,
+                "summary": summary,
+                "status_label": _format_incremental_followup_status(summary.get("status", "unavailable")),
+                "score_difference": None if comparison is None else comparison.get("score_difference"),
+                "beats_baseline": bool(comparison and comparison.get("winner") == "current"),
+                "loses_vs_baseline": bool(comparison and comparison.get("winner") == "saved"),
+                "ties_baseline": bool(comparison and comparison.get("winner") == "tie"),
+            }
+        )
+
+    better_count = sum(1 for item in comparisons if item["beats_baseline"])
+    worse_count = sum(1 for item in comparisons if item["loses_vs_baseline"])
+    tie_count = sum(1 for item in comparisons if item["ties_baseline"])
+    comparable_items = [item for item in comparisons if item.get("comparison")]
+    best_candidate = None
+    if comparable_items:
+        best_candidate = sorted(
+            comparable_items,
+            key=lambda item: (
+                1 if item["beats_baseline"] else 0,
+                1 if item["ties_baseline"] else 0,
+                item.get("score_difference") if item.get("score_difference") is not None else float("-inf"),
+            ),
+            reverse=True,
+        )[0]
+
+    return {
+        "baseline": baseline,
+        "items": comparisons,
+        "count": len(comparisons),
+        "pending_count": pending_history.get("decision_counts", {}).get("pending", len(comparisons)),
+        "has_baseline": baseline is not None,
+        "has_pending_backlog": bool(pending_items),
+        "has_comparable_items": bool(comparable_items),
+        "better_count": better_count,
+        "worse_count": worse_count,
+        "tie_count": tie_count,
+        "best_candidate": best_candidate,
+        "headline": _build_incremental_pending_backlog_headline(baseline, pending_history, better_count, worse_count, tie_count),
+        "explanation": _build_incremental_pending_backlog_explanation(baseline, pending_history, best_candidate, better_count, worse_count),
+    }
+
+
 def get_incremental_followup_executive_summary(
     query_params,
     *,
@@ -2600,6 +2658,60 @@ def _build_incremental_history_headline(decision_status: str | None, counts: Dic
         return f"Se muestran {visible_count} snapshots recientes sobre un total de {total} propuestas guardadas."
     label = _format_incremental_history_decision_filter_label(decision_status).lower()
     return f"Se muestran {visible_count} snapshots con decision {label}."
+
+
+def _build_incremental_pending_backlog_headline(
+    baseline_item: Dict | None,
+    pending_history: Dict,
+    better_count: int,
+    worse_count: int,
+    tie_count: int,
+) -> str:
+    pending_count = int(pending_history.get("decision_counts", {}).get("pending", pending_history.get("count", 0)))
+    if baseline_item is None and pending_count == 0:
+        return "No hay baseline activo ni backlog pendiente para seguimiento operativo."
+    if baseline_item is None:
+        return "Hay backlog incremental pendiente, pero todavia no existe baseline activo para compararlo."
+    if pending_count == 0:
+        return "No hay snapshots pendientes en el backlog incremental contra el baseline activo."
+    return (
+        f"Hay {pending_count} snapshot(s) pendientes: {better_count} superan el baseline, "
+        f"{worse_count} quedan por debajo y {tie_count} empatan."
+    )
+
+
+def _build_incremental_pending_backlog_explanation(
+    baseline_item: Dict | None,
+    pending_history: Dict,
+    best_candidate: Dict | None,
+    better_count: int,
+    worse_count: int,
+) -> str:
+    pending_count = int(pending_history.get("decision_counts", {}).get("pending", pending_history.get("count", 0)))
+    if baseline_item is None and pending_count == 0:
+        return "Todavia no hay baseline incremental activo ni snapshots pendientes para comparar."
+    if baseline_item is None:
+        return "Conviene fijar un baseline incremental activo antes de priorizar el backlog pendiente."
+    if pending_count == 0:
+        return (
+            f"El baseline activo ({baseline_item.get('proposal_label') or 'sin etiqueta'}) no tiene backlog pendiente "
+            "contra el cual compararse."
+        )
+    if best_candidate and best_candidate.get("beats_baseline"):
+        snapshot = best_candidate["snapshot"]
+        return (
+            f"El backlog pendiente ya contiene al menos una alternativa superior al baseline activo: "
+            f"{snapshot.get('proposal_label') or 'snapshot pendiente'}."
+        )
+    if worse_count == pending_count:
+        return (
+            f"Todas las propuestas pendientes quedan por debajo del baseline activo "
+            f"({baseline_item.get('proposal_label') or 'sin etiqueta'})."
+        )
+    return (
+        f"El backlog pendiente frente al baseline activo ({baseline_item.get('proposal_label') or 'sin etiqueta'}) "
+        "muestra resultados mixtos y conviene revisar primero las alternativas con mejor score."
+    )
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:

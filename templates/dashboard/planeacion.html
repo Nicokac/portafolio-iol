@@ -693,6 +693,70 @@
                 </div>
                 {% endif %}
             </div>
+            <div class="card-body border-bottom">
+                <h6 class="mb-2">Backlog pendiente vs baseline activo</h6>
+                <p class="text-muted mb-3">{{ incremental_pending_backlog_vs_baseline.headline }}</p>
+                <p class="text-muted mb-3">{{ incremental_pending_backlog_vs_baseline.explanation }}</p>
+                {% if incremental_pending_backlog_vs_baseline.has_baseline and incremental_pending_backlog_vs_baseline.has_pending_backlog %}
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Superan baseline</div>
+                            <div><strong>{{ incremental_pending_backlog_vs_baseline.better_count }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Empatan baseline</div>
+                            <div><strong>{{ incremental_pending_backlog_vs_baseline.tie_count }}</strong></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">Quedan por debajo</div>
+                            <div><strong>{{ incremental_pending_backlog_vs_baseline.worse_count }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                {% if incremental_pending_backlog_vs_baseline.best_candidate %}
+                <div class="alert alert-info py-2">
+                    Prioridad operativa: <strong>{{ incremental_pending_backlog_vs_baseline.best_candidate.snapshot.proposal_label }}</strong>
+                    {% if incremental_pending_backlog_vs_baseline.best_candidate.snapshot.selected_context %}
+                    <span class="small text-muted">· {{ incremental_pending_backlog_vs_baseline.best_candidate.snapshot.selected_context }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Snapshot pendiente</th>
+                                <th>Estado vs baseline</th>
+                                <th class="text-end">Score vs baseline</th>
+                                <th class="text-end">Favorables</th>
+                                <th class="text-end">Desfavorables</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in incremental_pending_backlog_vs_baseline.items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.snapshot.proposal_label }}</strong>
+                                    {% if item.snapshot.selected_context %}
+                                    <div class="small text-muted">{{ item.snapshot.selected_context }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.status_label }}</td>
+                                <td class="text-end">{{ item.score_difference|default:"-" }}</td>
+                                <td class="text-end">{{ item.summary.favorable_count }}</td>
+                                <td class="text-end">{{ item.summary.unfavorable_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
             <div class="card-header bg-light">
                 <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
                 <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>

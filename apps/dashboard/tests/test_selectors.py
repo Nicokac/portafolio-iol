@@ -33,6 +33,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_history,
     get_incremental_proposal_tracking_baseline,
     get_incremental_manual_decision_summary,
+    get_incremental_pending_backlog_vs_baseline,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -1853,6 +1854,99 @@ class TestDashboardSelectors(TestCase):
         assert detail["has_decision"] is False
         assert detail["status"] == "pending"
         assert "Todavia no registraste" in detail["headline"]
+
+    def test_get_incremental_pending_backlog_vs_baseline_compares_pending_snapshots(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={
+                    "item": {
+                        "proposal_label": "Baseline activo",
+                        "comparison_score": 4.0,
+                        "simulation_delta": {
+                            "expected_return_change": 0.4,
+                            "real_expected_return_change": 0.1,
+                            "fragility_change": -1.0,
+                            "scenario_loss_change": 0.2,
+                            "risk_concentration_change": -0.4,
+                        },
+                    },
+                    "has_baseline": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={
+                    "items": [
+                        {
+                            "proposal_label": "Pendiente A",
+                            "selected_context": "Defensive / resiliente",
+                            "comparison_score": 5.1,
+                            "simulation_delta": {
+                                "expected_return_change": 0.7,
+                                "real_expected_return_change": 0.2,
+                                "fragility_change": -1.5,
+                                "scenario_loss_change": 0.5,
+                                "risk_concentration_change": -0.8,
+                            },
+                        },
+                        {
+                            "proposal_label": "Pendiente B",
+                            "comparison_score": 3.5,
+                            "simulation_delta": {
+                                "expected_return_change": 0.2,
+                                "real_expected_return_change": 0.05,
+                                "fragility_change": -0.7,
+                                "scenario_loss_change": 0.1,
+                                "risk_concentration_change": -0.1,
+                            },
+                        },
+                    ],
+                    "count": 2,
+                    "decision_counts": {"total": 4, "pending": 2, "accepted": 1, "deferred": 1, "rejected": 0},
+                },
+            ),
+        ):
+            detail = get_incremental_pending_backlog_vs_baseline(user=DummyUser(), limit=5)
+
+        assert detail["has_baseline"] is True
+        assert detail["has_pending_backlog"] is True
+        assert detail["better_count"] == 1
+        assert detail["worse_count"] == 1
+        assert detail["tie_count"] == 0
+        assert detail["best_candidate"]["snapshot"]["proposal_label"] == "Pendiente A"
+        assert "superan el baseline" in detail["headline"]
+        assert "alternativa superior" in detail["explanation"]
+
+    def test_get_incremental_pending_backlog_vs_baseline_handles_missing_baseline(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": None, "has_baseline": False},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={
+                    "items": [{"proposal_label": "Pendiente A", "comparison_score": 5.1, "simulation_delta": {}}],
+                    "count": 1,
+                    "decision_counts": {"total": 1, "pending": 1, "accepted": 0, "deferred": 0, "rejected": 0},
+                },
+            ),
+        ):
+            detail = get_incremental_pending_backlog_vs_baseline(user=DummyUser(), limit=5)
+
+        assert detail["has_baseline"] is False
+        assert detail["has_pending_backlog"] is True
+        assert detail["has_comparable_items"] is False
+        assert detail["better_count"] == 0
+        assert "todavia no existe baseline activo" in detail["headline"].lower()
+        assert "Conviene fijar un baseline" in detail["explanation"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

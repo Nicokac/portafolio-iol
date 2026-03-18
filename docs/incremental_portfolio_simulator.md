@@ -412,3 +412,35 @@ Limitaciones:
 - no permite seleccionar filas arbitrarias
 - no hay confirmacion avanzada ni preview del lote
 - no actualiza notas en bloque desde UI
+
+## Comparacion operativa entre backlog pendiente y baseline activo
+
+La hoja `Planeacion` agrega una lectura operativa del backlog pendiente contra el baseline incremental activo.
+
+Objetivo:
+
+- priorizar rapido snapshots pendientes ya guardados
+- detectar si el backlog contiene alternativas mejores que la referencia vigente
+- reutilizar la comparacion incremental ya existente sin recalcular analitica nueva
+
+Inputs reutilizados:
+
+- `get_incremental_proposal_tracking_baseline()`
+- `get_incremental_proposal_history(..., decision_status="pending")`
+- `_build_incremental_snapshot_comparison(...)`
+- `_build_incremental_baseline_drift_summary(...)`
+
+Salida:
+
+- conteo de snapshots pendientes que:
+  - superan baseline
+  - empatan baseline
+  - quedan por debajo
+- candidato operativo prioritario
+- tabla compacta por snapshot pendiente
+
+Limitaciones:
+
+- compara solo backlog pendiente visible
+- no reordena ni persiste prioridades nuevas
+- sigue usando score y deltas ya existentes
