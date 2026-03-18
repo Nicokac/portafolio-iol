@@ -20,6 +20,10 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.candidate_asset_ranking_service import CandidateAssetRankingService
+from apps.core.services.incremental_proposal_contracts import (
+    build_incremental_purchase_plan_summary,
+    normalize_incremental_proposal_payload,
+)
 from apps.core.services.incremental_portfolio_simulator import IncrementalPortfolioSimulator
 from apps.core.services.incremental_proposal_history_service import IncrementalProposalHistoryService
 from apps.core.services.monthly_allocation_service import MonthlyAllocationService
@@ -3173,10 +3177,10 @@ def _build_incremental_decision_executive_items(
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:
-    if not purchase_plan:
+    summary = build_incremental_purchase_plan_summary(purchase_plan)
+    if not summary:
         return "Sin compra resumida disponible."
-    first_items = [f"{item.get('symbol')} ({item.get('amount')})" for item in purchase_plan[:3] if item.get("symbol")]
-    return ", ".join(first_items) if first_items else "Compra resumida disponible."
+    return summary
 
 
 def _summarize_incremental_drift_alerts(alerts: list[Dict]) -> str:
@@ -3253,20 +3257,7 @@ def _extract_best_incremental_proposal(payload: Dict) -> Dict | None:
 
 
 def _normalize_incremental_proposal_item(item: Dict | None) -> Dict:
-    normalized = dict(item or {})
-    proposal_label = normalized.get("proposal_label") or normalized.get("label") or ""
-    normalized["proposal_label"] = proposal_label
-    normalized["label"] = normalized.get("label") or proposal_label
-    purchase_plan = list(normalized.get("purchase_plan") or [])
-    normalized["purchase_plan"] = purchase_plan
-    normalized["purchase_summary"] = normalized.get("purchase_summary") or _format_incremental_purchase_plan_summary(
-        purchase_plan
-    )
-    simulation = dict(normalized.get("simulation") or {})
-    simulation_delta = dict(normalized.get("simulation_delta") or simulation.get("delta") or {})
-    normalized["simulation"] = simulation
-    normalized["simulation_delta"] = simulation_delta
-    return normalized
+    return normalize_incremental_proposal_payload(item)
 
 
 def _preferred_source_priority_rank(source_key: str, payload: Dict) -> int:

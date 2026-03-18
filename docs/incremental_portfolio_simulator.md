@@ -686,6 +686,7 @@ Compatibilidad:
 La normalizacion base de snapshots incrementales vive ahora en:
 
 - `IncrementalProposalHistoryService.serialize(...)`
+- `apps/core/services/incremental_proposal_contracts.py`
 
 Ese punto devuelve el contrato comun minimo para snapshots persistidos:
 
@@ -702,3 +703,8 @@ El selector de historial en dashboard solo agrega enriquecimiento de lectura:
 - labels de decision manual
 - flag visible de backlog front
 - querystring de reaplicacion
+
+Helpers compartidos actuales:
+
+- `build_incremental_purchase_plan_summary(...)`
+- `normalize_incremental_proposal_payload(...)`
