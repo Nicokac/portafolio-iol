@@ -852,6 +852,27 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_backlog_front_summary',
+            lambda user, limit=5: {
+                'status': 'manual_front',
+                'baseline': {'proposal_label': 'Plan baseline'},
+                'front_item': {
+                    'snapshot': {'proposal_label': 'Pendiente A', 'is_backlog_front': True},
+                    'priority_label': 'Alta',
+                    'score_difference': 0.7,
+                },
+                'counts': {'high': 1, 'medium': 0, 'low': 0},
+                'has_summary': True,
+                'headline': 'Pendiente A lidera el backlog por marcacion manual frente al baseline Plan baseline.',
+                'items': [
+                    {'label': 'Baseline activo', 'value': 'Plan baseline'},
+                    {'label': 'Frente del backlog', 'value': 'Pendiente A'},
+                    {'label': 'Prioridad del frente', 'value': 'Alta'},
+                    {'label': 'Score vs baseline', 'value': 0.7},
+                ],
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_followup_executive_summary',
             lambda query_params, user, capital_amount=600000: {
                 'status': 'aligned',
@@ -986,6 +1007,8 @@ class TestDashboardView:
         assert 'Resumen ejecutivo de seguimiento incremental' in body
         assert 'La propuesta actual se mantiene alineada con el baseline activo.' in body
         assert 'Baseline incremental de seguimiento' in body
+        assert 'Resumen operativo del frente de backlog y baseline' in body
+        assert 'Pendiente A lidera el backlog por marcacion manual frente al baseline Plan baseline.' in body
         assert 'Plan baseline' in body
         assert 'Drift vs propuesta preferida actual' in body
         assert 'Backlog pendiente vs baseline activo' in body

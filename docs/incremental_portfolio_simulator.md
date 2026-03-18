@@ -475,3 +475,32 @@ Limitaciones:
 - la prioridad es derivada y heuristica
 - no persiste orden nuevo del backlog
 - no reemplaza la decision manual final
+
+## Resumen operativo del frente de backlog y baseline
+
+La hoja `Planeacion` agrega una sintesis corta para leer rapido que referencia manda y que snapshot queda primero para revision.
+
+Objetivo:
+
+- condensar baseline activo y frente del backlog en una sola lectura
+- evitar tener que recorrer toda la seccion operativa para entender el estado actual
+- reutilizar la priorizacion y el baseline ya calculados
+
+Inputs reutilizados:
+
+- `get_incremental_proposal_tracking_baseline()`
+- `get_incremental_backlog_prioritization()`
+
+Salida:
+
+- headline operativo
+- baseline activo
+- frente del backlog
+- prioridad del frente
+- score relativo vs baseline
+
+Limitaciones:
+
+- no agrega logica nueva de priorizacion
+- no reemplaza el detalle de backlog ni el historial
+- sigue siendo una sintesis heuristica de lectura

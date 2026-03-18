@@ -585,6 +585,22 @@
                 <h5 class="mb-0">Baseline incremental de seguimiento</h5>
                 <small class="text-muted">Snapshot guardado que queda como referencia operativa para seguimiento manual.</small>
             </div>
+            <div class="card-body border-bottom bg-light-subtle">
+                <h6 class="mb-2">Resumen operativo del frente de backlog y baseline</h6>
+                <p class="text-muted mb-3">{{ incremental_backlog_front_summary.headline }}</p>
+                {% if incremental_backlog_front_summary.has_summary %}
+                <div class="row g-3">
+                    {% for item in incremental_backlog_front_summary.items %}
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100 bg-white">
+                            <div class="small text-muted mb-1">{{ item.label }}</div>
+                            <div><strong>{{ item.value|default:"-" }}</strong></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
             <div class="card-body border-bottom">
                 {% if incremental_proposal_tracking_baseline.has_baseline %}
                 <div class="row g-3">

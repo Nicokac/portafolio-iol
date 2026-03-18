@@ -35,6 +35,7 @@ from apps.dashboard.selectors import (
     get_incremental_manual_decision_summary,
     get_incremental_pending_backlog_vs_baseline,
     get_incremental_backlog_prioritization,
+    get_incremental_backlog_front_summary,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -2051,6 +2052,56 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["priority"] == "medium"
         assert "frente manual" in detail["headline"].lower()
         assert "promovido manualmente" in detail["explanation"].lower()
+
+    def test_get_incremental_backlog_front_summary_summarizes_baseline_and_front(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": {"proposal_label": "Baseline activo"}, "has_baseline": True},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                return_value={
+                    "counts": {"high": 1, "medium": 0, "low": 1},
+                    "top_item": {
+                        "snapshot": {"proposal_label": "Pendiente A", "is_backlog_front": True},
+                        "priority": "high",
+                        "priority_label": "Alta",
+                        "score_difference": 0.7,
+                    },
+                },
+            ),
+        ):
+            detail = get_incremental_backlog_front_summary(user=DummyUser(), limit=5)
+
+        assert detail["status"] == "manual_front"
+        assert detail["has_summary"] is True
+        assert detail["items"][0]["value"] == "Baseline activo"
+        assert detail["items"][1]["value"] == "Pendiente A"
+        assert "lidera el backlog" in detail["headline"].lower()
+
+    def test_get_incremental_backlog_front_summary_handles_empty_state(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={"item": None, "has_baseline": False},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                return_value={"counts": {"high": 0, "medium": 0, "low": 0}, "top_item": None},
+            ),
+        ):
+            detail = get_incremental_backlog_front_summary(user=DummyUser(), limit=5)
+
+        assert detail["status"] == "empty"
+        assert detail["has_summary"] is False
+        assert "Todavia no hay baseline activo" in detail["headline"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

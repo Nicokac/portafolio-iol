@@ -2163,6 +2163,40 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
     }
 
 
+def get_incremental_backlog_front_summary(*, user, limit: int = 5) -> Dict:
+    """Resume en una sola lectura el baseline activo y el frente operativo del backlog."""
+
+    baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
+    prioritization_payload = get_incremental_backlog_prioritization(user=user, limit=limit)
+
+    baseline = baseline_payload.get("item")
+    front_item = prioritization_payload.get("top_item")
+    if baseline is None and front_item is None:
+        status = "empty"
+    elif baseline is None:
+        status = "no_baseline"
+    elif front_item is None:
+        status = "baseline_only"
+    elif front_item.get("snapshot", {}).get("is_backlog_front"):
+        status = "manual_front"
+    elif front_item.get("priority") == "high":
+        status = "candidate_over_baseline"
+    elif front_item.get("priority") == "medium":
+        status = "watch"
+    else:
+        status = "baseline_holds"
+
+    return {
+        "status": status,
+        "baseline": baseline,
+        "front_item": front_item,
+        "counts": prioritization_payload.get("counts", {}),
+        "has_summary": bool(baseline or front_item),
+        "headline": _build_incremental_backlog_front_summary_headline(status, baseline, front_item),
+        "items": _build_incremental_backlog_front_summary_items(baseline, front_item, prioritization_payload),
+    }
+
+
 def get_incremental_followup_executive_summary(
     query_params,
     *,
@@ -2834,6 +2868,68 @@ def _build_incremental_backlog_prioritization_explanation(backlog_payload: Dict,
     if counts.get("medium", 0) > 0:
         return "El backlog no mejora el baseline, pero incluye alternativas que hoy empatan y conviene seguir de cerca."
     return "El backlog pendiente actual queda por debajo del baseline activo y puede revisarse al final."
+
+
+def _build_incremental_backlog_front_summary_headline(status: str, baseline: Dict | None, front_item: Dict | None) -> str:
+    if status == "empty":
+        return "Todavia no hay baseline activo ni backlog incremental priorizable."
+    if status == "no_baseline":
+        return (
+            f"El backlog incremental ya tiene un frente operativo ({front_item.get('snapshot', {}).get('proposal_label') or 'snapshot'}) "
+            "pero falta baseline activo."
+        )
+    if status == "baseline_only":
+        return (
+            f"El baseline activo ({baseline.get('proposal_label') or 'sin etiqueta'}) no tiene backlog priorizable por delante."
+        )
+    if status == "manual_front":
+        return (
+            f"{front_item.get('snapshot', {}).get('proposal_label') or 'El snapshot al frente'} lidera el backlog por "
+            f"marcacion manual frente al baseline {baseline.get('proposal_label') or 'activo'}."
+        )
+    if status == "candidate_over_baseline":
+        return (
+            f"{front_item.get('snapshot', {}).get('proposal_label') or 'El frente del backlog'} ya supera al baseline "
+            f"{baseline.get('proposal_label') or 'activo'}."
+        )
+    if status == "watch":
+        return (
+            f"El frente del backlog ({front_item.get('snapshot', {}).get('proposal_label') or 'snapshot'}) empata con el "
+            f"baseline {baseline.get('proposal_label') or 'activo'} y conviene seguirlo de cerca."
+        )
+    return (
+        f"El baseline activo ({baseline.get('proposal_label') or 'sin etiqueta'}) sigue por delante del backlog incremental."
+    )
+
+
+def _build_incremental_backlog_front_summary_items(
+    baseline: Dict | None,
+    front_item: Dict | None,
+    prioritization_payload: Dict,
+) -> list[Dict]:
+    snapshot = (front_item or {}).get("snapshot", {})
+    return [
+        {
+            "label": "Baseline activo",
+            "value": (baseline or {}).get("proposal_label") or "-",
+        },
+        {
+            "label": "Frente del backlog",
+            "value": snapshot.get("proposal_label") or "-",
+        },
+        {
+            "label": "Prioridad del frente",
+            "value": (front_item or {}).get("priority_label") or "-",
+        },
+        {
+            "label": "Score vs baseline",
+            "value": (front_item or {}).get("score_difference") if front_item is not None else "-",
+        },
+        {
+            "label": "Pendientes alta prioridad",
+            "value": prioritization_payload.get("counts", {}).get("high", 0),
+        },
+    ]
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:
