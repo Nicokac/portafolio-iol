@@ -532,6 +532,7 @@ class TestDashboardView:
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
         assert 'Exploración y comparación' in body
+        assert 'Orden sugerido:' in body
         assert 'Resumen ejecutivo unificado de decisión incremental' in body
         assert 'La propuesta actual requiere validación antes de adoptar el aporte incremental.' in body
         assert 'Seguimiento y governance' in body

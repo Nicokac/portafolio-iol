@@ -562,7 +562,8 @@ Jerarquia visible actual dentro de `Aportes`:
   - simulacion incremental default
 - exploracion secundaria:
   - resumen ejecutivo unificado
-  - comparadores incrementales
+  - comparador general de propuestas incrementales
+  - comparadores especificos por candidato, split y plan manual en secciones secundarias
   - plan manual y herramientas alternativas
 - seguimiento y governance:
   - baseline activo

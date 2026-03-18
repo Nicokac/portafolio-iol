@@ -63,6 +63,7 @@ class TestDashboardFeatureFlows:
         assert "Impacto incremental simulado" in content
         assert "Propuesta incremental preferida" in content
         assert "Exploración y comparación" in content
+        assert "Orden sugerido:" in content
         assert "Resumen ejecutivo unificado" in content
         assert "Seguimiento y governance" in content
         assert "Seguimiento operativo incremental" in content
