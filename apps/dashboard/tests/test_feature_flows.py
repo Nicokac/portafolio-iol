@@ -20,7 +20,7 @@ class TestDashboardFeatureFlows:
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo", "analytics_v2_summary"]),
-            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_pending_backlog_vs_baseline", "incremental_backlog_prioritization", "incremental_backlog_front_summary", "incremental_backlog_operational_semaphore", "incremental_adoption_checklist", "incremental_followup_executive_summary", "incremental_baseline_drift", "incremental_snapshot_vs_current_comparison", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
+            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_pending_backlog_vs_baseline", "incremental_backlog_prioritization", "incremental_backlog_front_summary", "incremental_backlog_operational_semaphore", "incremental_decision_executive_summary", "incremental_adoption_checklist", "incremental_followup_executive_summary", "incremental_baseline_drift", "incremental_snapshot_vs_current_comparison", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
             ("dashboard:metricas", "dashboard/metricas.html", ["kpis", "riesgo_portafolio"]),
         ],
@@ -58,6 +58,7 @@ class TestDashboardFeatureFlows:
         assert "Candidatos de activos dentro de los bloques recomendados" in content
         assert "Impacto incremental simulado" in content
         assert "Propuesta incremental preferida" in content
+        assert "Resumen ejecutivo unificado de decisión incremental" in content
         assert "Checklist de adopción de propuesta incremental" in content
         assert "Workflow de decisión manual" in content
         assert "Resumen ejecutivo de seguimiento incremental" in content

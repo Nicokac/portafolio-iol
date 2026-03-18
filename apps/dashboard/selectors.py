@@ -2234,6 +2234,59 @@ def get_incremental_backlog_operational_semaphore(
     }
 
 
+def get_incremental_decision_executive_summary(
+    query_params,
+    *,
+    user,
+    capital_amount: int | float = 600000,
+    limit: int = 5,
+) -> Dict:
+    """Consolida la lectura ejecutiva de decision incremental en una sola sintesis."""
+
+    semaphore = get_incremental_backlog_operational_semaphore(
+        query_params,
+        user=user,
+        capital_amount=capital_amount,
+        limit=limit,
+    )
+    followup = get_incremental_followup_executive_summary(
+        query_params,
+        user=user,
+        capital_amount=capital_amount,
+    )
+    checklist = get_incremental_adoption_checklist(
+        query_params,
+        user=user,
+        capital_amount=capital_amount,
+    )
+    front_summary = get_incremental_backlog_front_summary(user=user, limit=limit)
+
+    semaphore_status = semaphore.get("status", "gray")
+    checklist_status = checklist.get("status", "pending")
+    if checklist_status == "ready" and semaphore_status == "green":
+        status = "adopt"
+    elif semaphore_status == "red":
+        status = "hold"
+    elif semaphore_status == "yellow":
+        status = "review_backlog"
+    elif checklist_status == "review":
+        status = "review_current"
+    else:
+        status = "pending"
+
+    return {
+        "status": status,
+        "headline": _build_incremental_decision_executive_headline(status, semaphore, followup, checklist, front_summary),
+        "items": _build_incremental_decision_executive_items(semaphore, followup, checklist, front_summary),
+        "has_summary": bool(
+            semaphore.get("has_signal")
+            or followup.get("has_summary")
+            or checklist.get("total_count")
+            or front_summary.get("has_summary")
+        ),
+    }
+
+
 def get_incremental_followup_executive_summary(
     query_params,
     *,
@@ -3008,6 +3061,51 @@ def _build_incremental_operational_semaphore_items(
             "value": prioritization.get("counts", {}).get("high", 0),
         },
     ]
+
+
+def _build_incremental_decision_executive_headline(
+    status: str,
+    semaphore: Dict,
+    followup: Dict,
+    checklist: Dict,
+    front_summary: Dict,
+) -> str:
+    if status == "adopt":
+        return "La propuesta incremental actual queda lista para adopción y el baseline no muestra presión operativa."
+    if status == "hold":
+        return "Conviene sostener el baseline actual y frenar cambios hasta resolver el drift desfavorable."
+    if status == "review_backlog":
+        return front_summary.get("headline") or "Hay backlog incremental que merece revisión antes de adoptar."
+    if status == "review_current":
+        return checklist.get("headline") or "La propuesta actual todavía requiere revisión operativa."
+    return followup.get("headline") or "Todavía no hay una señal ejecutiva suficiente para decidir."
+
+
+def _build_incremental_decision_executive_items(
+    semaphore: Dict,
+    followup: Dict,
+    checklist: Dict,
+    front_summary: Dict,
+) -> list[Dict]:
+    items = [
+        {
+            "label": "Semáforo operativo",
+            "value": semaphore.get("label") or "Sin señal",
+        },
+        {
+            "label": "Checklist de adopción",
+            "value": f"{checklist.get('passed_count', 0)}/{checklist.get('total_count', 0)}",
+        },
+        {
+            "label": "Estado ejecutivo actual",
+            "value": followup.get("status") or "-",
+        },
+        {
+            "label": "Frente del backlog",
+            "value": ((front_summary.get("front_item") or {}).get("snapshot") or {}).get("proposal_label") or "-",
+        },
+    ]
+    return items
 
 
 def _format_incremental_purchase_plan_summary(purchase_plan: list[Dict]) -> str:

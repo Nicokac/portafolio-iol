@@ -887,6 +887,20 @@ class TestDashboardView:
             },
         )
         monkeypatch.setattr(
+            'apps.dashboard.views.get_incremental_decision_executive_summary',
+            lambda query_params, user, capital_amount=600000, limit=5: {
+                'status': 'review_backlog',
+                'headline': 'Pendiente A lidera el backlog y conviene revisarlo antes de adoptar la propuesta actual.',
+                'items': [
+                    {'label': 'Semáforo operativo', 'value': 'Amarillo'},
+                    {'label': 'Checklist de adopción', 'value': '5/5'},
+                    {'label': 'Estado ejecutivo actual', 'value': 'aligned'},
+                    {'label': 'Frente del backlog', 'value': 'Pendiente A'},
+                ],
+                'has_summary': True,
+            },
+        )
+        monkeypatch.setattr(
             'apps.dashboard.views.get_incremental_followup_executive_summary',
             lambda query_params, user, capital_amount=600000: {
                 'status': 'aligned',
@@ -1013,6 +1027,8 @@ class TestDashboardView:
         assert 'Fragility' in body
         assert 'Propuesta incremental preferida' in body
         assert 'Guardar propuesta preferida' in body
+        assert 'Resumen ejecutivo unificado de decisión incremental' in body
+        assert 'Pendiente A lidera el backlog y conviene revisarlo antes de adoptar la propuesta actual.' in body
         assert 'Checklist de adopción de propuesta incremental' in body
         assert 'La propuesta actual supera el checklist operativo y puede pasar a decision manual.' in body
         assert 'Adopcion habilitada' in body

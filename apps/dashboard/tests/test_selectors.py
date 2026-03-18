@@ -37,6 +37,7 @@ from apps.dashboard.selectors import (
     get_incremental_backlog_prioritization,
     get_incremental_backlog_front_summary,
     get_incremental_backlog_operational_semaphore,
+    get_incremental_decision_executive_summary,
     get_incremental_baseline_drift,
     get_incremental_followup_executive_summary,
     get_incremental_adoption_checklist,
@@ -2192,6 +2193,101 @@ class TestDashboardSelectors(TestCase):
         assert detail["status"] == "green"
         assert detail["label"] == "Verde"
         assert "Semáforo verde" in detail["headline"]
+
+    def test_get_incremental_decision_executive_summary_marks_adopt_when_green_and_ready(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_operational_semaphore",
+                return_value={
+                    "status": "green",
+                    "label": "Verde",
+                    "headline": "Semaforo verde: el baseline sigue firme.",
+                    "items": [],
+                    "has_signal": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                return_value={
+                    "status": "aligned",
+                    "headline": "La propuesta actual sigue alineada.",
+                    "has_summary": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_adoption_checklist",
+                return_value={
+                    "status": "ready",
+                    "passed_count": 5,
+                    "total_count": 5,
+                    "headline": "Checklist completo.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                return_value={
+                    "has_summary": True,
+                    "front_item": {"snapshot": {"proposal_label": "Pendiente A"}},
+                },
+            ),
+        ):
+            detail = get_incremental_decision_executive_summary({}, user=DummyUser(), capital_amount=600000, limit=5)
+
+        assert detail["status"] == "adopt"
+        assert detail["has_summary"] is True
+        assert detail["items"][0]["label"] == "Semáforo operativo"
+        assert detail["items"][0]["value"] == "Verde"
+        assert "adop" in detail["headline"].lower()
+
+    def test_get_incremental_decision_executive_summary_marks_review_backlog_when_yellow(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_operational_semaphore",
+                return_value={
+                    "status": "yellow",
+                    "label": "Amarillo",
+                    "headline": "Hay backlog incremental que merece revision.",
+                    "items": [],
+                    "has_signal": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                return_value={
+                    "status": "watch",
+                    "headline": "Seguir de cerca la propuesta actual.",
+                    "has_summary": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_adoption_checklist",
+                return_value={
+                    "status": "review",
+                    "passed_count": 3,
+                    "total_count": 5,
+                    "headline": "Checklist incompleto.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                return_value={
+                    "headline": "Pendiente A lidera el backlog frente al baseline.",
+                    "has_summary": True,
+                    "front_item": {"snapshot": {"proposal_label": "Pendiente A"}},
+                },
+            ),
+        ):
+            detail = get_incremental_decision_executive_summary({}, user=DummyUser(), capital_amount=600000, limit=5)
+
+        assert detail["status"] == "review_backlog"
+        assert detail["items"][3]["value"] == "Pendiente A"
+        assert "Pendiente A lidera el backlog" in detail["headline"]
 
     def test_concentracion_por_pais(self):
         """Debe distinguir base invertida vs base total IOL."""

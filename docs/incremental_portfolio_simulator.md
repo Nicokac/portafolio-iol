@@ -533,3 +533,34 @@ Limitaciones:
 - es una lectura operativa, no un score nuevo
 - depende de estados ya derivados
 - no reemplaza detalle de drift ni priorizacion
+
+## Resumen ejecutivo unificado de decision incremental
+
+La hoja `Planeacion` agrega una sintesis unica para cerrar la lectura operativa del aporte incremental.
+
+Objetivo:
+
+- resumir en una sola lectura si conviene adoptar, sostener baseline o revisar backlog
+- evitar tener que combinar mentalmente semaforo, checklist, drift y frente del backlog
+- mantener una salida server-rendered y explicable
+
+Inputs reutilizados:
+
+- `get_incremental_backlog_operational_semaphore()`
+- `get_incremental_followup_executive_summary()`
+- `get_incremental_adoption_checklist()`
+- `get_incremental_backlog_front_summary()`
+
+Estados del MVP:
+
+- `adopt`
+- `hold`
+- `review_backlog`
+- `review_current`
+- `pending`
+
+Limitaciones:
+
+- es una sintesis heuristica
+- no crea score nuevo ni persistencia adicional
+- no reemplaza el detalle de checklist, drift o backlog

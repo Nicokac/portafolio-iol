@@ -444,6 +444,47 @@
         </div>
         <div class="card border-secondary-subtle shadow-sm mb-4">
             <div class="card-header bg-light border-bottom">
+                <h5 class="mb-0">Resumen ejecutivo unificado de decisión incremental</h5>
+                <small class="text-muted">Síntesis única para decidir si conviene adoptar, sostener baseline o revisar backlog antes de mover el aporte.</small>
+            </div>
+            <div class="card-body border-bottom">
+                <p class="text-muted mb-3">{{ incremental_decision_executive_summary.headline }}</p>
+                {% if incremental_decision_executive_summary.has_summary %}
+                <div class="row g-3">
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Decisión sugerida</div>
+                            <div>
+                                <strong>
+                                    {% if incremental_decision_executive_summary.status == "adopt" %}
+                                    Adoptar actual
+                                    {% elif incremental_decision_executive_summary.status == "hold" %}
+                                    Sostener baseline
+                                    {% elif incremental_decision_executive_summary.status == "review_backlog" %}
+                                    Revisar backlog
+                                    {% elif incremental_decision_executive_summary.status == "review_current" %}
+                                    Revisar propuesta
+                                    {% else %}
+                                    Pendiente
+                                    {% endif %}
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    {% for item in incremental_decision_executive_summary.items %}
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">{{ item.label }}</div>
+                            <div><strong>{{ item.value|default:"-" }}</strong></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted">Todavía no hay suficiente contexto incremental para consolidar una decisión ejecutiva.</div>
+                {% endif %}
+            </div>
+            <div class="card-header bg-light border-bottom">
                 <h5 class="mb-0">Checklist de adopción de propuesta incremental</h5>
                 <small class="text-muted">Validación operativa mínima antes de pasar de propuesta a decisión manual.</small>
             </div>
