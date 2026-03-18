@@ -596,3 +596,34 @@ Criterio:
 - mantener visible el nucleo decisional
 - dejar el workflow manual basico disponible via historial y baseline
 - evitar duplicar varias lecturas derivadas del mismo estado incremental
+
+## Deuda tecnica detectada
+
+Hallazgos principales despues de la racionalizacion:
+
+- `apps/dashboard/selectors.py` concentra demasiada logica incremental en un solo archivo
+- siguen existiendo selectors operativos de backlog, drift y baseline que ya no se renderizan en la hoja principal
+- `PlaneacionView` todavia orquesta muchos contratos incrementales en una sola vista
+- varios comparadores comparten conceptos (`proposal_key`, `proposal_label`, `label`, `comparison_score`) con contratos parecidos pero no unificados
+- el historial incremental mezcla concerns de:
+  - snapshot persistido
+  - baseline activo
+  - backlog front
+  - decision manual
+- los tests de `Planeacion` quedaron sensibles a copy y a labels de UI, lo que aumenta costo de mantenimiento
+
+Deuda prioritaria:
+
+1. extraer un modulo o facade dedicado para selectors incrementales de `Planeacion`
+2. unificar contrato de propuesta incremental reutilizado por comparadores, preferida e historial
+3. separar mas claramente:
+   - nucleo decisional
+   - workflow manual
+   - historial operativo
+4. bajar la dependencia de tests respecto de copy exacto de template
+
+No abordado en este modulo:
+
+- refactor mayor de `selectors.py`
+- migracion de workflow manual a una vista separada
+- eliminacion de selectors legacy todavia reutilizables
