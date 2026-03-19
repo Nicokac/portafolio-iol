@@ -10,7 +10,11 @@ class Command(BaseCommand):
         self.stdout.write("Sincronizando series macro locales...")
         result = LocalMacroSeriesService().sync_all()
         for series_key, payload in result.items():
-            if payload.get("skipped"):
+            if payload.get("success") is False:
+                self.stdout.write(
+                    f"  {series_key}: failed ({payload.get('error', 'unknown error')})"
+                )
+            elif payload.get("skipped"):
                 self.stdout.write(
                     f"  {series_key}: skipped ({payload.get('reason', 'optional source unavailable')})"
                 )

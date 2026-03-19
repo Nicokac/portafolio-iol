@@ -37,3 +37,29 @@ def test_sync_local_macro_command_runs_service(MockService):
     MockService.return_value.sync_all.assert_called_once_with()
     output = out.getvalue()
     assert "usdars_mep: skipped (USDARS_MEP_API_URL is required)" in output
+
+
+@patch("apps.core.management.commands.sync_local_macro.LocalMacroSeriesService")
+def test_sync_local_macro_command_reports_failed_series_without_aborting(MockService):
+    MockService.return_value.sync_all.return_value = {
+        "usdars_oficial": {
+            "success": False,
+            "created": 0,
+            "updated": 0,
+            "rows_received": 0,
+            "error": "bcra unavailable",
+        },
+        "riesgo_pais_arg": {
+            "success": True,
+            "created": 1,
+            "updated": 0,
+            "rows_received": 1,
+        },
+    }
+
+    out = StringIO()
+    call_command("sync_local_macro", stdout=out)
+
+    output = out.getvalue()
+    assert "usdars_oficial: failed (bcra unavailable)" in output
+    assert "riesgo_pais_arg: created=1 updated=0 rows=1" in output

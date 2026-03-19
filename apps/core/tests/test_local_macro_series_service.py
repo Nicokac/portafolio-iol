@@ -305,6 +305,36 @@ def test_local_macro_series_service_summarizes_sync_result_with_skips_and_failur
 
 
 @pytest.mark.django_db
+def test_local_macro_series_service_sync_all_continues_when_one_series_fails():
+    bcra_client = Mock()
+    bcra_client.fetch_variable.side_effect = [
+        ConnectionError("bcra unavailable"),
+        [{"fecha": date(2026, 3, 13), "value": 29.5}],
+    ]
+    datos_client = Mock()
+    datos_client.fetch_series.return_value = [{"fecha": date(2026, 2, 1), "value": 214.2}]
+    fx_client = Mock()
+    fx_client.fetch_usdars_mep.side_effect = OptionalSourceUnavailableError("USDARS_MEP_API_URL is required")
+    fx_client.fetch_riesgo_pais.return_value = [{"fecha": date(2026, 3, 16), "value": 1250.0}]
+
+    result = LocalMacroSeriesService(
+        bcra_client=bcra_client,
+        datos_client=datos_client,
+        fx_client=fx_client,
+    ).sync_all()
+
+    assert result["usdars_oficial"]["success"] is False
+    assert result["usdars_oficial"]["error"] == "bcra unavailable"
+    assert result["badlar_privada"]["success"] is True
+    assert result["ipc_nacional"]["success"] is True
+    assert result["usdars_mep"]["skipped"] is True
+    assert result["riesgo_pais_arg"]["success"] is True
+
+    riesgo_pais_snapshot = MacroSeriesSnapshot.objects.get(series_key="riesgo_pais_arg")
+    assert float(riesgo_pais_snapshot.value) == 1250.0
+
+
+@pytest.mark.django_db
 def test_local_macro_series_service_marks_partial_portfolio_ytd_when_prior_year_close_missing():
     PortfolioSnapshot.objects.create(
         fecha=date(2026, 1, 10),

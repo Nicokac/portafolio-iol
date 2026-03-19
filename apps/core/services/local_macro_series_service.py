@@ -33,10 +33,22 @@ class LocalMacroSeriesService:
         self.fx_client = fx_client or FXJSONClient()
 
     def sync_all(self) -> dict:
-        return {
-            series_key: self.sync_series(series_key)
-            for series_key in ParametrosMacroLocal.SERIES
-        }
+        results = {}
+        for series_key, config in ParametrosMacroLocal.SERIES.items():
+            try:
+                results[series_key] = self.sync_series(series_key)
+            except Exception as exc:
+                results[series_key] = {
+                    "success": False,
+                    "series_key": series_key,
+                    "title": config["title"],
+                    "source": config["source"],
+                    "rows_received": 0,
+                    "created": 0,
+                    "updated": 0,
+                    "error": str(exc),
+                }
+        return results
 
     def sync_series(self, series_key: str) -> dict:
         config = ParametrosMacroLocal.SERIES.get(series_key)
