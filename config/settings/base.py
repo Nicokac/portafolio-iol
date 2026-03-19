@@ -175,6 +175,9 @@ ALPHA_VANTAGE_API_KEY = config('ALPHA_VANTAGE_API_KEY', default='')
 USDARS_MEP_API_URL = config('USDARS_MEP_API_URL', default='')
 USDARS_MEP_API_VALUE_PATH = config('USDARS_MEP_API_VALUE_PATH', default='venta')
 USDARS_MEP_API_DATE_PATH = config('USDARS_MEP_API_DATE_PATH', default='')
+USDARS_CCL_API_URL = config('USDARS_CCL_API_URL', default='')
+USDARS_CCL_API_VALUE_PATH = config('USDARS_CCL_API_VALUE_PATH', default='venta')
+USDARS_CCL_API_DATE_PATH = config('USDARS_CCL_API_DATE_PATH', default='')
 RIESGO_PAIS_API_URL = config(
     'RIESGO_PAIS_API_URL',
     default='https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais',
@@ -183,6 +186,12 @@ RIESGO_PAIS_API_VALUE_PATH = config('RIESGO_PAIS_API_VALUE_PATH', default='valor
 RIESGO_PAIS_API_DATE_PATH = config('RIESGO_PAIS_API_DATE_PATH', default='fecha')
 RIESGO_PAIS_API_KEY = config('RIESGO_PAIS_API_KEY', default='')
 RIESGO_PAIS_API_KEY_HEADER = config('RIESGO_PAIS_API_KEY_HEADER', default='X-API-KEY')
+UVA_API_URL = config(
+    'UVA_API_URL',
+    default='https://api.argentinadatos.com/v1/finanzas/indices/uva',
+)
+UVA_API_VALUE_PATH = config('UVA_API_VALUE_PATH', default='valor')
+UVA_API_DATE_PATH = config('UVA_API_DATE_PATH', default='fecha')
 
 # Logging
 LOGGING = {

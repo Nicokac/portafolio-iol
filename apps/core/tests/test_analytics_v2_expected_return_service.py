@@ -100,6 +100,30 @@ def test_expected_return_service_warns_when_inflation_reference_is_missing():
     assert result["metadata"]["confidence"] == "medium"
 
 
+def test_expected_return_service_prefers_uva_for_real_return_reference():
+    positions = [_make_position("SPY", 1000, asset_type="equity")]
+    benchmark_service = SimpleNamespace(
+        build_daily_returns=lambda key, dates: pd.Series([0.001] * 40),
+        build_weekly_returns=lambda key, dates: pd.Series(dtype=float),
+    )
+    service = ExpectedReturnService(
+        positions_loader=SimpleNamespace(_load_current_positions=lambda: positions),
+        benchmark_service=benchmark_service,
+        macro_service=SimpleNamespace(
+            get_context_summary=lambda: {
+                "uva_annualized_pct_30d": 45.0,
+                "ipc_nacional_variation_yoy": 20.0,
+            }
+        ),
+    )
+
+    result = service.calculate()
+
+    assert result["expected_return_pct"] is not None
+    assert result["real_expected_return_pct"] is not None
+    assert "macro:uva_annualized_pct_30d" in result["metadata"]["limitations"]
+
+
 def test_expected_return_service_uses_weekly_benchmark_when_daily_is_short():
     positions = [_make_position("SPY", 1000, asset_type="equity")]
     benchmark_service = SimpleNamespace(

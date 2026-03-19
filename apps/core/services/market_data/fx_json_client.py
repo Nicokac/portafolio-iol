@@ -15,11 +15,17 @@ class FXJSONClient:
         self.mep_url = settings.USDARS_MEP_API_URL
         self.mep_value_path = settings.USDARS_MEP_API_VALUE_PATH
         self.mep_date_path = settings.USDARS_MEP_API_DATE_PATH
+        self.ccl_url = settings.USDARS_CCL_API_URL
+        self.ccl_value_path = settings.USDARS_CCL_API_VALUE_PATH
+        self.ccl_date_path = settings.USDARS_CCL_API_DATE_PATH
         self.country_risk_url = settings.RIESGO_PAIS_API_URL
         self.country_risk_value_path = settings.RIESGO_PAIS_API_VALUE_PATH
         self.country_risk_date_path = settings.RIESGO_PAIS_API_DATE_PATH
         self.country_risk_api_key = settings.RIESGO_PAIS_API_KEY
         self.country_risk_api_key_header = settings.RIESGO_PAIS_API_KEY_HEADER
+        self.uva_url = settings.UVA_API_URL
+        self.uva_value_path = settings.UVA_API_VALUE_PATH
+        self.uva_date_path = settings.UVA_API_DATE_PATH
 
     def fetch_usdars_mep(self) -> list[dict]:
         return self._fetch_configured_scalar(
@@ -28,6 +34,15 @@ class FXJSONClient:
             date_path=self.mep_date_path,
             missing_url_error="USDARS_MEP_API_URL is required",
             missing_value_error=f"Missing configured value path for USDARS MEP: {self.mep_value_path}",
+        )
+
+    def fetch_usdars_ccl(self) -> list[dict]:
+        return self._fetch_configured_scalar(
+            url=self.ccl_url,
+            value_path=self.ccl_value_path,
+            date_path=self.ccl_date_path,
+            missing_url_error="USDARS_CCL_API_URL is required",
+            missing_value_error=f"Missing configured value path for USDARS CCL: {self.ccl_value_path}",
         )
 
     def fetch_riesgo_pais(self) -> list[dict]:
@@ -72,6 +87,15 @@ class FXJSONClient:
             }
         ]
 
+    def fetch_uva(self) -> list[dict]:
+        return self._fetch_configured_scalar_or_series(
+            url=self.uva_url,
+            value_path=self.uva_value_path,
+            date_path=self.uva_date_path,
+            missing_url_error="UVA_API_URL is required",
+            missing_value_error=f"Missing configured value path for UVA: {self.uva_value_path}",
+        )
+
     def _fetch_configured_scalar(
         self,
         *,
@@ -91,6 +115,53 @@ class FXJSONClient:
         response = requests.get(url, **request_kwargs)
         response.raise_for_status()
         payload = response.json()
+
+        value = self._extract_path(payload, value_path)
+        if value is None:
+            raise ValueError(missing_value_error)
+
+        raw_date = self._extract_path(payload, date_path) if date_path else None
+        return [
+            {
+                "fecha": self._parse_date(raw_date),
+                "value": float(value),
+            }
+        ]
+
+    def _fetch_configured_scalar_or_series(
+        self,
+        *,
+        url: str,
+        value_path: str,
+        date_path: str,
+        missing_url_error: str,
+        missing_value_error: str,
+        headers: dict | None = None,
+    ) -> list[dict]:
+        if not url:
+            raise OptionalSourceUnavailableError(missing_url_error)
+
+        request_kwargs = {"timeout": 30}
+        if headers:
+            request_kwargs["headers"] = headers
+        response = requests.get(url, **request_kwargs)
+        response.raise_for_status()
+        payload = response.json()
+
+        if isinstance(payload, list):
+            rows = []
+            for item in payload:
+                value = self._extract_path(item, value_path)
+                if value is None:
+                    raise ValueError(missing_value_error)
+                raw_date = self._extract_path(item, date_path) if date_path else None
+                rows.append(
+                    {
+                        "fecha": self._parse_date(raw_date),
+                        "value": float(value),
+                    }
+                )
+            return rows
 
         value = self._extract_path(payload, value_path)
         if value is None:

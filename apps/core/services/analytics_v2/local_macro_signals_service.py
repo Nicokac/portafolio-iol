@@ -22,6 +22,11 @@ class LocalMacroSignalsService:
     VERY_HIGH_FX_GAP_DETERIORATION_POINTS_THRESHOLD = 10.0
     FX_GAP_DETERIORATION_PCT_THRESHOLD = 25.0
     VERY_HIGH_FX_GAP_DETERIORATION_PCT_THRESHOLD = 50.0
+    FX_MEP_CCL_DIVERGENCE_THRESHOLD = 3.0
+    UVA_ACCELERATING_30D_THRESHOLD = 3.0
+    HIGH_UVA_ANNUALIZED_THRESHOLD = 35.0
+    NEGATIVE_REAL_RATE_THRESHOLD = -1.0
+    VERY_NEGATIVE_REAL_RATE_THRESHOLD = -5.0
     HIGH_COUNTRY_RISK_THRESHOLD = 900.0
     VERY_HIGH_COUNTRY_RISK_THRESHOLD = 1400.0
     COUNTRY_RISK_DETERIORATION_POINTS_THRESHOLD = 150.0
@@ -99,12 +104,23 @@ class LocalMacroSignalsService:
         ipc_ytd_pct = self._as_float(context.get("ipc_nacional_variation_ytd"))
         usdars_oficial = self._as_float(context.get("usdars_oficial"))
         usdars_mep = self._as_float(context.get("usdars_mep"))
+        usdars_ccl = self._as_float(context.get("usdars_ccl"))
+        usdars_financial = self._as_float(context.get("usdars_financial"))
         fx_gap_pct = self._as_float(context.get("fx_gap_pct"))
+        fx_gap_mep_pct = self._as_float(context.get("fx_gap_mep_pct"))
+        fx_gap_ccl_pct = self._as_float(context.get("fx_gap_ccl_pct"))
         fx_gap_change_30d = self._as_float(context.get("fx_gap_change_30d"))
         fx_gap_change_pct_30d = self._as_float(context.get("fx_gap_change_pct_30d"))
+        fx_mep_ccl_spread_pct = self._as_float(context.get("fx_mep_ccl_spread_pct"))
+        fx_signal_state = context.get("fx_signal_state")
         riesgo_pais_arg = self._as_float(context.get("riesgo_pais_arg"))
         riesgo_pais_arg_change_30d = self._as_float(context.get("riesgo_pais_arg_change_30d"))
         riesgo_pais_arg_change_pct_30d = self._as_float(context.get("riesgo_pais_arg_change_pct_30d"))
+        uva = self._as_float(context.get("uva"))
+        uva_change_30d = self._as_float(context.get("uva_change_30d"))
+        uva_change_pct_30d = self._as_float(context.get("uva_change_pct_30d"))
+        uva_annualized_pct_30d = self._as_float(context.get("uva_annualized_pct_30d"))
+        real_rate_badlar_vs_uva_30d = self._as_float(context.get("real_rate_badlar_vs_uva_30d"))
         badlar_real_carry_pct = None
         if badlar_pct is not None and ipc_yoy_pct is not None:
             badlar_real_carry_pct = round(badlar_pct - ipc_yoy_pct, 2)
@@ -140,17 +156,34 @@ class LocalMacroSignalsService:
                 "badlar_real_carry_pct": badlar_real_carry_pct,
                 "usdars_oficial": round(usdars_oficial, 2) if usdars_oficial is not None else None,
                 "usdars_mep": round(usdars_mep, 2) if usdars_mep is not None else None,
+                "usdars_ccl": round(usdars_ccl, 2) if usdars_ccl is not None else None,
+                "usdars_financial": round(usdars_financial, 2) if usdars_financial is not None else None,
                 "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
+                "fx_gap_mep_pct": round(fx_gap_mep_pct, 2) if fx_gap_mep_pct is not None else None,
+                "fx_gap_ccl_pct": round(fx_gap_ccl_pct, 2) if fx_gap_ccl_pct is not None else None,
                 "fx_gap_change_30d": round(fx_gap_change_30d, 2) if fx_gap_change_30d is not None else None,
                 "fx_gap_change_pct_30d": (
                     round(fx_gap_change_pct_30d, 2) if fx_gap_change_pct_30d is not None else None
                 ),
+                "fx_mep_ccl_spread_pct": (
+                    round(fx_mep_ccl_spread_pct, 2) if fx_mep_ccl_spread_pct is not None else None
+                ),
+                "fx_signal_state": fx_signal_state,
                 "riesgo_pais_arg": round(riesgo_pais_arg, 2) if riesgo_pais_arg is not None else None,
                 "riesgo_pais_arg_change_30d": (
                     round(riesgo_pais_arg_change_30d, 2) if riesgo_pais_arg_change_30d is not None else None
                 ),
                 "riesgo_pais_arg_change_pct_30d": (
                     round(riesgo_pais_arg_change_pct_30d, 2) if riesgo_pais_arg_change_pct_30d is not None else None
+                ),
+                "uva": round(uva, 2) if uva is not None else None,
+                "uva_change_30d": round(uva_change_30d, 2) if uva_change_30d is not None else None,
+                "uva_change_pct_30d": round(uva_change_pct_30d, 2) if uva_change_pct_30d is not None else None,
+                "uva_annualized_pct_30d": (
+                    round(uva_annualized_pct_30d, 2) if uva_annualized_pct_30d is not None else None
+                ),
+                "real_rate_badlar_vs_uva_30d": (
+                    round(real_rate_badlar_vs_uva_30d, 2) if real_rate_badlar_vs_uva_30d is not None else None
                 ),
             },
             "metadata": AnalyticsMetadata(
@@ -192,9 +225,14 @@ class LocalMacroSignalsService:
         fx_gap_pct = summary.get("fx_gap_pct")
         fx_gap_change_30d = summary.get("fx_gap_change_30d")
         fx_gap_change_pct_30d = summary.get("fx_gap_change_pct_30d")
+        fx_mep_ccl_spread_pct = summary.get("fx_mep_ccl_spread_pct")
+        fx_signal_state = summary.get("fx_signal_state")
         riesgo_pais_arg = summary.get("riesgo_pais_arg")
         riesgo_pais_arg_change_30d = summary.get("riesgo_pais_arg_change_30d")
         riesgo_pais_arg_change_pct_30d = summary.get("riesgo_pais_arg_change_pct_30d")
+        uva_change_pct_30d = summary.get("uva_change_pct_30d")
+        uva_annualized_pct_30d = summary.get("uva_annualized_pct_30d")
+        real_rate_badlar_vs_uva_30d = summary.get("real_rate_badlar_vs_uva_30d")
 
         if (
             badlar_real_carry_pct is not None
@@ -263,6 +301,45 @@ class LocalMacroSignalsService:
             )
 
         if (
+            fx_signal_state == "tensioned"
+            and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_fx_regime_tensioned",
+                    severity="high" if float(fx_gap_pct or 0.0) >= self.VERY_HIGH_FX_GAP_THRESHOLD else "medium",
+                    title="Regimen FX local tensionado",
+                    description="El dolar financiero y la brecha cambiaria muestran una tension relevante para carteras con exposicion local.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "argentina_weight_pct": round(argentina_weight_pct, 2),
+                        "fx_gap_pct": round(float(fx_gap_pct or 0.0), 2),
+                        "fx_gap_change_30d": round(float(fx_gap_change_30d or 0.0), 2),
+                    },
+                )
+            )
+
+        if (
+            fx_signal_state == "divergent"
+            and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
+            and fx_mep_ccl_spread_pct is not None
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="local_fx_regime_divergent",
+                    severity="high" if float(fx_mep_ccl_spread_pct) >= self.FX_MEP_CCL_DIVERGENCE_THRESHOLD * 2 else "medium",
+                    title="Regimen FX local divergente",
+                    description="MEP y CCL se abrieron entre si, senal de ruido cambiario adicional sobre la referencia financiera local.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "argentina_weight_pct": round(argentina_weight_pct, 2),
+                        "fx_gap_pct": round(float(fx_gap_pct or 0.0), 2),
+                        "fx_mep_ccl_spread_pct": round(float(fx_mep_ccl_spread_pct), 2),
+                    },
+                )
+            )
+
+        if (
             fx_gap_change_30d is not None
             and fx_gap_change_pct_30d is not None
             and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
@@ -292,6 +369,50 @@ class LocalMacroSignalsService:
                         "fx_gap_change_pct_30d": round(float(fx_gap_change_pct_30d), 2),
                         "usdars_oficial": round(float(summary.get("usdars_oficial") or 0.0), 2),
                         "usdars_mep": round(float(summary.get("usdars_mep") or 0.0), 2),
+                    },
+                )
+            )
+
+        if (
+            uva_change_pct_30d is not None
+            and uva_annualized_pct_30d is not None
+            and argentina_weight_pct >= self.HIGH_ARGENTINA_EXPOSURE_THRESHOLD
+            and (
+                float(uva_change_pct_30d) >= self.UVA_ACCELERATING_30D_THRESHOLD
+                or float(uva_annualized_pct_30d) >= self.HIGH_UVA_ANNUALIZED_THRESHOLD
+            )
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="inflation_accelerating",
+                    severity="high" if float(uva_annualized_pct_30d) >= self.HIGH_UVA_ANNUALIZED_THRESHOLD + 15.0 else "medium",
+                    title="Inflacion indexada en aceleracion",
+                    description="La trayectoria reciente de UVA sugiere una nominalidad mas alta para la referencia local indexada.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "argentina_weight_pct": round(argentina_weight_pct, 2),
+                        "uva_change_pct_30d": round(float(uva_change_pct_30d), 2),
+                        "uva_annualized_pct_30d": round(float(uva_annualized_pct_30d), 2),
+                    },
+                )
+            )
+
+        if (
+            real_rate_badlar_vs_uva_30d is not None
+            and ars_liquidity_weight_pct >= self.HIGH_ARS_LIQUIDITY_THRESHOLD
+            and float(real_rate_badlar_vs_uva_30d) <= self.NEGATIVE_REAL_RATE_THRESHOLD
+        ):
+            signals.append(
+                RecommendationSignal(
+                    signal_key="real_rate_negative",
+                    severity="high" if float(real_rate_badlar_vs_uva_30d) <= self.VERY_NEGATIVE_REAL_RATE_THRESHOLD else "medium",
+                    title="Tasa real local negativa",
+                    description="BADLAR queda por debajo del ritmo indexado reciente de UVA mientras la cartera mantiene liquidez relevante en ARS.",
+                    affected_scope="portfolio",
+                    evidence={
+                        "ars_liquidity_weight_pct": round(ars_liquidity_weight_pct, 2),
+                        "real_rate_badlar_vs_uva_30d": round(float(real_rate_badlar_vs_uva_30d), 2),
+                        "uva_annualized_pct_30d": round(float(uva_annualized_pct_30d or 0.0), 2),
                     },
                 )
             )

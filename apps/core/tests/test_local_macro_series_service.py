@@ -59,6 +59,22 @@ def test_local_macro_series_service_syncs_optional_mep_when_source_is_available(
 
 
 @pytest.mark.django_db
+def test_local_macro_series_service_syncs_optional_ccl_when_source_is_available():
+    fx_client = Mock()
+    fx_client.fetch_usdars_ccl.return_value = [
+        {"fecha": date(2026, 3, 16), "value": 1215.5},
+    ]
+    service = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock(), fx_client=fx_client)
+
+    result = service.sync_series("usdars_ccl")
+
+    assert result["created"] == 1
+    assert result["updated"] == 0
+    snapshot = MacroSeriesSnapshot.objects.get(series_key="usdars_ccl")
+    assert float(snapshot.value) == 1215.5
+
+
+@pytest.mark.django_db
 def test_local_macro_series_service_syncs_optional_country_risk_when_source_is_available():
     fx_client = Mock()
     fx_client.fetch_riesgo_pais.return_value = [
@@ -72,6 +88,22 @@ def test_local_macro_series_service_syncs_optional_country_risk_when_source_is_a
     assert result["updated"] == 0
     snapshot = MacroSeriesSnapshot.objects.get(series_key="riesgo_pais_arg")
     assert float(snapshot.value) == 1250.0
+
+
+@pytest.mark.django_db
+def test_local_macro_series_service_syncs_optional_uva_when_source_is_available():
+    fx_client = Mock()
+    fx_client.fetch_uva.return_value = [
+        {"fecha": date(2026, 3, 16), "value": 1500.25},
+    ]
+    service = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock(), fx_client=fx_client)
+
+    result = service.sync_series("uva")
+
+    assert result["created"] == 1
+    assert result["updated"] == 0
+    snapshot = MacroSeriesSnapshot.objects.get(series_key="uva")
+    assert float(snapshot.value) == 1500.25
 
 
 @pytest.mark.django_db
@@ -206,6 +238,59 @@ def test_local_macro_series_service_builds_optional_fx_gap_when_mep_exists():
 
 
 @pytest.mark.django_db
+def test_local_macro_series_service_builds_fx_context_with_mep_and_ccl():
+    for current_date, value in [
+        (date(2026, 2, 10), 1000.0),
+        (date(2026, 3, 13), 1000.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="usdars_oficial",
+            source="bcra",
+            external_id="5",
+            frequency="daily",
+            fecha=current_date,
+            value=value,
+        )
+    for current_date, value in [
+        (date(2026, 2, 10), 1100.0),
+        (date(2026, 3, 13), 1180.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="usdars_mep",
+            source="manual",
+            external_id="mep",
+            frequency="daily",
+            fecha=current_date,
+            value=value,
+        )
+    for current_date, value in [
+        (date(2026, 2, 10), 1120.0),
+        (date(2026, 3, 13), 1230.0),
+    ]:
+        MacroSeriesSnapshot.objects.create(
+            series_key="usdars_ccl",
+            source="manual",
+            external_id="ccl",
+            frequency="daily",
+            fecha=current_date,
+            value=value,
+        )
+
+    context = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_context_summary()
+
+    assert context["usdars_ccl"] == 1230.0
+    assert context["usdars_financial"] == 1205.0
+    assert context["usdars_financial_source"] == "blend_mep_ccl"
+    assert context["fx_gap_pct"] == 20.5
+    assert context["fx_gap_mep_pct"] == 18.0
+    assert context["fx_gap_ccl_pct"] == 23.0
+    assert context["fx_mep_ccl_spread_pct"] == 4.24
+    assert context["fx_signal_state"] == "divergent"
+    assert context["fx_gap_change_30d"] == 9.5
+    assert context["fx_gap_change_pct_30d"] == 86.36
+
+
+@pytest.mark.django_db
 def test_local_macro_series_service_builds_context_summary_with_country_risk():
     MacroSeriesSnapshot.objects.create(
         series_key="riesgo_pais_arg",
@@ -234,8 +319,46 @@ def test_local_macro_series_service_builds_context_summary_with_country_risk():
 
 
 @pytest.mark.django_db
+def test_local_macro_series_service_builds_context_summary_with_uva():
+    MacroSeriesSnapshot.objects.create(
+        series_key="uva",
+        source="fx_json",
+        external_id="uva",
+        frequency="daily",
+        fecha=date(2026, 2, 14),
+        value=1480.0,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="uva",
+        source="fx_json",
+        external_id="uva",
+        frequency="daily",
+        fecha=date(2026, 3, 16),
+        value=1524.4,
+    )
+    MacroSeriesSnapshot.objects.create(
+        series_key="badlar_privada",
+        source="bcra",
+        external_id="7",
+        frequency="daily",
+        fecha=date(2026, 3, 16),
+        value=32.0,
+    )
+
+    context = LocalMacroSeriesService(bcra_client=Mock(), datos_client=Mock()).get_context_summary()
+
+    assert context["uva"] == 1524.4
+    assert context["uva_change_30d"] == 44.4
+    assert context["uva_change_pct_30d"] == 3.0
+    assert context["uva_base_date_30d"].isoformat() == "2026-02-14"
+    assert context["uva_annualized_pct_30d"] is not None
+    assert context["real_rate_badlar_vs_uva_30d"] is not None
+
+
+@pytest.mark.django_db
 def test_local_macro_series_service_builds_status_summary_with_optional_mep_not_configured(settings):
     settings.USDARS_MEP_API_URL = ""
+    settings.USDARS_CCL_API_URL = ""
     MacroSeriesSnapshot.objects.create(
         series_key="usdars_oficial",
         source="bcra",
@@ -268,6 +391,7 @@ def test_local_macro_series_service_builds_status_summary_with_optional_mep_not_
     assert keyed["badlar_privada"]["status"] == "ready"
     assert keyed["ipc_nacional"]["status"] == "ready"
     assert keyed["usdars_mep"]["status"] == "not_configured"
+    assert keyed["usdars_ccl"]["status"] == "not_configured"
 
 
 @pytest.mark.django_db
@@ -315,7 +439,9 @@ def test_local_macro_series_service_sync_all_continues_when_one_series_fails():
     datos_client.fetch_series.return_value = [{"fecha": date(2026, 2, 1), "value": 214.2}]
     fx_client = Mock()
     fx_client.fetch_usdars_mep.side_effect = OptionalSourceUnavailableError("USDARS_MEP_API_URL is required")
+    fx_client.fetch_usdars_ccl.side_effect = OptionalSourceUnavailableError("USDARS_CCL_API_URL is required")
     fx_client.fetch_riesgo_pais.return_value = [{"fecha": date(2026, 3, 16), "value": 1250.0}]
+    fx_client.fetch_uva.return_value = [{"fecha": date(2026, 3, 16), "value": 1500.0}]
 
     result = LocalMacroSeriesService(
         bcra_client=bcra_client,
@@ -328,7 +454,9 @@ def test_local_macro_series_service_sync_all_continues_when_one_series_fails():
     assert result["badlar_privada"]["success"] is True
     assert result["ipc_nacional"]["success"] is True
     assert result["usdars_mep"]["skipped"] is True
+    assert result["usdars_ccl"]["skipped"] is True
     assert result["riesgo_pais_arg"]["success"] is True
+    assert result["uva"]["success"] is True
 
     riesgo_pais_snapshot = MacroSeriesSnapshot.objects.get(series_key="riesgo_pais_arg")
     assert float(riesgo_pais_snapshot.value) == 1250.0

@@ -109,8 +109,10 @@ Series principales:
 - `ipc_nacional`
 - `badlar_privada`
 - `usdars_mep` opcional
-- `fx_gap_pct` derivada cuando hay MEP
+- `usdars_ccl` opcional
+- `fx_gap_pct` derivada sobre dolar financiero disponible
 - `riesgo_pais_arg`
+- `uva`
 
 Integraciones actuales:
 
@@ -122,6 +124,10 @@ Integraciones actuales:
   - `local_country_risk_deteriorating`
   - `local_fx_gap_high`
   - `local_fx_gap_deteriorating`
+  - `local_fx_regime_tensioned`
+  - `local_fx_regime_divergent`
+  - `inflation_accelerating`
+  - `real_rate_negative`
 
 ## Operacion diaria
 
@@ -180,17 +186,26 @@ Opcionales para macro local:
 - `USDARS_MEP_API_URL`
 - `USDARS_MEP_API_VALUE_PATH`
 - `USDARS_MEP_API_DATE_PATH`
+- `USDARS_CCL_API_URL`
+- `USDARS_CCL_API_VALUE_PATH`
+- `USDARS_CCL_API_DATE_PATH`
 - `RIESGO_PAIS_API_URL`
 - `RIESGO_PAIS_API_VALUE_PATH`
 - `RIESGO_PAIS_API_DATE_PATH`
 - `RIESGO_PAIS_API_KEY`
 - `RIESGO_PAIS_API_KEY_HEADER`
+- `UVA_API_URL`
+- `UVA_API_VALUE_PATH`
+- `UVA_API_DATE_PATH`
 
 Defaults relevantes:
 
 - `RIESGO_PAIS_API_URL` ya apunta por default a ArgentinaDatos
 - `RIESGO_PAIS_API_VALUE_PATH=valor`
 - `RIESGO_PAIS_API_DATE_PATH=fecha`
+- `UVA_API_URL` ya apunta por default a ArgentinaDatos
+- `UVA_API_VALUE_PATH=valor`
+- `UVA_API_DATE_PATH=fecha`
 
 Si no se configura `USDARS_MEP_API_URL`:
 

@@ -35,6 +35,26 @@ def test_fx_json_client_fetches_mep_quote_from_configured_json(mock_get, setting
 
 
 @patch("apps.core.services.market_data.fx_json_client.requests.get")
+def test_fx_json_client_fetches_ccl_quote_from_configured_json(mock_get, settings):
+    settings.USDARS_CCL_API_URL = "https://example.test/ccl"
+    settings.USDARS_CCL_API_VALUE_PATH = "ccl.venta"
+    settings.USDARS_CCL_API_DATE_PATH = "updated_at"
+
+    mock_response = Mock()
+    mock_response.json.return_value = {
+        "ccl": {"venta": 1215.5},
+        "updated_at": "2026-03-16T18:30:00-03:00",
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    rows = FXJSONClient().fetch_usdars_ccl()
+
+    assert rows == [{"fecha": date(2026, 3, 16), "value": 1215.5}]
+    mock_get.assert_called_once_with("https://example.test/ccl", timeout=30)
+
+
+@patch("apps.core.services.market_data.fx_json_client.requests.get")
 def test_fx_json_client_fetches_country_risk_from_configured_json(mock_get, settings):
     settings.RIESGO_PAIS_API_URL = "https://example.test/riesgo-pais"
     settings.RIESGO_PAIS_API_VALUE_PATH = "data.valor"
@@ -83,5 +103,31 @@ def test_fx_json_client_fetches_country_risk_from_argentinadatos_shape_without_a
     ]
     mock_get.assert_called_once_with(
         "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais",
+        timeout=30,
+    )
+
+
+@patch("apps.core.services.market_data.fx_json_client.requests.get")
+def test_fx_json_client_fetches_uva_series_from_argentinadatos_shape(mock_get, settings):
+    settings.UVA_API_URL = "https://api.argentinadatos.com/v1/finanzas/indices/uva"
+    settings.UVA_API_VALUE_PATH = "valor"
+    settings.UVA_API_DATE_PATH = "fecha"
+
+    mock_response = Mock()
+    mock_response.json.return_value = [
+        {"fecha": "2026-03-16", "valor": 1500.25},
+        {"fecha": "2026-03-17", "valor": 1503.85},
+    ]
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    rows = FXJSONClient().fetch_uva()
+
+    assert rows == [
+        {"fecha": date(2026, 3, 16), "value": 1500.25},
+        {"fecha": date(2026, 3, 17), "value": 1503.85},
+    ]
+    mock_get.assert_called_once_with(
+        "https://api.argentinadatos.com/v1/finanzas/indices/uva",
         timeout=30,
     )

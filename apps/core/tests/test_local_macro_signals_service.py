@@ -163,6 +163,77 @@ def test_local_macro_signals_detects_fx_gap_deterioration_with_material_argentin
     assert keyed["local_fx_gap_deteriorating"]["evidence"]["fx_gap_change_30d"] == 7.0
 
 
+def test_local_macro_signals_detects_divergent_fx_regime_with_ccl():
+    positions = [
+        build_position(symbol="GD30", market_value=260.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="CAUCION", market_value=140.0, sector="Liquidez", country="Argentina", asset_type="cash", patrimonial_type="Cash"),
+        build_position(symbol="SPY", market_value=600.0, sector="Indice", country="USA", asset_type="equity", strategic_bucket="Growth", patrimonial_type="Equity", currency="USD"),
+    ]
+    positions_loader = Mock()
+    positions_loader._load_current_positions.return_value = positions
+    positions_loader._is_cash_like_position.side_effect = lambda position: position.asset_type == "cash"
+
+    macro_service = Mock()
+    macro_service.get_context_summary.return_value = {
+        "badlar_privada": 28.0,
+        "ipc_nacional_variation_yoy": 36.0,
+        "ipc_nacional_variation_ytd": 9.0,
+        "usdars_oficial": 1000.0,
+        "usdars_mep": 1180.0,
+        "usdars_ccl": 1230.0,
+        "usdars_financial": 1205.0,
+        "fx_gap_pct": 20.5,
+        "fx_gap_change_30d": 9.5,
+        "fx_gap_change_pct_30d": 86.36,
+        "fx_mep_ccl_spread_pct": 4.24,
+        "fx_signal_state": "divergent",
+    }
+    service = LocalMacroSignalsService(positions_loader=positions_loader, macro_service=macro_service)
+
+    result = service.calculate()
+    signals = service.build_recommendation_signals()
+
+    assert result["summary"]["usdars_ccl"] == 1230.0
+    assert result["summary"]["fx_signal_state"] == "divergent"
+    keyed = {signal["signal_key"]: signal for signal in signals}
+    assert "local_fx_regime_divergent" in keyed
+    assert keyed["local_fx_regime_divergent"]["evidence"]["fx_mep_ccl_spread_pct"] == 4.24
+
+
+def test_local_macro_signals_detects_uva_acceleration_and_negative_real_rate():
+    positions = [
+        build_position(symbol="CAUCION", market_value=320.0, sector="Liquidez", country="Argentina", asset_type="cash", patrimonial_type="Cash"),
+        build_position(symbol="GD30", market_value=180.0, sector="Soberano", country="Argentina", asset_type="bond"),
+        build_position(symbol="SPY", market_value=500.0, sector="Indice", country="USA", asset_type="equity", strategic_bucket="Growth", patrimonial_type="Equity", currency="USD"),
+    ]
+    positions_loader = Mock()
+    positions_loader._load_current_positions.return_value = positions
+    positions_loader._is_cash_like_position.side_effect = lambda position: position.asset_type == "cash"
+
+    macro_service = Mock()
+    macro_service.get_context_summary.return_value = {
+        "badlar_privada": 30.0,
+        "ipc_nacional_variation_yoy": 32.0,
+        "ipc_nacional_variation_ytd": 8.0,
+        "usdars_oficial": 1000.0,
+        "uva": 1524.4,
+        "uva_change_30d": 44.4,
+        "uva_change_pct_30d": 3.0,
+        "uva_annualized_pct_30d": 43.27,
+        "real_rate_badlar_vs_uva_30d": -13.27,
+    }
+    service = LocalMacroSignalsService(positions_loader=positions_loader, macro_service=macro_service)
+
+    result = service.calculate()
+    signals = service.build_recommendation_signals()
+
+    assert result["summary"]["uva_change_pct_30d"] == 3.0
+    assert result["summary"]["real_rate_badlar_vs_uva_30d"] == -13.27
+    keyed = {signal["signal_key"]: signal for signal in signals}
+    assert "inflation_accelerating" in keyed
+    assert "real_rate_negative" in keyed
+
+
 def test_local_macro_signals_detects_high_country_risk_with_sovereign_weight():
     positions = [
         build_position(symbol="GD30", market_value=220.0, sector="Soberano", country="Argentina", asset_type="bond"),

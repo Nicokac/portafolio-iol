@@ -90,7 +90,11 @@ class ExpectedReturnService:
             grouped_market_value[self._resolve_bucket_key(position)] += float(position.market_value)
 
         context = self.macro_service.get_context_summary()
-        inflation_reference = context.get("ipc_nacional_variation_yoy")
+        inflation_reference = context.get("uva_annualized_pct_30d")
+        inflation_reference_basis = "macro:uva_annualized_pct_30d"
+        if inflation_reference is None:
+            inflation_reference = context.get("ipc_nacional_variation_yoy")
+            inflation_reference_basis = "macro:ipc_nacional_variation_yoy"
 
         warnings: list[str] = []
         used_fallback = False
@@ -143,12 +147,14 @@ class ExpectedReturnService:
                 methodology=(
                     "current positions are grouped into equity, fixed income and liquidity buckets; "
                     "each bucket uses a simple structural reference based on SPY, EMB or BADLAR, "
-                    "with explicit static fallbacks when live references are unavailable"
+                    "with explicit static fallbacks when live references are unavailable. "
+                    "Real return uses UVA annualized 30d when available and falls back to IPC yoy."
                 ),
                 data_basis="current_positions_market_value",
                 limitations=(
                     "This is a structural baseline, not a precise forecast. "
-                    "Local equities share the global equity proxy in the MVP and real return depends on current inflation reference."
+                    "Local equities share the global equity proxy in the MVP and real return depends on current inflation reference. "
+                    f"Current real return basis: {inflation_reference_basis}."
                 ),
                 confidence=self._derive_confidence(used_fallback=used_fallback, has_inflation=inflation_reference is not None),
                 warnings=list(dict.fromkeys(warnings)),

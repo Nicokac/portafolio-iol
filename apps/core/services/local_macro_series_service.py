@@ -105,7 +105,9 @@ class LocalMacroSeriesService:
     def get_context_summary(self, total_iol: float | None = None) -> dict:
         usdars_latest = self._get_latest_snapshot("usdars_oficial")
         usdars_mep_latest = self._get_latest_snapshot("usdars_mep")
+        usdars_ccl_latest = self._get_latest_snapshot("usdars_ccl")
         riesgo_pais_latest = self._get_latest_snapshot("riesgo_pais_arg")
+        uva_latest = self._get_latest_snapshot("uva")
         badlar_latest = self._get_latest_snapshot("badlar_privada")
         ipc_snapshots = list(
             MacroSeriesSnapshot.objects.filter(series_key="ipc_nacional").order_by("-fecha")[:2]
@@ -120,15 +122,18 @@ class LocalMacroSeriesService:
         total_iol_usd = None
         if total_iol and usdars_latest and float(usdars_latest.value) > 0:
             total_iol_usd = float(total_iol) / float(usdars_latest.value)
-        fx_gap_pct = None
-        if (
-            usdars_latest and
-            usdars_mep_latest and
-            float(usdars_latest.value) > 0
-        ):
-            fx_gap_pct = ((float(usdars_mep_latest.value) / float(usdars_latest.value)) - 1) * 100
-        fx_gap_change_30d = self._calculate_fx_gap_change(lookback_days=30)
+        fx_context = self._build_fx_context_summary(
+            official_snapshot=usdars_latest,
+            mep_snapshot=usdars_mep_latest,
+            ccl_snapshot=usdars_ccl_latest,
+            lookback_days=30,
+        )
         riesgo_pais_change_30d = self._calculate_series_change("riesgo_pais_arg", lookback_days=30)
+        uva_change_30d = self._calculate_series_change("uva", lookback_days=30)
+        uva_annualized_30d = self._annualize_change_pct(uva_change_30d.get("change_pct"), lookback_days=30)
+        real_rate_badlar_vs_uva_30d = None
+        if badlar_latest and uva_annualized_30d is not None:
+            real_rate_badlar_vs_uva_30d = float(badlar_latest.value) - uva_annualized_30d
         portfolio_ytd = self._calculate_portfolio_ytd(ipc_variation_ytd)
         badlar_ytd = self._calculate_badlar_ytd()
         portfolio_excess_ytd_vs_badlar = None
@@ -143,14 +148,18 @@ class LocalMacroSeriesService:
             "usdars_oficial_date": usdars_latest.fecha if usdars_latest else None,
             "usdars_mep": float(usdars_mep_latest.value) if usdars_mep_latest else None,
             "usdars_mep_date": usdars_mep_latest.fecha if usdars_mep_latest else None,
-            "fx_gap_pct": round(fx_gap_pct, 2) if fx_gap_pct is not None else None,
-            "fx_gap_change_30d": (
-                round(fx_gap_change_30d["change"], 2) if fx_gap_change_30d.get("change") is not None else None
-            ),
-            "fx_gap_change_pct_30d": (
-                round(fx_gap_change_30d["change_pct"], 2) if fx_gap_change_30d.get("change_pct") is not None else None
-            ),
-            "fx_gap_base_date_30d": fx_gap_change_30d.get("base_date"),
+            "usdars_ccl": float(usdars_ccl_latest.value) if usdars_ccl_latest else None,
+            "usdars_ccl_date": usdars_ccl_latest.fecha if usdars_ccl_latest else None,
+            "usdars_financial": fx_context["financial_value"],
+            "usdars_financial_source": fx_context["financial_source"],
+            "fx_gap_pct": fx_context["fx_gap_pct"],
+            "fx_gap_mep_pct": fx_context["fx_gap_mep_pct"],
+            "fx_gap_ccl_pct": fx_context["fx_gap_ccl_pct"],
+            "fx_gap_change_30d": fx_context["fx_gap_change_30d"],
+            "fx_gap_change_pct_30d": fx_context["fx_gap_change_pct_30d"],
+            "fx_gap_base_date_30d": fx_context["fx_gap_base_date_30d"],
+            "fx_mep_ccl_spread_pct": fx_context["fx_mep_ccl_spread_pct"],
+            "fx_signal_state": fx_context["fx_signal_state"],
             "riesgo_pais_arg": float(riesgo_pais_latest.value) if riesgo_pais_latest else None,
             "riesgo_pais_arg_date": riesgo_pais_latest.fecha if riesgo_pais_latest else None,
             "riesgo_pais_arg_change_30d": (
@@ -161,6 +170,17 @@ class LocalMacroSeriesService:
                 if riesgo_pais_change_30d.get("change_pct") is not None else None
             ),
             "riesgo_pais_arg_base_date_30d": riesgo_pais_change_30d.get("base_date"),
+            "uva": float(uva_latest.value) if uva_latest else None,
+            "uva_date": uva_latest.fecha if uva_latest else None,
+            "uva_change_30d": round(uva_change_30d["change"], 2) if uva_change_30d.get("change") is not None else None,
+            "uva_change_pct_30d": (
+                round(uva_change_30d["change_pct"], 2) if uva_change_30d.get("change_pct") is not None else None
+            ),
+            "uva_base_date_30d": uva_change_30d.get("base_date"),
+            "uva_annualized_pct_30d": round(uva_annualized_30d, 2) if uva_annualized_30d is not None else None,
+            "real_rate_badlar_vs_uva_30d": (
+                round(real_rate_badlar_vs_uva_30d, 2) if real_rate_badlar_vs_uva_30d is not None else None
+            ),
             "badlar_privada": float(badlar_latest.value) if badlar_latest else None,
             "badlar_privada_date": badlar_latest.fecha if badlar_latest else None,
             "badlar_ytd": round(badlar_ytd, 2) if badlar_ytd is not None else None,
@@ -440,15 +460,31 @@ class LocalMacroSeriesService:
     def _calculate_fx_gap_change(self, *, lookback_days: int) -> dict:
         latest_official = self._get_latest_snapshot("usdars_oficial")
         latest_mep = self._get_latest_snapshot("usdars_mep")
-        if latest_official is None or latest_mep is None:
+        latest_ccl = self._get_latest_snapshot("usdars_ccl")
+        if latest_official is None or (latest_mep is None and latest_ccl is None):
             return {"change": None, "change_pct": None, "base_date": None}
 
         latest_official_value = float(latest_official.value)
         if latest_official_value <= 0:
             return {"change": None, "change_pct": None, "base_date": None}
-        latest_gap = ((float(latest_mep.value) / latest_official_value) - 1) * 100
+        latest_financial_values = [
+            float(snapshot.value)
+            for snapshot in (latest_mep, latest_ccl)
+            if snapshot is not None
+        ]
+        latest_gap = self._calculate_gap_pct(
+            sum(latest_financial_values) / len(latest_financial_values) if latest_financial_values else None,
+            latest_official_value,
+        )
+        if latest_gap is None:
+            return {"change": None, "change_pct": None, "base_date": None}
 
-        cutoff_date = min(latest_official.fecha, latest_mep.fecha) - pd.Timedelta(days=lookback_days)
+        latest_dates = [latest_official.fecha]
+        if latest_mep is not None:
+            latest_dates.append(latest_mep.fecha)
+        if latest_ccl is not None:
+            latest_dates.append(latest_ccl.fecha)
+        cutoff_date = min(latest_dates) - pd.Timedelta(days=lookback_days)
         base_official = (
             MacroSeriesSnapshot.objects.filter(series_key="usdars_oficial", fecha__lte=cutoff_date)
             .order_by("-fecha")
@@ -459,21 +495,41 @@ class LocalMacroSeriesService:
             .order_by("-fecha")
             .first()
         )
-        if base_official is None or base_mep is None:
+        base_ccl = (
+            MacroSeriesSnapshot.objects.filter(series_key="usdars_ccl", fecha__lte=cutoff_date)
+            .order_by("-fecha")
+            .first()
+        )
+        if base_official is None or (base_mep is None and base_ccl is None):
             return {"change": None, "change_pct": None, "base_date": None}
 
         base_official_value = float(base_official.value)
         if base_official_value <= 0:
             return {"change": None, "change_pct": None, "base_date": None}
-        base_gap = ((float(base_mep.value) / base_official_value) - 1) * 100
+        base_financial_values = [
+            float(snapshot.value)
+            for snapshot in (base_mep, base_ccl)
+            if snapshot is not None
+        ]
+        base_gap = self._calculate_gap_pct(
+            sum(base_financial_values) / len(base_financial_values) if base_financial_values else None,
+            base_official_value,
+        )
+        if base_gap is None:
+            return {"change": None, "change_pct": None, "base_date": None}
         change_pct = None
         if base_gap != 0:
             change_pct = ((latest_gap / base_gap) - 1) * 100
 
+        base_dates = [base_official.fecha]
+        if base_mep is not None:
+            base_dates.append(base_mep.fecha)
+        if base_ccl is not None:
+            base_dates.append(base_ccl.fecha)
         return {
             "change": latest_gap - base_gap,
             "change_pct": change_pct,
-            "base_date": min(base_official.fecha, base_mep.fecha),
+            "base_date": min(base_dates),
         }
 
     def _fetch_rows(self, config: dict) -> list[dict]:
@@ -484,8 +540,12 @@ class LocalMacroSeriesService:
         if config["source"] == "fx_json":
             if config["external_id"] == "usdars_mep":
                 return self.fx_client.fetch_usdars_mep()
+            if config["external_id"] == "usdars_ccl":
+                return self.fx_client.fetch_usdars_ccl()
             if config["external_id"] == "riesgo_pais_arg":
                 return self.fx_client.fetch_riesgo_pais()
+            if config["external_id"] == "uva":
+                return self.fx_client.fetch_uva()
             raise ValueError(f"Unsupported fx_json external_id: {config['external_id']}")
         raise ValueError(f"Unsupported macro source: {config['source']}")
 
@@ -494,9 +554,89 @@ class LocalMacroSeriesService:
             return True
         if series_key == "usdars_mep":
             return bool(self.fx_client.mep_url)
+        if series_key == "usdars_ccl":
+            return bool(self.fx_client.ccl_url)
         if series_key == "riesgo_pais_arg":
             return bool(self.fx_client.country_risk_url)
+        if series_key == "uva":
+            return bool(self.fx_client.uva_url)
         return False
+
+    @staticmethod
+    def _calculate_gap_pct(financial_value: float | None, official_value: float | None) -> float | None:
+        if financial_value is None or official_value is None or official_value <= 0:
+            return None
+        return ((financial_value / official_value) - 1) * 100
+
+    @staticmethod
+    def _round_or_none(value: float | None) -> float | None:
+        return round(value, 2) if value is not None else None
+
+    @staticmethod
+    def _annualize_change_pct(change_pct: float | None, *, lookback_days: int) -> float | None:
+        if change_pct is None or lookback_days <= 0:
+            return None
+        growth_factor = 1 + (float(change_pct) / 100.0)
+        if growth_factor <= 0:
+            return None
+        return ((growth_factor ** (365.0 / lookback_days)) - 1.0) * 100.0
+
+    def _build_fx_context_summary(
+        self,
+        *,
+        official_snapshot,
+        mep_snapshot,
+        ccl_snapshot,
+        lookback_days: int,
+    ) -> dict:
+        official_value = float(official_snapshot.value) if official_snapshot else None
+        mep_value = float(mep_snapshot.value) if mep_snapshot else None
+        ccl_value = float(ccl_snapshot.value) if ccl_snapshot else None
+
+        current_financial_values = [value for value in (mep_value, ccl_value) if value is not None]
+        financial_value = None
+        financial_source = None
+        if len(current_financial_values) == 2:
+            financial_value = sum(current_financial_values) / 2.0
+            financial_source = "blend_mep_ccl"
+        elif mep_value is not None:
+            financial_value = mep_value
+            financial_source = "mep"
+        elif ccl_value is not None:
+            financial_value = ccl_value
+            financial_source = "ccl"
+
+        mep_gap_pct = self._calculate_gap_pct(mep_value, official_value)
+        ccl_gap_pct = self._calculate_gap_pct(ccl_value, official_value)
+        fx_gap_pct = self._calculate_gap_pct(financial_value, official_value)
+        fx_gap_change = self._calculate_fx_gap_change(lookback_days=lookback_days)
+
+        mep_ccl_spread_pct = None
+        if mep_value is not None and ccl_value is not None and mep_value > 0:
+            mep_ccl_spread_pct = abs((ccl_value / mep_value) - 1.0) * 100.0
+
+        signal_state = "normal"
+        if mep_ccl_spread_pct is not None and mep_ccl_spread_pct >= 3.0:
+            signal_state = "divergent"
+        elif (
+            (fx_gap_pct is not None and fx_gap_pct >= 20.0)
+            or (fx_gap_change.get("change") is not None and float(fx_gap_change["change"]) >= 5.0)
+            or (fx_gap_change.get("change_pct") is not None and float(fx_gap_change["change_pct"]) >= 25.0)
+        ):
+            signal_state = "tensioned"
+
+        return {
+            "financial_value": self._round_or_none(financial_value),
+            "financial_source": financial_source,
+            "fx_gap_pct": self._round_or_none(fx_gap_pct),
+            "fx_gap_mep_pct": self._round_or_none(mep_gap_pct),
+            "fx_gap_ccl_pct": self._round_or_none(ccl_gap_pct),
+            "fx_gap_change_30d": self._round_or_none(fx_gap_change.get("change")),
+            "fx_gap_change_pct_30d": self._round_or_none(fx_gap_change.get("change_pct")),
+            "fx_gap_base_date_30d": fx_gap_change.get("base_date"),
+            "fx_mep_ccl_spread_pct": self._round_or_none(mep_ccl_spread_pct),
+            "fx_signal_state": signal_state,
+        }
 
     def _build_portfolio_history(self, days: int) -> pd.DataFrame:
         end_date = PortfolioSnapshot.objects.order_by("-fecha").first()
