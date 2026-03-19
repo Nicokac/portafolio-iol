@@ -481,6 +481,48 @@ class TestDashboardView:
                     'has_manual_override': False,
                     'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
                 },
+                'decision_engine_summary': {
+                    'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una senal macro dominante que invalide el flujo principal.'},
+                    'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental sin desviar el flujo principal.'},
+                    'recommendation': {
+                        'block': 'Tecnología / growth',
+                        'amount': 600000,
+                        'reason': 'Se prioriza retorno esperado estructural.',
+                        'has_recommendation': True,
+                    },
+                    'suggested_assets': [
+                        {'symbol': 'KO', 'block': 'Defensive / resiliente', 'score': 8.4, 'reason': 'defensive_sector_match'},
+                    ],
+                    'preferred_proposal': {
+                        'proposal_key': 'split',
+                        'proposal_label': 'Split KO + MCD',
+                        'source_label': 'Comparador por split',
+                        'purchase_summary': 'KO · 150000, MCD · 150000',
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
+                        'simulation_delta': {'expected_return_change': 0.5, 'fragility_change': -2.1, 'scenario_loss_change': 0.7},
+                    },
+                    'expected_impact': {
+                        'return': 0.5,
+                        'fragility': -2.1,
+                        'worst_case': 0.7,
+                        'status': 'positive',
+                        'summary': 'La propuesta mejora el perfil sin aumentar la fragilidad.',
+                    },
+                    'score': 78,
+                    'confidence': 'Alta',
+                    'explanation': [
+                        'Se refuerza Tecnología / growth porque Se prioriza retorno esperado estructural..',
+                        'El contexto macro esta en normal y no hay una senal macro dominante que invalide el flujo principal..',
+                        'El impacto esperado de Split KO + MCD es positive en retorno, fragilidad y peor escenario.',
+                        'El riesgo no aumenta materialmente con la propuesta actual.',
+                    ],
+                    'tracking_payload': {
+                        'recommended_block': 'Tecnología / growth',
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
+                        'score': 78,
+                        'confidence': 'Alta',
+                    },
+                },
                 'incremental_proposal_history': {
                     'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
                     'count': 1,
@@ -545,8 +587,13 @@ class TestDashboardView:
         assert 'Opciones sugeridas' in body
         assert 'Impacto estimado' in body
         assert 'Tu decisión este mes' in body
+        assert 'Score: 78/100' in body
+        assert 'Confianza: Alta' in body
+        assert 'Por qué esta decisión' in body
         assert 'Ejecutar decisión' in body
         assert 'Explorar alternativas' in body
+        assert 'KO · 150000, MCD · 150000' in body
+        assert 'La propuesta mejora el perfil sin aumentar la fragilidad.' in body
         assert 'KO' in body
         assert 'Lectura sugerida del cierre:' in body
         assert 'Decisión sugerida: propuesta incremental preferida' in body
@@ -581,6 +628,87 @@ class TestDashboardView:
         assert 'Split del bloque más grande' in body
         assert 'Comparador incremental por candidato' in body
         assert 'Comparador incremental por split de bloque' in body
+
+    def test_planeacion_mode_decision_handles_missing_preferred_and_assets(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
+                'incremental_portfolio_simulation_comparison': {'proposals': []},
+                'candidate_incremental_portfolio_comparison': {'comparisons': []},
+                'candidate_split_incremental_portfolio_comparison': {'proposals': []},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
+                'preferred_incremental_portfolio_proposal': {'preferred': None, 'has_manual_override': False, 'explanation': ''},
+                'decision_engine_summary': {
+                    'macro_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto macro suficiente.'},
+                    'portfolio_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto suficiente sobre la cartera.'},
+                    'recommendation': {'block': None, 'amount': None, 'reason': 'Todavía no hay un bloque dominante para este corte.', 'has_recommendation': False},
+                    'suggested_assets': [],
+                    'preferred_proposal': None,
+                    'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
+                    'score': 24,
+                    'confidence': 'Baja',
+                    'explanation': [],
+                    'tracking_payload': {'purchase_plan': [], 'score': 24, 'confidence': 'Baja'},
+                },
+                'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'headline': ''},
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Sin candidatos claros.' in body
+        assert 'No hay propuesta dominante.' in body
+        assert 'Score: 24/100' in body
+        assert 'Confianza: Baja' in body
+        assert 'Por qué esta decisión' not in body
+
+    def test_planeacion_mode_decision_handles_missing_simulation_values(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
+                'incremental_portfolio_simulation_comparison': {'proposals': []},
+                'candidate_incremental_portfolio_comparison': {'comparisons': []},
+                'candidate_split_incremental_portfolio_comparison': {'proposals': []},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
+                'preferred_incremental_portfolio_proposal': {'preferred': {'proposal_label': 'Plan A'}, 'has_manual_override': False, 'explanation': ''},
+                'decision_engine_summary': {
+                    'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una señal macro dominante.'},
+                    'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
+                    'recommendation': {'block': 'Defensivos USD', 'amount': 600000, 'reason': 'prioridad simple', 'has_recommendation': True},
+                    'suggested_assets': [{'symbol': 'KO', 'block': 'Defensivos USD', 'score': 8.2, 'reason': 'defensive_sector_match'}],
+                    'preferred_proposal': {'proposal_label': 'Plan A', 'source_label': 'Comparador automático', 'purchase_summary': 'KO · 600000', 'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'simulation_delta': {}},
+                    'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
+                    'score': 61,
+                    'confidence': 'Media',
+                    'explanation': ['Se refuerza Defensivos USD porque prioridad simple.'],
+                    'tracking_payload': {'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'score': 61, 'confidence': 'Media'},
+                },
+                'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'headline': ''},
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Impacto incremental no disponible.' in body
+        assert 'Score: 61/100' in body
+        assert 'Confianza: Media' in body
+        assert 'KO · 600000' in body
         assert 'Comparador manual de planes incrementales' in body
         assert 'Herramienta secundaria: plan mensual por perfil' in body
         assert 'Plan mensual por perfil' in body

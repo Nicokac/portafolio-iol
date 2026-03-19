@@ -2303,6 +2303,82 @@ def get_incremental_decision_executive_summary(
     }
 
 
+def get_decision_engine_summary(
+    user,
+    *,
+    query_params=None,
+    capital_amount: int | float = 600000,
+) -> Dict:
+    """Compone una sintesis unica de decision mensual reutilizando selectors existentes."""
+
+    query_params = query_params or {}
+    query_stamp = _build_decision_engine_query_stamp(query_params)
+    cache_key = f"decision_engine_summary:{getattr(user, 'pk', 'anon')}:{int(capital_amount)}:{query_stamp}"
+
+    def build():
+        macro_local = get_macro_local_context()
+        analytics = get_analytics_v2_dashboard_summary()
+        monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
+        ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+        preferred_payload = get_preferred_incremental_portfolio_proposal(
+            query_params,
+            capital_amount=capital_amount,
+        )
+        simulation = get_incremental_portfolio_simulation(capital_amount=capital_amount)
+
+        macro_state = _build_decision_macro_state(macro_local)
+        portfolio_state = _build_decision_portfolio_state(analytics)
+        recommendation = _build_decision_recommendation(monthly_plan)
+        suggested_assets = _build_decision_suggested_assets(ranking)
+        preferred_proposal = _build_decision_preferred_proposal(preferred_payload)
+        expected_impact = _build_decision_expected_impact(simulation)
+        score = _compute_decision_score(
+            macro_state=macro_state,
+            portfolio_state=portfolio_state,
+            recommendation=recommendation,
+            suggested_assets=suggested_assets,
+            preferred_proposal=preferred_proposal,
+            expected_impact=expected_impact,
+        )
+        confidence = _compute_decision_confidence(
+            macro_state=macro_state,
+            portfolio_state=portfolio_state,
+            preferred_proposal=preferred_proposal,
+            expected_impact=expected_impact,
+        )
+        explanation = _build_decision_explanation(
+            macro_state=macro_state,
+            recommendation=recommendation,
+            expected_impact=expected_impact,
+            confidence=confidence,
+            preferred_proposal=preferred_proposal,
+        )
+        tracking_payload = _build_decision_tracking_payload(
+            preferred_proposal=preferred_proposal,
+            recommendation=recommendation,
+            expected_impact=expected_impact,
+            score=score,
+            confidence=confidence,
+            macro_state=macro_state,
+            portfolio_state=portfolio_state,
+        )
+
+        return {
+            "macro_state": macro_state,
+            "portfolio_state": portfolio_state,
+            "recommendation": recommendation,
+            "suggested_assets": suggested_assets,
+            "preferred_proposal": preferred_proposal,
+            "expected_impact": expected_impact,
+            "score": score,
+            "confidence": confidence,
+            "explanation": explanation,
+            "tracking_payload": tracking_payload,
+        }
+
+    return _get_cached_selector_result(cache_key, build)
+
+
 def get_planeacion_incremental_context(
     query_params,
     *,
@@ -2333,6 +2409,11 @@ def get_planeacion_incremental_context(
         ),
         "preferred_incremental_portfolio_proposal": get_preferred_incremental_portfolio_proposal(
             query_params,
+            capital_amount=capital_amount,
+        ),
+        "decision_engine_summary": get_decision_engine_summary(
+            user,
+            query_params=query_params,
             capital_amount=capital_amount,
         ),
         "incremental_proposal_history": get_incremental_proposal_history(
@@ -3172,6 +3253,315 @@ def _coerce_optional_float(value) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _build_decision_engine_query_stamp(query_params) -> str:
+    if query_params is None:
+        return "none"
+    if isinstance(query_params, dict):
+        items = sorted((str(key), str(value)) for key, value in query_params.items())
+        return urlencode(items)
+    items_method = getattr(query_params, "lists", None)
+    if callable(items_method):
+        normalized = []
+        for key, values in query_params.lists():
+            for value in values:
+                normalized.append((str(key), str(value)))
+        return urlencode(sorted(normalized))
+    return str(query_params)
+
+
+def _build_decision_macro_state(macro_local: Dict | None) -> Dict:
+    macro_local = macro_local or {}
+    fx_state = str(macro_local.get("fx_signal_state") or "").strip().lower()
+    riesgo_pais = _coerce_optional_float(macro_local.get("riesgo_pais_arg"))
+    uva_annualized = _coerce_optional_float(macro_local.get("uva_annualized_pct_30d"))
+
+    if fx_state == "divergent" or (riesgo_pais is not None and riesgo_pais >= 900):
+        return {
+            "key": "crisis",
+            "label": "Crisis",
+            "score_component": 4,
+            "summary": "El contexto local exige maxima cautela antes de sumar riesgo.",
+        }
+    if fx_state == "tensioned" or (riesgo_pais is not None and riesgo_pais >= 700) or (
+        uva_annualized is not None and uva_annualized >= 35
+    ):
+        return {
+            "key": "tension",
+            "label": "Tension",
+            "score_component": 13,
+            "summary": "Hay tension local y conviene evitar decisiones agresivas.",
+        }
+    if fx_state or riesgo_pais is not None or uva_annualized is not None:
+        return {
+            "key": "normal",
+            "label": "Normal",
+            "score_component": 25,
+            "summary": "No hay una senal macro dominante que invalide el flujo principal.",
+        }
+    return {
+        "key": "indefinido",
+        "label": "Indefinido",
+        "score_component": 12,
+        "summary": "Falta contexto macro suficiente para una lectura mas firme.",
+    }
+
+
+def _build_decision_portfolio_state(analytics: Dict | None) -> Dict:
+    analytics = analytics or {}
+    stress = analytics.get("stress_testing") or {}
+    expected = analytics.get("expected_return") or {}
+    risk = analytics.get("risk_contribution") or {}
+    top_asset = risk.get("top_asset") or {}
+
+    fragility_score = _coerce_optional_float(stress.get("fragility_score"))
+    total_loss_pct = _coerce_optional_float(stress.get("total_loss_pct"))
+    real_expected_return_pct = _coerce_optional_float(expected.get("real_expected_return_pct"))
+    top_asset_contribution = _coerce_optional_float(top_asset.get("contribution_pct"))
+
+    if (fragility_score is not None and fragility_score >= 70) or (
+        total_loss_pct is not None and total_loss_pct < -20
+    ):
+        return {
+            "key": "riesgo",
+            "label": "Riesgo",
+            "score_component": 5,
+            "summary": "La cartera ya muestra fragilidad relevante y pide prudencia.",
+        }
+    if (real_expected_return_pct is not None and real_expected_return_pct < 0) or (
+        top_asset_contribution is not None and top_asset_contribution > 0.25
+    ):
+        return {
+            "key": "desbalance",
+            "label": "Desbalance",
+            "score_component": 14,
+            "summary": "Hay senales de concentracion o retorno real debil a corregir.",
+        }
+    if (
+        fragility_score is not None
+        or total_loss_pct is not None
+        or real_expected_return_pct is not None
+        or top_asset_contribution is not None
+    ):
+        return {
+            "key": "ok",
+            "label": "OK",
+            "score_component": 25,
+            "summary": "La cartera admite un aporte incremental sin desviar el flujo principal.",
+        }
+    return {
+        "key": "indefinido",
+        "label": "Indefinido",
+        "score_component": 12,
+        "summary": "Falta contexto suficiente sobre el estado actual de la cartera.",
+    }
+
+
+def _build_decision_recommendation(monthly_plan: Dict | None) -> Dict:
+    monthly_plan = monthly_plan or {}
+    primary_block = next(iter(monthly_plan.get("recommended_blocks") or []), None)
+    if not primary_block:
+        return {
+            "block": None,
+            "amount": None,
+            "reason": "Todavia no hay un bloque dominante para este mes.",
+            "has_recommendation": False,
+        }
+    return {
+        "block": primary_block.get("label"),
+        "amount": _coerce_optional_float(primary_block.get("suggested_amount")),
+        "reason": str(primary_block.get("reason") or "").strip(),
+        "has_recommendation": True,
+    }
+
+
+def _build_decision_suggested_assets(ranking: Dict | None) -> list[Dict]:
+    ranking = ranking or {}
+    assets = []
+    for item in (ranking.get("candidate_assets") or [])[:3]:
+        assets.append(
+            {
+                "symbol": item.get("asset"),
+                "block": item.get("block_label"),
+                "score": _coerce_optional_float(item.get("score")),
+                "reason": item.get("main_reason"),
+            }
+        )
+    return assets
+
+
+def _build_decision_preferred_proposal(preferred_payload: Dict | None) -> Dict | None:
+    preferred_payload = preferred_payload or {}
+    preferred = preferred_payload.get("preferred")
+    if not preferred:
+        return None
+    simulation = preferred.get("simulation") or {}
+    return {
+        "proposal_key": preferred.get("proposal_key"),
+        "proposal_label": preferred.get("proposal_label") or preferred.get("label"),
+        "source_label": preferred.get("source_label"),
+        "comparison_score": _coerce_optional_float(preferred.get("comparison_score")),
+        "purchase_plan": list(preferred.get("purchase_plan") or []),
+        "purchase_summary": preferred.get("purchase_summary") or _format_incremental_purchase_plan_summary(
+            list(preferred.get("purchase_plan") or [])
+        ),
+        "simulation_delta": dict(simulation.get("delta") or preferred.get("simulation_delta") or {}),
+        "simulation_interpretation": str(simulation.get("interpretation") or ""),
+    }
+
+
+def _build_decision_expected_impact(simulation: Dict | None) -> Dict:
+    simulation = simulation or {}
+    delta = dict(simulation.get("delta") or {})
+    expected_return = _coerce_optional_float(delta.get("expected_return_change"))
+    fragility = _coerce_optional_float(delta.get("fragility_change"))
+    worst_case = _coerce_optional_float(delta.get("scenario_loss_change"))
+    risk_concentration = _coerce_optional_float(delta.get("risk_concentration_change"))
+
+    favorable = 0
+    unfavorable = 0
+    if expected_return is not None:
+        favorable += 1 if expected_return >= 0 else 0
+        unfavorable += 1 if expected_return < 0 else 0
+    if fragility is not None:
+        favorable += 1 if fragility <= 0 else 0
+        unfavorable += 1 if fragility > 0 else 0
+    if worst_case is not None:
+        favorable += 1 if worst_case >= 0 else 0
+        unfavorable += 1 if worst_case < 0 else 0
+    if risk_concentration is not None:
+        favorable += 1 if risk_concentration <= 0 else 0
+        unfavorable += 1 if risk_concentration > 0 else 0
+
+    if favorable and not unfavorable:
+        status = "positive"
+        score_component = 25
+    elif unfavorable and not favorable:
+        status = "negative"
+        score_component = 5
+    elif favorable or unfavorable:
+        status = "mixed"
+        score_component = 14
+    else:
+        status = "neutral"
+        score_component = 12
+
+    return {
+        "return": expected_return,
+        "fragility": fragility,
+        "worst_case": worst_case,
+        "risk_concentration": risk_concentration,
+        "status": status,
+        "score_component": score_component,
+        "summary": str(simulation.get("interpretation") or "Impacto incremental no disponible."),
+    }
+
+
+def _compute_decision_score(
+    *,
+    macro_state: Dict,
+    portfolio_state: Dict,
+    recommendation: Dict,
+    suggested_assets: list[Dict],
+    preferred_proposal: Dict | None,
+    expected_impact: Dict,
+) -> int:
+    recommendation_score = 0
+    if recommendation.get("has_recommendation"):
+        recommendation_score += 10
+    if suggested_assets:
+        recommendation_score += 5
+    if len(suggested_assets) >= 2:
+        recommendation_score += 3
+    if preferred_proposal:
+        recommendation_score += 7
+    recommendation_score = min(recommendation_score, 25)
+
+    total = (
+        int(macro_state.get("score_component") or 0)
+        + int(portfolio_state.get("score_component") or 0)
+        + recommendation_score
+        + int(expected_impact.get("score_component") or 0)
+    )
+    return max(0, min(100, total))
+
+
+def _compute_decision_confidence(
+    *,
+    macro_state: Dict,
+    portfolio_state: Dict,
+    preferred_proposal: Dict | None,
+    expected_impact: Dict,
+) -> str:
+    if preferred_proposal is None:
+        return "Baja"
+    if expected_impact.get("status") == "negative":
+        return "Baja"
+    if macro_state.get("key") == "crisis":
+        return "Baja"
+    if (
+        macro_state.get("key") == "normal"
+        and portfolio_state.get("key") != "riesgo"
+        and expected_impact.get("status") in {"positive", "neutral"}
+    ):
+        return "Alta"
+    return "Media"
+
+
+def _build_decision_explanation(
+    *,
+    macro_state: Dict,
+    recommendation: Dict,
+    expected_impact: Dict,
+    confidence: str,
+    preferred_proposal: Dict | None,
+) -> list[str]:
+    recommendation_block = recommendation.get("block") or "el bloque sugerido"
+    recommendation_reason = recommendation.get("reason") or "es la prioridad mas clara del mes"
+    proposal_label = (preferred_proposal or {}).get("proposal_label") or "la mejor propuesta disponible"
+
+    risk_line = "El riesgo no aumenta materialmente con la propuesta actual."
+    if expected_impact.get("status") == "negative" or confidence == "Baja":
+        risk_line = "El riesgo pide revision adicional antes de ejecutar la decision."
+    elif expected_impact.get("status") == "mixed":
+        risk_line = "El riesgo queda controlado, pero conviene revisar las senales mixtas."
+
+    return [
+        f"Se refuerza {recommendation_block} porque {recommendation_reason}.",
+        f"El contexto macro esta en {str(macro_state.get('label') or 'Indefinido').lower()} y {macro_state.get('summary') or 'no invalida la decision principal'}.",
+        f"El impacto esperado de {proposal_label} es {expected_impact.get('status') or 'neutral'} en retorno, fragilidad y peor escenario.",
+        risk_line,
+    ][:4]
+
+
+def _build_decision_tracking_payload(
+    *,
+    preferred_proposal: Dict | None,
+    recommendation: Dict,
+    expected_impact: Dict,
+    score: int,
+    confidence: str,
+    macro_state: Dict,
+    portfolio_state: Dict,
+) -> Dict:
+    preferred_proposal = preferred_proposal or {}
+    return {
+        "recommended_block": recommendation.get("block"),
+        "recommended_amount": recommendation.get("amount"),
+        "preferred_proposal": {
+            "proposal_key": preferred_proposal.get("proposal_key"),
+            "proposal_label": preferred_proposal.get("proposal_label"),
+            "source_label": preferred_proposal.get("source_label"),
+        },
+        "purchase_plan": list(preferred_proposal.get("purchase_plan") or []),
+        "simulation_delta": dict(preferred_proposal.get("simulation_delta") or {}),
+        "score": score,
+        "confidence": confidence,
+        "macro_state": macro_state.get("key"),
+        "portfolio_state": portfolio_state.get("key"),
+        "expected_impact_status": expected_impact.get("status"),
+    }
 
 
 def _extract_best_incremental_proposal(payload: Dict) -> Dict | None:

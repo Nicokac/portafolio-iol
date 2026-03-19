@@ -2322,6 +2322,10 @@ class TestDashboardSelectors(TestCase):
                 return_value={"preferred": {"proposal_label": "Split KO + MCD"}},
             ) as preferred,
             patch(
+                "apps.dashboard.selectors.get_decision_engine_summary",
+                return_value={"score": 78, "confidence": "Alta"},
+            ) as decision_engine,
+            patch(
                 "apps.dashboard.selectors.get_incremental_proposal_history",
                 return_value={"count": 1, "active_filter": "pending"},
             ) as history,
@@ -2353,6 +2357,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["candidate_split_incremental_portfolio_comparison"]["selected_block"] == "defensive"
         assert detail["manual_incremental_portfolio_simulation_comparison"]["submitted"] is False
         assert detail["preferred_incremental_portfolio_proposal"]["preferred"]["proposal_label"] == "Split KO + MCD"
+        assert detail["decision_engine_summary"]["score"] == 78
         assert detail["incremental_proposal_history"]["active_filter"] == "pending"
         assert detail["incremental_proposal_tracking_baseline"]["has_baseline"] is True
         assert detail["incremental_manual_decision_summary"]["has_decision"] is True
@@ -2366,6 +2371,7 @@ class TestDashboardSelectors(TestCase):
         split_comparison.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
         manual_comparison.assert_called_once_with({"decision_status_filter": "pending"}, default_capital_amount=700000)
         preferred.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
+        decision_engine.assert_called_once_with(ANY, query_params={"decision_status_filter": "pending"}, capital_amount=700000)
         history.assert_called_once_with(user=ANY, limit=7, decision_status="pending")
         baseline.assert_called_once_with(user=ANY)
         decision_summary.assert_called_once_with(user=ANY)
