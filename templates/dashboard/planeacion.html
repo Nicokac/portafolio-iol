@@ -750,6 +750,10 @@
                                             <th>Propuesta</th>
                                             <th>Origen</th>
                                             <th>Compra resumida</th>
+                                            <th class="text-center">Score</th>
+                                            <th>Confianza</th>
+                                            <th>Macro</th>
+                                            <th>Cartera</th>
                                             <th>Decision manual</th>
                                             <th class="text-end">Δ Expected</th>
                                             <th class="text-end">Δ Fragility</th>
@@ -808,6 +812,16 @@
                                                 {% if item.reapply_truncated %}
                                                 <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
                                                 {% endif %}
+                                                {% if item.decision_explanation %}
+                                                <details class="mt-2">
+                                                    <summary class="small text-muted">Por qué se tomó esta decisión</summary>
+                                                    <ul class="small mb-0 mt-2 ps-3">
+                                                        {% for bullet in item.decision_explanation %}
+                                                        <li>{{ bullet }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </details>
+                                                {% endif %}
                                             </td>
                                             <td>{{ item.source_label|default:"-" }}</td>
                                             <td>
@@ -815,6 +829,32 @@
                                                 <div class="small">{{ purchase.symbol }} · {{ purchase.amount|currency:0 }}</div>
                                                 {% endfor %}
                                             </td>
+                                            <td class="text-center">
+                                                {% if item.decision_score is not None %}
+                                                    {% if item.decision_score > 80 %}
+                                                    <span class="badge bg-success">{{ item.decision_score }}</span>
+                                                    {% elif item.decision_score >= 60 %}
+                                                    <span class="badge bg-warning text-dark">{{ item.decision_score }}</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger">{{ item.decision_score }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                —
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if item.decision_confidence == "Alta" %}
+                                                <span class="badge bg-success">Alta</span>
+                                                {% elif item.decision_confidence == "Media" %}
+                                                <span class="badge bg-warning text-dark">Media</span>
+                                                {% elif item.decision_confidence == "Baja" %}
+                                                <span class="badge bg-danger">Baja</span>
+                                                {% else %}
+                                                —
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ item.macro_state|capfirst|default:"—" }}</td>
+                                            <td>{{ item.portfolio_state|capfirst|default:"—" }}</td>
                                             <td>
                                                 <div><strong>{{ item.manual_decision_status_label|default:"Pendiente" }}</strong></div>
                                                 {% if item.is_backlog_front %}

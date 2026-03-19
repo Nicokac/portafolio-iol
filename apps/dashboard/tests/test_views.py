@@ -524,7 +524,7 @@ class TestDashboardView:
                     },
                 },
                 'incremental_proposal_history': {
-                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
+                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
                     'count': 1,
                     'has_history': True,
                     'active_filter': 'all',
@@ -620,6 +620,11 @@ class TestDashboardView:
         assert 'Diferir visibles' in body
         assert 'Rechazar visibles' in body
         assert 'Plan guardado 1' in body
+        assert 'Por qué se tomó esta decisión' in body
+        assert 'Se reforzó una propuesta defensiva con mejor resiliencia.' in body
+        assert 'Alta' in body
+        assert 'Normal' in body
+        assert 'Ok' in body
         assert 'Promover a baseline' in body
         assert 'Reaplicar en comparador manual' in body
         assert 'Comparador por split' in body
@@ -709,6 +714,68 @@ class TestDashboardView:
         assert 'Score: 61/100' in body
         assert 'Confianza: Media' in body
         assert 'KO · 600000' in body
+
+    def test_planeacion_history_supports_old_snapshots_without_decision_fields(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
+                'incremental_portfolio_simulation_comparison': {'proposals': []},
+                'candidate_incremental_portfolio_comparison': {'comparisons': []},
+                'candidate_split_incremental_portfolio_comparison': {'proposals': []},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
+                'preferred_incremental_portfolio_proposal': {'preferred': None, 'has_manual_override': False, 'explanation': ''},
+                'decision_engine_summary': {
+                    'macro_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto macro suficiente.'},
+                    'portfolio_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto suficiente sobre la cartera.'},
+                    'recommendation': {'block': None, 'amount': None, 'reason': 'Todavía no hay un bloque dominante para este corte.', 'has_recommendation': False},
+                    'suggested_assets': [],
+                    'preferred_proposal': None,
+                    'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
+                    'score': 24,
+                    'confidence': 'Baja',
+                    'explanation': [],
+                    'tracking_payload': {'purchase_plan': [], 'score': 24, 'confidence': 'Baja'},
+                },
+                'incremental_proposal_history': {
+                    'items': [{
+                        'id': 1,
+                        'proposal_label': 'Plan viejo',
+                        'source_label': 'Comparador manual',
+                        'selected_context': '',
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
+                        'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3},
+                        'manual_decision_status': 'pending',
+                        'manual_decision_status_label': 'Pendiente',
+                        'is_backlog_front': False,
+                        'is_tracking_baseline': False,
+                        'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000',
+                        'reapply_truncated': False,
+                        'created_at': '2026-03-17 11:00',
+                    }],
+                    'count': 1,
+                    'has_history': True,
+                    'active_filter': 'all',
+                    'active_filter_label': 'Todos',
+                    'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
+                    'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
+                    'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
+                },
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Plan viejo' in body
+        assert 'Por qué se tomó esta decisión' not in body
+        assert 'Reaplicar en comparador manual' in body
         assert 'Comparador manual de planes incrementales' in body
         assert 'Herramienta secundaria: plan mensual por perfil' in body
         assert 'Plan mensual por perfil' in body
