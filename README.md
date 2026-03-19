@@ -130,6 +130,7 @@ Integraciones actuales:
   - `inflation_accelerating`
   - `real_rate_negative`
 - `Estrategia` resume `CCL`, estado FX, spread `MEP / CCL`, `UVA anualizada 30d` y `BADLAR vs UVA`
+- `RecommendationEngine` ya convierte estas senales en acciones operativas y `Planeacion` las expone dentro de `Diagnostico previo` con rotulo `Macro local FX/UVA`
 
 ## Operacion diaria
 

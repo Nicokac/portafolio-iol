@@ -81,3 +81,74 @@ Agregar una lectura local simple y explicable para carteras con peso relevante e
 - MEP, CCL, UVA y riesgo pais solo se usan si la serie ya existe en `MacroSeriesSnapshot`
 - el deterioro de brecha FX usa una comparacion simple contra la ultima observacion disponible a 30 dias, sin suavizados ni ventanas multiples
 - el deterioro de riesgo pais usa una comparacion simple contra la ultima observacion disponible a 30 dias, sin suavizados ni ventanas multiples
+
+## Integracion con recomendaciones
+
+Las senales locales no quedan solo como contexto descriptivo.
+
+`RecommendationEngine` ya consume este output y lo traduce a recomendaciones accionables para:
+
+- `local_fx_gap_high`
+- `local_fx_gap_deteriorating`
+- `local_fx_regime_tensioned`
+- `local_fx_regime_divergent`
+- `inflation_accelerating`
+- `real_rate_negative`
+- `local_country_risk_high`
+- `local_country_risk_deteriorating`
+
+Regla de priorizacion actual:
+
+- el topico `FX local` se deduplica para evitar recomendaciones casi iguales
+- si conviven varias senales FX, se prioriza:
+  - `local_fx_regime_divergent`
+  - `local_fx_regime_tensioned`
+  - `local_fx_gap_deteriorating`
+  - `local_fx_gap_high`
+
+Esto busca que el motor emita la lectura mas informativa del contexto cambiario, no varias variaciones del mismo problema.
+
+## Exposicion actual en producto
+
+Las senales y el contexto local hoy se exponen en tres superficies distintas:
+
+### Resumen
+
+Lectura compacta de contexto local:
+
+- `Riesgo pais Argentina`
+- `Dolar financiero y regimen FX`
+- `UVA y tasa real local`
+
+Uso recomendado:
+
+- chequeo rapido del entorno local antes de pasar a `Estrategia` o `Planeacion`
+
+### Estrategia
+
+Lectura mas analitica de macro local dentro de `Analytics v2`:
+
+- `CCL`
+- `Estado FX`
+- `Spread MEP / CCL`
+- `UVA anualizada 30d`
+- `Tasa real BADLAR vs UVA`
+
+Uso recomendado:
+
+- entender si el contexto macro local cambia la lectura de retorno esperado, fragilidad o sensibilidad local
+
+### Planeacion
+
+Las senales nuevas no crean una pantalla propia.
+Se integran dentro de `Diagnostico previo al aporte`.
+
+Exposicion actual:
+
+- el bloque distingue `Macro local FX/UVA`
+- muestra la primera accion sugerida como lectura rapida
+- sigue conviviendo con alertas y rebalanceo, pero con framing especifico para macro local
+
+Uso recomendado:
+
+- usarlo como filtro previo antes de ejecutar el aporte mensual, no como reemplazo del flujo principal de `Aportes`
