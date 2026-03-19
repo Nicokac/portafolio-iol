@@ -409,6 +409,10 @@ class RecommendationEngine:
             "liquidez_excesiva": "liquidity_excess",
             "analytics_v2_expected_return_liquidity_drag": "liquidity_excess",
             "analytics_v2_local_liquidity_real_carry_negative": "liquidity_excess",
+            "analytics_v2_local_fx_gap_high": "local_fx_stress",
+            "analytics_v2_local_fx_regime_tensioned": "local_fx_stress",
+            "analytics_v2_local_fx_regime_divergent": "local_fx_stress",
+            "analytics_v2_local_fx_gap_deteriorating": "local_fx_stress",
             "concentracion_argentina_alta": "argentina_concentration",
             "analytics_v2_risk_concentration_argentina": "argentina_concentration",
             "analytics_v2_local_sovereign_risk_excess": "argentina_concentration",
@@ -454,6 +458,10 @@ class RecommendationEngine:
         recommendation_type = str(recommendation.get("tipo", "")).lower()
         specificity_rank = {
             "analytics_v2_local_liquidity_real_carry_negative": 0,
+            "analytics_v2_local_fx_regime_divergent": -1,
+            "analytics_v2_local_fx_regime_tensioned": 0,
+            "analytics_v2_local_fx_gap_deteriorating": 1,
+            "analytics_v2_local_fx_gap_high": 2,
             "analytics_v2_local_country_risk_high": -1,
             "analytics_v2_country_risk_overconcentration": 0,
             "analytics_v2_sector_risk_overconcentration": 0,
@@ -514,6 +522,21 @@ class RecommendationEngine:
                 "Revisar si la liquidez en ARS sigue cumpliendo una función táctica clara",
                 "Comparar BADLAR contra inflación antes de mantener saldos altos en pesos",
             ]
+        if "real_rate_negative" in key:
+            return [
+                "Revisar si la liquidez en ARS sigue justificándose cuando BADLAR corre por debajo de UVA",
+                "Mover nuevos flujos hacia cobertura CER u otros activos con mejor defensa real si la tesis local sigue vigente",
+            ]
+        if "local_fx_regime_divergent" in key:
+            return [
+                "Tomar MEP y CCL como señales separadas y evitar asumir una sola referencia financiera limpia",
+                "Frenar nuevas decisiones locales apalancadas en arbitrajes FX hasta que la divergencia se normalice",
+            ]
+        if "local_fx_regime_tensioned" in key:
+            return [
+                "Reducir dependencia de una brecha cambiaria tensionada antes de sumar riesgo argentino",
+                "Usar nuevos aportes para reforzar diversificación internacional o liquidez dura si la tesis local no cambió",
+            ]
         if "fx_gap" in key:
             return [
                 "Revisar cuánta exposición argentina depende de una brecha cambiaria tensionada",
@@ -556,6 +579,11 @@ class RecommendationEngine:
             return [
                 "Evaluar si la cobertura CER es suficiente para la exposición argentina actual",
                 "Evitar depender solo de carry nominal cuando la inflación local sigue alta",
+            ]
+        if "inflation_accelerating" in key:
+            return [
+                "Revisar si la cobertura indexada local acompaña la aceleración reciente de UVA",
+                "Evitar ampliar exposición nominal en ARS sin una cobertura inflacionaria proporcional",
             ]
         if "sovereign_risk" in key:
             return [

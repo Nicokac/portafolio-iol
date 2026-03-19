@@ -396,6 +396,34 @@ def test_build_signal_actions_returns_specific_actions_for_fx_gap(engine):
     assert any("argentina" in action.lower() or "local" in action.lower() for action in actions)
 
 
+def test_build_signal_actions_returns_specific_actions_for_fx_regime_tensioned(engine):
+    actions = engine._build_signal_actions({"signal_key": "local_fx_regime_tensioned"})
+
+    assert any("brecha cambiaria tensionada" in action.lower() for action in actions)
+    assert any("diversificación internacional" in action.lower() or "liquidez dura" in action.lower() for action in actions)
+
+
+def test_build_signal_actions_returns_specific_actions_for_fx_regime_divergent(engine):
+    actions = engine._build_signal_actions({"signal_key": "local_fx_regime_divergent"})
+
+    assert any("mep" in action.lower() and "ccl" in action.lower() for action in actions)
+    assert any("arbitrajes fx" in action.lower() for action in actions)
+
+
+def test_build_signal_actions_returns_specific_actions_for_inflation_accelerating(engine):
+    actions = engine._build_signal_actions({"signal_key": "inflation_accelerating"})
+
+    assert any("uva" in action.lower() for action in actions)
+    assert any("cobertura inflacionaria" in action.lower() or "cobertura indexada" in action.lower() for action in actions)
+
+
+def test_build_signal_actions_returns_specific_actions_for_real_rate_negative(engine):
+    actions = engine._build_signal_actions({"signal_key": "real_rate_negative"})
+
+    assert any("badlar" in action.lower() and "uva" in action.lower() for action in actions)
+    assert any("cer" in action.lower() or "defensa real" in action.lower() for action in actions)
+
+
 def test_build_risk_contribution_signals_prefers_covariance_when_active(engine, monkeypatch):
     monkeypatch.setattr(
         "apps.core.services.recommendation_engine.CovarianceAwareRiskContributionService",
@@ -632,6 +660,32 @@ def test_prioritize_recommendations_prefers_hard_dollar_dependence_over_cer_gap(
 
     assert [item["tipo"] for item in result] == [
         "analytics_v2_local_sovereign_hard_dollar_dependence",
+    ]
+
+
+def test_prioritize_recommendations_prefers_divergent_fx_regime_over_other_fx_stress_signals(engine):
+    recommendations = [
+        {
+            "tipo": "analytics_v2_local_fx_gap_high",
+            "prioridad": "alta",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_fx_gap_deteriorating",
+            "prioridad": "alta",
+            "origen": "analytics_v2",
+        },
+        {
+            "tipo": "analytics_v2_local_fx_regime_divergent",
+            "prioridad": "alta",
+            "origen": "analytics_v2",
+        },
+    ]
+
+    result = engine._prioritize_recommendations(recommendations)
+
+    assert [item["tipo"] for item in result] == [
+        "analytics_v2_local_fx_regime_divergent",
     ]
 
 
