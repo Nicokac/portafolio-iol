@@ -25,6 +25,22 @@ def test_save_preferred_proposal_persists_snapshot():
                 "interpretation": "Mejora el balance defensivo.",
             },
         },
+        decision_payload={
+            "score": 78,
+            "confidence": "Alta",
+            "explanation": [
+                "Se refuerza defensivos USD porque mejora la resiliencia.",
+                "El contexto macro no contradice la decision.",
+            ],
+            "macro_state": {"key": "normal"},
+            "portfolio_state": {"key": "ok"},
+            "tracking_payload": {
+                "score": 78,
+                "confidence": "Alta",
+                "macro_state": "normal",
+                "portfolio_state": "ok",
+            },
+        },
         explanation="Sintesis preferida.",
         capital_amount=600000,
     )
@@ -36,9 +52,25 @@ def test_save_preferred_proposal_persists_snapshot():
     assert snapshot.purchase_plan[0]["symbol"] == "KO"
     assert float(snapshot.capital_amount) == 600000.0
     assert snapshot.simulation_delta["fragility_change"] == -0.3
+    assert snapshot.decision_score == 78
+    assert snapshot.decision_confidence == "Alta"
+    assert snapshot.decision_explanation == [
+        "Se refuerza defensivos USD porque mejora la resiliencia.",
+        "El contexto macro no contradice la decision.",
+    ]
+    assert snapshot.macro_state == "normal"
+    assert snapshot.portfolio_state == "ok"
     assert saved["purchase_summary"] == "KO (200000.0), MCD (200000.0)"
     assert saved["simulation"]["delta"]["fragility_change"] == -0.3
     assert saved["simulation"]["interpretation"] == "Mejora el balance defensivo."
+    assert saved["decision_score"] == 78
+    assert saved["decision_confidence"] == "Alta"
+    assert saved["decision_explanation"] == [
+        "Se refuerza defensivos USD porque mejora la resiliencia.",
+        "El contexto macro no contradice la decision.",
+    ]
+    assert saved["macro_state"] == "normal"
+    assert saved["portfolio_state"] == "ok"
 
 
 @pytest.mark.django_db
@@ -92,6 +124,11 @@ def test_serialize_exposes_common_incremental_contract():
         purchase_plan=[{"symbol": "KO", "amount": 200000.0}, {"symbol": "MCD", "amount": 200000.0}],
         simulation_delta={"expected_return_change": 0.12, "fragility_change": -0.3},
         simulation_interpretation="Mejora el balance defensivo.",
+        decision_score=64,
+        decision_confidence="Media",
+        decision_explanation=["Se prioriza una propuesta suficientemente buena."],
+        macro_state="tension",
+        portfolio_state="desbalance",
     )
 
     serialized = IncrementalProposalHistoryService().serialize(snapshot)
@@ -102,6 +139,11 @@ def test_serialize_exposes_common_incremental_contract():
     assert serialized["simulation"]["delta"]["expected_return_change"] == 0.12
     assert serialized["simulation"]["interpretation"] == "Mejora el balance defensivo."
     assert serialized["simulation_delta"]["fragility_change"] == -0.3
+    assert serialized["decision_score"] == 64
+    assert serialized["decision_confidence"] == "Media"
+    assert serialized["decision_explanation"] == ["Se prioriza una propuesta suficientemente buena."]
+    assert serialized["macro_state"] == "tension"
+    assert serialized["portfolio_state"] == "desbalance"
 
 
 def test_normalize_serialized_snapshot_adds_common_aliases():
@@ -120,6 +162,68 @@ def test_normalize_serialized_snapshot_adds_common_aliases():
     assert normalized["purchase_summary"] == "ko (200000), mcd (200000)"
     assert normalized["simulation"]["delta"]["expected_return_change"] == 0.12
     assert normalized["simulation"]["interpretation"] == ""
+
+
+@pytest.mark.django_db
+def test_save_preferred_proposal_keeps_backward_compatibility_without_decision_payload():
+    user = User.objects.create_user(username="history-no-decision", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    saved = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    snapshot = IncrementalProposalSnapshot.objects.get(pk=saved["id"])
+    assert snapshot.decision_score is None
+    assert snapshot.decision_confidence is None
+    assert snapshot.decision_explanation is None
+    assert snapshot.macro_state is None
+    assert snapshot.portfolio_state is None
+    assert saved["decision_score"] is None
+    assert saved["decision_confidence"] is None
+    assert saved["decision_explanation"] is None
+
+
+@pytest.mark.django_db
+def test_save_preferred_proposal_ignores_invalid_decision_fields():
+    user = User.objects.create_user(username="history-invalid-decision", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    saved = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        decision_payload={
+            "score": 120,
+            "confidence": "Segura",
+            "explanation": [],
+            "macro_state": "",
+            "portfolio_state": None,
+        },
+        capital_amount=100000,
+    )
+
+    snapshot = IncrementalProposalSnapshot.objects.get(pk=saved["id"])
+    assert snapshot.decision_score is None
+    assert snapshot.decision_confidence is None
+    assert snapshot.decision_explanation == []
+    assert snapshot.macro_state is None
+    assert snapshot.portfolio_state is None
 
 
 @pytest.mark.django_db

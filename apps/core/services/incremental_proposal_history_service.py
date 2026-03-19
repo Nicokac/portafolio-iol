@@ -21,6 +21,7 @@ class IncrementalProposalHistoryService:
         *,
         user,
         preferred_payload: dict | None,
+        decision_payload: dict | None = None,
         explanation: str = "",
         capital_amount: int | float | Decimal = 0,
     ) -> dict:
@@ -31,6 +32,7 @@ class IncrementalProposalHistoryService:
         purchase_plan = self._normalize_purchase_plan(payload.get("purchase_plan") or [])
         if not purchase_plan:
             raise ValueError("empty_purchase_plan")
+        normalized_decision = self._normalize_decision_payload(decision_payload)
 
         snapshot = IncrementalProposalSnapshot.objects.create(
             user=user,
@@ -45,6 +47,11 @@ class IncrementalProposalHistoryService:
             simulation_delta=dict((payload.get("simulation") or {}).get("delta") or {}),
             simulation_interpretation=str((payload.get("simulation") or {}).get("interpretation") or ""),
             explanation=str(explanation or ""),
+            decision_score=normalized_decision["decision_score"],
+            decision_confidence=normalized_decision["decision_confidence"],
+            decision_explanation=normalized_decision["decision_explanation"],
+            macro_state=normalized_decision["macro_state"],
+            portfolio_state=normalized_decision["portfolio_state"],
         )
         self._prune_user_history(user_id=user.pk)
         return self.serialize(snapshot)
@@ -216,6 +223,13 @@ class IncrementalProposalHistoryService:
                 "simulation_delta": dict(snapshot.simulation_delta or {}),
                 "simulation_interpretation": snapshot.simulation_interpretation,
                 "explanation": snapshot.explanation,
+                "decision_score": snapshot.decision_score,
+                "decision_confidence": snapshot.decision_confidence,
+                "decision_explanation": list(snapshot.decision_explanation or [])
+                if snapshot.decision_explanation is not None
+                else None,
+                "macro_state": snapshot.macro_state,
+                "portfolio_state": snapshot.portfolio_state,
                 "is_tracking_baseline": bool(snapshot.is_tracking_baseline),
                 "is_backlog_front": bool(snapshot.is_backlog_front),
                 "manual_decision_status": snapshot.manual_decision_status,
@@ -258,3 +272,51 @@ class IncrementalProposalHistoryService:
             return Decimal(str(value)).quantize(Decimal("0.0001"))
         except (InvalidOperation, ValueError, TypeError):
             return None
+
+    def _normalize_decision_payload(self, decision_payload: dict | None) -> dict:
+        payload = dict(decision_payload or {})
+        tracking = dict(payload.get("tracking_payload") or {})
+        return {
+            "decision_score": self._coerce_optional_score(payload.get("score", tracking.get("score"))),
+            "decision_confidence": self._coerce_optional_confidence(
+                payload.get("confidence", tracking.get("confidence"))
+            ),
+            "decision_explanation": self._coerce_optional_explanation(payload.get("explanation")),
+            "macro_state": self._coerce_optional_state(
+                payload.get("macro_state", tracking.get("macro_state"))
+            ),
+            "portfolio_state": self._coerce_optional_state(
+                payload.get("portfolio_state", tracking.get("portfolio_state"))
+            ),
+        }
+
+    def _coerce_optional_score(self, value) -> int | None:
+        try:
+            score = int(value)
+        except (TypeError, ValueError):
+            return None
+        if 0 <= score <= 100:
+            return score
+        return None
+
+    def _coerce_optional_confidence(self, value) -> str | None:
+        confidence = str(value or "").strip()
+        if confidence in {"Alta", "Media", "Baja"}:
+            return confidence
+        return None
+
+    def _coerce_optional_explanation(self, value) -> list[str] | None:
+        if value is None:
+            return None
+        if not isinstance(value, list):
+            return None
+        normalized = [str(item).strip() for item in value if str(item).strip()]
+        return normalized
+
+    def _coerce_optional_state(self, value) -> str | None:
+        if isinstance(value, dict):
+            value = value.get("key") or value.get("label")
+        normalized = str(value or "").strip().lower()
+        if not normalized:
+            return None
+        return normalized[:24]

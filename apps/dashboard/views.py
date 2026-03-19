@@ -30,6 +30,7 @@ from apps.dashboard.selectors import (
     get_concentracion_sector,
     get_concentracion_sector_agregado,
     get_concentracion_tipo_patrimonial,
+    get_decision_engine_summary,
     get_planeacion_incremental_context,
     get_preferred_incremental_portfolio_proposal,
     get_concentracion_moneda,
@@ -257,6 +258,7 @@ class SavePreferredIncrementalProposalView(LoginRequiredMixin, View):
         source_query = request.POST.get('source_query', '')
         query_params = QueryDict(source_query, mutable=False)
         detail = get_preferred_incremental_portfolio_proposal(query_params, capital_amount=600000)
+        decision = get_decision_engine_summary(request.user, query_params=query_params, capital_amount=600000)
         preferred = detail.get('preferred')
         redirect_url = reverse('dashboard:planeacion')
         if source_query:
@@ -278,6 +280,7 @@ class SavePreferredIncrementalProposalView(LoginRequiredMixin, View):
             saved = IncrementalProposalHistoryService().save_preferred_proposal(
                 user=request.user,
                 preferred_payload=preferred,
+                decision_payload=decision,
                 explanation=detail.get('explanation', ''),
                 capital_amount=600000,
             )

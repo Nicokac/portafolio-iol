@@ -1055,6 +1055,63 @@ class TestDashboardView:
         summary = get_state_summary('analytics_v2.local_macro.sync_status')
         assert summary['latest_state'] == 'success_with_skips'
 
+    def test_save_incremental_proposal_passes_decision_payload_to_history_service(self, auth_client, monkeypatch):
+        captured = {}
+
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_preferred_incremental_portfolio_proposal',
+            lambda query_params, capital_amount=600000: {
+                'preferred': {
+                    'source_key': 'candidate_split',
+                    'source_label': 'Comparador por split',
+                    'proposal_key': 'split_ko_mcd',
+                    'proposal_label': 'Split KO + MCD',
+                    'purchase_plan': [{'symbol': 'KO', 'amount': 150000}],
+                    'simulation': {'delta': {'expected_return_change': 0.5}, 'interpretation': 'ok'},
+                },
+                'explanation': 'Sintesis preferida.',
+            },
+        )
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_decision_engine_summary',
+            lambda user, query_params=None, capital_amount=600000: {
+                'score': 78,
+                'confidence': 'Alta',
+                'explanation': ['Se refuerza defensivos USD porque mejora la resiliencia.'],
+                'macro_state': {'key': 'normal'},
+                'portfolio_state': {'key': 'ok'},
+                'tracking_payload': {
+                    'score': 78,
+                    'confidence': 'Alta',
+                    'macro_state': 'normal',
+                    'portfolio_state': 'ok',
+                },
+            },
+        )
+
+        class DummyHistoryService:
+            def save_preferred_proposal(self, **kwargs):
+                captured.update(kwargs)
+                return {
+                    'proposal_label': 'Split KO + MCD',
+                    'source_key': 'candidate_split',
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IncrementalProposalHistoryService', lambda: DummyHistoryService())
+
+        response = auth_client.post(
+            reverse('dashboard:save_incremental_proposal'),
+            {'source_query': 'decision_status_filter=pending'},
+        )
+
+        assert response.status_code == 302
+        assert captured['decision_payload']['score'] == 78
+        assert captured['decision_payload']['confidence'] == 'Alta'
+        assert captured['decision_payload']['tracking_payload']['macro_state'] == 'normal'
+        assert captured['preferred_payload']['proposal_label'] == 'Split KO + MCD'
+        assert captured['capital_amount'] == 600000
+        assert captured['user'].is_authenticated is True
+
 
 
 
