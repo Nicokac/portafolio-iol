@@ -75,6 +75,7 @@ La meta no es listar archivos sin contexto, sino responder qué capacidades real
 | Métricas | Liquidity metrics | API-only | `/api/metrics/liquidity/` | `LiquidityService` | Endpoint funcional, no hoja dedicada visible. |
 | Planeación | Hoja Planeación | UI completa | `/planeacion/` | `PlaneacionView` + APIs | Superficie operativa para recomendaciones y simulación. |
 | Planeación | Recomendaciones combinadas | UI completa | `Planeación` + `/api/recommendations/all/` | `RecommendationEngine` | Integra legacy + Analytics v2. |
+| Planeación | Diagnóstico macro local FX/UVA | UI completa | `Planeación` + `/api/recommendations/all/` | `RecommendationEngine`, `LocalMacroSignalsService` | Visible dentro de `Diagnóstico previo` con rótulo `Macro local FX/UVA` y acción sugerida resumida. |
 | Planeación | Recomendaciones por prioridad | API-only | `/api/recommendations/by-priority/` | `RecommendationEngine` | Endpoint útil, pero la UI usa el total combinado. |
 | Planeación | Alertas activas | UI completa | `Planeación` + `/api/alerts/active/` | `AlertsEngine` | Visible y disponible por API. |
 | Planeación | Alertas por severidad | API-only | `/api/alerts/by-severity/` | `AlertsEngine` | No hay control visible dedicado en UI. |
@@ -104,6 +105,7 @@ La meta no es listar archivos sin contexto, sino responder qué capacidades real
 | Planeación | Actualización de parámetros de portafolio | UI completa | `Planeación` + `/api/portfolio/parameters/update/` | `PortfolioParameters` | Consumida por UI staff. |
 | Ops | Hoja Observabilidad | UI completa | `/ops/` | `OpsView` + servicios staff | Superficie operativa staff/expert. |
 | Ops | Resumen unificado del pipeline de datos | UI completa | `Ops` | `PipelineObservabilityService` | Consolida sync IOL, snapshots, readiness de covarianza, benchmarks y macro local. |
+| Ops | Series macro críticas para decisión | UI completa | `Ops` | `PipelineObservabilityService`, `LocalMacroSeriesService.get_status_summary()` | Destaca `USDARS oficial`, `MEP`, `CCL`, `BADLAR`, `IPC`, `UVA` y `riesgo país` como series operativas prioritarias. |
 | Ops | Estado de benchmarks | UI completa | `Ops` | `BenchmarkSeriesService` | Visible en staff. |
 | Ops | Observabilidad interna | UI completa | `Ops` + `/api/metrics/internal-observability/` | observabilidad interna | Visible y expuesta por API staff. |
 | Ops | Estado de macro local | UI completa | `Ops` | `LocalMacroSeriesService.get_status_summary()` | Visible con series listas/stale/sin datos. |
@@ -143,7 +145,9 @@ La app ya expone en UI, de forma usable:
 - drill-downs de `Risk Contribution`, `Scenario Analysis`, `Factor Exposure`, `Stress Fragility` y `Expected Return`
 - interpretaciones automáticas en tarjetas de `Analytics v2`
 - resumen unificado del pipeline en `Ops`
+- series macro criticas para decision en `Ops`
 - motor incremental visible en `Planeación` con propuesta mensual, ranking de activos, simulación before/after y comparadores
+- diagnostico macro local `FX/UVA` visible dentro de `Planeación`
 
 ### API-only
 
