@@ -49,12 +49,17 @@ def test_pipeline_observability_service_builds_unified_summary():
                 {"series_key": "badlar_privada", "status": "stale"},
             ]
 
+    class DummyArgentinaDatosClient:
+        def fetch_status(self):
+            return {"status": "ok", "message": "healthy"}
+
     summary = PipelineObservabilityService(
         sync_audit_service=DummySyncAuditService(),
         coverage_health_service=DummyCoverageService(),
         snapshot_integrity_service=DummySnapshotIntegrityService(),
         benchmark_service=DummyBenchmarkService(),
         local_macro_service=DummyLocalMacroService(),
+        argentina_datos_client=DummyArgentinaDatosClient(),
     ).build_summary(lookback_days=30, integrity_days=120)
 
     assert summary["last_successful_iol_sync"] == "2026-03-17 10:00"
@@ -72,6 +77,10 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1
     assert summary["local_macro_status_summary"]["overall_status"] == "warning"
+    assert summary["external_sources_status_summary"]["ready_count"] == 1
+    assert summary["external_sources_status_summary"]["overall_status"] == "ready"
+    assert summary["external_source_status_rows"][0]["label"] == "ArgentinaDatos"
+    assert summary["external_source_status_rows"][0]["reported_status"] == "ok"
     assert summary["snapshot_integrity_issues_count"] == 2
 
 
@@ -103,12 +112,17 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
         def get_status_summary(self):
             return []
 
+    class DummyArgentinaDatosClient:
+        def fetch_status(self):
+            raise ConnectionError("service unavailable")
+
     summary = PipelineObservabilityService(
         sync_audit_service=DummySyncAuditService(),
         coverage_health_service=DummyCoverageService(),
         snapshot_integrity_service=DummySnapshotIntegrityService(),
         benchmark_service=DummyBenchmarkService(),
         local_macro_service=DummyLocalMacroService(),
+        argentina_datos_client=DummyArgentinaDatosClient(),
     ).build_summary()
 
     assert summary["last_successful_iol_sync"] is None
@@ -116,3 +130,5 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["covariance_readiness"]["status"] == "missing"
     assert summary["benchmark_status_summary"]["overall_status"] == "missing"
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
+    assert summary["external_sources_status_summary"]["overall_status"] == "failed"
+    assert summary["external_source_status_rows"][0]["detail"] == "service unavailable"

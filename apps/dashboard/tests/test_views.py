@@ -618,6 +618,7 @@ class TestDashboardView:
         assert allowed.status_code == 200
         assert 'Estado de benchmarks históricos' in allowed.content.decode()
         assert 'Estado de macro local' in allowed.content.decode()
+        assert 'Estado de fuentes externas' in allowed.content.decode()
         assert 'Sincronizar Macro Local' in allowed.content.decode()
         assert 'Activación modelo de riesgo' in allowed.content.decode()
         assert 'Continuidad diaria de snapshots' in allowed.content.decode()
@@ -683,10 +684,25 @@ class TestDashboardView:
                         'not_configured': 1,
                         'overall_status': 'warning',
                     },
+                    'external_sources_status_summary': {
+                        'ready_count': 1,
+                        'total_sources': 1,
+                        'failed_count': 0,
+                        'overall_status': 'ready',
+                    },
                     'snapshot_integrity_issues_count': 2,
                     'required_periodic_tasks': [],
                     'benchmark_status_rows': [],
                     'local_macro_status_rows': [],
+                    'external_source_status_rows': [
+                        {
+                            'label': 'ArgentinaDatos',
+                            'endpoint': '/v1/estado',
+                            'reported_status': 'ok',
+                            'detail': 'healthy',
+                            'is_ready': True,
+                        }
+                    ],
                 }
 
         monkeypatch.setattr(
@@ -706,6 +722,12 @@ class TestDashboardView:
         assert 'Resumen benchmarks' in body
         assert '2/3' in body
         assert 'sin configurar 1' in body
+        assert 'Fuentes externas' in body
+        assert '1/1' in body
+        assert 'ready' in body
+        assert 'Estado de fuentes externas' in body
+        assert 'ArgentinaDatos' in body
+        assert '/v1/estado' in body
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')

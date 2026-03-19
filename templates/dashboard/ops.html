@@ -125,6 +125,13 @@
                             </td>
                         </tr>
                         <tr>
+                            <td><strong>Fuentes externas</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.external_sources_status_summary.ready_count }}/{{ pipeline_observability.external_sources_status_summary.total_sources }}
+                                listas ({{ pipeline_observability.external_sources_status_summary.overall_status }})
+                            </td>
+                        </tr>
+                        <tr>
                             <td><strong>Issues integridad snapshots</strong></td>
                             <td class="text-end">{{ pipeline_observability.snapshot_integrity_issues_count }}</td>
                         </tr>
@@ -205,6 +212,40 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de fuentes externas</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Fuente</th><th>Endpoint</th><th>Reported</th><th>Detalle</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pipeline_observability.external_source_status_rows %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td><code>{{ row.endpoint }}</code></td>
+                            <td>{{ row.reported_status|default:"-" }}</td>
+                            <td>{{ row.detail|default:"-" }}</td>
+                            <td>
+                                {% if row.is_ready %}
+                                <span class="badge text-bg-success">Listo</span>
+                                {% else %}
+                                <span class="badge text-bg-danger">Fallando</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-muted">Sin fuentes externas observadas.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

@@ -8,6 +8,7 @@ from apps.core.services.data_quality.historical_coverage_health import Historica
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.market_data.argentina_datos_client import ArgentinaDatosClient
 from django.utils import timezone
 
 
@@ -21,12 +22,14 @@ class PipelineObservabilityService:
         snapshot_integrity_service: SnapshotIntegrityService | None = None,
         benchmark_service: BenchmarkSeriesService | None = None,
         local_macro_service: LocalMacroSeriesService | None = None,
+        argentina_datos_client: ArgentinaDatosClient | None = None,
     ):
         self.sync_audit_service = sync_audit_service or IOLSyncAuditService()
         self.coverage_health_service = coverage_health_service or HistoricalCoverageHealthService()
         self.snapshot_integrity_service = snapshot_integrity_service or SnapshotIntegrityService()
         self.benchmark_service = benchmark_service or BenchmarkSeriesService()
         self.local_macro_service = local_macro_service or LocalMacroSeriesService()
+        self.argentina_datos_client = argentina_datos_client or ArgentinaDatosClient()
 
     def build_summary(self, lookback_days: int = 30, integrity_days: int = 120) -> dict:
         sync_audit = self.sync_audit_service.run_audit(freshness_hours=24)
@@ -34,6 +37,7 @@ class PipelineObservabilityService:
         snapshot_integrity = self.snapshot_integrity_service.run_checks(days=integrity_days)
         benchmark_status_rows = self.benchmark_service.get_status_summary()
         local_macro_status_rows = self.local_macro_service.get_status_summary()
+        external_source_status_rows = self._build_external_source_status_rows()
 
         latest_portfolio_snapshot_date = coverage.get("latest_portfolio_snapshot_date")
         days_since_last_portfolio_snapshot = None
@@ -65,10 +69,12 @@ class PipelineObservabilityService:
             "available_price_dates_count": available_price_dates_count,
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
+            "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
             "snapshot_integrity_issues_count": int(snapshot_integrity.get("issues_count") or 0),
             "required_periodic_tasks": coverage.get("required_periodic_tasks", []),
             "benchmark_status_rows": benchmark_status_rows,
             "local_macro_status_rows": local_macro_status_rows,
+            "external_source_status_rows": external_source_status_rows,
         }
 
     @staticmethod
@@ -127,6 +133,67 @@ class PipelineObservabilityService:
             **counts,
             "overall_status": overall_status,
         }
+
+    @staticmethod
+    def _build_external_sources_status_summary(rows: list[dict]) -> dict:
+        total = len(rows)
+        ready_count = sum(1 for row in rows if row.get("is_ready"))
+        failed_count = max(total - ready_count, 0)
+        if total == 0:
+            overall_status = "missing"
+        elif failed_count == 0:
+            overall_status = "ready"
+        elif ready_count > 0:
+            overall_status = "partial"
+        else:
+            overall_status = "failed"
+        return {
+            "total_sources": total,
+            "ready_count": ready_count,
+            "failed_count": failed_count,
+            "overall_status": overall_status,
+        }
+
+    def _build_external_source_status_rows(self) -> list[dict]:
+        rows = []
+        try:
+            payload = self.argentina_datos_client.fetch_status()
+            reported_status = str(
+                payload.get("status")
+                or payload.get("estado")
+                or payload.get("message")
+                or "ok"
+            )
+            detail = str(
+                payload.get("message")
+                or payload.get("descripcion")
+                or payload.get("version")
+                or "-"
+            )
+            rows.append(
+                {
+                    "source_key": "argentina_datos",
+                    "label": "ArgentinaDatos",
+                    "endpoint": "/v1/estado",
+                    "status": "ready",
+                    "is_ready": True,
+                    "reported_status": reported_status,
+                    "detail": detail,
+                }
+            )
+        except Exception as exc:
+            rows.append(
+                {
+                    "source_key": "argentina_datos",
+                    "label": "ArgentinaDatos",
+                    "endpoint": "/v1/estado",
+                    "status": "failed",
+                    "is_ready": False,
+                    "reported_status": "-",
+                    "detail": str(exc),
+                }
+            )
+        return rows
 
     @staticmethod
     def _format_local_datetime(value) -> str | None:
