@@ -6,18 +6,18 @@
 
 <div class="alert alert-secondary mb-4">
     <strong>Objetivo de esta hoja:</strong>
-    <span class="text-muted">resolver primero qué hacer con el aporte mensual. Simulación, optimización y parámetros quedan como soporte secundario para validar o ajustar la decisión.</span>
+    <span class="text-muted">resolver primero qué hacer con el aporte mensual. Si solo querés tomar esa decisión, arrancá por `Aportes` y no necesitás recorrer el resto de la hoja.</span>
 </div>
 
 <div class="card border-0 bg-light mb-4">
     <div class="card-body py-3">
         <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="text-muted small me-2">Navegación rápida:</span>
-            <a class="btn btn-sm btn-outline-info" href="#planeacion-aportes">Aportes</a>
-            <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">Diagnóstico previo</a>
-            <a class="btn btn-sm btn-outline-success" href="#simulacion">Simulación táctica</a>
-            <a class="btn btn-sm btn-outline-warning" href="#optimizacion">Optimización teórica</a>
-            <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">Config base</a>
+            <a class="btn btn-sm btn-outline-info" href="#planeacion-aportes">1. Aportes</a>
+            <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">2. Diagnóstico previo</a>
+            <a class="btn btn-sm btn-outline-success" href="#simulacion">3. Simulación táctica</a>
+            <a class="btn btn-sm btn-outline-warning" href="#optimizacion">4. Optimización teórica</a>
+            <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">5. Config base</a>
             <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
         </div>
     </div>
@@ -28,10 +28,10 @@
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h2 class="h5 mb-1">Mapa de trabajo</h2>
-                <p class="text-muted mb-0">La lectura recomendada ahora arranca por Aportes. El diagnóstico previo solo ayuda a priorizar contexto antes de decidir el aporte; el resto queda como soporte secundario.</p>
+                <p class="text-muted mb-0">La lectura recomendada arranca por `Aportes`, sigue opcionalmente por `Diagnóstico previo` y deja `Simulación`, `Optimización` y `Config base` solo como apoyo táctico.</p>
             </div>
             <ul class="nav nav-pills gap-2" id="planeacion-tab-nav">
-                <li class="nav-item"><button type="button" class="nav-link active" data-planeacion-tab="planeacion-aportes">Aportes</button></li>
+                <li class="nav-item"><button type="button" class="nav-link active" data-planeacion-tab="planeacion-aportes">Aportes principal</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico previo</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación táctica</button></li>
                 <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización teórica</button></li>
@@ -153,8 +153,8 @@
     <div class="planeacion-panel" data-planeacion-panel="planeacion-aportes">
         <section id="planeacion-aportes" class="mt-1 mb-4">
             <div class="border-start border-4 border-info ps-3">
-                <h2 class="mb-1">Planeación de aportes</h2>
-                <p class="text-muted mb-0">Lectura principal para responder qué hacer con el aporte mensual nuevo.</p>
+                <h2 class="mb-1">Planeación de aportes: flujo principal</h2>
+                <p class="text-muted mb-0">Lectura principal para responder qué hacer con el aporte mensual nuevo sin depender de simulación táctica, optimización ni workflow operativo.</p>
             </div>
         </section>
         <div class="alert alert-info border mb-4">

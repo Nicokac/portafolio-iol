@@ -589,6 +589,7 @@ Criterio de exposicion:
 
 - sirven como soporte para validar o contrastar decisiones
 - no deben competir visualmente con el flujo principal del aporte mensual
+- si solo queres resolver el aporte mensual, la lectura recomendada termina dentro de `Aportes` sin necesidad de recorrer `Simulacion`, `Optimizacion` o `Config base`
 
 Bloques operativos retirados del render principal:
 

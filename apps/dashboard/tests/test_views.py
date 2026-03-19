@@ -513,6 +513,10 @@ class TestDashboardView:
 
         assert response.status_code == 200
         assert 'resolver primero qué hacer con el aporte mensual' in body
+        assert 'arrancá por `Aportes` y no necesitás recorrer el resto de la hoja' in body
+        assert '1. Aportes' in body
+        assert 'Aportes principal' in body
+        assert 'Planeación de aportes: flujo principal' in body
         assert 'Diagnóstico previo al aporte' in body
         assert 'Señales de diagnóstico y priorización' in body
         assert 'Propuesta de compra mensual' in body
