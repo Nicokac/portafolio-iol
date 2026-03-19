@@ -60,6 +60,9 @@ class TestDashboardFeatureFlows:
         assert "Planeaci\u00f3n de aportes: flujo principal" in content
         assert "Diagn\u00f3stico previo al aporte" in content
         assert "Se\u00f1ales de diagn\u00f3stico y priorizaci\u00f3n" in content
+        assert "Macro local FX + UVA:" in content
+        assert "Macro local FX/UVA" in content
+        assert "Primera acci\u00f3n sugerida:" in content
         assert "recommendations-container" in content
         assert "simulation-activo" in content
         assert "monthly-plan-result" in content

@@ -527,6 +527,9 @@ class TestDashboardView:
         assert 'Planeación de aportes: flujo principal' in body
         assert 'Diagnóstico previo al aporte' in body
         assert 'Señales de diagnóstico y priorización' in body
+        assert 'Macro local FX + UVA:' in body
+        assert 'Macro local FX/UVA' in body
+        assert 'Primera acción sugerida:' in body
         assert 'Propuesta de compra mensual' in body
         assert 'Plan incremental MVP' in body
         assert 'Tecnología / growth' in body

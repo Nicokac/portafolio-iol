@@ -57,12 +57,16 @@
             <strong>Cómo usar este bloque:</strong>
             <span class="text-muted">leelo como diagnóstico previo. Sirve para detectar urgencias o desequilibrios, pero la decisión principal del aporte sigue estando en la pestaña Aportes.</span>
         </div>
+        <div class="alert alert-info border mb-4">
+            <strong>Macro local FX + UVA:</strong>
+            <span class="text-muted">cuando el contexto local se deteriora, este bloque prioriza señales de brecha cambiaria, régimen FX, inflación indexada y tasa real para que puedas detectar rápido si el aporte mensual necesita más cautela.</span>
+        </div>
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0">Señales de diagnóstico y priorización</h5>
-                        <small>Integración de recomendaciones, alertas y rebalanceo como soporte previo al aporte.</small>
+                        <small>Integración de recomendaciones, alertas y rebalanceo como soporte previo al aporte. Las señales macro locales de FX + UVA aparecen distinguidas dentro de este bloque.</small>
                     </div>
                     <div class="card-body">
                         <div id="recommendations-container">
@@ -1240,12 +1244,29 @@ function loadRecommendedActions() {
     ]).then(([recommendations, alerts, rebalance]) => {
         const container = document.getElementById('recommendations-container');
         const items = [];
+        const recommendationSourceLabel = (rec) => {
+            const type = String(rec.tipo || '').toLowerCase();
+            if (
+                type.includes('analytics_v2_local_fx_') ||
+                type.includes('inflation_accelerating') ||
+                type.includes('real_rate_negative')
+            ) {
+                return 'Macro local FX/UVA';
+            }
+            if (String(rec.origen || '').toLowerCase() === 'analytics_v2') {
+                return 'Recomendación Analytics v2';
+            }
+            return 'Recomendación';
+        };
         (recommendations || []).forEach(rec => {
             const detailParts = [];
             if (rec.activos_sugeridos) detailParts.push(`Activos: ${rec.activos_sugeridos.join(', ')}`);
             if (rec.modelo_riesgo) detailParts.push(`Modelo de riesgo: ${rec.modelo_riesgo}`);
+            if (Array.isArray(rec.acciones_sugeridas) && rec.acciones_sugeridas.length) {
+                detailParts.push(`Primera acción sugerida: ${rec.acciones_sugeridas[0]}`);
+            }
             items.push({
-                source: 'Recomendación',
+                source: recommendationSourceLabel(rec),
                 severity: (rec.prioridad || 'info').toUpperCase(),
                 title: rec.titulo || rec.tipo || 'Recomendación',
                 description: rec.descripcion || rec.mensaje || '',
