@@ -133,7 +133,7 @@
 <section id="resumen-macro" class="mb-3">
     <div class="border-start border-4 border-warning ps-3 mb-3">
         <h2 class="mb-1">Contexto macro local</h2>
-        <p class="text-muted mb-0">Dólar oficial, inflación, BADLAR y lectura real del patrimonio.</p>
+        <p class="text-muted mb-0">Dólar oficial y financiero, inflación, BADLAR, UVA y lectura real del patrimonio.</p>
     </div>
 </section>
 
@@ -258,6 +258,82 @@
                     {% if macro_local.riesgo_pais_arg_change_pct_30d is not None %}
                     ({{ macro_local.riesgo_pais_arg_change_pct_30d|pct:1 }})
                     {% endif %}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Referencia financiera local usando MEP, CCL o el blend disponible. Resume tensión y divergencia del régimen cambiario.">Dólar financiero y régimen FX</div>
+                <div class="kpi-value {% if macro_local.fx_signal_state == 'divergent' %}text-danger{% elif macro_local.fx_signal_state == 'tensioned' %}text-warning-emphasis{% elif macro_local.usdars_financial is not None %}text-primary{% else %}text-muted{% endif %}">
+                    {% if macro_local.usdars_financial is not None %}
+                    {{ macro_local.usdars_financial|floatformat:2 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">
+                    Fuente:
+                    {% if macro_local.usdars_financial_source == 'blend_mep_ccl' %}
+                    Blend MEP + CCL
+                    {% elif macro_local.usdars_financial_source == 'mep' %}
+                    MEP
+                    {% elif macro_local.usdars_financial_source == 'ccl' %}
+                    CCL
+                    {% else %}
+                    -
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">
+                    Brecha:
+                    {% if macro_local.fx_gap_pct is not None %}
+                    {{ macro_local.fx_gap_pct|pct:1 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                    {% if macro_local.fx_signal_state %}
+                    | Estado: <strong>{{ macro_local.fx_signal_state }}</strong>
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">
+                    Spread MEP/CCL:
+                    {% if macro_local.fx_mep_ccl_spread_pct is not None %}
+                    {{ macro_local.fx_mep_ccl_spread_pct|pct:1 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="UVA como proxy simple de inflación indexada reciente. Ayuda a leer CER y tasa real local.">UVA y tasa real local</div>
+                <div class="kpi-value {% if macro_local.real_rate_badlar_vs_uva_30d is not None and macro_local.real_rate_badlar_vs_uva_30d < 0 %}text-danger{% elif macro_local.real_rate_badlar_vs_uva_30d is not None %}text-success{% else %}text-muted{% endif %}">
+                    {% if macro_local.real_rate_badlar_vs_uva_30d is not None %}
+                    {{ macro_local.real_rate_badlar_vs_uva_30d|pct:2 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">Real rate BADLAR vs UVA 30d anualizada</div>
+                <div class="text-body-secondary small">
+                    UVA anualizada:
+                    {% if macro_local.uva_annualized_pct_30d is not None %}
+                    {{ macro_local.uva_annualized_pct_30d|pct:2 }}
+                    {% else %}
+                    N/D
+                    {% endif %}
+                </div>
+                <div class="text-body-secondary small">
+                    Cambio 30d:
+                    {% if macro_local.uva_change_pct_30d is not None %}
+                    {{ macro_local.uva_change_pct_30d|pct:2 }}
                     {% else %}
                     N/D
                     {% endif %}

@@ -206,14 +206,14 @@
             <div class="card-body">
                 <div class="text-muted small" data-bs-toggle="tooltip" title="Lectura local simple usando BADLAR, IPC, composición argentina actual y, si existe la serie, brecha entre dólar oficial y MEP.">Macro Local</div>
                 <div class="h5 mb-1">
-                    {% if analytics_v2_summary.local_macro.badlar_real_carry_pct is not None %}
-                    {{ analytics_v2_summary.local_macro.badlar_real_carry_pct|pct:1 }}
+                    {% if analytics_v2_summary.local_macro.fx_signal_state %}
+                    {{ analytics_v2_summary.local_macro.fx_signal_state|title }}
                     {% else %}
                     N/D
                     {% endif %}
                 </div>
                 <div class="small text-body-secondary">
-                    Arg: {{ analytics_v2_summary.local_macro.argentina_weight_pct|default:0|pct:1 }} | CER: {{ analytics_v2_summary.local_macro.cer_weight_pct|default:0|pct:1 }} | RP: {% if analytics_v2_summary.local_macro.riesgo_pais_arg is not None %}{{ analytics_v2_summary.local_macro.riesgo_pais_arg|floatformat:0 }}{% else %}N/D{% endif %}
+                    FX: {% if analytics_v2_summary.local_macro.fx_gap_pct is not None %}{{ analytics_v2_summary.local_macro.fx_gap_pct|pct:1 }}{% else %}N/D{% endif %} | UVA: {% if analytics_v2_summary.local_macro.uva_annualized_pct_30d is not None %}{{ analytics_v2_summary.local_macro.uva_annualized_pct_30d|pct:1 }}{% else %}N/D{% endif %} | RP: {% if analytics_v2_summary.local_macro.riesgo_pais_arg is not None %}{{ analytics_v2_summary.local_macro.riesgo_pais_arg|floatformat:0 }}{% else %}N/D{% endif %}
                 </div>
                 <div class="small mt-2">
                     <span class="badge {% if analytics_v2_summary.local_macro.confidence == 'high' %}bg-success{% elif analytics_v2_summary.local_macro.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.local_macro.confidence|default:"low" }}</span>
@@ -283,10 +283,54 @@
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Riesgo país</strong></td>
+                            <td><strong>CCL</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.usdars_ccl is not None %}
+                                {{ analytics_v2_summary.local_macro.usdars_ccl|floatformat:2 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estado FX</strong></td>
+                            <td class="text-end">{{ analytics_v2_summary.local_macro.fx_signal_state|default:"-"|title }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Spread MEP / CCL</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.fx_mep_ccl_spread_pct is not None %}
+                                {{ analytics_v2_summary.local_macro.fx_mep_ccl_spread_pct|pct:1 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Riesgo pais</strong></td>
                             <td class="text-end">
                                 {% if analytics_v2_summary.local_macro.riesgo_pais_arg is not None %}
                                 {{ analytics_v2_summary.local_macro.riesgo_pais_arg|floatformat:0 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>UVA anualizada 30d</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.uva_annualized_pct_30d is not None %}
+                                {{ analytics_v2_summary.local_macro.uva_annualized_pct_30d|pct:1 }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tasa real BADLAR vs UVA</strong></td>
+                            <td class="text-end">
+                                {% if analytics_v2_summary.local_macro.real_rate_badlar_vs_uva_30d is not None %}
+                                {{ analytics_v2_summary.local_macro.real_rate_badlar_vs_uva_30d|pct:1 }}
                                 {% else %}
                                 -
                                 {% endif %}

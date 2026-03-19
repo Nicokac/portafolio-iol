@@ -340,6 +340,29 @@ class TestDashboardSelectors(TestCase):
             def build_recommendation_signals(self):
                 return []
 
+        class DummyLocalMacroSignalsService:
+            def calculate(self):
+                return {
+                    "summary": {
+                        "argentina_weight_pct": 35.0,
+                        "cer_weight_pct": 8.0,
+                        "badlar_real_carry_pct": -2.0,
+                        "usdars_mep": 1180.0,
+                        "usdars_ccl": 1230.0,
+                        "usdars_financial": 1205.0,
+                        "fx_gap_pct": 20.5,
+                        "fx_mep_ccl_spread_pct": 4.24,
+                        "fx_signal_state": "divergent",
+                        "riesgo_pais_arg": 950.0,
+                        "uva_annualized_pct_30d": 41.3,
+                        "real_rate_badlar_vs_uva_30d": -9.3,
+                    },
+                    "metadata": {"confidence": "medium", "warnings": []},
+                }
+
+            def build_recommendation_signals(self):
+                return []
+
         with (
             patch("apps.dashboard.selectors.RiskContributionService", DummyRiskService),
             patch("apps.dashboard.selectors.CovarianceAwareRiskContributionService", DummyCovarianceRiskService),
@@ -347,6 +370,7 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.selectors.FactorExposureService", DummyFactorService),
             patch("apps.dashboard.selectors.StressFragilityService", DummyStressService),
             patch("apps.dashboard.selectors.ExpectedReturnService", DummyExpectedReturnService),
+            patch("apps.dashboard.selectors.LocalMacroSignalsService", DummyLocalMacroSignalsService),
         ):
             summary = get_analytics_v2_dashboard_summary()
 
@@ -360,6 +384,10 @@ class TestDashboardSelectors(TestCase):
         assert "growth" in summary["factor_exposure"]["interpretation"]
         assert "fragilidad" in summary["stress_testing"]["interpretation"].lower()
         assert "retorno esperado estructural" in summary["expected_return"]["interpretation"].lower()
+        assert summary["local_macro"]["usdars_ccl"] == 1230.0
+        assert summary["local_macro"]["fx_signal_state"] == "divergent"
+        assert summary["local_macro"]["uva_annualized_pct_30d"] == 41.3
+        assert summary["local_macro"]["real_rate_badlar_vs_uva_30d"] == -9.3
 
     def test_get_risk_contribution_detail_returns_mvp_proxy_when_covariance_is_not_active(self):
         cache.clear()

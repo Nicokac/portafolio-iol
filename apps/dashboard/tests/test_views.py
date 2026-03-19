@@ -59,6 +59,9 @@ class TestDashboardView:
         assert 'Liquidez total' in body
         assert 'USD oficial mayorista BCRA' in body
         assert 'Riesgo país Argentina' in body
+        assert 'Dólar financiero y régimen FX' in body
+        assert 'UVA y tasa real local' in body
+        assert 'Real rate BADLAR vs UVA 30d anualizada' in body
         assert 'Fuente: ArgentinaDatos' in body
         assert 'Cambio 30d:' in body
 
@@ -96,7 +99,12 @@ class TestDashboardView:
         assert 'Macro Local' in body
         assert 'Carry real BADLAR' in body
         assert 'Brecha FX' in body
-        assert 'Riesgo país' in body
+        assert 'CCL' in body
+        assert 'Estado FX' in body
+        assert 'Spread MEP / CCL' in body
+        assert 'UVA anualizada 30d' in body
+        assert 'Tasa real BADLAR vs UVA' in body
+        assert 'Riesgo pais' in body
         assert 'Peso soberano local' in body
         assert 'Nombres soberanos' in body
         assert 'Top soberano local' in body

@@ -44,6 +44,8 @@ class TestDashboardFeatureFlows:
         assert "simulation-activo" not in content
         assert "monthly-plan-result" not in content
         assert "optimization-result" not in content
+        assert "Estado FX" in content
+        assert "UVA anualizada 30d" in content
         assert "Posiciones completas" in content
 
     def test_planeacion_page_contains_critical_modules(self, auth_client):

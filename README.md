@@ -119,6 +119,7 @@ Integraciones actuales:
 - `riesgo_pais_arg` usa por default ArgentinaDatos:
   - `https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais`
 - `Resumen` muestra card dedicada de riesgo pais con cambio 30d
+- `Resumen` expone tambien dolar financiero, estado FX y referencia UVA/tasa real local
 - `LocalMacroSignalsService` ya expone senales simples como:
   - `local_country_risk_high`
   - `local_country_risk_deteriorating`
@@ -128,6 +129,7 @@ Integraciones actuales:
   - `local_fx_regime_divergent`
   - `inflation_accelerating`
   - `real_rate_negative`
+- `Estrategia` resume `CCL`, estado FX, spread `MEP / CCL`, `UVA anualizada 30d` y `BADLAR vs UVA`
 
 ## Operacion diaria
 
