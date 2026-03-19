@@ -75,15 +75,15 @@ class TestDashboardFeatureFlows:
         assert "Seguimiento operativo incremental" in content
         assert "Historial operativo y acciones manuales" in content
         assert "Historial reciente de propuestas guardadas" in content
-        assert "Checklist de adopciÃ³n de propuesta incremental" not in content
-        assert "Workflow de decisiÃ³n manual" not in content
+        assert "Checklist de adopci\u00f3n de propuesta incremental" not in content
+        assert "Workflow de decisi\u00f3n manual" not in content
         assert "Resumen ejecutivo de seguimiento incremental" not in content
         assert "Baseline incremental de seguimiento" not in content
-        assert "SemaforizaciÃ³n operativa del backlog incremental" not in content
+        assert "Semaforizaci\u00f3n operativa del backlog incremental" not in content
         assert "Resumen operativo del frente de backlog y baseline" not in content
         assert "Drift vs propuesta preferida actual" not in content
         assert "Backlog pendiente vs baseline activo" not in content
-        assert "PriorizaciÃ³n operativa" not in content
+        assert "Priorizaci\u00f3n operativa" not in content
         assert "Alertas de drift" not in content
         assert "Snapshot guardado vs propuesta actual" not in content
         assert "Aceptar visibles" in content or "Todav\u00eda no guardaste propuestas incrementales preferidas." in content
