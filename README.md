@@ -131,6 +131,7 @@ Integraciones actuales:
   - `real_rate_negative`
 - `Estrategia` resume `CCL`, estado FX, spread `MEP / CCL`, `UVA anualizada 30d` y `BADLAR vs UVA`
 - `RecommendationEngine` ya convierte estas senales en acciones operativas y `Planeacion` las expone dentro de `Diagnostico previo` con rotulo `Macro local FX/UVA`
+- `Ops` ahora separa `Series macro criticas para decision` para seguir de cerca `MEP`, `CCL`, `UVA`, `riesgo pais`, `BADLAR`, `IPC` y `USDARS oficial`
 
 ## Operacion diaria
 
@@ -148,6 +149,13 @@ Flujo practico:
 3. revisar `Resumen` y `Estrategia`
 4. usar `Planeacion` para simulacion, aportes y decision incremental
 5. usar `Ops` si hay dudas de datos o estado del pipeline
+
+Chequeo operativo recomendado en `Ops` cuando falte contexto macro local:
+
+1. revisar `Estado de fuentes externas`
+2. revisar `Series macro criticas para decision`
+3. ejecutar `Sincronizar macro local`
+4. recien despues volver a `Resumen`, `Estrategia` o `Planeacion`
 
 Si hay migraciones pendientes, aplicarlas antes de usar acciones manuales o modulos nuevos:
 

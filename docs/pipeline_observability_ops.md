@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Unificar en `Ops` un resumen operativo del pipeline sin recalcular métricas fuera de los servicios existentes.
+Unificar en `Ops` un resumen operativo del pipeline sin recalcular metricas fuera de los servicios existentes.
 
-## Reutilización aplicada
+## Reutilizacion aplicada
 
 El consolidado reutiliza:
 
@@ -29,9 +29,10 @@ El consolidado reutiliza:
 - `available_price_dates_count`
 - `benchmark_status_summary`
 - `local_macro_status_summary`
+- `critical_local_macro_summary`
 - `external_sources_status_summary`
 
-## Integración
+## Integracion
 
 La hoja `Ops` renderiza este resumen server-side como bloque superior, y mantiene debajo las tablas detalladas ya existentes.
 
@@ -39,8 +40,61 @@ Tambien expone un bloque de `Estado de fuentes externas` para health checks oper
 
 - `ArgentinaDatos` via `GET /v1/estado`
 
+Ademas, `Ops` ahora destaca un bloque de `Series macro criticas para decision`.
+
+Series incluidas:
+
+- `usdars_oficial`
+- `usdars_mep`
+- `usdars_ccl`
+- `badlar_privada`
+- `ipc_nacional`
+- `uva`
+- `riesgo_pais_arg`
+
+## Para que sirve el bloque critico
+
+- detectar rapido faltantes que impactan decisiones reales
+- separar el universo macro total de las series que hoy alimentan:
+  - brecha FX
+  - regimen FX
+  - tasa real local
+  - inflacion indexada
+  - riesgo pais
+
+Cada fila muestra:
+
+- serie
+- por que importa
+- fuente
+- rows persistidas
+- ultima fecha
+- estado
+
+## Interpretacion operativa
+
+- `Listo`: la serie esta disponible y usable para el contexto actual
+- `Stale`: la serie existe, pero quedo vieja para una lectura operativa confiable
+- `Sin configurar`: la serie es opcional y todavia no tiene fuente habilitada
+- `Sin datos`: la serie deberia existir para la lectura esperada, pero hoy no tiene snapshots utiles
+
+Lectura rapida recomendada:
+
+- si faltan `usdars_mep` o `usdars_ccl`, la lectura FX queda parcial
+- si falta `uva`, el sistema hace fallback de tasa real a `IPC`, pero pierde calidad para CER / inflacion indexada
+- si falta `riesgo_pais_arg`, se deteriora la lectura de stress soberano local
+- si falta `usdars_oficial`, la brecha FX deja de ser interpretable
+
+## Accion recomendada
+
+1. revisar `Estado de fuentes externas`
+2. ejecutar `Sincronizar macro local`
+3. verificar si la serie quedo en `Sin configurar`, `Stale` o `Sin datos`
+4. recien despues revisar `Resumen`, `Estrategia` o `Planeacion`
+
 ## Limitaciones
 
-- `last_successful_iol_sync` se deriva del estado patrimonial de snapshots, no de una auditoría histórica persistida
+- `last_successful_iol_sync` se deriva del estado patrimonial de snapshots, no de una auditoria historica persistida
 - los health checks externos son lecturas operativas del proveedor, no series persistidas de producto
-- no reemplaza la observabilidad AJAX existente de métricas internas y state metrics
+- no reemplaza la observabilidad AJAX existente de metricas internas y state metrics
+- el bloque critico no genera alertas automaticas ni remediation automatica
