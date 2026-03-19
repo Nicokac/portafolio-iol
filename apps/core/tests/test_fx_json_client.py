@@ -35,6 +35,33 @@ def test_fx_json_client_fetches_mep_quote_from_configured_json(mock_get, setting
 
 
 @patch("apps.core.services.market_data.fx_json_client.requests.get")
+def test_fx_json_client_fetches_mep_quote_from_argentinadatos_shape(mock_get, settings):
+    settings.USDARS_MEP_API_URL = "https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa"
+    settings.USDARS_MEP_API_VALUE_PATH = "venta"
+    settings.USDARS_MEP_API_DATE_PATH = "fechaActualizacion"
+
+    mock_response = Mock()
+    mock_response.json.return_value = {
+        "moneda": "USD",
+        "casa": "bolsa",
+        "nombre": "Dolar MEP",
+        "compra": 1412.0,
+        "venta": 1427.1,
+        "fechaActualizacion": "2026-03-18T16:56:00.000Z",
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    rows = FXJSONClient().fetch_usdars_mep()
+
+    assert rows == [{"fecha": date(2026, 3, 18), "value": 1427.1}]
+    mock_get.assert_called_once_with(
+        "https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa",
+        timeout=30,
+    )
+
+
+@patch("apps.core.services.market_data.fx_json_client.requests.get")
 def test_fx_json_client_fetches_ccl_quote_from_configured_json(mock_get, settings):
     settings.USDARS_CCL_API_URL = "https://example.test/ccl"
     settings.USDARS_CCL_API_VALUE_PATH = "ccl.venta"
@@ -52,6 +79,33 @@ def test_fx_json_client_fetches_ccl_quote_from_configured_json(mock_get, setting
 
     assert rows == [{"fecha": date(2026, 3, 16), "value": 1215.5}]
     mock_get.assert_called_once_with("https://example.test/ccl", timeout=30)
+
+
+@patch("apps.core.services.market_data.fx_json_client.requests.get")
+def test_fx_json_client_fetches_ccl_quote_from_argentinadatos_shape(mock_get, settings):
+    settings.USDARS_CCL_API_URL = "https://api.argentinadatos.com/v1/cotizaciones/dolares/contadoconliqui"
+    settings.USDARS_CCL_API_VALUE_PATH = "venta"
+    settings.USDARS_CCL_API_DATE_PATH = "fechaActualizacion"
+
+    mock_response = Mock()
+    mock_response.json.return_value = {
+        "moneda": "USD",
+        "casa": "contadoconliqui",
+        "nombre": "Dolar CCL",
+        "compra": 1420.0,
+        "venta": 1438.5,
+        "fechaActualizacion": "2026-03-18T16:56:00.000Z",
+    }
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    rows = FXJSONClient().fetch_usdars_ccl()
+
+    assert rows == [{"fecha": date(2026, 3, 18), "value": 1438.5}]
+    mock_get.assert_called_once_with(
+        "https://api.argentinadatos.com/v1/cotizaciones/dolares/contadoconliqui",
+        timeout=30,
+    )
 
 
 @patch("apps.core.services.market_data.fx_json_client.requests.get")

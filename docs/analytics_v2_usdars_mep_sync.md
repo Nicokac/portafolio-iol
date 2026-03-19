@@ -1,6 +1,6 @@
 ## Objetivo
 
-Agregar un sync opcional de `USDARS MEP` sobre la infraestructura ya existente de `MacroSeriesSnapshot`.
+Agregar un sync de `USDARS MEP` sobre la infraestructura ya existente de `MacroSeriesSnapshot`.
 
 ## Reutilizacion
 
@@ -10,19 +10,21 @@ Agregar un sync opcional de `USDARS MEP` sobre la infraestructura ya existente d
 
 ## Settings
 
-- `USDARS_MEP_API_URL`
-- `USDARS_MEP_API_VALUE_PATH`
-- `USDARS_MEP_API_DATE_PATH`
+Defaults actuales:
+
+- `USDARS_MEP_API_URL=https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa`
+- `USDARS_MEP_API_VALUE_PATH=venta`
+- `USDARS_MEP_API_DATE_PATH=fechaActualizacion`
+
+Se pueden sobrescribir por entorno si queres usar otra fuente.
 
 ## Comportamiento
 
-- si la fuente esta configurada, `sync_series("usdars_mep")` persiste una observacion diaria
-- si la fuente no esta configurada, la serie se marca como:
-  - `skipped = True`
-  - sin romper `sync_all()`
+- con la fuente default, `sync_series("usdars_mep")` persiste una observacion diaria
+- si redefinis la fuente y esa configuracion no existe, la serie puede quedar `skipped`
+- si la fuente falla, la serie queda `failed` sin romper `sync_all()`
 
 ## Limitaciones
 
-- no fija un proveedor unico de MEP
 - no hace backfill historico
 - persiste una observacion diaria por ejecucion

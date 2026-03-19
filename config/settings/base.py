@@ -172,12 +172,18 @@ IOL_PASSWORD = config('IOL_PASSWORD', default='')
 IOL_ACCESS_TOKEN = config('IOL_ACCESS_TOKEN', default='')
 IOL_BASE_URL = config('IOL_BASE_URL', default='https://api.invertironline.com')
 ALPHA_VANTAGE_API_KEY = config('ALPHA_VANTAGE_API_KEY', default='')
-USDARS_MEP_API_URL = config('USDARS_MEP_API_URL', default='')
+USDARS_MEP_API_URL = config(
+    'USDARS_MEP_API_URL',
+    default='https://api.argentinadatos.com/v1/cotizaciones/dolares/bolsa',
+)
 USDARS_MEP_API_VALUE_PATH = config('USDARS_MEP_API_VALUE_PATH', default='venta')
-USDARS_MEP_API_DATE_PATH = config('USDARS_MEP_API_DATE_PATH', default='')
-USDARS_CCL_API_URL = config('USDARS_CCL_API_URL', default='')
+USDARS_MEP_API_DATE_PATH = config('USDARS_MEP_API_DATE_PATH', default='fechaActualizacion')
+USDARS_CCL_API_URL = config(
+    'USDARS_CCL_API_URL',
+    default='https://api.argentinadatos.com/v1/cotizaciones/dolares/contadoconliqui',
+)
 USDARS_CCL_API_VALUE_PATH = config('USDARS_CCL_API_VALUE_PATH', default='venta')
-USDARS_CCL_API_DATE_PATH = config('USDARS_CCL_API_DATE_PATH', default='')
+USDARS_CCL_API_DATE_PATH = config('USDARS_CCL_API_DATE_PATH', default='fechaActualizacion')
 RIESGO_PAIS_API_URL = config(
     'RIESGO_PAIS_API_URL',
     default='https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais',

@@ -108,8 +108,8 @@ Series principales:
 - `usdars_oficial`
 - `ipc_nacional`
 - `badlar_privada`
-- `usdars_mep` opcional
-- `usdars_ccl` opcional
+- `usdars_mep`
+- `usdars_ccl`
 - `fx_gap_pct` derivada sobre dolar financiero disponible
 - `riesgo_pais_arg`
 - `uva`
@@ -211,6 +211,12 @@ Opcionales para macro local:
 
 Defaults relevantes:
 
+- `USDARS_MEP_API_URL` ya apunta por default a ArgentinaDatos (`/v1/cotizaciones/dolares/bolsa`)
+- `USDARS_MEP_API_VALUE_PATH=venta`
+- `USDARS_MEP_API_DATE_PATH=fechaActualizacion`
+- `USDARS_CCL_API_URL` ya apunta por default a ArgentinaDatos (`/v1/cotizaciones/dolares/contadoconliqui`)
+- `USDARS_CCL_API_VALUE_PATH=venta`
+- `USDARS_CCL_API_DATE_PATH=fechaActualizacion`
 - `RIESGO_PAIS_API_URL` ya apunta por default a ArgentinaDatos
 - `RIESGO_PAIS_API_VALUE_PATH=valor`
 - `RIESGO_PAIS_API_DATE_PATH=fecha`
@@ -218,11 +224,10 @@ Defaults relevantes:
 - `UVA_API_VALUE_PATH=valor`
 - `UVA_API_DATE_PATH=fecha`
 
-Si no se configura `USDARS_MEP_API_URL`:
+Si querés sobrescribir las fuentes por entorno:
 
-- el sync macro local sigue funcionando
-- `usdars_mep` queda como fuente opcional no disponible
-- la brecha FX no se calcula
+- podés redefinir `USDARS_MEP_API_URL` y `USDARS_CCL_API_URL`
+- el sync macro local seguirá usando los `VALUE_PATH` y `DATE_PATH` configurados
 
 ## Ejecucion local
 
