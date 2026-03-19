@@ -165,9 +165,164 @@
             <strong>Ruta recomendada:</strong>
             <span class="text-muted">primero definí qué bloques reforzar, después mirá activos candidatos, luego validá la propuesta preferida y recién ahí contrastá el impacto incremental.</span>
         </div>
+        <section class="mb-4">
+            <div class="card border-primary shadow-sm">
+                <div class="card-header bg-primary-subtle border-bottom-0">
+                    <h3 class="h5 mb-1">Modo decisión</h3>
+                    <small class="text-muted">Menos opciones, una recomendación principal y una validación corta para responder qué hacer con tus 600k este mes.</small>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-2">1. Contexto rápido</div>
+                                {% if macro_local.fx_signal_state == "divergent" or macro_local.riesgo_pais_arg >= 900 %}
+                                <div class="h5 mb-1 text-danger">Crisis</div>
+                                <div class="text-muted small">El contexto local exige máxima cautela antes de sumar riesgo argentino.</div>
+                                {% elif macro_local.fx_signal_state == "tensioned" or macro_local.riesgo_pais_arg >= 700 or macro_local.uva_annualized_pct_30d >= 35 %}
+                                <div class="h5 mb-1 text-warning-emphasis">Tensión</div>
+                                <div class="text-muted small">Hay señales de stress local. Conviene priorizar simplicidad y no ampliar riesgo innecesario.</div>
+                                {% else %}
+                                <div class="h5 mb-1 text-success">Normal</div>
+                                <div class="text-muted small">No hay una señal macro dominante que obligue a salir del flujo principal de decisión.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-2">2. Estado de cartera</div>
+                                {% if analytics_v2_summary.stress_testing.fragility_score >= 70 or analytics_v2_summary.stress_testing.total_loss_pct < -20 %}
+                                <div class="h5 mb-1 text-danger">Riesgo</div>
+                                <div class="text-muted small">La cartera ya muestra fragilidad relevante. El aporte no debería aumentar tensión ni concentración.</div>
+                                {% elif analytics_v2_summary.expected_return.real_expected_return_pct < 0 or analytics_v2_summary.risk_contribution.top_asset.contribution_pct > 0.25 %}
+                                <div class="h5 mb-1 text-warning-emphasis">Desbalance</div>
+                                <div class="text-muted small">Hay señales para corregir mezcla, retorno real o concentración antes de explorar alternativas avanzadas.</div>
+                                {% else %}
+                                <div class="h5 mb-1 text-success">OK</div>
+                                <div class="text-muted small">La cartera admite un aporte incremental sin exigir desvíos del flujo principal.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-2">3. Recomendación principal</div>
+                                {% with primary_block=monthly_allocation_plan.recommended_blocks|first %}
+                                {% if primary_block %}
+                                <div class="h5 mb-1">{{ primary_block.label }}</div>
+                                <div class="small text-muted mb-2">{{ primary_block.suggested_amount|currency:0 }} · {{ primary_block.suggested_pct|floatformat:2 }}%</div>
+                                <div class="small">{{ primary_block.reason }}</div>
+                                {% else %}
+                                <div class="text-muted">Todavía no hay un bloque dominante para este corte.</div>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-2">4. Opciones sugeridas</div>
+                                {% if candidate_asset_ranking.candidate_assets %}
+                                <div class="d-flex flex-column gap-2">
+                                    {% for item in candidate_asset_ranking.candidate_assets|slice:":3" %}
+                                    <div class="border rounded p-2">
+                                        <div class="fw-semibold">{{ item.asset }}</div>
+                                        <div class="small text-muted">{{ item.block_label }} · score {{ item.score|floatformat:2 }}</div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="small text-muted mt-2">Máximo 3 opciones visibles para evitar sobrecarga de análisis.</div>
+                                {% else %}
+                                <div class="text-muted">Sin activos elegibles para una shortlist simple.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-2">5. Propuesta sugerida</div>
+                                {% if preferred_incremental_portfolio_proposal.preferred %}
+                                <div class="h5 mb-1">{{ preferred_incremental_portfolio_proposal.preferred.proposal_label }}</div>
+                                <div class="small text-muted mb-2">{{ preferred_incremental_portfolio_proposal.preferred.source_label }}</div>
+                                <div class="d-flex flex-column gap-1">
+                                    {% for item in preferred_incremental_portfolio_proposal.preferred.purchase_plan|slice:":3" %}
+                                    <div class="small">{{ item.symbol }} · {{ item.amount|currency:0 }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-muted">Todavía no hay una propuesta dominante para este mes.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-2">6. Impacto estimado</div>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-2 h-100">
+                                            <div class="small text-muted">Expected return</div>
+                                            <div class="fw-semibold">{{ incremental_portfolio_simulation.delta.expected_return_change|default:"-" }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-2 h-100">
+                                            <div class="small text-muted">Fragility</div>
+                                            <div class="fw-semibold">{{ incremental_portfolio_simulation.delta.fragility_change|default:"-" }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="border rounded p-2 h-100">
+                                            <div class="small text-muted">Worst case</div>
+                                            <div class="fw-semibold">{{ incremental_portfolio_simulation.delta.scenario_loss_change|default:"-" }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="small text-muted mt-3">{{ incremental_portfolio_simulation.interpretation }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-lg-4">
+                                    <div class="small text-muted mb-2">7. Tu decisión este mes</div>
+                                    {% if preferred_incremental_portfolio_proposal.preferred and macro_local.fx_signal_state == "normal" and incremental_portfolio_simulation.delta.expected_return_change >= 0 and incremental_portfolio_simulation.delta.fragility_change <= 0 and incremental_portfolio_simulation.delta.scenario_loss_change >= 0 %}
+                                    <div class="h5 mb-1 text-success">Confianza alta</div>
+                                    <div class="small text-muted">La propuesta es coherente con el contexto actual y no empeora el perfil de riesgo esperado.</div>
+                                    {% elif preferred_incremental_portfolio_proposal.preferred %}
+                                    <div class="h5 mb-1 text-warning-emphasis">Confianza media</div>
+                                    <div class="small text-muted">Hay una propuesta dominante, pero conviene revisar el impacto antes de salir del flujo principal.</div>
+                                    {% else %}
+                                    <div class="h5 mb-1 text-danger">Confianza baja</div>
+                                    <div class="small text-muted">Todavía no hay suficiente coherencia para cerrar una decisión simple este mes.</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-lg-8">
+                                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                                        <button type="button" class="btn btn-success">Ejecutar decisión</button>
+                                        <a class="btn btn-outline-primary" href="#planeacion-exploracion">Explorar alternativas</a>
+                                        <button type="button" class="btn btn-outline-secondary">Postergar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <details id="planeacion-exploracion" class="mb-4">
+            <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
+                Exploración
+                <span class="text-muted fw-normal small ms-2">Detalles, comparadores, simulación táctica y seguimiento solo si necesitás salir del modo decisión.</span>
+            </summary>
+            <div class="mt-3">
         <div class="border-start border-4 border-success ps-3 mb-4">
-            <h3 class="h5 mb-1">Núcleo de decisión</h3>
-            <p class="text-muted mb-0">Estos bloques responden la decisión mensual principal sin obligarte a recorrer comparadores o workflow operativo.</p>
+            <h3 class="h5 mb-1">Detalle del modo decisión</h3>
+            <p class="text-muted mb-0">Acá quedan los bloques completos y el workflow operativo para cuando necesitás validar más o explorar alternativas.</p>
         </div>
         <div class="card border-info-subtle shadow-sm mb-4">
             <div class="card-header bg-light">
@@ -1142,6 +1297,8 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </details>
             </div>
         </details>
             </div>

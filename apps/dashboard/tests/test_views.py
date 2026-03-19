@@ -538,9 +538,16 @@ class TestDashboardView:
         assert 'Señales negativas' in body
         assert 'Activos candidatos para construir la propuesta' in body
         assert 'Ranking incremental MVP' in body
-        assert 'La decisión sugerida consolidada queda en el bloque siguiente.' in body
+        assert 'Modo decisión' in body
+        assert 'Contexto rápido' in body
+        assert 'Estado de cartera' in body
+        assert 'Recomendación principal' in body
+        assert 'Opciones sugeridas' in body
+        assert 'Impacto estimado' in body
+        assert 'Tu decisión este mes' in body
+        assert 'Ejecutar decisión' in body
+        assert 'Explorar alternativas' in body
         assert 'KO' in body
-        assert 'Núcleo de decisión' in body
         assert 'Lectura sugerida del cierre:' in body
         assert 'Decisión sugerida: propuesta incremental preferida' in body
         assert 'Validación before/after del impacto incremental' in body
@@ -551,6 +558,7 @@ class TestDashboardView:
         assert 'Guardar propuesta preferida' in body
         assert 'Exploración y comparación' in body
         assert 'Orden sugerido:' in body
+        assert 'Exploración' in body
         assert 'Resumen ejecutivo unificado de decisión incremental' in body
         assert 'La propuesta actual requiere validación antes de adoptar el aporte incremental.' in body
         assert 'Seguimiento y governance' in body

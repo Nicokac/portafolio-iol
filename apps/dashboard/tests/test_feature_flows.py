@@ -68,13 +68,21 @@ class TestDashboardFeatureFlows:
         assert "monthly-plan-result" in content
         assert "optimization-result" in content
         assert "Activos candidatos para construir la propuesta" in content
-        assert "N\u00facleo de decisi\u00f3n" in content
-        assert "La decisión sugerida consolidada queda en el bloque siguiente." in content
+        assert "Modo decisi\u00f3n" in content
+        assert "Contexto r\u00e1pido" in content
+        assert "Estado de cartera" in content
+        assert "Recomendaci\u00f3n principal" in content
+        assert "Opciones sugeridas" in content
+        assert "Impacto estimado" in content
+        assert "Tu decisi\u00f3n este mes" in content
+        assert "Ejecutar decisi\u00f3n" in content
+        assert "Explorar alternativas" in content
         assert "Lectura sugerida del cierre:" in content
         assert "Decisi\u00f3n sugerida: propuesta incremental preferida" in content
         assert "Validaci\u00f3n before/after del impacto incremental" in content
         assert "Exploraci\u00f3n y comparaci\u00f3n" in content
         assert "Orden sugerido:" in content
+        assert "Exploraci\u00f3n" in content
         assert "Resumen ejecutivo unificado" in content
         assert "Seguimiento y governance" in content
         assert "Seguimiento operativo incremental" in content
