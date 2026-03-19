@@ -629,6 +629,7 @@ class TestDashboardView:
         assert allowed.status_code == 200
         assert 'Estado de benchmarks históricos' in allowed.content.decode()
         assert 'Estado de macro local' in allowed.content.decode()
+        assert 'Series macro críticas para decisión' in allowed.content.decode()
         assert 'Estado de fuentes externas' in allowed.content.decode()
         assert 'Sincronizar Macro Local' in allowed.content.decode()
         assert 'Activación modelo de riesgo' in allowed.content.decode()
@@ -695,6 +696,12 @@ class TestDashboardView:
                         'not_configured': 1,
                         'overall_status': 'warning',
                     },
+                    'critical_local_macro_summary': {
+                        'ready_count': 4,
+                        'total_series': 7,
+                        'attention_count': 3,
+                        'overall_status': 'warning',
+                    },
                     'external_sources_status_summary': {
                         'ready_count': 1,
                         'total_sources': 1,
@@ -705,6 +712,24 @@ class TestDashboardView:
                     'required_periodic_tasks': [],
                     'benchmark_status_rows': [],
                     'local_macro_status_rows': [],
+                    'critical_local_macro_rows': [
+                        {
+                            'label': 'USDARS MEP',
+                            'why': 'referencia financiera local',
+                            'source': 'ArgentinaDatos',
+                            'rows_count': 180,
+                            'latest_date': '2026-03-17',
+                            'status': 'ready',
+                        },
+                        {
+                            'label': 'UVA',
+                            'why': 'proxy de CER e inflacion indexada',
+                            'source': 'ArgentinaDatos',
+                            'rows_count': 0,
+                            'latest_date': None,
+                            'status': 'missing',
+                        },
+                    ],
                     'external_source_status_rows': [
                         {
                             'label': 'ArgentinaDatos',
@@ -733,6 +758,13 @@ class TestDashboardView:
         assert 'Resumen benchmarks' in body
         assert '2/3' in body
         assert 'sin configurar 1' in body
+        assert 'Series macro críticas' in body
+        assert '4/7' in body
+        assert 'Series macro críticas para decisión' in body
+        assert 'USDARS MEP' in body
+        assert 'referencia financiera local' in body
+        assert 'UVA' in body
+        assert 'proxy de CER e inflacion indexada' in body
         assert 'Fuentes externas' in body
         assert '1/1' in body
         assert 'ready' in body

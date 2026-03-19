@@ -13,7 +13,17 @@ from django.utils import timezone
 
 
 class PipelineObservabilityService:
-    """Consolida métricas operativas del pipeline de datos para Ops."""
+    """Consolida metricas operativas del pipeline de datos para Ops."""
+
+    CRITICAL_LOCAL_MACRO_SERIES = (
+        {"series_key": "usdars_oficial", "label": "USDARS oficial", "why": "base para brecha FX"},
+        {"series_key": "usdars_mep", "label": "USDARS MEP", "why": "referencia financiera local"},
+        {"series_key": "usdars_ccl", "label": "USDARS CCL", "why": "divergencia MEP / CCL"},
+        {"series_key": "badlar_privada", "label": "BADLAR privada", "why": "carry nominal local"},
+        {"series_key": "ipc_nacional", "label": "IPC nacional", "why": "fallback de inflacion local"},
+        {"series_key": "uva", "label": "UVA", "why": "proxy de CER e inflacion indexada"},
+        {"series_key": "riesgo_pais_arg", "label": "Riesgo pais Argentina", "why": "stress soberano y riesgo local"},
+    )
 
     def __init__(
         self,
@@ -37,6 +47,7 @@ class PipelineObservabilityService:
         snapshot_integrity = self.snapshot_integrity_service.run_checks(days=integrity_days)
         benchmark_status_rows = self.benchmark_service.get_status_summary()
         local_macro_status_rows = self.local_macro_service.get_status_summary()
+        critical_local_macro_rows = self._build_critical_local_macro_rows(local_macro_status_rows)
         external_source_status_rows = self._build_external_source_status_rows()
 
         latest_portfolio_snapshot_date = coverage.get("latest_portfolio_snapshot_date")
@@ -69,11 +80,13 @@ class PipelineObservabilityService:
             "available_price_dates_count": available_price_dates_count,
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
+            "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
             "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
             "snapshot_integrity_issues_count": int(snapshot_integrity.get("issues_count") or 0),
             "required_periodic_tasks": coverage.get("required_periodic_tasks", []),
             "benchmark_status_rows": benchmark_status_rows,
             "local_macro_status_rows": local_macro_status_rows,
+            "critical_local_macro_rows": critical_local_macro_rows,
             "external_source_status_rows": external_source_status_rows,
         }
 
@@ -135,6 +148,26 @@ class PipelineObservabilityService:
         }
 
     @staticmethod
+    def _build_critical_local_macro_summary(rows: list[dict]) -> dict:
+        total = len(rows)
+        ready_count = sum(1 for row in rows if row.get("status") == "ready")
+        attention_count = sum(1 for row in rows if row.get("status") != "ready")
+        if total == 0:
+            overall_status = "missing"
+        elif attention_count == 0:
+            overall_status = "ready"
+        elif ready_count > 0:
+            overall_status = "warning"
+        else:
+            overall_status = "missing"
+        return {
+            "total_series": total,
+            "ready_count": ready_count,
+            "attention_count": attention_count,
+            "overall_status": overall_status,
+        }
+
+    @staticmethod
     def _build_external_sources_status_summary(rows: list[dict]) -> dict:
         total = len(rows)
         ready_count = sum(1 for row in rows if row.get("is_ready"))
@@ -153,6 +186,24 @@ class PipelineObservabilityService:
             "failed_count": failed_count,
             "overall_status": overall_status,
         }
+
+    def _build_critical_local_macro_rows(self, local_macro_status_rows: list[dict]) -> list[dict]:
+        rows_by_key = {str(row.get("series_key")): row for row in local_macro_status_rows}
+        critical_rows = []
+        for item in self.CRITICAL_LOCAL_MACRO_SERIES:
+            source_row = rows_by_key.get(item["series_key"], {})
+            critical_rows.append(
+                {
+                    "series_key": item["series_key"],
+                    "label": item["label"],
+                    "why": item["why"],
+                    "status": source_row.get("status") or "missing",
+                    "source": source_row.get("source") or "-",
+                    "latest_date": source_row.get("latest_date"),
+                    "rows_count": int(source_row.get("rows_count") or 0),
+                }
+            )
+        return critical_rows
 
     def _build_external_source_status_rows(self) -> list[dict]:
         rows = []

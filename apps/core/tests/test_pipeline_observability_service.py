@@ -77,6 +77,14 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1
     assert summary["local_macro_status_summary"]["overall_status"] == "warning"
+    assert summary["critical_local_macro_summary"]["total_series"] == 7
+    assert summary["critical_local_macro_summary"]["ready_count"] == 1
+    assert summary["critical_local_macro_summary"]["attention_count"] == 6
+    assert summary["critical_local_macro_summary"]["overall_status"] == "warning"
+    assert summary["critical_local_macro_rows"][0]["label"] == "USDARS oficial"
+    assert summary["critical_local_macro_rows"][1]["status"] == "not_configured"
+    assert summary["critical_local_macro_rows"][-1]["series_key"] == "riesgo_pais_arg"
+    assert summary["critical_local_macro_rows"][-1]["status"] == "missing"
     assert summary["external_sources_status_summary"]["ready_count"] == 1
     assert summary["external_sources_status_summary"]["overall_status"] == "ready"
     assert summary["external_source_status_rows"][0]["label"] == "ArgentinaDatos"
@@ -130,5 +138,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["covariance_readiness"]["status"] == "missing"
     assert summary["benchmark_status_summary"]["overall_status"] == "missing"
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
+    assert summary["critical_local_macro_summary"]["overall_status"] == "missing"
+    assert summary["critical_local_macro_summary"]["attention_count"] == 7
     assert summary["external_sources_status_summary"]["overall_status"] == "failed"
     assert summary["external_source_status_rows"][0]["detail"] == "service unavailable"

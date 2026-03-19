@@ -125,6 +125,13 @@
                             </td>
                         </tr>
                         <tr>
+                            <td><strong>Series macro críticas</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.critical_local_macro_summary.ready_count }}/{{ pipeline_observability.critical_local_macro_summary.total_series }}
+                                listas · en atención {{ pipeline_observability.critical_local_macro_summary.attention_count }} ({{ pipeline_observability.critical_local_macro_summary.overall_status }})
+                            </td>
+                        </tr>
+                        <tr>
                             <td><strong>Fuentes externas</strong></td>
                             <td class="text-end">
                                 {{ pipeline_observability.external_sources_status_summary.ready_count }}/{{ pipeline_observability.external_sources_status_summary.total_sources }}
@@ -184,6 +191,47 @@
 </section>
 
 <section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-warning-subtle">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Series macro críticas para decisión</h5>
+                <span class="badge {% if pipeline_observability.critical_local_macro_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.critical_local_macro_summary.overall_status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                    {{ pipeline_observability.critical_local_macro_summary.ready_count }}/{{ pipeline_observability.critical_local_macro_summary.total_series }} listas
+                </span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>Serie</th><th>Por qué importa</th><th>Fuente</th><th class="text-end">Rows</th><th>Última fecha</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pipeline_observability.critical_local_macro_rows %}
+                        <tr>
+                            <td>{{ row.label }}</td>
+                            <td class="text-muted">{{ row.why }}</td>
+                            <td>{{ row.source }}</td>
+                            <td class="text-end">{{ row.rows_count }}</td>
+                            <td>{{ row.latest_date|default:"-" }}</td>
+                            <td>
+                                {% if row.status == 'ready' %}
+                                <span class="badge text-bg-success">Listo</span>
+                                {% elif row.status == 'not_configured' %}
+                                <span class="badge text-bg-secondary">Sin configurar</span>
+                                {% elif row.status == 'stale' %}
+                                <span class="badge text-bg-warning">Stale</span>
+                                {% else %}
+                                <span class="badge text-bg-danger">Sin datos</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-muted">Sin series macro críticas observadas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
     <div class="col-12">
         <div class="card">
             <div class="card-header bg-transparent"><h5 class="mb-0">Estado de macro local</h5></div>
