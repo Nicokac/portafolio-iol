@@ -245,7 +245,11 @@ class PipelineObservabilityService:
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
         audits = SensitiveActionAudit.objects.filter(
-            action__in=["sync_iol_historical_prices", "sync_iol_historical_prices_partial"]
+            action__in=[
+                "sync_iol_historical_prices",
+                "sync_iol_historical_prices_partial",
+                "sync_iol_historical_prices_retry_metadata",
+            ]
         ).order_by("-created_at", "-id")[:limit]
 
         rows: list[dict] = []
@@ -254,7 +258,15 @@ class PipelineObservabilityService:
             details = audit.details or {}
             result = details.get("result") or {}
             results = result.get("results") or {}
-            sync_scope = "missing" if audit.action == "sync_iol_historical_prices" else "partial"
+            if audit.action == "sync_iol_historical_prices":
+                sync_scope = "missing"
+                action_label = "Sync faltantes"
+            elif audit.action == "sync_iol_historical_prices_partial":
+                sync_scope = "partial"
+                action_label = "Reforzar parciales"
+            else:
+                sync_scope = "metadata"
+                action_label = "Reintentar metadata"
             if not results:
                 if "-" in seen_symbol_keys:
                     continue
@@ -262,7 +274,7 @@ class PipelineObservabilityService:
                 rows.append(
                     {
                         "scope": sync_scope,
-                        "action_label": "Sync faltantes" if sync_scope == "missing" else "Reforzar parciales",
+                        "action_label": action_label,
                         "symbol_key": "-",
                         "rows_received": 0,
                         "status": audit.status,
@@ -280,7 +292,7 @@ class PipelineObservabilityService:
                 rows.append(
                     {
                         "scope": sync_scope,
-                        "action_label": "Sync faltantes" if sync_scope == "missing" else "Reforzar parciales",
+                        "action_label": action_label,
                         "symbol_key": symbol_key,
                         "rows_received": int(payload.get("rows_received") or 0),
                         "status": "success" if payload.get("success", True) else "failed",

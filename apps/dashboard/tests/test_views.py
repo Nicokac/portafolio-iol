@@ -1092,6 +1092,16 @@ class TestDashboardView:
                             'created_at': '2026-03-17 10:05',
                             'message': '',
                         },
+                        {
+                            'action_label': 'Reintentar metadata',
+                            'user_label': 'staffuser',
+                            'scope': 'metadata',
+                            'symbol_key': 'NASDAQ:MSFT',
+                            'rows_received': 18,
+                            'status': 'success',
+                            'created_at': '2026-03-17 10:10',
+                            'message': '',
+                        },
                     ],
                     'local_macro_status_summary': {
                         'ready': 3,
@@ -1218,9 +1228,11 @@ class TestDashboardView:
         assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
         assert 'Sync faltantes' in body
         assert 'Reforzar parciales' in body
+        assert 'Reintentar metadata' in body
         assert 'staffuser' in body
         assert 'NASDAQ:AAPL' in body
         assert 'BCBA:GGAL' in body
+        assert 'NASDAQ:MSFT' in body
         assert 'Cobertura de históricos IOL por símbolo' in body
         assert 'Motivos exactos de exclusión IOL por símbolo' in body or 'Motivos exactos de exclusion IOL por simbolo' in body
         assert 'FCI confirmado por IOL' in body
