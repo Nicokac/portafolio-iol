@@ -118,6 +118,14 @@
                             </td>
                         </tr>
                         <tr>
+                            <td><strong>Históricos IOL por símbolo</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.iol_historical_price_summary.ready_count }}/{{ pipeline_observability.iol_historical_price_summary.total_symbols }}
+                                listos · parcial {{ pipeline_observability.iol_historical_price_summary.partial_count }} · missing {{ pipeline_observability.iol_historical_price_summary.missing_count }}
+                                ({{ pipeline_observability.iol_historical_price_summary.overall_status }})
+                            </td>
+                        </tr>
+                        <tr>
                             <td><strong>Resumen macro local</strong></td>
                             <td class="text-end">
                                 {{ pipeline_observability.local_macro_status_summary.ready }}/{{ pipeline_observability.local_macro_status_summary.total_series }}
@@ -182,6 +190,47 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-info-subtle">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Cobertura de históricos IOL por símbolo</h5>
+                <span class="badge {% if pipeline_observability.iol_historical_price_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.iol_historical_price_summary.overall_status == 'partial' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                    {{ pipeline_observability.iol_historical_price_summary.ready_count }}/{{ pipeline_observability.iol_historical_price_summary.total_symbols }} listos
+                </span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>Símbolo</th><th>Mercado</th><th class="text-end">Rows</th><th>Última fecha</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pipeline_observability.iol_historical_price_rows %}
+                        <tr>
+                            <td>{{ row.simbolo }}</td>
+                            <td>{{ row.mercado }}</td>
+                            <td class="text-end">{{ row.rows_count }}</td>
+                            <td>{{ row.latest_date|default:"-" }}</td>
+                            <td>
+                                {% if row.status == 'ready' %}
+                                <span class="badge text-bg-success">Listo</span>
+                                {% elif row.status == 'partial' %}
+                                <span class="badge text-bg-warning">Parcial</span>
+                                {% else %}
+                                <span class="badge text-bg-danger">Sin historia</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-muted">Sin símbolos del portfolio observados para históricos IOL.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

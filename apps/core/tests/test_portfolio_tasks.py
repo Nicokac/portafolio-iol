@@ -14,6 +14,7 @@ from apps.core.tasks.portfolio_tasks import (
     generate_alerts,
     generate_daily_snapshot,
     generate_rebalance_suggestions,
+    sync_iol_historical_prices,
     sync_local_macro_series,
     sync_portfolio_data,
 )
@@ -153,6 +154,36 @@ class TestPortfolioTasks:
 
         assert result["success"] is False
         assert "macro boom" in result["message"]
+
+    @patch("apps.core.tasks.portfolio_tasks.IOLHistoricalPriceService")
+    def test_sync_iol_historical_prices_success(self, MockService):
+        MockService.return_value.sync_current_portfolio_symbols.return_value = {
+            "success": True,
+            "processed": 2,
+            "symbols_count": 3,
+            "results": {"BCBA:GGAL": {"success": True, "rows_received": 10}},
+        }
+
+        result = sync_iol_historical_prices()
+
+        assert result["success"] is True
+        assert result["processed"] == 2
+        assert result["symbols_count"] == 3
+        assert result["message"] == "processed=2 symbols=3"
+
+    @patch("apps.core.tasks.portfolio_tasks.IOLHistoricalPriceService")
+    def test_sync_iol_historical_prices_exception(self, MockService):
+        MockService.return_value.sync_current_portfolio_symbols.side_effect = Exception("iol history boom")
+
+        result = sync_iol_historical_prices()
+
+        assert result == {
+            "success": False,
+            "message": "iol history boom",
+            "results": {},
+            "symbols_count": 0,
+            "processed": 0,
+        }
 
     @patch("apps.core.tasks.portfolio_tasks.AlertsEngine")
     def test_generate_alerts_success(self, MockEngine):

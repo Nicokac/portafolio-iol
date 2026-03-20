@@ -18,11 +18,15 @@ def test_setup_periodic_tasks_creates_expected_schedule():
     assert "core.calculate_temporal_metrics" in tasks
     assert "core.generate_daily_snapshot" in tasks
     assert "core.sync_local_macro_series" in tasks
+    assert "core.sync_iol_historical_prices" in tasks
     assert all(task.enabled for task in tasks.values())
     assert tasks["core.sync_local_macro_series"].crontab is not None
     assert tasks["core.sync_local_macro_series"].crontab.hour == "18"
     assert tasks["core.sync_local_macro_series"].crontab.minute == "30"
-    assert "Periodic tasks configured: 5" in stdout.getvalue()
+    assert tasks["core.sync_iol_historical_prices"].crontab is not None
+    assert tasks["core.sync_iol_historical_prices"].crontab.hour == "19"
+    assert tasks["core.sync_iol_historical_prices"].crontab.minute == "0"
+    assert "Periodic tasks configured: 6" in stdout.getvalue()
 
 
 @pytest.mark.django_db
@@ -30,4 +34,4 @@ def test_setup_periodic_tasks_is_idempotent():
     call_command("setup_periodic_tasks")
     call_command("setup_periodic_tasks")
 
-    assert PeriodicTask.objects.count() == 5
+    assert PeriodicTask.objects.count() == 6

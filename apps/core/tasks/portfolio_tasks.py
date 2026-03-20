@@ -8,6 +8,7 @@ from apps.core.models import Alert
 from apps.core.services.alerts_engine import AlertsEngine
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.observability import record_state
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.temporal_metrics_service import TemporalMetricsService
@@ -136,6 +137,42 @@ def sync_local_macro_series():
         )
         logger.error(f"Error in local macro sync task: {str(e)}")
         return {"success": False, "message": str(e)}
+
+
+@shared_task
+def sync_iol_historical_prices():
+    """
+    Tarea programada: sincronizar históricos IOL para los símbolos actuales del portfolio.
+    """
+    logger.info("Starting IOL historical prices sync")
+
+    try:
+        result = IOLHistoricalPriceService().sync_current_portfolio_symbols()
+        if result.get("success", True):
+            logger.info(
+                "IOL historical prices sync completed: processed=%s symbols=%s",
+                result.get("processed", 0),
+                result.get("symbols_count", 0),
+            )
+        else:
+            logger.error(
+                "IOL historical prices sync completed with failures: processed=%s symbols=%s",
+                result.get("processed", 0),
+                result.get("symbols_count", 0),
+            )
+
+        return {
+            "success": bool(result.get("success", True)),
+            "message": (
+                f"processed={result.get('processed', 0)} symbols={result.get('symbols_count', 0)}"
+            ),
+            "results": result.get("results", {}),
+            "symbols_count": result.get("symbols_count", 0),
+            "processed": result.get("processed", 0),
+        }
+    except Exception as e:
+        logger.error(f"Error in IOL historical prices sync task: {str(e)}")
+        return {"success": False, "message": str(e), "results": {}, "symbols_count": 0, "processed": 0}
 
 
 @shared_task

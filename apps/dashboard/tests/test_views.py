@@ -1024,6 +1024,13 @@ class TestDashboardView:
                         'total_series': 3,
                         'overall_status': 'partial',
                     },
+                    'iol_historical_price_summary': {
+                        'ready_count': 1,
+                        'total_symbols': 3,
+                        'partial_count': 1,
+                        'missing_count': 1,
+                        'overall_status': 'partial',
+                    },
                     'local_macro_status_summary': {
                         'ready': 3,
                         'total_series': 4,
@@ -1047,6 +1054,29 @@ class TestDashboardView:
                     'snapshot_integrity_issues_count': 2,
                     'required_periodic_tasks': [],
                     'benchmark_status_rows': [],
+                    'iol_historical_price_rows': [
+                        {
+                            'simbolo': 'GGAL',
+                            'mercado': 'BCBA',
+                            'rows_count': 12,
+                            'latest_date': '2026-03-17',
+                            'status': 'ready',
+                        },
+                        {
+                            'simbolo': 'AAPL',
+                            'mercado': 'NASDAQ',
+                            'rows_count': 3,
+                            'latest_date': '2026-03-17',
+                            'status': 'partial',
+                        },
+                        {
+                            'simbolo': 'MSFT',
+                            'mercado': 'NASDAQ',
+                            'rows_count': 0,
+                            'latest_date': None,
+                            'status': 'missing',
+                        },
+                    ],
                     'local_macro_status_rows': [],
                     'critical_local_macro_rows': [
                         {
@@ -1093,6 +1123,13 @@ class TestDashboardView:
         assert '21/20 obs' in body
         assert 'Resumen benchmarks' in body
         assert '2/3' in body
+        assert 'Históricos IOL por símbolo' in body
+        assert '1/3 listos' in body
+        assert 'Cobertura de históricos IOL por símbolo' in body
+        assert 'GGAL' in body
+        assert 'NASDAQ' in body
+        assert 'Parcial' in body
+        assert 'Sin historia' in body
         assert 'sin configurar 1' in body
         assert 'Series macro críticas' in body
         assert '4/7' in body

@@ -145,3 +145,25 @@ def test_iol_historical_price_service_status_summary_reports_readiness():
     assert summary[0]["simbolo"] == "GGAL"
     assert summary[0]["rows_count"] == 2
     assert summary[0]["is_ready"] is True
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_builds_current_portfolio_coverage_rows():
+    _make_asset_snapshot("GGAL", "BCBA")
+    _make_asset_snapshot("AAPL", "NASDAQ")
+    for day, close in [(date(2026, 3, 18), 100), (date(2026, 3, 19), 102), (date(2026, 3, 20), 103)]:
+        IOLHistoricalPriceSnapshot.objects.create(
+            simbolo="GGAL",
+            mercado="BCBA",
+            source="iol",
+            fecha=day,
+            close=close,
+        )
+
+    rows = IOLHistoricalPriceService(client=Mock()).get_current_portfolio_coverage_rows(minimum_ready_rows=3)
+
+    row_by_symbol = {row["simbolo"]: row for row in rows}
+    assert row_by_symbol["GGAL"]["status"] == "ready"
+    assert row_by_symbol["GGAL"]["rows_count"] == 3
+    assert row_by_symbol["AAPL"]["status"] == "missing"
+    assert row_by_symbol["AAPL"]["rows_count"] == 0

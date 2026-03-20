@@ -34,6 +34,14 @@ class Command(BaseCommand):
             month_of_year="*",
             timezone="America/Argentina/Buenos_Aires",
         )
+        daily_7pm, _ = CrontabSchedule.objects.get_or_create(
+            minute="0",
+            hour="19",
+            day_of_week="*",
+            day_of_month="*",
+            month_of_year="*",
+            timezone="America/Argentina/Buenos_Aires",
+        )
 
         tasks = [
             {
@@ -60,6 +68,11 @@ class Command(BaseCommand):
                 "name": "core.sync_local_macro_series",
                 "task": "apps.core.tasks.portfolio_tasks.sync_local_macro_series",
                 "crontab": daily_630pm,
+            },
+            {
+                "name": "core.sync_iol_historical_prices",
+                "task": "apps.core.tasks.portfolio_tasks.sync_iol_historical_prices",
+                "crontab": daily_7pm,
             },
         ]
 

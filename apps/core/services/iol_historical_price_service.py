@@ -148,6 +148,51 @@ class IOLHistoricalPriceService:
             for (simbolo, mercado), row in aggregated.items()
         ]
 
+    def get_current_portfolio_coverage_rows(self, *, minimum_ready_rows: int = 5) -> list[dict]:
+        latest_date = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
+        if not latest_date:
+            return []
+
+        coverage_by_symbol = {
+            (row["simbolo"], row["mercado"]): row
+            for row in IOLHistoricalPriceSnapshot.objects.values("simbolo", "mercado").annotate(
+                latest_date=Max("fecha"),
+                rows_count=Count("id"),
+            )
+        }
+
+        latest_positions = (
+            ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=latest_date)
+            .exclude(simbolo__isnull=True)
+            .exclude(simbolo="")
+            .exclude(mercado__isnull=True)
+            .exclude(mercado="")
+            .values("simbolo", "mercado")
+            .distinct()
+        )
+
+        rows = []
+        for row in latest_positions:
+            coverage = coverage_by_symbol.get((row["simbolo"], row["mercado"]), {})
+            rows_count = int(coverage.get("rows_count") or 0)
+            if rows_count >= minimum_ready_rows:
+                status = "ready"
+            elif rows_count > 0:
+                status = "partial"
+            else:
+                status = "missing"
+            rows.append(
+                {
+                    "simbolo": row["simbolo"],
+                    "mercado": row["mercado"],
+                    "rows_count": rows_count,
+                    "latest_date": coverage.get("latest_date"),
+                    "status": status,
+                    "minimum_ready_rows": minimum_ready_rows,
+                }
+            )
+        return sorted(rows, key=lambda item: (item["status"], item["simbolo"]))
+
     @staticmethod
     def _normalize_rows(raw_rows: list[dict]) -> list[dict]:
         normalized = []

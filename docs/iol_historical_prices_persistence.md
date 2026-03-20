@@ -1,8 +1,8 @@
-# Persistencia mínima de históricos IOL
+# Persistencia minima de historicos IOL
 
 ## Objetivo
 
-Guardar precios diarios por símbolo desde IOL para reutilizarlos después en analytics sin depender de requests en tiempo real durante render.
+Guardar precios diarios por simbolo desde IOL para reutilizarlos despues en analytics sin depender de requests en tiempo real durante render.
 
 ## Componentes
 
@@ -23,7 +23,7 @@ Campos persistidos:
 - `close`
 - `volume`
 
-Clave única:
+Clave unica:
 
 - `simbolo + mercado + source + fecha`
 
@@ -37,17 +37,27 @@ Clave única:
 
 ### `sync_current_portfolio_symbols(params=None)`
 
-- toma símbolos actuales desde `ActivoPortafolioSnapshot`
+- toma simbolos actuales desde `ActivoPortafolioSnapshot`
 - sincroniza una vez por `simbolo + mercado`
 
 ### `build_close_series(simbolo, mercado, dates)`
 
 - devuelve serie diaria de cierres
-- pensada para el siguiente módulo de integración con analytics
+- reutilizable por servicios de riesgo y metricas
+
+## Integracion actual
+
+Uso habilitado hoy:
+
+- `RiskContributionService`
+  - primera fuente de volatilidad por activo
+- `VolatilityService`
+  - fallback proxy de volatilidad de portafolio cuando no hay historia suficiente de `PortfolioSnapshot`
+  - usa pesos actuales mas cierres IOL por simbolo
 
 ## Limitaciones
 
-- no interpreta todavía splits ni ajustes
-- no agrega UI
-- no se conecta todavía a `RiskContributionService`
-- no hace scheduling automático
+- no interpreta todavia splits ni ajustes
+- no agrega UI de series historicas
+- el fallback de `VolatilityService` es un proxy de composicion actual, no reemplaza la semantica principal basada en snapshots y TWR
+- no hay todavia sync intradiario ni task de backfill historico extendido

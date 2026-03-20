@@ -41,6 +41,14 @@ def test_pipeline_observability_service_builds_unified_summary():
                 {"benchmark_key": "bonos_ar", "is_ready": False},
             ]
 
+    class DummyIOLHistoricalPriceService:
+        def get_current_portfolio_coverage_rows(self):
+            return [
+                {"simbolo": "GGAL", "mercado": "BCBA", "rows_count": 12, "latest_date": "2026-03-17", "status": "ready"},
+                {"simbolo": "AAPL", "mercado": "NASDAQ", "rows_count": 3, "latest_date": "2026-03-17", "status": "partial"},
+                {"simbolo": "MSFT", "mercado": "NASDAQ", "rows_count": 0, "latest_date": None, "status": "missing"},
+            ]
+
     class DummyLocalMacroService:
         def get_status_summary(self):
             return [
@@ -58,6 +66,7 @@ def test_pipeline_observability_service_builds_unified_summary():
         coverage_health_service=DummyCoverageService(),
         snapshot_integrity_service=DummySnapshotIntegrityService(),
         benchmark_service=DummyBenchmarkService(),
+        iol_historical_price_service=DummyIOLHistoricalPriceService(),
         local_macro_service=DummyLocalMacroService(),
         argentina_datos_client=DummyArgentinaDatosClient(),
     ).build_summary(lookback_days=30, integrity_days=120)
@@ -73,6 +82,12 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["covariance_readiness"]["status"] == "ready"
     assert summary["benchmark_status_summary"]["ready_count"] == 1
     assert summary["benchmark_status_summary"]["overall_status"] == "partial"
+    assert summary["iol_historical_price_summary"]["total_symbols"] == 3
+    assert summary["iol_historical_price_summary"]["ready_count"] == 1
+    assert summary["iol_historical_price_summary"]["partial_count"] == 1
+    assert summary["iol_historical_price_summary"]["missing_count"] == 1
+    assert summary["iol_historical_price_summary"]["overall_status"] == "partial"
+    assert summary["iol_historical_price_rows"][0]["simbolo"] == "GGAL"
     assert summary["local_macro_status_summary"]["ready"] == 1
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1
@@ -116,6 +131,10 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
         def get_status_summary(self):
             return []
 
+    class DummyIOLHistoricalPriceService:
+        def get_current_portfolio_coverage_rows(self):
+            return []
+
     class DummyLocalMacroService:
         def get_status_summary(self):
             return []
@@ -129,6 +148,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
         coverage_health_service=DummyCoverageService(),
         snapshot_integrity_service=DummySnapshotIntegrityService(),
         benchmark_service=DummyBenchmarkService(),
+        iol_historical_price_service=DummyIOLHistoricalPriceService(),
         local_macro_service=DummyLocalMacroService(),
         argentina_datos_client=DummyArgentinaDatosClient(),
     ).build_summary()
@@ -137,6 +157,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["days_since_last_portfolio_snapshot"] is None
     assert summary["covariance_readiness"]["status"] == "missing"
     assert summary["benchmark_status_summary"]["overall_status"] == "missing"
+    assert summary["iol_historical_price_summary"]["overall_status"] == "missing"
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["attention_count"] == 7

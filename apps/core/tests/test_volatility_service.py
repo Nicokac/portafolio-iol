@@ -4,8 +4,9 @@ import pytest
 from unittest.mock import patch
 from django.utils import timezone
 
+from apps.core.models import IOLHistoricalPriceSnapshot
 from apps.core.services.risk.volatility_service import VolatilityService
-from apps.portafolio_iol.models import PortfolioSnapshot
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 
 
 @pytest.mark.django_db
@@ -85,3 +86,56 @@ def test_volatility_service_filters_extreme_daily_jumps():
     assert "annualized_volatility" in result
     assert result["annualized_volatility"] < 500
     assert result["outlier_returns_filtered"] >= 1
+
+
+@pytest.mark.django_db
+def test_volatility_service_uses_iol_historical_proxy_when_snapshot_history_is_insufficient():
+    today = timezone.now().date()
+    extraction = timezone.make_aware(timezone.datetime(2026, 3, 20, 10, 0, 0))
+
+    PortfolioSnapshot.objects.create(
+        fecha=today,
+        total_iol=1000,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=700,
+        rendimiento_total=0.0,
+        exposicion_usa=50.0,
+        exposicion_argentina=50.0,
+    )
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion=extraction,
+        pais_consulta="argentina",
+        simbolo="GGAL",
+        descripcion="GGAL",
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=100,
+        ppc=90,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=1000,
+        pais_titulo="Argentina",
+        mercado="BCBA",
+        tipo="ACCIONES",
+        plazo="T0",
+        moneda="ARS",
+    )
+    for offset, close in enumerate([100, 101, 103, 102, 104, 106]):
+        IOLHistoricalPriceSnapshot.objects.create(
+            simbolo="GGAL",
+            mercado="BCBA",
+            source="iol",
+            fecha=today - timedelta(days=5 - offset),
+            close=close,
+        )
+
+    result = VolatilityService().calculate_volatility(days=30)
+
+    assert result["fallback_source"] == "iol_historical_prices_proxy"
+    assert result["returns_basis"] == "current_weights_proxy"
+    assert "annualized_volatility" in result
+    assert result["proxy_observations"] >= 5

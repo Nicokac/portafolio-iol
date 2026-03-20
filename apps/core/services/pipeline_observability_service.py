@@ -6,6 +6,7 @@ from apps.core.services.analytics_v2 import CovarianceAwareRiskContributionServi
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
 from apps.core.services.data_quality.historical_coverage_health import HistoricalCoverageHealthService
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.market_data.argentina_datos_client import ArgentinaDatosClient
@@ -31,6 +32,7 @@ class PipelineObservabilityService:
         coverage_health_service: HistoricalCoverageHealthService | None = None,
         snapshot_integrity_service: SnapshotIntegrityService | None = None,
         benchmark_service: BenchmarkSeriesService | None = None,
+        iol_historical_price_service: IOLHistoricalPriceService | None = None,
         local_macro_service: LocalMacroSeriesService | None = None,
         argentina_datos_client: ArgentinaDatosClient | None = None,
     ):
@@ -38,6 +40,7 @@ class PipelineObservabilityService:
         self.coverage_health_service = coverage_health_service or HistoricalCoverageHealthService()
         self.snapshot_integrity_service = snapshot_integrity_service or SnapshotIntegrityService()
         self.benchmark_service = benchmark_service or BenchmarkSeriesService()
+        self.iol_historical_price_service = iol_historical_price_service or IOLHistoricalPriceService()
         self.local_macro_service = local_macro_service or LocalMacroSeriesService()
         self.argentina_datos_client = argentina_datos_client or ArgentinaDatosClient()
 
@@ -46,6 +49,7 @@ class PipelineObservabilityService:
         coverage = self.coverage_health_service.build_summary(lookback_days=lookback_days)
         snapshot_integrity = self.snapshot_integrity_service.run_checks(days=integrity_days)
         benchmark_status_rows = self.benchmark_service.get_status_summary()
+        iol_historical_price_rows = self.iol_historical_price_service.get_current_portfolio_coverage_rows()
         local_macro_status_rows = self.local_macro_service.get_status_summary()
         critical_local_macro_rows = self._build_critical_local_macro_rows(local_macro_status_rows)
         external_source_status_rows = self._build_external_source_status_rows()
@@ -79,12 +83,14 @@ class PipelineObservabilityService:
             "usable_observations_count": usable_observations_count,
             "available_price_dates_count": available_price_dates_count,
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
+            "iol_historical_price_summary": self._build_iol_historical_price_summary(iol_historical_price_rows),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
             "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
             "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
             "snapshot_integrity_issues_count": int(snapshot_integrity.get("issues_count") or 0),
             "required_periodic_tasks": coverage.get("required_periodic_tasks", []),
             "benchmark_status_rows": benchmark_status_rows,
+            "iol_historical_price_rows": iol_historical_price_rows,
             "local_macro_status_rows": local_macro_status_rows,
             "critical_local_macro_rows": critical_local_macro_rows,
             "external_source_status_rows": external_source_status_rows,
@@ -144,6 +150,28 @@ class PipelineObservabilityService:
         return {
             "total_series": len(rows),
             **counts,
+            "overall_status": overall_status,
+        }
+
+    @staticmethod
+    def _build_iol_historical_price_summary(rows: list[dict]) -> dict:
+        total = len(rows)
+        ready_count = sum(1 for row in rows if row.get("status") == "ready")
+        partial_count = sum(1 for row in rows if row.get("status") == "partial")
+        missing_count = sum(1 for row in rows if row.get("status") == "missing")
+        if total == 0:
+            overall_status = "missing"
+        elif missing_count == 0 and partial_count == 0:
+            overall_status = "ready"
+        elif ready_count > 0 or partial_count > 0:
+            overall_status = "partial"
+        else:
+            overall_status = "missing"
+        return {
+            "total_symbols": total,
+            "ready_count": ready_count,
+            "partial_count": partial_count,
+            "missing_count": missing_count,
             "overall_status": overall_status,
         }
 

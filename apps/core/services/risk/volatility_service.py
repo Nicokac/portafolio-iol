@@ -1,12 +1,14 @@
-﻿from datetime import timedelta
+from datetime import timedelta
 from typing import Dict
 
 import pandas as pd
+from django.db.models import Max
 from django.utils import timezone
 
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.performance.twr_service import TWRService
-from apps.portafolio_iol.models import PortfolioSnapshot
+from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 
 
 class VolatilityService:
@@ -16,9 +18,15 @@ class VolatilityService:
     MIN_OBSERVATIONS = 5
     MAX_ABS_DAILY_RETURN = 0.50
 
-    def __init__(self, local_macro_service: LocalMacroSeriesService | None = None, twr_service: TWRService | None = None):
+    def __init__(
+        self,
+        local_macro_service: LocalMacroSeriesService | None = None,
+        twr_service: TWRService | None = None,
+        historical_price_service: IOLHistoricalPriceService | None = None,
+    ):
         self.local_macro_service = local_macro_service or LocalMacroSeriesService()
         self.twr_service = twr_service or TWRService()
+        self.historical_price_service = historical_price_service or IOLHistoricalPriceService()
 
     def calculate_volatility(self, days: int = 30) -> Dict[str, float]:
         end_date = timezone.now().date()
@@ -30,6 +38,9 @@ class VolatilityService:
 
         observations = snapshots.count()
         if observations < self.MIN_OBSERVATIONS:
+            iol_result = self._fallback_volatility_from_iol_historical_prices(days=days, observations=observations)
+            if not iol_result.get("warning"):
+                return iol_result
             return {
                 "warning": "insufficient_history",
                 "required_min_observations": self.MIN_OBSERVATIONS,
@@ -43,6 +54,28 @@ class VolatilityService:
             observations=observations,
             history_span_days=history_span_days,
         )
+        return result
+
+    def _fallback_volatility_from_iol_historical_prices(self, days: int, observations: int) -> Dict[str, float]:
+        proxy_returns = self._build_iol_proxy_return_series(days=days)
+        proxy_observations = int(len(proxy_returns.index) + 1) if not proxy_returns.empty else 0
+        history_span_days = (
+            int((proxy_returns.index.max() - proxy_returns.index.min()).days)
+            if len(proxy_returns.index) >= 2
+            else 0
+        )
+        result = self._build_volatility_result_from_returns(
+            returns=proxy_returns,
+            observations=proxy_observations,
+            history_span_days=history_span_days,
+        )
+        if result.get("warning"):
+            result["observations"] = int(observations)
+            return result
+
+        result["fallback_source"] = "iol_historical_prices_proxy"
+        result["returns_basis"] = "current_weights_proxy"
+        result["proxy_observations"] = proxy_observations
         return result
 
     def _fallback_volatility_from_evolution(self, days: int, observations: int) -> Dict[str, float]:
@@ -94,6 +127,53 @@ class VolatilityService:
                 "required_min_observations": self.MIN_OBSERVATIONS,
                 "observations": observations,
             }
+
+    def _build_iol_proxy_return_series(self, days: int) -> pd.Series:
+        latest_extraction = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
+        if not latest_extraction:
+            return pd.Series(dtype=float)
+
+        positions = list(
+            ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=latest_extraction)
+            .exclude(simbolo__isnull=True)
+            .exclude(simbolo="")
+            .exclude(mercado__isnull=True)
+            .exclude(mercado="")
+            .values("simbolo", "mercado", "valorizado")
+        )
+        if not positions:
+            return pd.Series(dtype=float)
+
+        total_value = sum(float(position["valorizado"] or 0.0) for position in positions)
+        if total_value <= 0:
+            return pd.Series(dtype=float)
+
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=days)
+        business_dates = pd.bdate_range(start=start_date, end=end_date)
+        if len(business_dates) < 2:
+            return pd.Series(dtype=float)
+
+        weighted_returns = []
+        for position in positions:
+            symbol = position["simbolo"]
+            market = position["mercado"]
+            series = self.historical_price_service.build_close_series(symbol, market, business_dates)
+            if series.empty or len(series.dropna()) < 2:
+                continue
+
+            asset_returns = pd.to_numeric(series, errors="coerce").pct_change().dropna()
+            if asset_returns.empty:
+                continue
+
+            weight = float(position["valorizado"] or 0.0) / total_value
+            weighted_returns.append(asset_returns.mul(weight))
+
+        if not weighted_returns:
+            return pd.Series(dtype=float)
+
+        proxy_returns = pd.concat(weighted_returns, axis=1).fillna(0.0).sum(axis=1)
+        return pd.to_numeric(proxy_returns, errors="coerce").dropna().sort_index()
 
     def _build_volatility_result(self, df: pd.DataFrame) -> Dict[str, float]:
         returns = df["total_iol"].pct_change().dropna()
