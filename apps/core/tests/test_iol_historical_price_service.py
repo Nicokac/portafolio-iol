@@ -240,13 +240,14 @@ def test_iol_historical_price_service_syncs_only_partial_symbols_by_status():
 @pytest.mark.django_db
 def test_iol_historical_price_service_skips_fci_symbols_in_title_history_pipeline():
     client = Mock()
+    client.get_fci.return_value = {"simbolo": "ADBAICA", "tipoFondo": "money_market"}
 
     result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "ADBAICA")
 
     assert result["success"] is True
     assert result["skipped"] is True
-    assert result["eligibility_status"] == "unsupported"
-    assert "pipeline distinto" in result["error"]
+    assert result["eligibility_status"] == "unsupported_fci"
+    assert "confirmado por IOL como FCI" in result["error"]
     client.get_titulo_historicos.assert_not_called()
 
 
@@ -294,6 +295,7 @@ def test_iol_historical_price_service_marks_caucion_and_fci_as_unsupported_in_co
 def test_iol_historical_price_service_skips_symbols_unresolved_by_iol_metadata():
     client = Mock()
     client.get_titulo.return_value = None
+    client.get_fci.return_value = None
 
     result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "GGAL")
 
@@ -311,6 +313,7 @@ def test_iol_historical_price_service_resolves_market_using_known_aliases():
         None,
         {"simbolo": "GGAL", "mercado": "bCBA", "tipo": "ACCIONES"},
     ]
+    client.get_fci.return_value = None
     client.get_titulo_historicos.return_value = [
         {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 108.0},
     ]
@@ -331,3 +334,18 @@ def test_iol_historical_price_service_candidate_markets_dedupes_and_keeps_primar
     assert "bCBA" in candidates
     assert "bcba" in candidates
     assert len(candidates) == len(set(candidates))
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_confirms_fci_when_title_metadata_is_missing():
+    client = Mock()
+    client.get_titulo.return_value = None
+    client.get_fci.return_value = {"simbolo": "IOLPORA", "tipoFondo": "money_market"}
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "IOLPORA")
+
+    assert result["success"] is True
+    assert result["skipped"] is True
+    assert result["eligibility_status"] == "unsupported_fci"
+    assert "confirmado por IOL como FCI" in result["error"]
+    client.get_titulo_historicos.assert_not_called()

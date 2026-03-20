@@ -28,6 +28,7 @@ class IOLHistoricalPriceService:
     def __init__(self, client: IOLAPIClient | None = None):
         self.client = client or IOLAPIClient()
         self._title_metadata_cache: dict[tuple[str, str], dict] = {}
+        self._fci_metadata_cache: dict[str, dict | None] = {}
 
     def sync_symbol_history(self, mercado: str, simbolo: str, params: dict | None = None) -> dict:
         support = self.resolve_symbol_history_support(mercado=mercado, simbolo=simbolo)
@@ -236,10 +237,29 @@ class IOLHistoricalPriceService:
         local_row = row or {"simbolo": simbolo, "mercado": mercado}
         local_support = self.classify_position_for_history(local_row)
         if not local_support.get("supported"):
+            if local_support.get("eligibility_status") == "unsupported_fci":
+                fci_metadata = self._get_fci_metadata(simbolo=simbolo)
+                if fci_metadata:
+                    return {
+                        "supported": False,
+                        "mercado": mercado,
+                        "simbolo": simbolo,
+                        "eligibility_status": "unsupported_fci",
+                        "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
+                    }
             return local_support
 
         metadata = self._resolve_titulo_metadata(mercado=mercado, simbolo=simbolo)
         if metadata is None:
+            fci_metadata = self._get_fci_metadata(simbolo=simbolo)
+            if fci_metadata:
+                return {
+                    "supported": False,
+                    "mercado": mercado,
+                    "simbolo": simbolo,
+                    "eligibility_status": "unsupported_fci",
+                    "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
+                }
             return {
                 "supported": False,
                 "mercado": mercado,
@@ -287,7 +307,7 @@ class IOLHistoricalPriceService:
                 "supported": False,
                 "mercado": mercado,
                 "simbolo": simbolo,
-                "eligibility_status": "unsupported",
+                "eligibility_status": "unsupported_fci",
                 "reason": "FCI y cash management usan un pipeline distinto al de títulos",
             }
         if "CAUCION" in simbolo_norm or "CAUCION" in tipo or "CAUCION" in descripcion:
@@ -327,6 +347,20 @@ class IOLHistoricalPriceService:
         metadata = getter(mercado, simbolo)
         self._title_metadata_cache[cache_key] = metadata or None
         return self._title_metadata_cache[cache_key]
+
+    def _get_fci_metadata(self, *, simbolo: str) -> dict | None:
+        cache_key = str(simbolo or "").strip().upper()
+        if cache_key in self._fci_metadata_cache:
+            return self._fci_metadata_cache[cache_key]
+
+        getter = getattr(self.client, "get_fci", None)
+        if not callable(getter):
+            self._fci_metadata_cache[cache_key] = None
+            return None
+
+        metadata = getter(simbolo)
+        self._fci_metadata_cache[cache_key] = metadata or None
+        return self._fci_metadata_cache[cache_key]
 
     def _resolve_titulo_metadata(self, *, mercado: str, simbolo: str) -> dict | None:
         for candidate_market in self._candidate_markets(mercado):

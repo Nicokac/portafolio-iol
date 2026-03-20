@@ -214,6 +214,18 @@ class TestIOLAPIClient:
         assert mock_get.call_args.args[0].endswith('/api/v2/BCBA/Titulos/GGAL')
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_fci_returns_metadata_dict(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {'simbolo': 'ADBAICA', 'tipoFondo': 'money_market'}
+        mock_get.return_value = mock_response
+
+        result = client.get_fci('ADBAICA')
+
+        assert result == {'simbolo': 'ADBAICA', 'tipoFondo': 'money_market'}
+        assert mock_get.call_args.args[0].endswith('/api/v2/Titulos/FCI/ADBAICA')
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_request_json_retries_once_on_401_and_then_succeeds(self, mock_get, client):
         client._ensure_valid_token = MagicMock()
         client.token_manager.invalidate_current_token = MagicMock()

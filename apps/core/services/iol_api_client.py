@@ -284,6 +284,16 @@ class IOLAPIClient:
         )
         return data if isinstance(data, dict) else None
 
+    def get_fci(self, simbolo: str) -> Optional[Dict]:
+        """Obtiene metadata de un FCI por simbolo."""
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/Titulos/FCI/{simbolo_path}"
+        data = self._request_json(
+            operation=f"get_fci:{simbolo}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
     def get_titulo_historicos(
         self,
         mercado: str,
