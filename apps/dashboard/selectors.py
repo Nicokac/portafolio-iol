@@ -318,6 +318,36 @@ def get_macro_local_context(total_iol: float | None = None) -> Dict:
     return _get_cached_selector_result(f"macro_local_context:{total_stamp}", build)
 
 
+def _build_portfolio_scope_summary() -> Dict:
+    """Explicita el universo broker vs capital invertido para Planeacion."""
+
+    kpis = get_dashboard_kpis()
+    resumen = get_latest_resumen_data()
+
+    cash_ars = sum(float(cuenta.disponible) for cuenta in resumen if cuenta.moneda == "ARS")
+    cash_usd = sum(float(cuenta.disponible) for cuenta in resumen if cuenta.moneda == "USD")
+    portfolio_total_broker = float(kpis.get("total_iol") or 0.0)
+    invested_portfolio = float(kpis.get("portafolio_invertido") or 0.0)
+    cash_management_fci = float(kpis.get("fci_cash_management") or 0.0)
+    cash_available_broker = cash_ars
+
+    cash_ratio_total = (cash_available_broker / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
+    invested_ratio_total = (invested_portfolio / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
+    fci_ratio_total = (cash_management_fci / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
+
+    return {
+        "portfolio_total_broker": portfolio_total_broker,
+        "invested_portfolio": invested_portfolio,
+        "cash_management_fci": cash_management_fci,
+        "cash_available_broker": cash_available_broker,
+        "cash_available_broker_ars": cash_ars,
+        "cash_available_broker_usd": cash_usd,
+        "cash_ratio_total": cash_ratio_total,
+        "invested_ratio_total": invested_ratio_total,
+        "fci_ratio_total": fci_ratio_total,
+    }
+
+
 def get_distribucion_sector(base: str = 'total_activos') -> Dict[str, float]:
     """Obtiene la distribuci?n por sector o bloque patrimonial seg?n la base."""
     if base == 'portafolio_invertido':
@@ -2316,6 +2346,7 @@ def get_decision_engine_summary(
     cache_key = f"decision_engine_summary:{getattr(user, 'pk', 'anon')}:{int(capital_amount)}:{query_stamp}"
 
     def build():
+        portfolio_scope = _build_portfolio_scope_summary()
         macro_local = get_macro_local_context()
         analytics = get_analytics_v2_dashboard_summary()
         monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
@@ -2332,6 +2363,9 @@ def get_decision_engine_summary(
         suggested_assets = _build_decision_suggested_assets(ranking)
         preferred_proposal = _build_decision_preferred_proposal(preferred_payload)
         expected_impact = _build_decision_expected_impact(simulation)
+        recommendation_context = _build_decision_recommendation_context(portfolio_scope)
+        strategy_bias = _build_decision_strategy_bias(recommendation_context)
+        action_suggestions = _build_decision_action_suggestions(strategy_bias)
         score = _compute_decision_score(
             macro_state=macro_state,
             portfolio_state=portfolio_state,
@@ -2364,6 +2398,10 @@ def get_decision_engine_summary(
         )
 
         return {
+            "portfolio_scope": portfolio_scope,
+            "recommendation_context": recommendation_context,
+            "strategy_bias": strategy_bias,
+            "action_suggestions": action_suggestions,
             "macro_state": macro_state,
             "portfolio_state": portfolio_state,
             "recommendation": recommendation,
@@ -2389,6 +2427,7 @@ def get_planeacion_incremental_context(
     """Concentra el contrato incremental consumido por Planeacion en una sola fachada."""
 
     return {
+        "portfolio_scope_summary": _build_portfolio_scope_summary(),
         "monthly_allocation_plan": get_monthly_allocation_plan(capital_amount=capital_amount),
         "candidate_asset_ranking": get_candidate_asset_ranking(capital_amount=capital_amount),
         "incremental_portfolio_simulation": get_incremental_portfolio_simulation(capital_amount=capital_amount),
@@ -3485,6 +3524,47 @@ def _compute_decision_score(
         + int(expected_impact.get("score_component") or 0)
     )
     return max(0, min(100, total))
+
+
+def _build_decision_recommendation_context(portfolio_scope: Dict | None) -> str | None:
+    portfolio_scope = portfolio_scope or {}
+    cash_ratio_total = _coerce_optional_float(portfolio_scope.get("cash_ratio_total")) or 0.0
+    invested_ratio_total = _coerce_optional_float(portfolio_scope.get("invested_ratio_total")) or 0.0
+
+    if cash_ratio_total > 0.30:
+        return "high_cash"
+    if invested_ratio_total > 0.90:
+        return "fully_invested"
+    return None
+
+
+def _build_decision_strategy_bias(recommendation_context: str | None) -> str | None:
+    if recommendation_context == "high_cash":
+        return "deploy_cash"
+    if recommendation_context == "fully_invested":
+        return "rebalance"
+    return None
+
+
+def _build_decision_action_suggestions(strategy_bias: str | None) -> list[Dict]:
+    suggestions = []
+    if strategy_bias == "deploy_cash":
+        suggestions.append(
+            {
+                "type": "allocation",
+                "message": "Tenés capital disponible para invertir",
+                "suggestion": "Evaluar asignar entre 20% y 40% del cash.",
+            }
+        )
+    elif strategy_bias == "rebalance":
+        suggestions.append(
+            {
+                "type": "rebalance",
+                "message": "Cartera altamente invertida",
+                "suggestion": "Evaluar reducción de concentración en top posiciones.",
+            }
+        )
+    return suggestions
 
 
 def _compute_decision_confidence(

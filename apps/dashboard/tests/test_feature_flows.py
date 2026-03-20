@@ -20,7 +20,7 @@ class TestDashboardFeatureFlows:
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts", "macro_local"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo", "analytics_v2_summary"]),
-            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
+            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
             ("dashboard:metricas", "dashboard/metricas.html", ["kpis", "riesgo_portafolio"]),
         ],
@@ -58,6 +58,10 @@ class TestDashboardFeatureFlows:
         assert "1. Aportes" in content
         assert "Aportes principal" in content
         assert "Planeaci\u00f3n de aportes: flujo principal" in content
+        assert "Universo patrimonial" in content
+        assert "Patrimonio total broker" in content
+        assert "Cash disponible" in content
+        assert "Capital invertido analizado" in content
         assert "Diagn\u00f3stico previo al aporte" in content
         assert "Se\u00f1ales de diagn\u00f3stico y priorizaci\u00f3n" in content
         assert "Macro local FX + UVA:" in content

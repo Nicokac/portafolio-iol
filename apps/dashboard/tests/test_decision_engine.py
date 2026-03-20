@@ -14,6 +14,18 @@ class TestDecisionEngineSummary:
 
         with (
             patch(
+                "apps.dashboard.selectors._build_portfolio_scope_summary",
+                return_value={
+                    "portfolio_total_broker": 15863589.0,
+                    "invested_portfolio": 13330704.0,
+                    "cash_management_fci": 2532885.0,
+                    "cash_available_broker": 11039915.47,
+                    "cash_ratio_total": 0.6959,
+                    "invested_ratio_total": 0.8403,
+                    "fci_ratio_total": 0.1597,
+                },
+            ),
+            patch(
                 "apps.dashboard.selectors.get_macro_local_context",
                 return_value={
                     "fx_signal_state": "normal",
@@ -91,6 +103,16 @@ class TestDecisionEngineSummary:
 
         assert detail["macro_state"]["label"] == "Normal"
         assert detail["portfolio_state"]["label"] == "OK"
+        assert detail["portfolio_scope"]["cash_ratio_total"] == 0.6959
+        assert detail["recommendation_context"] == "high_cash"
+        assert detail["strategy_bias"] == "deploy_cash"
+        assert detail["action_suggestions"] == [
+            {
+                "type": "allocation",
+                "message": "Tenés capital disponible para invertir",
+                "suggestion": "Evaluar asignar entre 20% y 40% del cash.",
+            }
+        ]
         assert detail["recommendation"]["block"] == "Defensivos USD"
         assert detail["recommendation"]["amount"] == 600000
         assert len(detail["suggested_assets"]) == 3
@@ -112,6 +134,18 @@ class TestDecisionEngineSummary:
             is_authenticated = True
 
         with (
+            patch(
+                "apps.dashboard.selectors._build_portfolio_scope_summary",
+                return_value={
+                    "portfolio_total_broker": 15863589.0,
+                    "invested_portfolio": 15000000.0,
+                    "cash_management_fci": 300000.0,
+                    "cash_available_broker": 100000.0,
+                    "cash_ratio_total": 0.006,
+                    "invested_ratio_total": 0.945,
+                    "fci_ratio_total": 0.02,
+                },
+            ),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch(
                 "apps.dashboard.selectors.get_analytics_v2_dashboard_summary",
@@ -126,6 +160,15 @@ class TestDecisionEngineSummary:
 
         assert detail["macro_state"]["key"] == "indefinido"
         assert detail["portfolio_state"]["key"] == "indefinido"
+        assert detail["recommendation_context"] == "fully_invested"
+        assert detail["strategy_bias"] == "rebalance"
+        assert detail["action_suggestions"] == [
+            {
+                "type": "rebalance",
+                "message": "Cartera altamente invertida",
+                "suggestion": "Evaluar reducción de concentración en top posiciones.",
+            }
+        ]
         assert detail["recommendation"]["has_recommendation"] is False
         assert detail["suggested_assets"] == []
         assert detail["preferred_proposal"] is None

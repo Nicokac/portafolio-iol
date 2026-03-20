@@ -9,6 +9,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.dashboard.selectors import (
+    _build_portfolio_scope_summary,
     get_analytics_mensual,
     get_analytics_v2_dashboard_summary,
     get_concentracion_pais,
@@ -105,6 +106,39 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
 
 
 class TestDashboardSelectors(TestCase):
+    def test_build_portfolio_scope_summary_uses_total_broker_and_cash_ars_only(self):
+        class Cuenta:
+            def __init__(self, moneda, disponible):
+                self.moneda = moneda
+                self.disponible = disponible
+
+        with (
+            patch(
+                "apps.dashboard.selectors.get_dashboard_kpis",
+                return_value={
+                    "total_iol": 15863589.0,
+                    "portafolio_invertido": 13330704.0,
+                    "fci_cash_management": 2532885.0,
+                    "liquidez_operativa": 11040707.87,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_latest_resumen_data",
+                return_value=[Cuenta("ARS", 11039915.47), Cuenta("USD", 0.56)],
+            ),
+        ):
+            detail = _build_portfolio_scope_summary()
+
+        assert detail["portfolio_total_broker"] == 15863589.0
+        assert detail["invested_portfolio"] == 13330704.0
+        assert detail["cash_management_fci"] == 2532885.0
+        assert detail["cash_available_broker"] == 11039915.47
+        assert detail["cash_available_broker_ars"] == 11039915.47
+        assert detail["cash_available_broker_usd"] == 0.56
+        assert round(detail["cash_ratio_total"], 4) == round(11039915.47 / 15863589.0, 4)
+        assert round(detail["invested_ratio_total"], 4) == round(13330704.0 / 15863589.0, 4)
+        assert round(detail["fci_ratio_total"], 4) == round(2532885.0 / 15863589.0, 4)
+
     def setUp(self):
         cache.clear()
 
@@ -2290,6 +2324,10 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
+                "apps.dashboard.selectors._build_portfolio_scope_summary",
+                return_value={"portfolio_total_broker": 1500000.0, "cash_available_broker": 250000.0},
+            ) as portfolio_scope,
+            patch(
                 "apps.dashboard.selectors.get_monthly_allocation_plan",
                 return_value={"capital_total": 600000},
             ) as monthly_plan,
@@ -2349,6 +2387,7 @@ class TestDashboardSelectors(TestCase):
                 history_limit=7,
             )
 
+        assert detail["portfolio_scope_summary"]["portfolio_total_broker"] == 1500000.0
         assert detail["monthly_allocation_plan"]["capital_total"] == 600000
         assert detail["candidate_asset_ranking"]["candidate_assets_count"] == 2
         assert detail["incremental_portfolio_simulation"]["interpretation"] == "ok"
@@ -2363,6 +2402,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_manual_decision_summary"]["has_decision"] is True
         assert detail["incremental_decision_executive_summary"]["status"] == "review_backlog"
 
+        portfolio_scope.assert_called_once_with()
         monthly_plan.assert_called_once_with(capital_amount=700000)
         candidate_ranking.assert_called_once_with(capital_amount=700000)
         simulation.assert_called_once_with(capital_amount=700000)

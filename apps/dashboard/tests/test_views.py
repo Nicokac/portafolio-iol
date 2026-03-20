@@ -415,6 +415,17 @@ class TestDashboardView:
         monkeypatch.setattr(
             'apps.dashboard.views.get_planeacion_incremental_context',
             lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {
+                    'portfolio_total_broker': 15863589,
+                    'invested_portfolio': 13330704,
+                    'cash_management_fci': 2532885,
+                    'cash_available_broker': 11039915.47,
+                    'cash_available_broker_ars': 11039915.47,
+                    'cash_available_broker_usd': 0.56,
+                    'cash_ratio_total': 0.6959,
+                    'invested_ratio_total': 0.8403,
+                    'fci_ratio_total': 0.1597,
+                },
                 'monthly_allocation_plan': {
                     'capital_total': capital_amount,
                     'recommended_blocks_count': 1,
@@ -482,6 +493,23 @@ class TestDashboardView:
                     'explanation': 'La propuesta preferida actual surge de Comparador por split para Defensive / resiliente: Split KO + MCD.',
                 },
                 'decision_engine_summary': {
+                    'portfolio_scope': {
+                        'portfolio_total_broker': 15863589,
+                        'invested_portfolio': 13330704,
+                        'cash_management_fci': 2532885,
+                        'cash_available_broker': 11039915.47,
+                        'cash_ratio_total': 0.6959,
+                        'invested_ratio_total': 0.8403,
+                    },
+                    'recommendation_context': 'high_cash',
+                    'strategy_bias': 'deploy_cash',
+                    'action_suggestions': [
+                        {
+                            'type': 'allocation',
+                            'message': 'Tenés capital disponible para invertir',
+                            'suggestion': 'Evaluar asignar entre 20% y 40% del cash.',
+                        }
+                    ],
                     'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una senal macro dominante que invalide el flujo principal.'},
                     'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental sin desviar el flujo principal.'},
                     'recommendation': {
@@ -567,6 +595,11 @@ class TestDashboardView:
         assert '1. Aportes' in body
         assert 'Aportes principal' in body
         assert 'Planeación de aportes: flujo principal' in body
+        assert 'Universo patrimonial' in body
+        assert 'Patrimonio total broker' in body
+        assert 'Cash disponible' in body
+        assert 'Capital invertido analizado' in body
+        assert 'FCI cash management' in body
         assert 'Diagnóstico previo al aporte' in body
         assert 'Señales de diagnóstico y priorización' in body
         assert 'Macro local FX + UVA:' in body
@@ -587,6 +620,10 @@ class TestDashboardView:
         assert 'Opciones sugeridas' in body
         assert 'Impacto estimado' in body
         assert 'Tu decisión este mes' in body
+        assert 'Tenés una proporción alta de cash disponible.' in body
+        assert 'Tu principal palanca hoy es asignar capital disponible.' in body
+        assert 'Tenés capital disponible para invertir' in body
+        assert 'Evaluar asignar entre 20% y 40% del cash.' in body
         assert 'Score: 78/100' in body
         assert 'Confianza: Alta' in body
         assert 'Por qué esta decisión' in body
@@ -638,6 +675,17 @@ class TestDashboardView:
         monkeypatch.setattr(
             'apps.dashboard.views.get_planeacion_incremental_context',
             lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {
+                    'portfolio_total_broker': 0.0,
+                    'invested_portfolio': 0.0,
+                    'cash_management_fci': 0.0,
+                    'cash_available_broker': 0.0,
+                    'cash_available_broker_ars': 0.0,
+                    'cash_available_broker_usd': 0.0,
+                    'cash_ratio_total': 0.0,
+                    'invested_ratio_total': 0.0,
+                    'fci_ratio_total': 0.0,
+                },
                 'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
                 'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
                 'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
@@ -647,6 +695,17 @@ class TestDashboardView:
                 'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
                 'preferred_incremental_portfolio_proposal': {'preferred': None, 'has_manual_override': False, 'explanation': ''},
                 'decision_engine_summary': {
+                    'portfolio_scope': {
+                        'portfolio_total_broker': 0.0,
+                        'invested_portfolio': 0.0,
+                        'cash_management_fci': 0.0,
+                        'cash_available_broker': 0.0,
+                        'cash_ratio_total': 0.0,
+                        'invested_ratio_total': 0.0,
+                    },
+                    'recommendation_context': None,
+                    'strategy_bias': None,
+                    'action_suggestions': [],
                     'macro_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto macro suficiente.'},
                     'portfolio_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto suficiente sobre la cartera.'},
                     'recommendation': {'block': None, 'amount': None, 'reason': 'Todavía no hay un bloque dominante para este corte.', 'has_recommendation': False},
@@ -679,6 +738,17 @@ class TestDashboardView:
         monkeypatch.setattr(
             'apps.dashboard.views.get_planeacion_incremental_context',
             lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {
+                    'portfolio_total_broker': 15863589,
+                    'invested_portfolio': 13330704,
+                    'cash_management_fci': 2532885,
+                    'cash_available_broker': 11039915.47,
+                    'cash_available_broker_ars': 11039915.47,
+                    'cash_available_broker_usd': 0.56,
+                    'cash_ratio_total': 0.6959,
+                    'invested_ratio_total': 0.8403,
+                    'fci_ratio_total': 0.1597,
+                },
                 'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
                 'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
                 'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
@@ -688,6 +758,23 @@ class TestDashboardView:
                 'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
                 'preferred_incremental_portfolio_proposal': {'preferred': {'proposal_label': 'Plan A'}, 'has_manual_override': False, 'explanation': ''},
                 'decision_engine_summary': {
+                    'portfolio_scope': {
+                        'portfolio_total_broker': 15863589,
+                        'invested_portfolio': 13330704,
+                        'cash_management_fci': 2532885,
+                        'cash_available_broker': 11039915.47,
+                        'cash_ratio_total': 0.6959,
+                        'invested_ratio_total': 0.8403,
+                    },
+                    'recommendation_context': 'high_cash',
+                    'strategy_bias': 'deploy_cash',
+                    'action_suggestions': [
+                        {
+                            'type': 'allocation',
+                            'message': 'Tenés capital disponible para invertir',
+                            'suggestion': 'Evaluar asignar entre 20% y 40% del cash.',
+                        }
+                    ],
                     'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una señal macro dominante.'},
                     'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
                     'recommendation': {'block': 'Defensivos USD', 'amount': 600000, 'reason': 'prioridad simple', 'has_recommendation': True},
@@ -713,12 +800,26 @@ class TestDashboardView:
         assert 'Impacto incremental no disponible.' in body
         assert 'Score: 61/100' in body
         assert 'Confianza: Media' in body
+        assert 'Tenés una proporción alta de cash disponible.' in body
+        assert 'Tu principal palanca hoy es asignar capital disponible.' in body
+        assert 'Evaluar asignar entre 20% y 40% del cash.' in body
         assert 'KO · 600000' in body
 
     def test_planeacion_history_supports_old_snapshots_without_decision_fields(self, auth_client, monkeypatch):
         monkeypatch.setattr(
             'apps.dashboard.views.get_planeacion_incremental_context',
             lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {
+                    'portfolio_total_broker': 15863589,
+                    'invested_portfolio': 13330704,
+                    'cash_management_fci': 2532885,
+                    'cash_available_broker': 11039915.47,
+                    'cash_available_broker_ars': 11039915.47,
+                    'cash_available_broker_usd': 0.56,
+                    'cash_ratio_total': 0.6959,
+                    'invested_ratio_total': 0.8403,
+                    'fci_ratio_total': 0.1597,
+                },
                 'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
                 'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
                 'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
@@ -728,6 +829,23 @@ class TestDashboardView:
                 'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
                 'preferred_incremental_portfolio_proposal': {'preferred': None, 'has_manual_override': False, 'explanation': ''},
                 'decision_engine_summary': {
+                    'portfolio_scope': {
+                        'portfolio_total_broker': 15863589,
+                        'invested_portfolio': 15000000.0,
+                        'cash_management_fci': 300000.0,
+                        'cash_available_broker': 100000.0,
+                        'cash_ratio_total': 0.006,
+                        'invested_ratio_total': 0.945,
+                    },
+                    'recommendation_context': 'fully_invested',
+                    'strategy_bias': 'rebalance',
+                    'action_suggestions': [
+                        {
+                            'type': 'rebalance',
+                            'message': 'Cartera altamente invertida',
+                            'suggestion': 'Evaluar reducción de concentración en top posiciones.',
+                        }
+                    ],
                     'macro_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto macro suficiente.'},
                     'portfolio_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto suficiente sobre la cartera.'},
                     'recommendation': {'block': None, 'amount': None, 'reason': 'Todavía no hay un bloque dominante para este corte.', 'has_recommendation': False},
@@ -774,6 +892,10 @@ class TestDashboardView:
 
         assert response.status_code == 200
         assert 'Plan viejo' in body
+        assert 'Tu cartera está altamente invertida.' in body
+        assert 'Tu foco está en optimizar una cartera ya desplegada.' in body
+        assert 'Cartera altamente invertida' in body
+        assert 'Evaluar reducción de concentración en top posiciones.' in body
         assert 'Por qué se tomó esta decisión' not in body
         assert 'Reaplicar en comparador manual' in body
         assert 'Comparador manual de planes incrementales' in body

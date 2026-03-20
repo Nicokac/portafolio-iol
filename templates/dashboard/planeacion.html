@@ -165,6 +165,52 @@
             <strong>Ruta recomendada:</strong>
             <span class="text-muted">primero definí qué bloques reforzar, después mirá activos candidatos, luego validá la propuesta preferida y recién ahí contrastá el impacto incremental.</span>
         </div>
+        {% with scope=portfolio_scope_summary %}
+        <section class="mb-4">
+            <div class="card border-secondary-subtle shadow-sm">
+                <div class="card-header bg-light border-bottom-0">
+                    <h3 class="h5 mb-1">Universo patrimonial</h3>
+                    <small class="text-muted">Patrimonio broker, cash disponible y capital invertido analizado separados para evitar mezclar scopes.</small>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Patrimonio total broker</div>
+                                <div class="h5 mb-0">{{ scope.portfolio_total_broker|currency:0 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Cash disponible</div>
+                                <div class="h5 mb-0">{{ scope.cash_available_broker|currency:0 }}</div>
+                                {% if scope.cash_available_broker_usd %}
+                                <div class="small text-muted mt-1">USD sin convertir: {{ scope.cash_available_broker_usd|floatformat:2 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Capital invertido analizado</div>
+                                <div class="h5 mb-0">{{ scope.invested_portfolio|currency:0 }}</div>
+                                <div class="small text-muted mt-1">{{ scope.invested_ratio_total|floatformat:1 }}% del total broker</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">FCI cash management</div>
+                                <div class="h5 mb-0">{{ scope.cash_management_fci|currency:0 }}</div>
+                                <div class="small text-muted mt-1">{{ scope.fci_ratio_total|floatformat:1 }}% del total broker</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-3">
+                        Cash broker: {{ scope.cash_ratio_total|floatformat:1 }}% del total.
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endwith %}
         <section class="mb-4">
             {% with decision=decision_engine_summary %}
             <div class="card border-primary shadow-sm">
@@ -173,6 +219,30 @@
                     <small class="text-muted">Menos opciones, una recomendación principal y una validación corta para responder qué hacer con tus 600k este mes.</small>
                 </div>
                 <div class="card-body">
+                    {% if decision.recommendation_context == "high_cash" %}
+                    <div class="alert alert-info mb-4">
+                        Tenés una proporción alta de cash disponible. Las recomendaciones parten de una cartera no completamente invertida.
+                    </div>
+                    {% elif decision.recommendation_context == "fully_invested" %}
+                    <div class="alert alert-warning mb-4">
+                        Tu cartera está altamente invertida. Las decisiones requieren más criterio de asignación fina que de despliegue de cash nuevo.
+                    </div>
+                    {% endif %}
+                    {% if decision.strategy_bias == "deploy_cash" %}
+                    <div class="small text-muted mb-4">
+                        Tu principal palanca hoy es asignar capital disponible.
+                    </div>
+                    {% elif decision.strategy_bias == "rebalance" %}
+                    <div class="small text-muted mb-4">
+                        Tu foco está en optimizar una cartera ya desplegada.
+                    </div>
+                    {% endif %}
+                    {% for action in decision.action_suggestions %}
+                    <div class="alert alert-secondary mb-3">
+                        <strong>{{ action.message }}</strong><br>
+                        {{ action.suggestion }}
+                    </div>
+                    {% endfor %}
                     <div class="row g-3 mb-4">
                         <div class="col-lg-6">
                             <div class="border rounded p-3 h-100">
