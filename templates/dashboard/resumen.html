@@ -55,18 +55,18 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Valuación consolidada de la cuenta: activos invertidos más cash disponible.">Total IOL</div>
-                <div class="kpi-value text-primary">{{ kpis.total_iol|currency:0 }}</div>
-                <div class="text-body-secondary small">Activos + cash</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Total patrimonial modelado para lectura diaria: capital invertido analizado + FCI cash management + cash disponible broker.">Total patrimonio modelado</div>
+                <div class="kpi-value text-primary">{{ kpis.total_patrimonio_modelado|currency:0 }}</div>
+                <div class="text-body-secondary small">Invertido + FCI + cash broker</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Caja, caución y otras posiciones de disponibilidad inmediata o muy corta.">Liquidez Operativa</div>
-                <div class="kpi-value text-success">{{ kpis.liquidez_operativa|currency:0 }}</div>
-                <div class="text-body-secondary small">{{ riesgo_portafolio_detallado.pct_liquidez|pct:1 }} del total</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Cash real disponible en broker. Incluye saldos ARS/USD y no trata FCI cash management como dinero en cuenta.">Liquidez operativa</div>
+                <div class="kpi-value text-success">{{ kpis.cash_disponible_broker|currency:0 }}</div>
+                <div class="text-body-secondary small">{{ kpis.pct_liquidez_operativa|pct:1 }} del total modelado</div>
             </div>
         </div>
     </div>
@@ -113,18 +113,18 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Peso del capital invertido sobre el patrimonio total. Sirve para leer si la cartera está defensiva, neutra o agresiva.">Capital invertido</div>
-                <div class="kpi-value text-success">{{ kpis.pct_portafolio_invertido|pct:1 }}</div>
-                <div class="text-body-secondary small">Portafolio invertido / Total IOL</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Capital desplegado en activos de riesgo analizados: acciones, bonos, ETF y otros instrumentos de inversión.">Capital invertido analizado</div>
+                <div class="kpi-value text-success">{{ kpis.portafolio_invertido|currency:0 }}</div>
+                <div class="text-body-secondary small">{{ kpis.pct_portafolio_invertido_modelado|pct:1 }} del total modelado</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Liquidez total = liquidez operativa + cash management. Mide el peso defensivo dentro del patrimonio total.">Liquidez total</div>
-                <div class="kpi-value text-info">{{ kpis.pct_liquidez_total|pct:1 }}</div>
-                <div class="text-body-secondary small">Liquidez total / Total IOL</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Fondos líquidos ya invertidos en cash management. Son fácilmente desplegables, pero no son cash directo en broker.">Liquidez estratégica</div>
+                <div class="kpi-value text-info">{{ kpis.liquidez_estrategica|currency:0 }}</div>
+                <div class="text-body-secondary small">{{ kpis.pct_liquidez_estrategica|pct:1 }} del total modelado · combinada {{ kpis.pct_liquidez_total_combinada|pct:1 }}</div>
             </div>
         </div>
     </div>

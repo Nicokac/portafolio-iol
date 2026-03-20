@@ -193,6 +193,10 @@ class TestDashboardSelectors(TestCase):
         assert kpis['titulos_valorizados'] == Decimal('1000.00')  # AAPL es ACCIONES
         assert kpis['total_iol'] == Decimal('2000.00')  # 1000 activos + 1000 cash ARS
         assert kpis['liquidez_operativa'] == Decimal('1000.00')  # solo cash ARS
+        assert kpis['cash_disponible_broker'] == Decimal('1000.00')
+        assert kpis['liquidez_estrategica'] == Decimal('0.00')
+        assert kpis['liquidez_total_combinada'] == Decimal('1000.00')
+        assert kpis['total_patrimonio_modelado'] == Decimal('2000.00')
         assert kpis['capital_invertido_real'] == Decimal('1000.00')  # total_iol - liquidez_operativa - fci_cash
         assert kpis['rendimiento_total_dinero'] == Decimal('111.10')  # ganancia_dinero del activo
         assert abs(kpis['rendimiento_total_porcentaje'] - Decimal('12.50')) < Decimal('0.01')
@@ -239,6 +243,10 @@ class TestDashboardSelectors(TestCase):
         assert 'pct_fci_cash_management' in kpis
         assert 'pct_portafolio_invertido' in kpis
         assert 'pct_liquidez_total' in kpis
+        assert 'pct_liquidez_operativa' in kpis
+        assert 'pct_liquidez_estrategica' in kpis
+        assert 'pct_liquidez_total_combinada' in kpis
+        assert 'pct_portafolio_invertido_modelado' in kpis
 
         # Total IOL = 2000, liquidez operativa = 1000, pct_liquidez ya estaba en riesgo_portafolio
         # pct_fci_cash_management debería ser 0% (no hay FCI cash)
@@ -246,6 +254,10 @@ class TestDashboardSelectors(TestCase):
         assert kpis['pct_fci_cash_management'] == 0.0
         assert kpis['pct_portafolio_invertido'] == 50.0
         assert kpis['pct_liquidez_total'] == 50.0
+        assert kpis['pct_liquidez_operativa'] == 50.0
+        assert kpis['pct_liquidez_estrategica'] == 0.0
+        assert kpis['pct_liquidez_total_combinada'] == 50.0
+        assert kpis['pct_portafolio_invertido_modelado'] == 50.0
 
     def test_pct_liquidez_usa_total_iol_como_base(self):
         fecha = timezone.now()
@@ -2859,3 +2871,4 @@ class TestDashboardSelectors(TestCase):
         assert summary['status'] == 'insufficient_history'
         assert summary['max_gap_days'] >= 1
         assert summary['latest_snapshot_at'] is not None
+

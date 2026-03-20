@@ -244,6 +244,11 @@ def get_dashboard_kpis() -> Dict:
         # 4. Portafolio Invertido = activos de inversión (CEDEAR, acciones, bonos, ETF, otros FCI)
         portafolio_invertido = sum(item['activo'].valorizado for item in portafolio_clasificado['inversion'])
 
+        cash_disponible_broker = cash_ars + cash_usd
+        liquidez_estrategica = fci_cash_valor
+        liquidez_total_combinada = cash_disponible_broker + liquidez_estrategica
+        total_patrimonio_modelado = portafolio_invertido + liquidez_estrategica + cash_disponible_broker
+
         # KPIs heredados para compatibilidad
         titulos_valorizados = sum(
             activo.valorizado for activo in portafolio
@@ -276,13 +281,22 @@ def get_dashboard_kpis() -> Dict:
         pct_fci_cash_management = (fci_cash_valor / total_iol * 100) if total_iol else 0
         pct_portafolio_invertido = (portafolio_invertido / total_iol * 100) if total_iol else 0
         pct_liquidez_total = ((liquidez_operativa + fci_cash_valor) / total_iol * 100) if total_iol else 0
+        pct_liquidez_operativa = (cash_disponible_broker / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
+        pct_liquidez_estrategica = (liquidez_estrategica / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
+        pct_liquidez_total_combinada = (liquidez_total_combinada / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
+        pct_portafolio_invertido_modelado = (portafolio_invertido / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
 
         return {
             'total_iol': total_iol,
+            'total_patrimonio_modelado': total_patrimonio_modelado,
             'titulos_valorizados': titulos_valorizados,
             'cash_ars': cash_ars,
             'cash_usd': cash_usd,
+            'cash_disponible_broker': cash_disponible_broker,
+            'caucion_valor': caucion_valor,
             'liquidez_operativa': liquidez_operativa,
+            'liquidez_estrategica': liquidez_estrategica,
+            'liquidez_total_combinada': liquidez_total_combinada,
             'fci_cash_management': fci_cash_valor,
             'portafolio_invertido': portafolio_invertido,
             'capital_invertido_real': capital_invertido_real,
@@ -291,8 +305,12 @@ def get_dashboard_kpis() -> Dict:
             'rendimiento_total_cost_basis': costo_estimado_invertido,
             'top_5_concentracion': top_5_concentracion,
             'top_10_concentracion': top_10_concentracion,
+            'pct_liquidez_operativa': pct_liquidez_operativa,
+            'pct_liquidez_estrategica': pct_liquidez_estrategica,
+            'pct_liquidez_total_combinada': pct_liquidez_total_combinada,
             'pct_fci_cash_management': pct_fci_cash_management,
             'pct_portafolio_invertido': pct_portafolio_invertido,
+            'pct_portafolio_invertido_modelado': pct_portafolio_invertido_modelado,
             'pct_liquidez_total': pct_liquidez_total,
             'methodology': {
                 'top_5_concentracion': 'sum(top_5 valorizado del portafolio invertido) / portafolio invertido',
@@ -302,6 +320,11 @@ def get_dashboard_kpis() -> Dict:
                 'rendimiento_total_basis': 'portafolio_invertido_costo_estimado',
                 'pct_liquidez_total': '(liquidez operativa + cash management) / total iol',
                 'pct_portafolio_invertido': 'portafolio invertido / total iol',
+                'total_patrimonio_modelado': 'portafolio invertido + cash disponible broker + fci cash management',
+                'pct_liquidez_operativa': 'cash disponible broker / total patrimonio modelado',
+                'pct_liquidez_estrategica': 'fci cash management / total patrimonio modelado',
+                'pct_liquidez_total_combinada': '(cash disponible broker + fci cash management) / total patrimonio modelado',
+                'pct_portafolio_invertido_modelado': 'portafolio invertido / total patrimonio modelado',
             },
         }
 

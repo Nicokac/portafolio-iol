@@ -55,8 +55,10 @@ class TestDashboardView:
         body = response.content.decode()
         assert 'Exposición USA' in body
         assert 'Exposición Argentina' in body
-        assert 'Capital invertido' in body
-        assert 'Liquidez total' in body
+        assert 'Total patrimonio modelado' in body
+        assert 'Capital invertido analizado' in body
+        assert 'Liquidez operativa' in body
+        assert 'Liquidez estrat' in body
         assert 'USD oficial mayorista BCRA' in body
         assert 'Riesgo país Argentina' in body
         assert 'Dólar financiero y régimen FX' in body
@@ -88,10 +90,16 @@ class TestDashboardView:
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
         assert 'Bases de Cálculo' in body
+        assert 'Total patrimonio modelado' in body
+        assert 'Liquidez operativa' in body
+        assert 'Liquidez Estrat' in body
+        assert 'Liquidez total combinada' in body
         assert 'Navegación rápida' in body
         assert 'Lectura del portafolio' in body
         assert 'Vista analítica' in body
-        assert 'Fondos de liquidez / cash management' in body
+        assert 'Cash real disponible' in body
+        assert 'FCI cash management' in body
+        assert 'Capital Invertido Analizado' in body
         assert '% Renta fija AR' in body
         assert 'Analytics v2' in body
         assert 'Resumen Analytics v2' in body
