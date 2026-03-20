@@ -86,6 +86,7 @@ class PipelineObservabilityService:
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
             "iol_historical_price_summary": self._build_iol_historical_price_summary(iol_historical_price_rows),
             "iol_historical_price_symbol_groups": self._build_iol_historical_symbol_groups(iol_historical_price_rows),
+            "iol_historical_exclusion_rows": self._build_iol_historical_exclusion_rows(iol_historical_price_rows),
             "iol_historical_recent_sync_rows": self._build_iol_historical_recent_sync_rows(limit=12),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
             "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
@@ -209,6 +210,38 @@ class PipelineObservabilityService:
             "unsupported_fci": unsupported_fci,
             "unsupported_other": unsupported_other,
         }
+
+    @staticmethod
+    def _build_iol_historical_exclusion_rows(rows: list[dict]) -> list[dict]:
+        labels = {
+            "fci_confirmed_by_iol": "FCI confirmado por IOL",
+            "cash_management_local_classification": "Cash management / FCI por clasificación local",
+            "caucion_not_title_series": "Caución sin serie histórica de título",
+            "cash_like_not_title_series": "Cash-like sin serie histórica de título",
+            "title_metadata_unresolved": "Sin metadata resoluble de título",
+            "missing_symbol_or_market": "Sin símbolo o mercado válido",
+        }
+        grouped: dict[str, dict] = {}
+        for row in rows:
+            if row.get("status") != "unsupported":
+                continue
+            reason_key = str(row.get("eligibility_reason_key") or "unknown")
+            symbol_label = f"{row.get('simbolo', '-')} ({row.get('mercado', '-')})"
+            group = grouped.setdefault(
+                reason_key,
+                {
+                    "reason_key": reason_key,
+                    "reason_label": labels.get(reason_key, "Motivo no clasificado"),
+                    "reason_text": row.get("eligibility_reason") or "",
+                    "count": 0,
+                    "symbols": [],
+                },
+            )
+            group["count"] += 1
+            group["symbols"].append(symbol_label)
+        exclusion_rows = list(grouped.values())
+        exclusion_rows.sort(key=lambda item: (-int(item["count"]), item["reason_label"]))
+        return exclusion_rows
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
         audits = SensitiveActionAudit.objects.filter(

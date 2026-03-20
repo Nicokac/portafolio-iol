@@ -367,6 +367,32 @@
             </div>
         </div>
     </div>
+    <div class="col-12">
+        <div class="card border-secondary-subtle">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0">Motivos exactos de exclusión IOL por símbolo</h5>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>Motivo</th><th class="text-end">Símbolos</th><th>Detalle</th><th>Lista</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pipeline_observability.iol_historical_exclusion_rows %}
+                        <tr>
+                            <td>{{ row.reason_label }}</td>
+                            <td class="text-end">{{ row.count }}</td>
+                            <td class="small text-muted">{{ row.reason_text|default:"-" }}</td>
+                            <td class="small">{{ row.symbols|join:", " }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-muted">Sin exclusiones IOL observadas para el portfolio actual.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section class="row g-3 mb-4">

@@ -95,6 +95,8 @@ def test_pipeline_observability_service_builds_unified_summary():
                     "latest_date": None,
                     "status": "unsupported",
                     "eligibility_status": "unsupported_fci",
+                    "eligibility_reason_key": "fci_confirmed_by_iol",
+                    "eligibility_reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
                 },
                 {
                     "simbolo": "CAUCION",
@@ -103,6 +105,8 @@ def test_pipeline_observability_service_builds_unified_summary():
                     "latest_date": None,
                     "status": "unsupported",
                     "eligibility_status": "unsupported",
+                    "eligibility_reason_key": "caucion_not_title_series",
+                    "eligibility_reason": "La caución no expone serie histórica de cotización como un título estándar",
                 },
             ]
 
@@ -154,6 +158,10 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_price_symbol_groups"]["unsupported"] == ["ADBAICA (BCBA)", "CAUCION (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["unsupported_fci"] == ["ADBAICA (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["unsupported_other"] == ["CAUCION (BCBA)"]
+    assert summary["iol_historical_exclusion_rows"][0]["reason_key"] == "caucion_not_title_series"
+    assert summary["iol_historical_exclusion_rows"][0]["count"] == 1
+    assert summary["iol_historical_exclusion_rows"][1]["reason_key"] == "fci_confirmed_by_iol"
+    assert summary["iol_historical_exclusion_rows"][1]["symbols"] == ["ADBAICA (BCBA)"]
     assert len(summary["iol_historical_recent_sync_rows"]) == 2
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial"}
     assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales"}
@@ -238,6 +246,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["iol_historical_price_symbol_groups"]["unsupported"] == []
     assert summary["iol_historical_price_symbol_groups"]["unsupported_fci"] == []
     assert summary["iol_historical_price_symbol_groups"]["unsupported_other"] == []
+    assert summary["iol_historical_exclusion_rows"] == []
     assert summary["iol_historical_recent_sync_rows"] == []
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["overall_status"] == "missing"

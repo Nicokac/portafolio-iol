@@ -1055,6 +1055,22 @@ class TestDashboardView:
                         'unsupported_fci': ['ADBAICA (BCBA)'],
                         'unsupported_other': ['CAUCION (BCBA)'],
                     },
+                    'iol_historical_exclusion_rows': [
+                        {
+                            'reason_key': 'fci_confirmed_by_iol',
+                            'reason_label': 'FCI confirmado por IOL',
+                            'reason_text': 'Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos',
+                            'count': 1,
+                            'symbols': ['ADBAICA (BCBA)'],
+                        },
+                        {
+                            'reason_key': 'caucion_not_title_series',
+                            'reason_label': 'Caución sin serie histórica de título',
+                            'reason_text': 'La caución no expone serie histórica de cotización como un título estándar',
+                            'count': 1,
+                            'symbols': ['CAUCION (BCBA)'],
+                        },
+                    ],
                     'iol_historical_recent_sync_rows': [
                         {
                             'action_label': 'Sync faltantes',
@@ -1129,6 +1145,7 @@ class TestDashboardView:
                             'latest_date': None,
                             'status': 'unsupported',
                             'eligibility_status': 'unsupported_fci',
+                            'eligibility_reason_key': 'fci_confirmed_by_iol',
                             'eligibility_reason': 'Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos',
                         },
                         {
@@ -1138,6 +1155,7 @@ class TestDashboardView:
                             'latest_date': None,
                             'status': 'unsupported',
                             'eligibility_status': 'unsupported',
+                            'eligibility_reason_key': 'caucion_not_title_series',
                             'eligibility_reason': 'La caución no expone serie histórica de cotización como un título estándar',
                         },
                     ],
@@ -1204,6 +1222,9 @@ class TestDashboardView:
         assert 'NASDAQ:AAPL' in body
         assert 'BCBA:GGAL' in body
         assert 'Cobertura de históricos IOL por símbolo' in body
+        assert 'Motivos exactos de exclusión IOL por símbolo' in body or 'Motivos exactos de exclusion IOL por simbolo' in body
+        assert 'FCI confirmado por IOL' in body
+        assert 'Caución sin serie histórica de título' in body or 'Caucion sin serie historica de titulo' in body
         assert 'GGAL' in body
         assert 'NASDAQ' in body
         assert 'Parcial' in body

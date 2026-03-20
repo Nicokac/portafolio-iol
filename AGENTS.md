@@ -180,7 +180,6 @@ Restricciones:
 * no hacer push si no hubo confirmaci?n expl?cita del usuario
 * no usar esta regla para saltear la revisi?n y cierre de m?dulo
 
-
 ### 9. Regla de trazabilidad
 
 Toda propuesta debe indicar:

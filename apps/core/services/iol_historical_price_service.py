@@ -227,6 +227,7 @@ class IOLHistoricalPriceService:
                     "latest_date": coverage.get("latest_date"),
                     "status": status,
                     "eligibility_status": eligibility.get("eligibility_status") or status,
+                    "eligibility_reason_key": eligibility.get("reason_key") or "",
                     "eligibility_reason": eligibility.get("reason") or "",
                     "minimum_ready_rows": minimum_ready_rows,
                 }
@@ -245,6 +246,7 @@ class IOLHistoricalPriceService:
                         "mercado": mercado,
                         "simbolo": simbolo,
                         "eligibility_status": "unsupported_fci",
+                        "reason_key": "fci_confirmed_by_iol",
                         "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
                     }
             return local_support
@@ -258,6 +260,7 @@ class IOLHistoricalPriceService:
                     "mercado": mercado,
                     "simbolo": simbolo,
                     "eligibility_status": "unsupported_fci",
+                    "reason_key": "fci_confirmed_by_iol",
                     "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
                 }
             return {
@@ -265,6 +268,7 @@ class IOLHistoricalPriceService:
                 "mercado": mercado,
                 "simbolo": simbolo,
                 "eligibility_status": "unsupported",
+                "reason_key": "title_metadata_unresolved",
                 "reason": "IOL no resolvió metadata del instrumento para históricos",
             }
 
@@ -300,6 +304,7 @@ class IOLHistoricalPriceService:
                 "mercado": mercado,
                 "simbolo": simbolo,
                 "eligibility_status": "unsupported",
+                "reason_key": "missing_symbol_or_market",
                 "reason": "Instrumento sin simbolo o mercado valido",
             }
         if simbolo_norm in self.CASH_MANAGEMENT_SYMBOLS or "FCI" in tipo or "FONDO" in descripcion:
@@ -308,6 +313,7 @@ class IOLHistoricalPriceService:
                 "mercado": mercado,
                 "simbolo": simbolo,
                 "eligibility_status": "unsupported_fci",
+                "reason_key": "cash_management_local_classification",
                 "reason": "FCI y cash management usan un pipeline distinto al de títulos",
             }
         if "CAUCION" in simbolo_norm or "CAUCION" in tipo or "CAUCION" in descripcion:
@@ -316,6 +322,7 @@ class IOLHistoricalPriceService:
                 "mercado": mercado,
                 "simbolo": simbolo,
                 "eligibility_status": "unsupported",
+                "reason_key": "caucion_not_title_series",
                 "reason": "La caución no expone serie histórica de cotización como un título estándar",
             }
         if "DISPONIBLE" in descripcion or "CASH MANAGEMENT" in descripcion or "MONEY MARKET" in descripcion:
@@ -324,6 +331,7 @@ class IOLHistoricalPriceService:
                 "mercado": mercado,
                 "simbolo": simbolo,
                 "eligibility_status": "unsupported",
+                "reason_key": "cash_like_not_title_series",
                 "reason": "El instrumento es cash-like y no se sincroniza como título cotizante",
             }
         return {
@@ -331,6 +339,7 @@ class IOLHistoricalPriceService:
             "mercado": mercado,
             "simbolo": simbolo,
             "eligibility_status": "supported",
+            "reason_key": "",
             "reason": "",
         }
 
