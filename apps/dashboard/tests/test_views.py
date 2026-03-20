@@ -1159,6 +1159,48 @@ class TestDashboardView:
                             ],
                         },
                     ],
+                    'iol_historical_recent_sync_priority_groups': {
+                        'critical': [
+                            {
+                                'symbol_key': 'NYSE:KO',
+                                'user_labels': ['staffuser'],
+                                'latest_at': '2026-03-17 10:15',
+                                'priority_key': 'critical',
+                                'priority_label': 'Atención inmediata',
+                                'priority_badge': 'danger',
+                                'items': [
+                                    {'scope': 'partial', 'action_label': 'Reforzar parciales', 'rows_received': 0, 'status': 'failed', 'created_at': '2026-03-17 10:15', 'message': 'provider timeout'},
+                                ],
+                            },
+                        ],
+                        'recoverable': [
+                            {
+                                'symbol_key': 'NASDAQ:AAPL',
+                                'user_labels': ['staffuser'],
+                                'latest_at': '2026-03-17 10:12',
+                                'priority_key': 'recoverable',
+                                'priority_label': 'Recuperable',
+                                'priority_badge': 'warning',
+                                'items': [
+                                    {'scope': 'missing', 'action_label': 'Sync faltantes', 'rows_received': 30, 'status': 'success', 'created_at': '2026-03-17 10:00', 'message': ''},
+                                    {'scope': 'metadata', 'action_label': 'Reintentar metadata', 'rows_received': 7, 'status': 'success', 'created_at': '2026-03-17 10:12', 'message': ''},
+                                ],
+                            },
+                        ],
+                        'stable': [
+                            {
+                                'symbol_key': 'BCBA:GGAL',
+                                'user_labels': ['staffuser'],
+                                'latest_at': '2026-03-17 10:05',
+                                'priority_key': 'stable',
+                                'priority_label': 'Estable',
+                                'priority_badge': 'success',
+                                'items': [
+                                    {'scope': 'partial', 'action_label': 'Reforzar parciales', 'rows_received': 12, 'status': 'success', 'created_at': '2026-03-17 10:05', 'message': ''},
+                                ],
+                            },
+                        ],
+                    },
                     'iol_historical_ops_cta': {
                         'level': 'danger',
                         'title': 'Atención inmediata en históricos IOL',
@@ -1292,6 +1334,9 @@ class TestDashboardView:
         assert 'Atención inmediata en históricos IOL' in body or 'Atencion inmediata en historicos IOL' in body
         assert 'Priorizá revisión manual de los símbolos fallidos' in body or 'Prioriza revision manual de los simbolos fallidos' in body
         assert 'Ordenado por severidad y recuperabilidad' in body
+        assert 'Atención inmediata (1)' in body or 'Atencion inmediata (1)' in body
+        assert 'Recuperable (1)' in body
+        assert 'Estable (1)' in body
         assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
         assert 'Sync faltantes' in body
         assert 'Reforzar parciales' in body

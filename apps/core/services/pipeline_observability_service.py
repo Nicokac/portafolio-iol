@@ -52,6 +52,9 @@ class PipelineObservabilityService:
         benchmark_status_rows = self.benchmark_service.get_status_summary()
         iol_historical_price_rows = self.iol_historical_price_service.get_current_portfolio_coverage_rows()
         iol_historical_recent_sync_rows = self._build_iol_historical_recent_sync_rows(limit=12)
+        iol_historical_recent_sync_by_symbol = self._build_iol_historical_recent_sync_by_symbol(
+            iol_historical_recent_sync_rows
+        )
         local_macro_status_rows = self.local_macro_service.get_status_summary()
         critical_local_macro_rows = self._build_critical_local_macro_rows(local_macro_status_rows)
         external_source_status_rows = self._build_external_source_status_rows()
@@ -89,8 +92,9 @@ class PipelineObservabilityService:
             "iol_historical_price_symbol_groups": self._build_iol_historical_symbol_groups(iol_historical_price_rows),
             "iol_historical_exclusion_rows": self._build_iol_historical_exclusion_rows(iol_historical_price_rows),
             "iol_historical_recent_sync_rows": iol_historical_recent_sync_rows,
-            "iol_historical_recent_sync_by_symbol": self._build_iol_historical_recent_sync_by_symbol(
-                iol_historical_recent_sync_rows
+            "iol_historical_recent_sync_by_symbol": iol_historical_recent_sync_by_symbol,
+            "iol_historical_recent_sync_priority_groups": self._build_iol_historical_recent_sync_priority_groups(
+                iol_historical_recent_sync_by_symbol
             ),
             "iol_historical_ops_cta": self._build_iol_historical_ops_cta(iol_historical_recent_sync_rows),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
@@ -372,6 +376,15 @@ class PipelineObservabilityService:
             }
 
         return None
+
+    @staticmethod
+    def _build_iol_historical_recent_sync_priority_groups(rows: list[dict]) -> dict:
+        groups = {
+            "critical": [row for row in rows if str(row.get("priority_key") or "") == "critical"],
+            "recoverable": [row for row in rows if str(row.get("priority_key") or "") == "recoverable"],
+            "stable": [row for row in rows if str(row.get("priority_key") or "") == "stable"],
+        }
+        return groups
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
         audits = SensitiveActionAudit.objects.filter(

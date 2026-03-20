@@ -307,7 +307,28 @@
                     <div class="small text-muted">Ordenado por severidad y recuperabilidad: fallidos, metadata recuperable, luego éxitos.</div>
                 </div>
             </div>
-            <div class="card-body table-responsive">
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <a class="btn btn-sm btn-outline-danger" href="#ops-iol-priority-critical">
+                        Atención inmediata ({{ pipeline_observability.iol_historical_recent_sync_priority_groups.critical|length }})
+                    </a>
+                    <a class="btn btn-sm btn-outline-warning" href="#ops-iol-priority-recoverable">
+                        Recuperable ({{ pipeline_observability.iol_historical_recent_sync_priority_groups.recoverable|length }})
+                    </a>
+                    <a class="btn btn-sm btn-outline-success" href="#ops-iol-priority-stable">
+                        Estable ({{ pipeline_observability.iol_historical_recent_sync_priority_groups.stable|length }})
+                    </a>
+                </div>
+                <div id="ops-iol-priority-critical" class="small text-muted mb-2">
+                    Atención inmediata: {{ pipeline_observability.iol_historical_recent_sync_priority_groups.critical|length }} símbolo(s)
+                </div>
+                <div id="ops-iol-priority-recoverable" class="small text-muted mb-2">
+                    Recuperable: {{ pipeline_observability.iol_historical_recent_sync_priority_groups.recoverable|length }} símbolo(s)
+                </div>
+                <div id="ops-iol-priority-stable" class="small text-muted mb-3">
+                    Estable: {{ pipeline_observability.iol_historical_recent_sync_priority_groups.stable|length }} símbolo(s)
+                </div>
+                <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr><th>Prioridad</th><th>Símbolo</th><th>Usuarios</th><th>Scopes</th><th>Última actividad</th></tr>
@@ -341,6 +362,7 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>

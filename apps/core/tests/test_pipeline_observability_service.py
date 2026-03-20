@@ -190,6 +190,9 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_ops_cta"]["level"] == "danger"
     assert summary["iol_historical_ops_cta"]["title"] == "Atención inmediata en históricos IOL"
     assert summary["iol_historical_ops_cta"]["symbol_keys"] == ["NYSE:KO"]
+    assert [row["symbol_key"] for row in summary["iol_historical_recent_sync_priority_groups"]["critical"]] == ["NYSE:KO"]
+    assert [row["symbol_key"] for row in summary["iol_historical_recent_sync_priority_groups"]["recoverable"]] == ["NASDAQ:AAPL", "NASDAQ:MSFT"]
+    assert [row["symbol_key"] for row in summary["iol_historical_recent_sync_priority_groups"]["stable"]] == ["BCBA:GGAL"]
     assert len(summary["iol_historical_recent_sync_rows"]) == 5
     grouped_by_symbol = {row["symbol_key"]: row for row in summary["iol_historical_recent_sync_by_symbol"]}
     assert summary["iol_historical_recent_sync_by_symbol"][0]["symbol_key"] == "NYSE:KO"
@@ -290,6 +293,11 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["iol_historical_exclusion_rows"] == []
     assert summary["iol_historical_ops_cta"] is None
     assert summary["iol_historical_recent_sync_by_symbol"] == []
+    assert summary["iol_historical_recent_sync_priority_groups"] == {
+        "critical": [],
+        "recoverable": [],
+        "stable": [],
+    }
     assert summary["iol_historical_recent_sync_rows"] == []
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["overall_status"] == "missing"
