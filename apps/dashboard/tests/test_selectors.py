@@ -100,6 +100,8 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
         saldo=disponible,
         titulos_valorizados=0,
         total=disponible,
+        total_en_pesos=None,
+        saldos_detalle=[],
         estado='activa',
     )
     defaults.update(kwargs)
@@ -236,6 +238,43 @@ class TestDashboardSelectors(TestCase):
         assert kpis['rendimiento_total_dinero'] == Decimal('111.10')  # ganancia_dinero del activo
         assert abs(kpis['rendimiento_total_porcentaje'] - Decimal('12.50')) < Decimal('0.01')
 
+    def test_get_dashboard_kpis_uses_total_en_pesos_and_settlement_layers(self):
+        fecha = timezone.now()
+        make_resumen(
+            fecha,
+            moneda='peso_Argentino',
+            disponible=0.47,
+            total=25813062.64,
+            total_en_pesos=Decimal('26317309.04'),
+            saldos_detalle=[
+                {'liquidacion': 'inmediato', 'saldo': 0.47, 'comprometido': 0, 'disponible': 0.47, 'disponibleOperar': 0.47},
+                {'liquidacion': 'hrs24', 'saldo': 10063847.36, 'comprometido': 0, 'disponible': 10063847.36, 'disponibleOperar': 10063847.83},
+            ],
+        )
+        make_resumen(
+            fecha,
+            numero_cuenta='123-USD',
+            moneda='dolar_Estadounidense',
+            disponible=0.56,
+            total=370.77,
+            total_en_pesos=Decimal('26317309.04'),
+            saldos_detalle=[
+                {'liquidacion': 'inmediato', 'saldo': 0.56, 'comprometido': 0, 'disponible': 0.56, 'disponibleOperar': 0.56},
+            ],
+        )
+        make_activo(fecha, 'AAPL', valorizado=1000.00, tipo='ACCIONES', moneda='USD')
+
+        kpis = get_dashboard_kpis()
+
+        assert kpis['cash_ars'] == Decimal('0.47')
+        assert kpis['cash_usd'] == Decimal('0.56')
+        assert kpis['cash_a_liquidar_ars'] == Decimal('10063847.36')
+        assert kpis['cash_a_liquidar_usd'] == Decimal('0.00')
+        assert kpis['cash_disponible_broker'] == Decimal('1.03')
+        assert kpis['total_broker_en_pesos'] == Decimal('26317309.04')
+        assert kpis['total_iol'] == Decimal('26317309.04')
+        assert kpis['total_iol_legacy_calculated'] == Decimal('1001.03')
+
     def test_get_dashboard_kpis_with_percentages(self):
         """Test que los KPIs incluyen los porcentajes de los bloques patrimoniales."""
         fecha = timezone.now()
@@ -317,6 +356,49 @@ class TestDashboardSelectors(TestCase):
         assert abs(float(kpis['pct_liquidez_estrategica']) - 16.6667) < 0.01
         assert abs(float(kpis['pct_portafolio_invertido_modelado']) - 43.3333) < 0.01
         assert abs(float(kpis['pct_liquidez_total_combinada']) - 56.6667) < 0.01
+
+    def test_build_portfolio_scope_summary_uses_total_en_pesos_and_cash_settling_layers(self):
+        fecha = timezone.now()
+        make_resumen(
+            fecha,
+            moneda='peso_Argentino',
+            disponible=0.47,
+            total_en_pesos=Decimal('26317309.04'),
+            saldos_detalle=[
+                {'liquidacion': 'inmediato', 'disponible': 0.47},
+                {'liquidacion': 'hrs24', 'disponible': 10063847.36},
+            ],
+        )
+        make_resumen(
+            fecha,
+            numero_cuenta='123-USD',
+            moneda='dolar_Estadounidense',
+            disponible=0.56,
+            total_en_pesos=Decimal('26317309.04'),
+            saldos_detalle=[
+                {'liquidacion': 'inmediato', 'disponible': 0.56},
+            ],
+        )
+
+        with patch(
+            "apps.dashboard.selectors.get_dashboard_kpis",
+            return_value={
+                "total_iol": Decimal('26317309.04'),
+                "total_broker_en_pesos": Decimal('26317309.04'),
+                "portafolio_invertido": Decimal('13330704.00'),
+                "fci_cash_management": Decimal('2532885.00'),
+                "caucion_colocada": Decimal('0.00'),
+            },
+        ):
+            detail = _build_portfolio_scope_summary()
+
+        assert detail["portfolio_total_broker"] == 26317309.04
+        assert detail["cash_available_broker"] == 0.47
+        assert detail["cash_available_broker_ars"] == 0.47
+        assert detail["cash_available_broker_usd"] == 0.56
+        assert detail["cash_settling_broker"] == 10063847.36
+        assert detail["cash_settling_broker_ars"] == 10063847.36
+        assert detail["cash_settling_broker_usd"] == 0.0
 
     def test_pct_liquidez_usa_total_iol_como_base(self):
         fecha = timezone.now()

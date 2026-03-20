@@ -1,5 +1,6 @@
 from typing import Dict, List
 from datetime import timedelta
+from decimal import Decimal
 import hashlib
 import json
 from urllib.parse import urlencode
@@ -211,9 +212,82 @@ def _get_resumen_cash_distribution_by_country() -> Dict[str, float]:
         monto = float(cuenta.disponible)
         if monto <= 0:
             continue
-        pais = 'USA' if cuenta.moneda == 'USD' else 'Argentina'
+        pais = 'USA' if _normalize_account_currency(cuenta.moneda) == 'USD' else 'Argentina'
         distribucion[pais] = distribucion.get(pais, 0) + monto
     return distribucion
+
+
+def _normalize_account_currency(moneda: str | None) -> str:
+    normalized = str(moneda or '').strip()
+    mapping = {
+        'ARS': 'ARS',
+        'peso_Argentino': 'ARS',
+        'USD': 'USD',
+        'dolar_Estadounidense': 'USD',
+    }
+    return mapping.get(normalized, normalized)
+
+
+def _extract_resumen_cash_components(resumen: List[ResumenCuentaSnapshot]) -> Dict[str, Decimal]:
+    cash_immediate_ars = Decimal('0')
+    cash_immediate_usd = Decimal('0')
+    cash_pending_ars = Decimal('0')
+    cash_pending_usd = Decimal('0')
+    fallback_cash_ars = Decimal('0')
+    fallback_cash_usd = Decimal('0')
+    total_broker_en_pesos = None
+
+    for cuenta in resumen:
+        currency_code = _normalize_account_currency(cuenta.moneda)
+        disponible = Decimal(cuenta.disponible or 0)
+        if currency_code == 'ARS':
+            fallback_cash_ars += disponible
+        elif currency_code == 'USD':
+            fallback_cash_usd += disponible
+
+        if total_broker_en_pesos is None and getattr(cuenta, 'total_en_pesos', None) is not None:
+            total_broker_en_pesos = Decimal(cuenta.total_en_pesos)
+
+        saldos_detalle = getattr(cuenta, 'saldos_detalle', None) or []
+        if not saldos_detalle:
+            continue
+
+        immediate_found = False
+        for saldo_row in saldos_detalle:
+            liquidacion = str(saldo_row.get('liquidacion') or '').strip()
+            disponible_row = Decimal(str(saldo_row.get('disponible', 0) or 0))
+            if liquidacion == 'inmediato':
+                immediate_found = True
+                if currency_code == 'ARS':
+                    cash_immediate_ars += disponible_row
+                elif currency_code == 'USD':
+                    cash_immediate_usd += disponible_row
+            else:
+                if currency_code == 'ARS':
+                    cash_pending_ars += disponible_row
+                elif currency_code == 'USD':
+                    cash_pending_usd += disponible_row
+
+        if not immediate_found:
+            if currency_code == 'ARS':
+                cash_immediate_ars += disponible
+            elif currency_code == 'USD':
+                cash_immediate_usd += disponible
+
+    if cash_immediate_ars == 0 and fallback_cash_ars > 0:
+        cash_immediate_ars = fallback_cash_ars
+    if cash_immediate_usd == 0 and fallback_cash_usd > 0:
+        cash_immediate_usd = fallback_cash_usd
+
+    return {
+        'cash_immediate_ars': cash_immediate_ars,
+        'cash_immediate_usd': cash_immediate_usd,
+        'cash_pending_ars': cash_pending_ars,
+        'cash_pending_usd': cash_pending_usd,
+        'cash_disponible_ars': fallback_cash_ars,
+        'cash_disponible_usd': fallback_cash_usd,
+        'total_broker_en_pesos': total_broker_en_pesos or Decimal('0'),
+    }
 
 
 def get_dashboard_kpis() -> Dict:
@@ -225,13 +299,18 @@ def get_dashboard_kpis() -> Dict:
         # Obtener clasificación del portafolio
         portafolio_clasificado = get_portafolio_enriquecido_actual()
 
-        # Cash disponible
-        cash_ars = sum(cuenta.disponible for cuenta in resumen if cuenta.moneda == 'ARS')
-        cash_usd = sum(cuenta.disponible for cuenta in resumen if cuenta.moneda == 'USD')
+        # Cash inmediato y a liquidar desde estadocuenta
+        cash_components = _extract_resumen_cash_components(resumen)
+        cash_ars = cash_components['cash_immediate_ars']
+        cash_usd = cash_components['cash_immediate_usd']
+        cash_a_liquidar_ars = cash_components['cash_pending_ars']
+        cash_a_liquidar_usd = cash_components['cash_pending_usd']
+        total_broker_en_pesos = cash_components['total_broker_en_pesos']
 
         # 1. Total IOL = SUM(valorizado de todos los activos) + cash ARS + cash USD
         total_activos_valorizados = sum(activo.valorizado for activo in portafolio)
-        total_iol = total_activos_valorizados + cash_ars + cash_usd
+        total_iol_calculado = total_activos_valorizados + cash_ars + cash_usd
+        total_iol = total_broker_en_pesos if total_broker_en_pesos > 0 else total_iol_calculado
 
         # KPIs separados por categoría
         # 2. Liquidez Operativa = caución + saldo ARS disponible + saldo USD disponible
@@ -295,10 +374,15 @@ def get_dashboard_kpis() -> Dict:
 
         return {
             'total_iol': total_iol,
+            'total_iol_legacy_calculated': total_iol_calculado,
+            'total_broker_en_pesos': total_broker_en_pesos,
             'total_patrimonio_modelado': total_patrimonio_modelado,
             'titulos_valorizados': titulos_valorizados,
             'cash_ars': cash_ars,
             'cash_usd': cash_usd,
+            'cash_a_liquidar_ars': cash_a_liquidar_ars,
+            'cash_a_liquidar_usd': cash_a_liquidar_usd,
+            'cash_a_liquidar_broker': cash_a_liquidar_ars + cash_a_liquidar_usd,
             'cash_disponible_broker': cash_disponible_broker,
             'caucion_valor': caucion_valor,
             'caucion_colocada': caucion_colocada,
@@ -329,6 +413,7 @@ def get_dashboard_kpis() -> Dict:
                 'rendimiento_total_basis': 'portafolio_invertido_costo_estimado',
                 'pct_liquidez_total': '(liquidez operativa + cash management) / total iol',
                 'pct_portafolio_invertido': 'portafolio invertido / total iol',
+                'total_iol': 'si existe total_en_pesos desde estadocuenta se usa como ancla broker; si no, fallback a activos + cash inmediato',
                 'total_patrimonio_modelado': 'portafolio invertido + cash disponible broker + caucion colocada + fci cash management',
                 'pct_liquidez_operativa': 'cash disponible broker / total patrimonio modelado',
                 'pct_caucion_colocada': 'caucion colocada / total patrimonio modelado',
@@ -404,9 +489,12 @@ def _build_portfolio_scope_summary() -> Dict:
     kpis = get_dashboard_kpis()
     resumen = get_latest_resumen_data()
 
-    cash_ars = sum(float(cuenta.disponible) for cuenta in resumen if cuenta.moneda == "ARS")
-    cash_usd = sum(float(cuenta.disponible) for cuenta in resumen if cuenta.moneda == "USD")
-    portfolio_total_broker = float(kpis.get("total_iol") or 0.0)
+    cash_components = _extract_resumen_cash_components(resumen)
+    cash_ars = float(cash_components['cash_immediate_ars'])
+    cash_usd = float(cash_components['cash_immediate_usd'])
+    cash_a_liquidar_ars = float(cash_components['cash_pending_ars'])
+    cash_a_liquidar_usd = float(cash_components['cash_pending_usd'])
+    portfolio_total_broker = float(kpis.get("total_broker_en_pesos") or kpis.get("total_iol") or 0.0)
     invested_portfolio = float(kpis.get("portafolio_invertido") or 0.0)
     caucion_colocada = float(kpis.get("caucion_colocada") or 0.0)
     cash_management_fci = float(kpis.get("fci_cash_management") or 0.0)
@@ -425,6 +513,9 @@ def _build_portfolio_scope_summary() -> Dict:
         "cash_available_broker": cash_available_broker,
         "cash_available_broker_ars": cash_ars,
         "cash_available_broker_usd": cash_usd,
+        "cash_settling_broker": cash_a_liquidar_ars,
+        "cash_settling_broker_ars": cash_a_liquidar_ars,
+        "cash_settling_broker_usd": cash_a_liquidar_usd,
         "cash_ratio_total": cash_ratio_total,
         "caucion_ratio_total": caucion_ratio_total,
         "invested_ratio_total": invested_ratio_total,
