@@ -180,9 +180,15 @@ class TestIOLAPIClient:
         mock_response.json.return_value = [{'fechaHora': '2026-03-19T17:00:00', 'ultimoPrecio': 100.0}]
         mock_get.return_value = mock_response
 
-        result = client.get_titulo_historicos('bCBA', 'GGAL', {'desde': '2026-01-01'})
+        result = client.get_titulo_historicos('bCBA', 'GGAL', {'fechaDesde': '2026-01-01', 'fechaHasta': '2026-03-19'})
 
         assert result == [{'fechaHora': '2026-03-19T17:00:00', 'ultimoPrecio': 100.0}]
+        called_url = mock_get.call_args.args[0]
+        assert '/api/v2/bCBA/Titulos/GGAL/Cotizacion/seriehistorica/' in called_url
+        assert '2026-01-01T00%3A00%3A00' in called_url
+        assert '2026-03-19T23%3A59%3A59' in called_url
+        assert called_url.endswith('/ajustada')
+        assert mock_get.call_args.kwargs['params'] is None
 
     @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_titulo_historicos_rejects_non_list_payload(self, mock_get, client):
@@ -194,6 +200,18 @@ class TestIOLAPIClient:
         result = client.get_titulo_historicos('bCBA', 'GGAL')
 
         assert result is None
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_returns_metadata_dict(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {'simbolo': 'GGAL', 'mercado': 'BCBA', 'tipo': 'ACCIONES'}
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo('BCBA', 'GGAL')
+
+        assert result == {'simbolo': 'GGAL', 'mercado': 'BCBA', 'tipo': 'ACCIONES'}
+        assert mock_get.call_args.args[0].endswith('/api/v2/BCBA/Titulos/GGAL')
 
     @patch('apps.core.services.iol_api_client.requests.get')
     def test_request_json_retries_once_on_401_and_then_succeeds(self, mock_get, client):

@@ -36,6 +36,7 @@ def _make_asset_snapshot(simbolo: str, mercado: str = "BCBA"):
 @pytest.mark.django_db
 def test_iol_historical_price_service_syncs_and_upserts_rows():
     client = Mock()
+    client.get_titulo.return_value = {"simbolo": "GGAL", "mercado": "BCBA", "tipo": "ACCIONES"}
     client.get_titulo_historicos.return_value = [
         {
             "fechaHora": "2026-03-18T17:00:00",
@@ -67,6 +68,7 @@ def test_iol_historical_price_service_syncs_and_upserts_rows():
 @pytest.mark.django_db
 def test_iol_historical_price_service_ignores_rows_without_date_or_close():
     client = Mock()
+    client.get_titulo.return_value = {"simbolo": "GGAL", "mercado": "BCBA", "tipo": "ACCIONES"}
     client.get_titulo_historicos.return_value = [
         {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 108.0},
         {"fechaHora": None, "ultimoPrecio": 109.0},
@@ -110,6 +112,10 @@ def test_iol_historical_price_service_syncs_current_portfolio_symbols():
     _make_asset_snapshot("AAPL", "NASDAQ")
 
     client = Mock()
+    client.get_titulo.side_effect = [
+        {"simbolo": "GGAL", "mercado": "BCBA", "tipo": "ACCIONES"},
+        {"simbolo": "AAPL", "mercado": "NASDAQ", "tipo": "ACCIONES"},
+    ]
     client.get_titulo_historicos.side_effect = [
         [{"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 108.0}],
         [{"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0}],
@@ -183,6 +189,7 @@ def test_iol_historical_price_service_syncs_only_missing_symbols_by_status():
         )
 
     client = Mock()
+    client.get_titulo.return_value = {"simbolo": "AAPL", "mercado": "NASDAQ", "tipo": "ACCIONES"}
     client.get_titulo_historicos.return_value = [
         {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0},
     ]
@@ -213,6 +220,7 @@ def test_iol_historical_price_service_syncs_only_partial_symbols_by_status():
         )
 
     client = Mock()
+    client.get_titulo.return_value = {"simbolo": "GGAL", "mercado": "BCBA", "tipo": "ACCIONES"}
     client.get_titulo_historicos.return_value = [
         {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0},
     ]
@@ -227,3 +235,70 @@ def test_iol_historical_price_service_syncs_only_partial_symbols_by_status():
     assert result["success"] is True
     assert "BCBA:GGAL" in result["results"]
     assert "NASDAQ:AAPL" not in result["results"]
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_skips_fci_symbols_in_title_history_pipeline():
+    client = Mock()
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "ADBAICA")
+
+    assert result["success"] is True
+    assert result["skipped"] is True
+    assert result["eligibility_status"] == "unsupported"
+    assert "pipeline distinto" in result["error"]
+    client.get_titulo_historicos.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_marks_caucion_and_fci_as_unsupported_in_coverage_rows():
+    _make_asset_snapshot("GGAL", "BCBA")
+    _make_asset_snapshot("ADBAICA", "BCBA")
+    caucion = _make_asset_snapshot("CAUCIÓN COLOCADORA", "BCBA")
+    caucion.tipo = "CAUCION"
+    caucion.descripcion = "Caución colocadora"
+    caucion.save(update_fields=["tipo", "descripcion"])
+    IOLHistoricalPriceSnapshot.objects.create(
+        simbolo="GGAL",
+        mercado="BCBA",
+        source="iol",
+        fecha=date(2026, 3, 18),
+        close=100,
+    )
+    IOLHistoricalPriceSnapshot.objects.create(
+        simbolo="GGAL",
+        mercado="BCBA",
+        source="iol",
+        fecha=date(2026, 3, 19),
+        close=102,
+    )
+    IOLHistoricalPriceSnapshot.objects.create(
+        simbolo="GGAL",
+        mercado="BCBA",
+        source="iol",
+        fecha=date(2026, 3, 20),
+        close=103,
+    )
+
+    rows = IOLHistoricalPriceService(client=Mock()).get_current_portfolio_coverage_rows(minimum_ready_rows=3)
+
+    row_by_symbol = {row["simbolo"]: row for row in rows}
+    assert row_by_symbol["GGAL"]["status"] == "ready"
+    assert row_by_symbol["ADBAICA"]["status"] == "unsupported"
+    assert "pipeline distinto" in row_by_symbol["ADBAICA"]["eligibility_reason"]
+    assert row_by_symbol["CAUCIÓN COLOCADORA"]["status"] == "unsupported"
+    assert "caución" in row_by_symbol["CAUCIÓN COLOCADORA"]["eligibility_reason"].lower()
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_skips_symbols_unresolved_by_iol_metadata():
+    client = Mock()
+    client.get_titulo.return_value = None
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "GGAL")
+
+    assert result["success"] is True
+    assert result["skipped"] is True
+    assert result["eligibility_status"] == "unsupported"
+    assert "metadata" in result["error"].lower()
+    client.get_titulo_historicos.assert_not_called()

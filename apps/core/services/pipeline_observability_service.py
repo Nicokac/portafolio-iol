@@ -162,6 +162,7 @@ class PipelineObservabilityService:
         ready_count = sum(1 for row in rows if row.get("status") == "ready")
         partial_count = sum(1 for row in rows if row.get("status") == "partial")
         missing_count = sum(1 for row in rows if row.get("status") == "missing")
+        unsupported_count = sum(1 for row in rows if row.get("status") == "unsupported")
         if total == 0:
             overall_status = "missing"
         elif missing_count == 0 and partial_count == 0:
@@ -169,12 +170,13 @@ class PipelineObservabilityService:
         elif ready_count > 0 or partial_count > 0:
             overall_status = "partial"
         else:
-            overall_status = "missing"
+            overall_status = "warning" if unsupported_count > 0 else "missing"
         return {
             "total_symbols": total,
             "ready_count": ready_count,
             "partial_count": partial_count,
             "missing_count": missing_count,
+            "unsupported_count": unsupported_count,
             "overall_status": overall_status,
         }
 
@@ -188,10 +190,12 @@ class PipelineObservabilityService:
         ready = [_label(row) for row in rows if row.get("status") == "ready"]
         partial = [_label(row) for row in rows if row.get("status") == "partial"]
         missing = [_label(row) for row in rows if row.get("status") == "missing"]
+        unsupported = [_label(row) for row in rows if row.get("status") == "unsupported"]
         return {
             "ready": ready,
             "partial": partial,
             "missing": missing,
+            "unsupported": unsupported,
         }
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:

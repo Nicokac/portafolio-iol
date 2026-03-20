@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 from typing import Iterable
+import unicodedata
 
 import pandas as pd
 from django.db import transaction
@@ -16,19 +17,38 @@ from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 class IOLHistoricalPriceService:
     """Persistencia minima de historicos diarios por simbolo desde IOL."""
 
+    EXCLUDED_FCI_SYMBOLS = {"ADBAICA", "IOLPORA"}
+
     def __init__(self, client: IOLAPIClient | None = None):
         self.client = client or IOLAPIClient()
+        self._title_metadata_cache: dict[tuple[str, str], dict] = {}
 
     def sync_symbol_history(self, mercado: str, simbolo: str, params: dict | None = None) -> dict:
-        raw_rows = self.client.get_titulo_historicos(mercado, simbolo, params=params)
-        if raw_rows is None:
+        support = self.resolve_symbol_history_support(mercado=mercado, simbolo=simbolo)
+        if not support.get("supported"):
             return {
-                "success": False,
+                "success": True,
+                "skipped": True,
                 "simbolo": simbolo,
                 "mercado": mercado,
                 "rows_received": 0,
                 "created": 0,
                 "updated": 0,
+                "eligibility_status": support.get("eligibility_status") or "unsupported",
+                "error": support.get("reason") or "Instrumento no elegible para históricos IOL",
+            }
+
+        resolved_market = str(support.get("mercado") or mercado)
+        raw_rows = self.client.get_titulo_historicos(resolved_market, simbolo, params=params)
+        if raw_rows is None:
+            return {
+                "success": False,
+                "simbolo": simbolo,
+                "mercado": resolved_market,
+                "rows_received": 0,
+                "created": 0,
+                "updated": 0,
+                "eligibility_status": support.get("eligibility_status") or "supported",
                 "error": self.client.last_error.get("message") or "IOL historical prices unavailable",
             }
 
@@ -40,7 +60,7 @@ class IOLHistoricalPriceService:
             for row in normalized_rows:
                 _, was_created = IOLHistoricalPriceSnapshot.objects.update_or_create(
                     simbolo=simbolo,
-                    mercado=mercado,
+                    mercado=resolved_market,
                     source="iol",
                     fecha=row["fecha"],
                     defaults={
@@ -60,33 +80,24 @@ class IOLHistoricalPriceService:
         return {
             "success": True,
             "simbolo": simbolo,
-            "mercado": mercado,
+            "mercado": resolved_market,
             "rows_received": len(normalized_rows),
             "created": created,
             "updated": updated,
             "latest_date": latest_date,
+            "eligibility_status": support.get("eligibility_status") or "supported",
             "error": "",
         }
 
     def sync_current_portfolio_symbols(self, params: dict | None = None) -> dict:
-        latest_date = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
-        if not latest_date:
+        latest_positions = self._get_latest_position_rows()
+        if not latest_positions:
             return {
                 "success": True,
                 "symbols_count": 0,
                 "processed": 0,
                 "results": {},
             }
-
-        latest_positions = (
-            ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=latest_date)
-            .exclude(simbolo__isnull=True)
-            .exclude(simbolo="")
-            .exclude(mercado__isnull=True)
-            .exclude(mercado="")
-            .values("simbolo", "mercado")
-            .distinct()
-        )
 
         results = {}
         processed = 0
@@ -95,11 +106,11 @@ class IOLHistoricalPriceService:
             processed += 1
             result = self.sync_symbol_history(row["mercado"], row["simbolo"], params=params)
             results[f'{row["mercado"]}:{row["simbolo"]}'] = result
-            success = success and bool(result.get("success"))
+            success = success and (bool(result.get("success")) or bool(result.get("skipped")))
 
         return {
             "success": success,
-            "symbols_count": int(latest_positions.count()),
+            "symbols_count": len(latest_positions),
             "processed": processed,
             "results": results,
         }
@@ -121,7 +132,7 @@ class IOLHistoricalPriceService:
             processed += 1
             result = self.sync_symbol_history(row["mercado"], row["simbolo"], params=params)
             results[f'{row["mercado"]}:{row["simbolo"]}'] = result
-            success = success and bool(result.get("success"))
+            success = success and (bool(result.get("success")) or bool(result.get("skipped")))
 
         return {
             "success": success,
@@ -176,8 +187,8 @@ class IOLHistoricalPriceService:
         ]
 
     def get_current_portfolio_coverage_rows(self, *, minimum_ready_rows: int = 5) -> list[dict]:
-        latest_date = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
-        if not latest_date:
+        latest_positions = self._get_latest_position_rows()
+        if not latest_positions:
             return []
 
         coverage_by_symbol = {
@@ -188,21 +199,14 @@ class IOLHistoricalPriceService:
             )
         }
 
-        latest_positions = (
-            ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=latest_date)
-            .exclude(simbolo__isnull=True)
-            .exclude(simbolo="")
-            .exclude(mercado__isnull=True)
-            .exclude(mercado="")
-            .values("simbolo", "mercado")
-            .distinct()
-        )
-
         rows = []
         for row in latest_positions:
             coverage = coverage_by_symbol.get((row["simbolo"], row["mercado"]), {})
             rows_count = int(coverage.get("rows_count") or 0)
-            if rows_count >= minimum_ready_rows:
+            eligibility = self.classify_position_for_history(row)
+            if not eligibility.get("supported"):
+                status = "unsupported"
+            elif rows_count >= minimum_ready_rows:
                 status = "ready"
             elif rows_count > 0:
                 status = "partial"
@@ -215,10 +219,129 @@ class IOLHistoricalPriceService:
                     "rows_count": rows_count,
                     "latest_date": coverage.get("latest_date"),
                     "status": status,
+                    "eligibility_status": eligibility.get("eligibility_status") or status,
+                    "eligibility_reason": eligibility.get("reason") or "",
                     "minimum_ready_rows": minimum_ready_rows,
                 }
             )
         return sorted(rows, key=lambda item: (item["status"], item["simbolo"]))
+
+    def resolve_symbol_history_support(self, *, mercado: str, simbolo: str, row: dict | None = None) -> dict:
+        local_row = row or {"simbolo": simbolo, "mercado": mercado}
+        local_support = self.classify_position_for_history(local_row)
+        if not local_support.get("supported"):
+            return local_support
+
+        metadata = self._get_titulo_metadata(mercado=mercado, simbolo=simbolo)
+        if metadata is None:
+            return {
+                "supported": False,
+                "mercado": mercado,
+                "simbolo": simbolo,
+                "eligibility_status": "unsupported",
+                "reason": "IOL no resolvió metadata del instrumento para históricos",
+            }
+
+        metadata_support = self.classify_position_for_history(
+            {
+                "simbolo": simbolo,
+                "mercado": metadata.get("mercado") or mercado,
+                "tipo": metadata.get("tipo"),
+                "descripcion": metadata.get("descripcion"),
+            }
+        )
+        if not metadata_support.get("supported"):
+            return metadata_support
+
+        return {
+            "supported": True,
+            "mercado": str(metadata.get("mercado") or mercado),
+            "simbolo": simbolo,
+            "eligibility_status": "supported",
+            "reason": "",
+        }
+
+    def classify_position_for_history(self, row: dict) -> dict:
+        simbolo = str(row.get("simbolo") or "").strip()
+        mercado = str(row.get("mercado") or "").strip()
+        tipo = self._normalize_text(row.get("tipo"))
+        descripcion = self._normalize_text(row.get("descripcion"))
+        simbolo_norm = self._normalize_text(simbolo)
+
+        if not simbolo or not mercado:
+            return {
+                "supported": False,
+                "mercado": mercado,
+                "simbolo": simbolo,
+                "eligibility_status": "unsupported",
+                "reason": "Instrumento sin simbolo o mercado valido",
+            }
+        if simbolo_norm in self.EXCLUDED_FCI_SYMBOLS or "FCI" in tipo or "FONDO" in descripcion:
+            return {
+                "supported": False,
+                "mercado": mercado,
+                "simbolo": simbolo,
+                "eligibility_status": "unsupported",
+                "reason": "FCI y cash management usan un pipeline distinto al de títulos",
+            }
+        if "CAUCION" in simbolo_norm or "CAUCION" in tipo or "CAUCION" in descripcion:
+            return {
+                "supported": False,
+                "mercado": mercado,
+                "simbolo": simbolo,
+                "eligibility_status": "unsupported",
+                "reason": "La caución no expone serie histórica de cotización como un título estándar",
+            }
+        if "DISPONIBLE" in descripcion or "CASH MANAGEMENT" in descripcion or "MONEY MARKET" in descripcion:
+            return {
+                "supported": False,
+                "mercado": mercado,
+                "simbolo": simbolo,
+                "eligibility_status": "unsupported",
+                "reason": "El instrumento es cash-like y no se sincroniza como título cotizante",
+            }
+        return {
+            "supported": True,
+            "mercado": mercado,
+            "simbolo": simbolo,
+            "eligibility_status": "supported",
+            "reason": "",
+        }
+
+    def _get_titulo_metadata(self, *, mercado: str, simbolo: str) -> dict | None:
+        cache_key = (str(mercado or "").upper(), str(simbolo or "").upper())
+        if cache_key in self._title_metadata_cache:
+            return self._title_metadata_cache[cache_key]
+
+        getter = getattr(self.client, "get_titulo", None)
+        if not callable(getter):
+            self._title_metadata_cache[cache_key] = {}
+            return {}
+
+        metadata = getter(mercado, simbolo)
+        self._title_metadata_cache[cache_key] = metadata or None
+        return self._title_metadata_cache[cache_key]
+
+    @staticmethod
+    def _get_latest_position_rows() -> list[dict]:
+        latest_date = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
+        if not latest_date:
+            return []
+        return list(
+            ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=latest_date)
+            .exclude(simbolo__isnull=True)
+            .exclude(simbolo="")
+            .exclude(mercado__isnull=True)
+            .exclude(mercado="")
+            .values("simbolo", "mercado", "descripcion", "tipo")
+            .distinct()
+        )
+
+    @staticmethod
+    def _normalize_text(value) -> str:
+        text = unicodedata.normalize("NFKD", str(value or ""))
+        text = "".join(char for char in text if not unicodedata.combining(char))
+        return text.upper().strip()
 
     @staticmethod
     def _normalize_rows(raw_rows: list[dict]) -> list[dict]:

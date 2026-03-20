@@ -1,5 +1,7 @@
 import logging
+from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional
+from urllib.parse import quote
 
 import requests
 from django.conf import settings
@@ -271,17 +273,69 @@ class IOLAPIClient:
         data = self._request_json(operation="get_operaciones", url=url, params=params)
         return data if isinstance(data, list) else None
 
+    def get_titulo(self, mercado: str, simbolo: str) -> Optional[Dict]:
+        """Obtiene metadata minima de un titulo en un mercado dado."""
+        mercado_path = quote(str(mercado or "").strip(), safe="")
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/{mercado_path}/Titulos/{simbolo_path}"
+        data = self._request_json(
+            operation=f"get_titulo:{mercado}:{simbolo}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
     def get_titulo_historicos(
         self,
         mercado: str,
         simbolo: str,
         params: Optional[Dict] = None,
     ) -> Optional[List[Dict]]:
-        """Obtiene precios historicos de un titulo."""
-        url = f"{self.base_url}/api/v2/titulos/{mercado}/{simbolo}/historicos"
+        """Obtiene serie historica de cotizacion para un titulo."""
+        fecha_desde, fecha_hasta, ajustada = self._resolve_historical_series_params(params)
+        mercado_path = quote(str(mercado or "").strip(), safe="")
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        fecha_desde_path = quote(fecha_desde, safe="")
+        fecha_hasta_path = quote(fecha_hasta, safe="")
+        ajustada_path = quote(ajustada, safe="")
+        url = (
+            f"{self.base_url}/api/v2/{mercado_path}/Titulos/{simbolo_path}/Cotizacion/seriehistorica/"
+            f"{fecha_desde_path}/{fecha_hasta_path}/{ajustada_path}"
+        )
         data = self._request_json(
             operation=f"get_titulo_historicos:{mercado}:{simbolo}",
             url=url,
-            params=params,
         )
         return data if isinstance(data, list) else None
+
+    @staticmethod
+    def _resolve_historical_series_params(params: Optional[Dict]) -> tuple[str, str, str]:
+        params = params or {}
+        today = date.today()
+        fecha_desde = IOLAPIClient._coerce_datetime_path(
+            params.get("fecha_desde") or params.get("fechaDesde") or params.get("desde") or (today - timedelta(days=365))
+        )
+        fecha_hasta = IOLAPIClient._coerce_datetime_path(
+            params.get("fecha_hasta") or params.get("fechaHasta") or params.get("hasta") or today,
+            end_of_day=True,
+        )
+        ajustada = str(params.get("ajustada") or "ajustada").strip() or "ajustada"
+        return fecha_desde, fecha_hasta, ajustada
+
+    @staticmethod
+    def _coerce_datetime_path(value, *, end_of_day: bool = False) -> str:
+        if isinstance(value, datetime):
+            dt_value = value
+        elif isinstance(value, date):
+            dt_value = datetime.combine(value, time.max if end_of_day else time.min)
+        else:
+            text = str(value).strip()
+            try:
+                dt_value = datetime.fromisoformat(text.replace("Z", "+00:00"))
+            except ValueError:
+                dt_date = date.fromisoformat(text.split("T")[0])
+                dt_value = datetime.combine(dt_date, time.max if end_of_day else time.min)
+        if end_of_day and dt_value.time() == time.min:
+            dt_value = datetime.combine(dt_value.date(), time.max)
+        if not end_of_day and dt_value.time() == time.max:
+            dt_value = datetime.combine(dt_value.date(), time.min)
+        return dt_value.isoformat(timespec="seconds")
