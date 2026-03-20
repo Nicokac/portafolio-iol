@@ -54,6 +54,7 @@ def test_pipeline_observability_service_builds_unified_summary():
             "result": {
                 "results": {
                     "NASDAQ:MSFT": {"success": True, "rows_received": 18},
+                    "NASDAQ:AAPL": {"success": True, "rows_received": 7},
                 }
             }
         },
@@ -174,14 +175,15 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_exclusion_rows"][0]["count"] == 1
     assert summary["iol_historical_exclusion_rows"][1]["reason_key"] == "fci_confirmed_by_iol"
     assert summary["iol_historical_exclusion_rows"][1]["symbols"] == ["ADBAICA (BCBA)"]
-    assert len(summary["iol_historical_recent_sync_rows"]) == 3
+    assert len(summary["iol_historical_recent_sync_rows"]) == 4
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial", "metadata"}
     assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales", "Reintentar metadata"}
     assert {row["user_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"system"}
-    rows_by_symbol = {row["symbol_key"]: row for row in summary["iol_historical_recent_sync_rows"]}
-    assert rows_by_symbol["NASDAQ:AAPL"]["rows_received"] == 30
-    assert rows_by_symbol["BCBA:GGAL"]["rows_received"] == 12
-    assert rows_by_symbol["NASDAQ:MSFT"]["rows_received"] == 18
+    rows_by_scope_symbol = {(row["scope"], row["symbol_key"]): row for row in summary["iol_historical_recent_sync_rows"]}
+    assert rows_by_scope_symbol[("missing", "NASDAQ:AAPL")]["rows_received"] == 30
+    assert rows_by_scope_symbol[("partial", "BCBA:GGAL")]["rows_received"] == 12
+    assert rows_by_scope_symbol[("metadata", "NASDAQ:MSFT")]["rows_received"] == 18
+    assert rows_by_scope_symbol[("metadata", "NASDAQ:AAPL")]["rows_received"] == 7
     assert summary["local_macro_status_summary"]["ready"] == 1
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1

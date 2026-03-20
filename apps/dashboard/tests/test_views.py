@@ -1102,6 +1102,16 @@ class TestDashboardView:
                             'created_at': '2026-03-17 10:10',
                             'message': '',
                         },
+                        {
+                            'action_label': 'Reintentar metadata',
+                            'user_label': 'staffuser',
+                            'scope': 'metadata',
+                            'symbol_key': 'NASDAQ:AAPL',
+                            'rows_received': 7,
+                            'status': 'success',
+                            'created_at': '2026-03-17 10:12',
+                            'message': '',
+                        },
                     ],
                     'local_macro_status_summary': {
                         'ready': 3,
@@ -1233,6 +1243,7 @@ class TestDashboardView:
         assert 'NASDAQ:AAPL' in body
         assert 'BCBA:GGAL' in body
         assert 'NASDAQ:MSFT' in body
+        assert '7' in body
         assert 'Cobertura de históricos IOL por símbolo' in body
         assert 'Motivos exactos de exclusión IOL por símbolo' in body or 'Motivos exactos de exclusion IOL por simbolo' in body
         assert 'FCI confirmado por IOL' in body

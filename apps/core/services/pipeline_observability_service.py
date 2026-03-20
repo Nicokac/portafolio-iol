@@ -253,7 +253,7 @@ class PipelineObservabilityService:
         ).order_by("-created_at", "-id")[:limit]
 
         rows: list[dict] = []
-        seen_symbol_keys: set[str] = set()
+        seen_entries: set[tuple[str, str]] = set()
         for audit in audits:
             details = audit.details or {}
             result = details.get("result") or {}
@@ -268,9 +268,10 @@ class PipelineObservabilityService:
                 sync_scope = "metadata"
                 action_label = "Reintentar metadata"
             if not results:
-                if "-" in seen_symbol_keys:
+                empty_key = (sync_scope, "-")
+                if empty_key in seen_entries:
                     continue
-                seen_symbol_keys.add("-")
+                seen_entries.add(empty_key)
                 rows.append(
                     {
                         "scope": sync_scope,
@@ -286,9 +287,10 @@ class PipelineObservabilityService:
                 continue
 
             for symbol_key, payload in results.items():
-                if symbol_key in seen_symbol_keys:
+                entry_key = (sync_scope, symbol_key)
+                if entry_key in seen_entries:
                     continue
-                seen_symbol_keys.add(symbol_key)
+                seen_entries.add(entry_key)
                 rows.append(
                     {
                         "scope": sync_scope,
