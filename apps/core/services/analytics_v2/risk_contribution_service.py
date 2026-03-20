@@ -14,6 +14,7 @@ from apps.core.services.analytics_v2.helpers import (
     normalize_country_label,
     rank_top_items,
 )
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.analytics_v2.schemas import (
     AnalyticsMetadata,
     RecommendationSignal,
@@ -54,6 +55,9 @@ class RiskContributionService:
         "cash": 0.0,
         "unknown": 0.12,
     }
+
+    def __init__(self, historical_price_service: IOLHistoricalPriceService | None = None):
+        self.historical_price_service = historical_price_service or IOLHistoricalPriceService()
 
     def calculate(self, lookback_days: int = 90, top_n: int = 5) -> dict:
         positions = self._load_current_invested_positions()
@@ -409,7 +413,11 @@ class RiskContributionService:
         *,
         lookback_days: int,
     ) -> _VolatilityResolution:
-        historical = self._get_asset_historical_volatility(position.simbolo, lookback_days=lookback_days)
+        historical = self._get_asset_historical_volatility(
+            position.simbolo,
+            mercado=getattr(position, "mercado", None),
+            lookback_days=lookback_days,
+        )
         if historical is not None:
             return _VolatilityResolution(value=historical, used_fallback=False)
 
@@ -422,7 +430,11 @@ class RiskContributionService:
             warning=f"used_fallback:{position.simbolo}:insufficient_history",
         )
 
-    def _get_asset_historical_volatility(self, symbol: str, *, lookback_days: int) -> float | None:
+    def _get_asset_historical_volatility(self, symbol: str, *, mercado: str | None, lookback_days: int) -> float | None:
+        iol_historical = self._get_iol_historical_volatility(symbol, mercado=mercado, lookback_days=lookback_days)
+        if iol_historical is not None:
+            return iol_historical
+
         end_date = timezone.now()
         start_date = end_date - timedelta(days=lookback_days)
         queryset = ActivoPortafolioSnapshot.objects.filter(
@@ -446,6 +458,28 @@ class RiskContributionService:
             return None
 
         returns = series.pct_change().replace([float("inf"), float("-inf")], pd.NA).dropna()
+        if len(returns.index) < max(2, self.MIN_ASSET_OBSERVATIONS - 1):
+            return None
+
+        daily_vol = float(returns.std())
+        if daily_vol <= 0:
+            return None
+        return daily_vol * (self.TRADING_DAYS_PER_YEAR ** 0.5)
+
+    def _get_iol_historical_volatility(self, symbol: str, *, mercado: str | None, lookback_days: int) -> float | None:
+        if not mercado:
+            return None
+
+        end_date = timezone.now()
+        start_date = end_date - timedelta(days=lookback_days)
+        dates = pd.date_range(start=start_date.date(), end=end_date.date(), freq="D")
+        series = self.historical_price_service.build_close_series(symbol, mercado, dates)
+        if series.empty or len(series.index) < self.MIN_ASSET_OBSERVATIONS:
+            return None
+
+        returns = pd.to_numeric(series, errors="coerce").pct_change().replace(
+            [float("inf"), float("-inf")], pd.NA
+        ).dropna()
         if len(returns.index) < max(2, self.MIN_ASSET_OBSERVATIONS - 1):
             return None
 

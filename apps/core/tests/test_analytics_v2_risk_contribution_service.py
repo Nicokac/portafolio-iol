@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
+from apps.core.models import IOLHistoricalPriceSnapshot
 from apps.core.services.analytics_v2.risk_contribution_service import RiskContributionService
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
@@ -113,6 +114,36 @@ def test_risk_contribution_uses_historical_volatility_when_available():
     assert result["items"][1]["used_volatility_fallback"] is False
     assert round(sum(item["contribution_pct"] for item in result["items"]), 2) == 100.0
     assert result["top_contributors"][0]["symbol"] == "AAPL"
+
+
+@pytest.mark.django_db
+def test_risk_contribution_prefers_iol_historical_prices_when_available():
+    now = timezone.now()
+
+    ParametroActivo.objects.create(
+        simbolo="GGAL",
+        sector="Finanzas",
+        bloque_estrategico="Argentina",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="Equity",
+    )
+
+    _make_asset_snapshot(now - timedelta(days=1), "GGAL", 1000, tipo="ACCIONES")
+    _make_asset_snapshot(now, "GGAL", 1010, tipo="ACCIONES")
+
+    for offset, close in enumerate([100, 110, 103, 118, 112]):
+        IOLHistoricalPriceSnapshot.objects.create(
+            simbolo="GGAL",
+            mercado="BCBA",
+            source="iol",
+            fecha=(now - timedelta(days=4 - offset)).date(),
+            close=close,
+        )
+
+    result = RiskContributionService().calculate()
+
+    assert result["items"][0]["used_volatility_fallback"] is False
+    assert "used_fallback:GGAL:insufficient_history" not in result["metadata"]["warnings"]
 
 
 @pytest.mark.django_db
