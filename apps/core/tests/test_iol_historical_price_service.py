@@ -302,3 +302,32 @@ def test_iol_historical_price_service_skips_symbols_unresolved_by_iol_metadata()
     assert result["eligibility_status"] == "unsupported"
     assert "metadata" in result["error"].lower()
     client.get_titulo_historicos.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_resolves_market_using_known_aliases():
+    client = Mock()
+    client.get_titulo.side_effect = [
+        None,
+        {"simbolo": "GGAL", "mercado": "bCBA", "tipo": "ACCIONES"},
+    ]
+    client.get_titulo_historicos.return_value = [
+        {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 108.0},
+    ]
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "GGAL")
+
+    assert result["success"] is True
+    assert result["mercado"] == "bCBA"
+    assert client.get_titulo.call_args_list[0].args == ("BCBA", "GGAL")
+    assert client.get_titulo.call_args_list[1].args == ("bCBA", "GGAL")
+    client.get_titulo_historicos.assert_called_once_with("bCBA", "GGAL", params=None)
+
+
+def test_iol_historical_price_service_candidate_markets_dedupes_and_keeps_primary_first():
+    candidates = IOLHistoricalPriceService._candidate_markets("BCBA")
+
+    assert candidates[0] == "BCBA"
+    assert "bCBA" in candidates
+    assert "bcba" in candidates
+    assert len(candidates) == len(set(candidates))

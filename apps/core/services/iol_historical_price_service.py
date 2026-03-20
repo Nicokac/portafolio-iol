@@ -18,6 +18,12 @@ class IOLHistoricalPriceService:
     """Persistencia minima de historicos diarios por simbolo desde IOL."""
 
     EXCLUDED_FCI_SYMBOLS = {"ADBAICA", "IOLPORA"}
+    MARKET_ALIASES = {
+        "BCBA": ("BCBA", "bCBA", "bcba"),
+        "NASDAQ": ("NASDAQ", "nasdaq"),
+        "NYSE": ("NYSE", "nyse"),
+        "ROFX": ("ROFX", "Rofx", "rofX", "rofx"),
+    }
 
     def __init__(self, client: IOLAPIClient | None = None):
         self.client = client or IOLAPIClient()
@@ -232,7 +238,7 @@ class IOLHistoricalPriceService:
         if not local_support.get("supported"):
             return local_support
 
-        metadata = self._get_titulo_metadata(mercado=mercado, simbolo=simbolo)
+        metadata = self._resolve_titulo_metadata(mercado=mercado, simbolo=simbolo)
         if metadata is None:
             return {
                 "supported": False,
@@ -309,7 +315,7 @@ class IOLHistoricalPriceService:
         }
 
     def _get_titulo_metadata(self, *, mercado: str, simbolo: str) -> dict | None:
-        cache_key = (str(mercado or "").upper(), str(simbolo or "").upper())
+        cache_key = (str(mercado or "").strip(), str(simbolo or "").strip().upper())
         if cache_key in self._title_metadata_cache:
             return self._title_metadata_cache[cache_key]
 
@@ -321,6 +327,13 @@ class IOLHistoricalPriceService:
         metadata = getter(mercado, simbolo)
         self._title_metadata_cache[cache_key] = metadata or None
         return self._title_metadata_cache[cache_key]
+
+    def _resolve_titulo_metadata(self, *, mercado: str, simbolo: str) -> dict | None:
+        for candidate_market in self._candidate_markets(mercado):
+            metadata = self._get_titulo_metadata(mercado=candidate_market, simbolo=simbolo)
+            if metadata:
+                return metadata
+        return None
 
     @staticmethod
     def _get_latest_position_rows() -> list[dict]:
@@ -342,6 +355,25 @@ class IOLHistoricalPriceService:
         text = unicodedata.normalize("NFKD", str(value or ""))
         text = "".join(char for char in text if not unicodedata.combining(char))
         return text.upper().strip()
+
+    @classmethod
+    def _candidate_markets(cls, mercado: str) -> list[str]:
+        raw_market = str(mercado or "").strip()
+        if not raw_market:
+            return []
+        normalized_market = cls._normalize_text(raw_market)
+        candidates = list(cls.MARKET_ALIASES.get(normalized_market, (raw_market, normalized_market)))
+        if raw_market not in candidates:
+            candidates.insert(0, raw_market)
+        deduped = []
+        seen = set()
+        for candidate in candidates:
+            key = str(candidate).strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            deduped.append(key)
+        return deduped
 
     @staticmethod
     def _normalize_rows(raw_rows: list[dict]) -> list[dict]:
