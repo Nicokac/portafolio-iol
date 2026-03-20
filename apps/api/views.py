@@ -88,6 +88,64 @@ def sanitize_json_payload(value):
     return value
 
 
+def _coerce_optional_float(value):
+    if value in (None, ""):
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric if math.isfinite(numeric) else None
+
+
+def _serialize_historical_snapshot(snapshot_like: dict | object, *, fallback: bool = False) -> dict:
+    def read(field_name):
+        if isinstance(snapshot_like, dict):
+            return snapshot_like.get(field_name)
+        return getattr(snapshot_like, field_name, None)
+
+    cash_management = _coerce_optional_float(read("cash_management")) or 0.0
+    legacy_liquidez_operativa = _coerce_optional_float(read("liquidez_operativa")) or 0.0
+    cash_disponible_broker = _coerce_optional_float(read("cash_disponible_broker"))
+    caucion_colocada = _coerce_optional_float(read("caucion_colocada"))
+    total_patrimonio_modelado = _coerce_optional_float(read("total_patrimonio_modelado"))
+
+    has_explicit_layers = any(
+        value is not None
+        for value in (cash_disponible_broker, caucion_colocada, total_patrimonio_modelado)
+    )
+    if has_explicit_layers:
+        liquidity_contract_status = "explicit_layers"
+        liquidez_desplegable_total = (
+            (cash_disponible_broker or 0.0)
+            + (caucion_colocada or 0.0)
+            + cash_management
+        )
+        if total_patrimonio_modelado is None:
+            total_patrimonio_modelado = (
+                (_coerce_optional_float(read("portafolio_invertido")) or 0.0)
+                + liquidez_desplegable_total
+            )
+    else:
+        liquidity_contract_status = "legacy_aggregated_fallback" if fallback else "legacy_aggregated"
+        liquidez_desplegable_total = legacy_liquidez_operativa + cash_management
+
+    return {
+        "fecha": read("fecha"),
+        "total_iol": read("total_iol"),
+        "portafolio_invertido": read("portafolio_invertido"),
+        "rendimiento_total": read("rendimiento_total"),
+        "liquidez_operativa": read("liquidez_operativa"),
+        "cash_management": read("cash_management"),
+        "total_patrimonio_modelado": total_patrimonio_modelado,
+        "cash_disponible_broker": cash_disponible_broker,
+        "caucion_colocada": caucion_colocada,
+        "liquidez_estrategica": cash_management,
+        "liquidez_desplegable_total": liquidez_desplegable_total,
+        "liquidity_contract_status": liquidity_contract_status,
+    }
+
+
 def _coerce_positive_number(value, *, field_name: str, max_value: float) -> float:
     try:
         numeric = float(value)
@@ -703,10 +761,11 @@ def historical_portfolio_evolution(request):
             fecha__range=(start_date, end_date)
         ).order_by('fecha').values(
             'fecha', 'total_iol', 'portafolio_invertido',
-            'rendimiento_total', 'liquidez_operativa'
+            'rendimiento_total', 'liquidez_operativa', 'cash_management',
+            'total_patrimonio_modelado', 'cash_disponible_broker', 'caucion_colocada'
         )
 
-        data = list(snapshots)
+        data = [_serialize_historical_snapshot(item) for item in snapshots]
         if len(data) >= 2:
             return Response(data, status=status.HTTP_200_OK)
 
@@ -720,19 +779,24 @@ def historical_portfolio_evolution(request):
         total_iol = evolution.get('total_iol', [])
         portafolio_invertido = evolution.get('portafolio_invertido', [])
         liquidez_operativa = evolution.get('liquidez_operativa', [])
+        cash_management = evolution.get('cash_management', [])
         for idx, fecha in enumerate(fechas):
             normalized.append(
-                {
-                    'fecha': fecha,
-                    'total_iol': total_iol[idx] if idx < len(total_iol) else 0,
-                    'portafolio_invertido': (
-                        portafolio_invertido[idx] if idx < len(portafolio_invertido) else 0
-                    ),
-                    'rendimiento_total': 0,
-                    'liquidez_operativa': (
-                        liquidez_operativa[idx] if idx < len(liquidez_operativa) else 0
-                    ),
-                }
+                _serialize_historical_snapshot(
+                    {
+                        'fecha': fecha,
+                        'total_iol': total_iol[idx] if idx < len(total_iol) else 0,
+                        'portafolio_invertido': (
+                            portafolio_invertido[idx] if idx < len(portafolio_invertido) else 0
+                        ),
+                        'rendimiento_total': 0,
+                        'liquidez_operativa': (
+                            liquidez_operativa[idx] if idx < len(liquidez_operativa) else 0
+                        ),
+                        'cash_management': cash_management[idx] if idx < len(cash_management) else 0,
+                    },
+                    fallback=True,
+                )
             )
         return Response(normalized, status=status.HTTP_200_OK)
     except Exception as e:
@@ -754,13 +818,7 @@ def historical_portfolio_summary(request):
         )
 
         summary = {
-            'latest_snapshot': {
-                'fecha': latest.fecha,
-                'total_iol': latest.total_iol,
-                'portafolio_invertido': latest.portafolio_invertido,
-                'rendimiento_total': latest.rendimiento_total,
-                'liquidez_operativa': latest.liquidez_operativa,
-            },
+            'latest_snapshot': _serialize_historical_snapshot(latest),
             'monthly_stats': {
                 'count': monthly_snapshots.count(),
                 'avg_performance': monthly_snapshots.aggregate(

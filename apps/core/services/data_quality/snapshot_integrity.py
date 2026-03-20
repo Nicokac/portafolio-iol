@@ -84,8 +84,20 @@ class SnapshotIntegrityService:
     def _check_valuation_consistency(snapshots):
         issues = []
         for snap in snapshots:
-            reconstructed = float(snap.portafolio_invertido + snap.liquidez_operativa + snap.cash_management)
-            total = float(snap.total_iol)
+            if snap.cash_disponible_broker is not None or snap.caucion_colocada is not None:
+                reconstructed = float(
+                    snap.portafolio_invertido
+                    + (snap.cash_disponible_broker or 0)
+                    + (snap.caucion_colocada or 0)
+                    + snap.cash_management
+                )
+                total = float(snap.total_patrimonio_modelado or 0)
+                reference_field = "total_patrimonio_modelado"
+            else:
+                reconstructed = float(snap.portafolio_invertido + snap.liquidez_operativa + snap.cash_management)
+                total = float(snap.total_iol)
+                reference_field = "total_iol"
+
             if total == 0:
                 continue
             diff_pct = abs(reconstructed - total) / total * 100
@@ -93,7 +105,8 @@ class SnapshotIntegrityService:
                 issues.append(
                     {
                         "fecha": snap.fecha,
-                        "total_iol": total,
+                        "reference_field": reference_field,
+                        "reference_total": total,
                         "reconstructed_total": round(reconstructed, 2),
                         "difference_pct": round(diff_pct, 2),
                     }

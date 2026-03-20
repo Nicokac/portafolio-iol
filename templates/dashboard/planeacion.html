@@ -51,7 +51,7 @@
         </section>
         <div class="alert alert-light border mb-4">
             <strong>Lectura de liquidez.</strong>
-            <span class="text-muted">Liquidez total = liquidez operativa + cash management. Esta hoja usa esa definición cuando evalúa si la cartera está demasiado defensiva.</span>
+            <span class="text-muted">Liquidez desplegable = cash disponible + caucion colocada + cash management. Esta hoja usa esa definición cuando evalúa si la cartera está demasiado defensiva.</span>
         </div>
         <div class="alert alert-primary border mb-4">
             <strong>Cómo usar este bloque:</strong>
@@ -146,8 +146,9 @@
                     <div class="card-header bg-light"><h5 class="mb-0">Contexto rápido</h5></div>
                     <div class="card-body">
                         <p class="small text-muted mb-2">Perfil UI actual: <strong>{{ risk_profile|default:'moderado' }}</strong></p>
-                        <p class="small text-muted mb-2">Total IOL: <strong>{{ kpis.total_iol|currency:0 }}</strong></p>
-                        <p class="small text-muted mb-0">Liquidez operativa: <strong>{{ kpis.liquidez_operativa|currency:0 }}</strong></p>
+                        <p class="small text-muted mb-2">Total patrimonio modelado: <strong>{{ kpis.total_patrimonio_modelado|currency:0 }}</strong></p>
+                        <p class="small text-muted mb-2">Cash disponible: <strong>{{ kpis.cash_disponible_broker|currency:0 }}</strong></p>
+                        <p class="small text-muted mb-0">Caucion colocada: <strong>{{ kpis.caucion_colocada|currency:0 }}</strong></p>
                     </div>
                 </div>
             </div>
@@ -170,7 +171,7 @@
             <div class="card border-secondary-subtle shadow-sm">
                 <div class="card-header bg-light border-bottom-0">
                     <h3 class="h5 mb-1">Universo patrimonial</h3>
-                    <small class="text-muted">Patrimonio broker, cash disponible y capital invertido analizado separados para evitar mezclar scopes.</small>
+                    <small class="text-muted">Patrimonio broker, cash disponible, caucion colocada y capital invertido analizado separados para evitar mezclar scopes.</small>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -187,6 +188,13 @@
                                 {% if scope.cash_available_broker_usd %}
                                 <div class="small text-muted mt-1">USD sin convertir: {{ scope.cash_available_broker_usd|floatformat:2 }}</div>
                                 {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Caucion colocada</div>
+                                <div class="h5 mb-0">{{ scope.caucion_colocada|default:0|currency:0 }}</div>
+                                <div class="small text-muted mt-1">{{ scope.caucion_ratio_total|default:0|floatformat:1 }}% del total broker</div>
                             </div>
                         </div>
                         <div class="col-lg-3 col-md-6">

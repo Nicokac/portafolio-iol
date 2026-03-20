@@ -449,14 +449,22 @@ class TestAPIPostEndpointsHappyPath:
         mock_snapshot.total_iol = 10000
         mock_snapshot.portafolio_invertido = 7000
         mock_snapshot.rendimiento_total = 5.0
-        mock_snapshot.liquidez_operativa = 2000
-        mock_objects.latest.return_value = mock_snapshot
+        mock_snapshot.liquidez_operativa = 1000
+        mock_snapshot.cash_management = 800
+        mock_snapshot.total_patrimonio_modelado = 10000
+        mock_snapshot.cash_disponible_broker = 1000
+        mock_snapshot.caucion_colocada = 1200
+        mock_objects.order_by.return_value.first.return_value = mock_snapshot
         mock_objects.filter.return_value.count.return_value = 10
         mock_objects.filter.return_value.aggregate.return_value = {'avg': 3.5}
 
         url = reverse('historical-summary')
         response = auth_client.get(url)
-        assert response.status_code in [200, 500]
+        assert response.status_code == 200
+        latest = response.json()['latest_snapshot']
+        assert latest['liquidity_contract_status'] == 'explicit_layers'
+        assert latest['liquidez_desplegable_total'] == 3000
+        assert latest['liquidez_estrategica'] == 800
 
     @patch('apps.api.views.get_dashboard_kpis', return_value={'total_iol': 10000})
     def test_simulation_purchase_missing_params(self, mock_kpis, auth_client):
@@ -692,6 +700,9 @@ class TestHistoricalEvolutionFallback:
         body = response.json()
         assert len(body) == 2
         assert body[0]["total_iol"] == 1000
+        assert body[0]["liquidez_estrategica"] == 100
+        assert body[0]["liquidez_desplegable_total"] == 300
+        assert body[0]["liquidity_contract_status"] == "legacy_aggregated_fallback"
         assert "fecha" in body[0]
 
     @patch("apps.api.views.get_evolucion_historica", return_value={"tiene_datos": False})
@@ -716,13 +727,36 @@ class TestHistoricalEvolutionFallback:
     def test_historical_evolution_returns_direct_snapshots_when_available(self, mock_objects, auth_client):
         mock_values = mock_objects.filter.return_value.order_by.return_value.values.return_value
         mock_values.__iter__.return_value = iter([
-            {'fecha': '2026-03-12', 'total_iol': 1000, 'portafolio_invertido': 700, 'rendimiento_total': 1, 'liquidez_operativa': 300},
-            {'fecha': '2026-03-13', 'total_iol': 1100, 'portafolio_invertido': 750, 'rendimiento_total': 2, 'liquidez_operativa': 350},
+            {
+                'fecha': '2026-03-12',
+                'total_iol': 1000,
+                'portafolio_invertido': 700,
+                'rendimiento_total': 1,
+                'liquidez_operativa': 120,
+                'cash_management': 80,
+                'total_patrimonio_modelado': 1000,
+                'cash_disponible_broker': 120,
+                'caucion_colocada': 100,
+            },
+            {
+                'fecha': '2026-03-13',
+                'total_iol': 1100,
+                'portafolio_invertido': 750,
+                'rendimiento_total': 2,
+                'liquidez_operativa': 150,
+                'cash_management': 90,
+                'total_patrimonio_modelado': 1100,
+                'cash_disponible_broker': 150,
+                'caucion_colocada': 110,
+            },
         ])
         response = auth_client.get(reverse("historical-evolution") + "?days=365")
         assert response.status_code == 200
         assert len(response.json()) == 2
         assert response.json()[1]['total_iol'] == 1100
+        assert response.json()[1]['liquidity_contract_status'] == 'explicit_layers'
+        assert response.json()[1]['liquidez_desplegable_total'] == 350
+        assert response.json()[1]['liquidez_estrategica'] == 90
 
 
 @pytest.mark.django_db

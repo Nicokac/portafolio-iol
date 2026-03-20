@@ -5,6 +5,7 @@ from apps.dashboard.selectors import (
     get_concentracion_pais,
     get_concentracion_sector,
     get_dashboard_kpis,
+    get_liquidity_contract_summary,
     get_senales_rebalanceo,
 )
 
@@ -60,11 +61,11 @@ class LiquidityAlert(AlertRule):
         self.threshold = threshold
 
     def check(self, data: Dict) -> Dict:
-        pct_liquidez = data.get('pct_liquidez_operativa', 0)
+        pct_liquidez = data.get('pct_liquidez_desplegable_total', data.get('pct_liquidez_operativa', 0))
         if pct_liquidez > self.threshold:
             return {
                 'tipo': self.name,
-                'mensaje': f"Liquidez operativa elevada ({pct_liquidez:.1f}%)",
+                'mensaje': f"Liquidez desplegable elevada ({pct_liquidez:.1f}%)",
                 'severidad': self.severity,
                 'valor': pct_liquidez
             }
@@ -163,6 +164,7 @@ class AlertsEngine:
         kpis = get_dashboard_kpis()
         concentracion_pais = get_concentracion_pais()
         concentracion_sector = get_concentracion_sector()
+        liquidity_contract = get_liquidity_contract_summary(kpis)
 
         # Datos para reglas
         data = {
@@ -170,7 +172,8 @@ class AlertsEngine:
             'concentracion_pais': concentracion_pais,
             'concentracion_sector': concentracion_sector,
             'top_10_concentracion': kpis.get('top_10_concentracion', 0),
-            'pct_liquidez_operativa': kpis.get('pct_fci_cash_management', 0) + (kpis.get('liquidez_operativa', 0) / (kpis.get('total_iol') or 1) * 100),
+            'pct_liquidez_operativa': kpis.get('pct_liquidez_operativa', 0),
+            'pct_liquidez_desplegable_total': liquidity_contract.get('pct_liquidez_desplegable_total', 0),
         }
 
         alerts = []

@@ -59,6 +59,7 @@ class TestDashboardView:
         assert 'Capital invertido analizado' in body
         assert 'Liquidez operativa' in body
         assert 'Liquidez estrat' in body
+        assert 'Caución colocada' in body or 'Caucion colocada' in body
         assert 'USD oficial mayorista BCRA' in body
         assert 'Riesgo país Argentina' in body
         assert 'Dólar financiero y régimen FX' in body
@@ -94,6 +95,7 @@ class TestDashboardView:
         assert 'Liquidez operativa' in body
         assert 'Liquidez Estrat' in body
         assert 'Liquidez total combinada' in body
+        assert 'Caucion Colocada' in body
         assert 'Navegación rápida' in body
         assert 'Lectura del portafolio' in body
         assert 'Vista analítica' in body
@@ -416,7 +418,7 @@ class TestDashboardView:
     def test_planeacion_explains_total_liquidity_definition(self, auth_client):
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
-        assert 'Liquidez total = liquidez operativa + cash management' in body
+        assert 'Liquidez desplegable = cash disponible + caucion colocada + cash management' in body
         assert 'Modelo de riesgo:' in body
 
     def test_planeacion_shows_monthly_allocation_proposal(self, auth_client, monkeypatch):
@@ -606,6 +608,7 @@ class TestDashboardView:
         assert 'Universo patrimonial' in body
         assert 'Patrimonio total broker' in body
         assert 'Cash disponible' in body
+        assert 'Caucion colocada' in body
         assert 'Capital invertido analizado' in body
         assert 'FCI cash management' in body
         assert 'Diagnóstico previo al aporte' in body

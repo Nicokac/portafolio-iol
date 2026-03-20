@@ -5,6 +5,7 @@ from apps.dashboard.selectors import (
     get_concentracion_pais,
     get_concentracion_sector,
     get_dashboard_kpis,
+    get_liquidity_contract_summary,
     get_senales_rebalanceo,
 )
 
@@ -69,7 +70,7 @@ class LiquidityRebalance(RebalanceRule):
         self.max_liquidity = max_liquidity
 
     def analyze(self, data: Dict) -> Dict:
-        pct_liquidez = data.get('pct_liquidez_operativa', 0)
+        pct_liquidez = data.get('pct_liquidez_desplegable_total', data.get('pct_liquidez_operativa', 0))
 
         if pct_liquidez < self.min_liquidity:
             return {
@@ -78,7 +79,7 @@ class LiquidityRebalance(RebalanceRule):
                     'accion': 'incrementar_liquidez',
                     'porcentaje_actual': pct_liquidez,
                     'porcentaje_objetivo': self.min_liquidity,
-                    'razon': 'Liquidez insuficiente para operaciones'
+                    'razon': 'Liquidez desplegable insuficiente para operaciones'
                 }]
             }
         elif pct_liquidez > self.max_liquidity:
@@ -88,7 +89,7 @@ class LiquidityRebalance(RebalanceRule):
                     'accion': 'invertir_liquidez',
                     'porcentaje_actual': pct_liquidez,
                     'porcentaje_objetivo': self.max_liquidity,
-                    'razon': 'Liquidez excesiva, oportunidad de inversión'
+                    'razon': 'Liquidez desplegable excesiva, oportunidad de inversión'
                 }]
             }
 
@@ -180,6 +181,7 @@ class RebalanceEngine:
         concentracion_pais = get_concentracion_pais()
         concentracion_sector = get_concentracion_sector()
         senales_rebalanceo = get_senales_rebalanceo()
+        liquidity_contract = get_liquidity_contract_summary(kpis)
 
         # Datos para reglas
         data = {
@@ -187,7 +189,8 @@ class RebalanceEngine:
             'concentracion_pais': concentracion_pais,
             'concentracion_sector': concentracion_sector,
             'senales_rebalanceo': senales_rebalanceo,
-            'pct_liquidez_operativa': kpis.get('pct_fci_cash_management', 0) + (kpis.get('liquidez_operativa', 0) / (kpis.get('total_iol') or 1) * 100),
+            'pct_liquidez_operativa': kpis.get('pct_liquidez_operativa', 0),
+            'pct_liquidez_desplegable_total': liquidity_contract.get('pct_liquidez_desplegable_total', 0),
         }
 
         all_suggestions = []
@@ -213,5 +216,5 @@ class RebalanceEngine:
         """Obtiene acciones de oportunidad de rebalanceo."""
         suggestions = self.generate_rebalance_suggestions()
         return [s for s in suggestions if s.get('razon') in [
-            'Liquidez excesiva, oportunidad de inversión'
+            'Liquidez desplegable excesiva, oportunidad de inversión'
         ]]

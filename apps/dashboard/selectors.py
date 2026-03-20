@@ -245,9 +245,15 @@ def get_dashboard_kpis() -> Dict:
         portafolio_invertido = sum(item['activo'].valorizado for item in portafolio_clasificado['inversion'])
 
         cash_disponible_broker = cash_ars + cash_usd
+        caucion_colocada = caucion_valor
         liquidez_estrategica = fci_cash_valor
-        liquidez_total_combinada = cash_disponible_broker + liquidez_estrategica
-        total_patrimonio_modelado = portafolio_invertido + liquidez_estrategica + cash_disponible_broker
+        liquidez_total_combinada = cash_disponible_broker + caucion_colocada + liquidez_estrategica
+        total_patrimonio_modelado = (
+            portafolio_invertido
+            + liquidez_estrategica
+            + cash_disponible_broker
+            + caucion_colocada
+        )
 
         # KPIs heredados para compatibilidad
         titulos_valorizados = sum(
@@ -282,6 +288,7 @@ def get_dashboard_kpis() -> Dict:
         pct_portafolio_invertido = (portafolio_invertido / total_iol * 100) if total_iol else 0
         pct_liquidez_total = ((liquidez_operativa + fci_cash_valor) / total_iol * 100) if total_iol else 0
         pct_liquidez_operativa = (cash_disponible_broker / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
+        pct_caucion_colocada = (caucion_colocada / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
         pct_liquidez_estrategica = (liquidez_estrategica / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
         pct_liquidez_total_combinada = (liquidez_total_combinada / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
         pct_portafolio_invertido_modelado = (portafolio_invertido / total_patrimonio_modelado * 100) if total_patrimonio_modelado else 0
@@ -294,6 +301,7 @@ def get_dashboard_kpis() -> Dict:
             'cash_usd': cash_usd,
             'cash_disponible_broker': cash_disponible_broker,
             'caucion_valor': caucion_valor,
+            'caucion_colocada': caucion_colocada,
             'liquidez_operativa': liquidez_operativa,
             'liquidez_estrategica': liquidez_estrategica,
             'liquidez_total_combinada': liquidez_total_combinada,
@@ -306,6 +314,7 @@ def get_dashboard_kpis() -> Dict:
             'top_5_concentracion': top_5_concentracion,
             'top_10_concentracion': top_10_concentracion,
             'pct_liquidez_operativa': pct_liquidez_operativa,
+            'pct_caucion_colocada': pct_caucion_colocada,
             'pct_liquidez_estrategica': pct_liquidez_estrategica,
             'pct_liquidez_total_combinada': pct_liquidez_total_combinada,
             'pct_fci_cash_management': pct_fci_cash_management,
@@ -320,10 +329,11 @@ def get_dashboard_kpis() -> Dict:
                 'rendimiento_total_basis': 'portafolio_invertido_costo_estimado',
                 'pct_liquidez_total': '(liquidez operativa + cash management) / total iol',
                 'pct_portafolio_invertido': 'portafolio invertido / total iol',
-                'total_patrimonio_modelado': 'portafolio invertido + cash disponible broker + fci cash management',
+                'total_patrimonio_modelado': 'portafolio invertido + cash disponible broker + caucion colocada + fci cash management',
                 'pct_liquidez_operativa': 'cash disponible broker / total patrimonio modelado',
+                'pct_caucion_colocada': 'caucion colocada / total patrimonio modelado',
                 'pct_liquidez_estrategica': 'fci cash management / total patrimonio modelado',
-                'pct_liquidez_total_combinada': '(cash disponible broker + fci cash management) / total patrimonio modelado',
+                'pct_liquidez_total_combinada': '(cash disponible broker + caucion colocada + fci cash management) / total patrimonio modelado',
                 'pct_portafolio_invertido_modelado': 'portafolio invertido / total patrimonio modelado',
             },
         }
@@ -341,6 +351,53 @@ def get_macro_local_context(total_iol: float | None = None) -> Dict:
     return _get_cached_selector_result(f"macro_local_context:{total_stamp}", build)
 
 
+def get_liquidity_contract_summary(kpis: Dict | None = None) -> Dict:
+    """Normaliza el contrato de liquidez para consumidores heredados."""
+
+    kpis = kpis or get_dashboard_kpis()
+
+    total = float(kpis.get("total_patrimonio_modelado") or kpis.get("total_iol") or 0.0)
+    cash_operativo = float(kpis.get("cash_disponible_broker") or 0.0)
+    caucion_tactica = float(kpis.get("caucion_colocada") or 0.0)
+    fci_estrategico = float(
+        kpis.get("liquidez_estrategica")
+        if kpis.get("liquidez_estrategica") is not None
+        else (kpis.get("fci_cash_management") or 0.0)
+    )
+
+    # Fallback para payloads viejos que solo exponen liquidez_operativa.
+    if (
+        "cash_disponible_broker" not in kpis
+        and "caucion_colocada" not in kpis
+        and "liquidez_operativa" in kpis
+    ):
+        cash_operativo = float(kpis.get("liquidez_operativa") or 0.0)
+        caucion_tactica = 0.0
+
+    liquidez_desplegable_total = cash_operativo + caucion_tactica + fci_estrategico
+
+    return {
+        "cash_operativo": cash_operativo,
+        "caucion_tactica": caucion_tactica,
+        "fci_estrategico": fci_estrategico,
+        "liquidez_desplegable_total": liquidez_desplegable_total,
+        "pct_cash_operativo": (cash_operativo / total * 100) if total > 0 else 0.0,
+        "pct_caucion_tactica": (caucion_tactica / total * 100) if total > 0 else 0.0,
+        "pct_fci_estrategico": (fci_estrategico / total * 100) if total > 0 else 0.0,
+        "pct_liquidez_desplegable_total": (
+            liquidez_desplegable_total / total * 100
+        ) if total > 0 else 0.0,
+        "total_base": total,
+        "methodology": {
+            "cash_operativo": "cash disponible broker",
+            "caucion_tactica": "caucion colocada",
+            "fci_estrategico": "fci cash management",
+            "liquidez_desplegable_total": "cash operativo + caucion tactica + fci estrategico",
+            "total_base": "total patrimonio modelado",
+        },
+    }
+
+
 def _build_portfolio_scope_summary() -> Dict:
     """Explicita el universo broker vs capital invertido para Planeacion."""
 
@@ -351,21 +408,25 @@ def _build_portfolio_scope_summary() -> Dict:
     cash_usd = sum(float(cuenta.disponible) for cuenta in resumen if cuenta.moneda == "USD")
     portfolio_total_broker = float(kpis.get("total_iol") or 0.0)
     invested_portfolio = float(kpis.get("portafolio_invertido") or 0.0)
+    caucion_colocada = float(kpis.get("caucion_colocada") or 0.0)
     cash_management_fci = float(kpis.get("fci_cash_management") or 0.0)
     cash_available_broker = cash_ars
 
     cash_ratio_total = (cash_available_broker / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
+    caucion_ratio_total = (caucion_colocada / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
     invested_ratio_total = (invested_portfolio / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
     fci_ratio_total = (cash_management_fci / portfolio_total_broker) if portfolio_total_broker > 0 else 0.0
 
     return {
         "portfolio_total_broker": portfolio_total_broker,
         "invested_portfolio": invested_portfolio,
+        "caucion_colocada": caucion_colocada,
         "cash_management_fci": cash_management_fci,
         "cash_available_broker": cash_available_broker,
         "cash_available_broker_ars": cash_ars,
         "cash_available_broker_usd": cash_usd,
         "cash_ratio_total": cash_ratio_total,
+        "caucion_ratio_total": caucion_ratio_total,
         "invested_ratio_total": invested_ratio_total,
         "fci_ratio_total": fci_ratio_total,
     }

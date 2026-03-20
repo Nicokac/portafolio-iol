@@ -61,6 +61,7 @@ class TestDashboardFeatureFlows:
         assert "Universo patrimonial" in content
         assert "Patrimonio total broker" in content
         assert "Cash disponible" in content
+        assert "Caucion colocada" in content
         assert "Capital invertido analizado" in content
         assert "Diagn\u00f3stico previo al aporte" in content
         assert "Se\u00f1ales de diagn\u00f3stico y priorizaci\u00f3n" in content

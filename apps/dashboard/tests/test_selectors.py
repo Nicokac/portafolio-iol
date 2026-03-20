@@ -29,6 +29,7 @@ from apps.dashboard.selectors import (
     get_factor_exposure_detail,
     get_incremental_portfolio_simulation,
     get_incremental_portfolio_simulation_comparison,
+    get_liquidity_contract_summary,
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
@@ -106,6 +107,37 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
 
 
 class TestDashboardSelectors(TestCase):
+    def test_get_liquidity_contract_summary_uses_explicit_layers(self):
+        summary = get_liquidity_contract_summary(
+            {
+                "total_patrimonio_modelado": 3000.0,
+                "cash_disponible_broker": 200.0,
+                "caucion_colocada": 1000.0,
+                "liquidez_estrategica": 500.0,
+            }
+        )
+
+        assert summary["cash_operativo"] == 200.0
+        assert summary["caucion_tactica"] == 1000.0
+        assert summary["fci_estrategico"] == 500.0
+        assert summary["liquidez_desplegable_total"] == 1700.0
+        assert round(summary["pct_liquidez_desplegable_total"], 4) == round(1700.0 / 3000.0 * 100, 4)
+
+    def test_get_liquidity_contract_summary_falls_back_to_legacy_payload(self):
+        summary = get_liquidity_contract_summary(
+            {
+                "total_iol": 1000.0,
+                "liquidez_operativa": 150.0,
+                "fci_cash_management": 100.0,
+            }
+        )
+
+        assert summary["cash_operativo"] == 150.0
+        assert summary["caucion_tactica"] == 0.0
+        assert summary["fci_estrategico"] == 100.0
+        assert summary["liquidez_desplegable_total"] == 250.0
+        assert summary["pct_liquidez_desplegable_total"] == 25.0
+
     def test_build_portfolio_scope_summary_uses_total_broker_and_cash_ars_only(self):
         class Cuenta:
             def __init__(self, moneda, disponible):
@@ -131,11 +163,13 @@ class TestDashboardSelectors(TestCase):
 
         assert detail["portfolio_total_broker"] == 15863589.0
         assert detail["invested_portfolio"] == 13330704.0
+        assert detail["caucion_colocada"] == 0.0
         assert detail["cash_management_fci"] == 2532885.0
         assert detail["cash_available_broker"] == 11039915.47
         assert detail["cash_available_broker_ars"] == 11039915.47
         assert detail["cash_available_broker_usd"] == 0.56
         assert round(detail["cash_ratio_total"], 4) == round(11039915.47 / 15863589.0, 4)
+        assert detail["caucion_ratio_total"] == 0.0
         assert round(detail["invested_ratio_total"], 4) == round(13330704.0 / 15863589.0, 4)
         assert round(detail["fci_ratio_total"], 4) == round(2532885.0 / 15863589.0, 4)
 
@@ -194,6 +228,7 @@ class TestDashboardSelectors(TestCase):
         assert kpis['total_iol'] == Decimal('2000.00')  # 1000 activos + 1000 cash ARS
         assert kpis['liquidez_operativa'] == Decimal('1000.00')  # solo cash ARS
         assert kpis['cash_disponible_broker'] == Decimal('1000.00')
+        assert kpis['caucion_colocada'] == Decimal('0.00')
         assert kpis['liquidez_estrategica'] == Decimal('0.00')
         assert kpis['liquidez_total_combinada'] == Decimal('1000.00')
         assert kpis['total_patrimonio_modelado'] == Decimal('2000.00')
@@ -244,6 +279,7 @@ class TestDashboardSelectors(TestCase):
         assert 'pct_portafolio_invertido' in kpis
         assert 'pct_liquidez_total' in kpis
         assert 'pct_liquidez_operativa' in kpis
+        assert 'pct_caucion_colocada' in kpis
         assert 'pct_liquidez_estrategica' in kpis
         assert 'pct_liquidez_total_combinada' in kpis
         assert 'pct_portafolio_invertido_modelado' in kpis
@@ -255,9 +291,32 @@ class TestDashboardSelectors(TestCase):
         assert kpis['pct_portafolio_invertido'] == 50.0
         assert kpis['pct_liquidez_total'] == 50.0
         assert kpis['pct_liquidez_operativa'] == 50.0
+        assert kpis['pct_caucion_colocada'] == 0.0
         assert kpis['pct_liquidez_estrategica'] == 0.0
         assert kpis['pct_liquidez_total_combinada'] == 50.0
         assert kpis['pct_portafolio_invertido_modelado'] == 50.0
+
+    def test_total_patrimonio_modelado_incluye_caucion_como_capa_separada(self):
+        fecha = timezone.now()
+
+        make_resumen(fecha, disponible=200.00)
+        make_activo(fecha, 'CAU1', valorizado=1000.00, tipo='CAUCIONESPESOS')
+        make_activo(fecha, 'ADBAICA', valorizado=500.00, tipo='FondoComundeInversion')
+        make_activo(fecha, 'AAPL', valorizado=1300.00, tipo='ACCIONES', moneda='USD')
+
+        kpis = get_dashboard_kpis()
+
+        assert kpis['cash_disponible_broker'] == Decimal('200.00')
+        assert kpis['caucion_colocada'] == Decimal('1000.00')
+        assert kpis['liquidez_estrategica'] == Decimal('500.00')
+        assert kpis['portafolio_invertido'] == Decimal('1300.00')
+        assert kpis['total_patrimonio_modelado'] == Decimal('3000.00')
+        assert kpis['liquidez_total_combinada'] == Decimal('1700.00')
+        assert abs(float(kpis['pct_liquidez_operativa']) - 6.6667) < 0.01
+        assert abs(float(kpis['pct_caucion_colocada']) - 33.3333) < 0.01
+        assert abs(float(kpis['pct_liquidez_estrategica']) - 16.6667) < 0.01
+        assert abs(float(kpis['pct_portafolio_invertido_modelado']) - 43.3333) < 0.01
+        assert abs(float(kpis['pct_liquidez_total_combinada']) - 56.6667) < 0.01
 
     def test_pct_liquidez_usa_total_iol_como_base(self):
         fecha = timezone.now()

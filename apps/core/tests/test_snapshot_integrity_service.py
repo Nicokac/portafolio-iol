@@ -51,3 +51,39 @@ class TestSnapshotIntegrityService:
         assert result["issues_count"] > 0
         assert len(result["extreme_changes"]) >= 1
         assert len(result["valuation_inconsistencies"]) >= 1
+
+    def test_uses_explicit_liquidity_layers_when_available(self):
+        today = timezone.now().date()
+        PortfolioSnapshot.objects.create(
+            fecha=today - timedelta(days=1),
+            total_iol=2100,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=1500,
+            total_patrimonio_modelado=2100,
+            cash_disponible_broker=200,
+            caucion_colocada=300,
+            rendimiento_total=0,
+            exposicion_usa=50,
+            exposicion_argentina=50,
+        )
+        PortfolioSnapshot.objects.create(
+            fecha=today,
+            total_iol=2200,
+            liquidez_operativa=250,
+            cash_management=100,
+            portafolio_invertido=1600,
+            total_patrimonio_modelado=2100,
+            cash_disponible_broker=250,
+            caucion_colocada=300,
+            rendimiento_total=0,
+            exposicion_usa=50,
+            exposicion_argentina=50,
+        )
+
+        result = SnapshotIntegrityService().run_checks(days=30)
+
+        assert any(
+            issue["reference_field"] == "total_patrimonio_modelado"
+            for issue in result["valuation_inconsistencies"]
+        )

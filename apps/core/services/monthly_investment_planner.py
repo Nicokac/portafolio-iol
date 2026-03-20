@@ -5,6 +5,7 @@ from decimal import Decimal
 from apps.core.models import PortfolioParameters
 from apps.dashboard.selectors import get_concentracion_pais
 from apps.dashboard.selectors import get_dashboard_kpis
+from apps.dashboard.selectors import get_liquidity_contract_summary
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot as Activo
 
 logger = logging.getLogger(__name__)
@@ -198,10 +199,8 @@ class MonthlyInvestmentPlanner:
         else:
             targets = {'liquidez': 20.0, 'usa': 40.0, 'argentina': 30.0, 'emerging': 10.0}
 
-        total_iol = float(current_portfolio.get('total_iol', 0) or 0)
-        liq_oper = float(current_portfolio.get('liquidez_operativa', 0) or 0)
-        fci_cash = float(current_portfolio.get('fci_cash_management', 0) or 0)
-        current_liquidez = ((liq_oper + fci_cash) / total_iol * 100) if total_iol > 0 else 0
+        liquidity_contract = get_liquidity_contract_summary(current_portfolio)
+        current_liquidez = float(liquidity_contract.get('pct_liquidez_desplegable_total', 0) or 0)
 
         pais_dist = get_concentracion_pais()
         current_usa = float(pais_dist.get('USA', 0) or 0)

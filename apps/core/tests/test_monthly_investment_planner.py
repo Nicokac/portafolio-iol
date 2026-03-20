@@ -183,6 +183,31 @@ def test_build_state_based_allocation_returns_base_only_when_no_gaps(planner, mo
     assert rationale["mode"] == "base_only"
 
 
+def test_build_state_based_allocation_uses_explicit_liquidity_layers_when_available(planner, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.monthly_investment_planner.PortfolioParameters.get_active_parameters",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "apps.core.services.monthly_investment_planner.get_concentracion_pais",
+        lambda: {"USA": 10.0, "Argentina": 20.0, "EM": 5.0},
+    )
+
+    allocation, rationale = planner._build_state_based_allocation(
+        base_allocation={"SPY": 40, "EEM": 20, "BONOS": 20, "LIQUIDEZ": 20},
+        current_portfolio={
+            "total_patrimonio_modelado": 3000,
+            "cash_disponible_broker": 200,
+            "caucion_colocada": 1000,
+            "liquidez_estrategica": 500,
+        },
+        risk_profile="moderado",
+    )
+
+    assert rationale["mode"] == "state_based"
+    assert allocation["LIQUIDEZ"] == 0.0
+
+
 def test_normalize_allocation_closes_rounding_drift(planner):
     result = planner._normalize_allocation({"A": 1, "B": 1, "C": 1})
 

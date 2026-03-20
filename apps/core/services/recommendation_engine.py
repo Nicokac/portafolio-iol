@@ -15,6 +15,7 @@ from apps.dashboard.selectors import (
     get_concentracion_patrimonial,
     get_concentracion_sector,
     get_dashboard_kpis,
+    get_liquidity_contract_summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,11 +83,8 @@ class RecommendationEngine:
 
     def _analyze_liquidity(self, portfolio: Dict) -> Optional[Dict]:
         try:
-            total_iol = float(portfolio.get("total_iol", 0) or 0)
-            liq_oper = float(portfolio.get("liquidez_operativa", 0) or 0)
-            fci_cash = float(portfolio.get("fci_cash_management", 0) or 0)
-            # Liquidez total operativa para decisiones tacticas de aporte.
-            liquidity_percentage = ((liq_oper + fci_cash) / total_iol * 100) if total_iol > 0 else 0.0
+            liquidity_contract = get_liquidity_contract_summary(portfolio)
+            liquidity_percentage = float(liquidity_contract.get("pct_liquidez_desplegable_total", 0.0) or 0.0)
 
             if liquidity_percentage > 30:
                 suggested_categories = self._build_diversification_categories()
@@ -95,8 +93,8 @@ class RecommendationEngine:
                     "prioridad": "media",
                     "titulo": "Liquidez Excesiva",
                     "descripcion": (
-                        f"Tienes {liquidity_percentage:.1f}% en liquidez total. "
-                        "Liquidez total = liquidez operativa + cash management."
+                        f"Tienes {liquidity_percentage:.1f}% en liquidez desplegable. "
+                        "Liquidez desplegable = cash operativo + caucion tactica + cash management."
                     ),
                     "acciones_sugeridas": [
                         "Dirigir nuevos flujos a sectores subrepresentados",
@@ -111,7 +109,7 @@ class RecommendationEngine:
                     "tipo": "liquidez_insuficiente",
                     "prioridad": "alta",
                     "titulo": "Liquidez Insuficiente",
-                    "descripcion": f"Tienes solo {liquidity_percentage:.1f}% en liquidez. Considera aumentar para mayor seguridad.",
+                    "descripcion": f"Tienes solo {liquidity_percentage:.1f}% en liquidez desplegable. Considera aumentar para mayor seguridad.",
                     "acciones_sugeridas": [
                         "Mantener al menos 5-10% en liquidez",
                         "Reducir exposicion a activos volatiles",

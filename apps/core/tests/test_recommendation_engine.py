@@ -96,7 +96,7 @@ def test_analyze_liquidity_returns_expected_recommendations(
     assert result["prioridad"] == expected_priority
 
     if expected_type == "liquidez_excesiva":
-        assert "Liquidez total = liquidez operativa + cash management" in result["descripcion"]
+        assert "Liquidez desplegable = cash operativo + caucion tactica + cash management" in result["descripcion"]
 
 
 def test_analyze_liquidity_returns_none_on_safe_range(engine):
@@ -105,6 +105,26 @@ def test_analyze_liquidity_returns_none_on_safe_range(engine):
     )
 
     assert result is None
+
+
+def test_analyze_liquidity_uses_explicit_liquidity_layers_when_available(engine, monkeypatch):
+    monkeypatch.setattr(
+        engine,
+        "_build_diversification_categories",
+        lambda: ["Healthcare", "Industrials", "Small Caps", "Utilities"],
+    )
+
+    result = engine._analyze_liquidity(
+        {
+            "total_patrimonio_modelado": 3000,
+            "cash_disponible_broker": 200,
+            "caucion_colocada": 1000,
+            "liquidez_estrategica": 500,
+        }
+    )
+
+    assert result["tipo"] == "liquidez_excesiva"
+    assert "56.7%" in result["descripcion"]
 
 
 def test_analyze_geographic_concentration_returns_argentina_and_usa_recommendations(

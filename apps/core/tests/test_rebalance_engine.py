@@ -42,6 +42,12 @@ class TestRebalanceRules:
         result = rule.analyze({'pct_liquidez_operativa': 20.0})
         assert result['sugerencias'] == []
 
+    def test_liquidity_rebalance_uses_deployable_liquidity_when_present(self):
+        rule = LiquidityRebalance(min_liquidity=10.0, max_liquidity=30.0)
+        result = rule.analyze({'pct_liquidez_desplegable_total': 45.0, 'pct_liquidez_operativa': 5.0})
+        assert len(result['sugerencias']) == 1
+        assert result['sugerencias'][0]['razon'] == 'Liquidez desplegable excesiva, oportunidad de inversión'
+
     def test_country_diversification_triggered(self):
         rule = CountryDiversificationRebalance(max_country_exposure=50.0)
         result = rule.analyze({'concentracion_pais': {'USA': 70.0, 'Argentina': 30.0}})

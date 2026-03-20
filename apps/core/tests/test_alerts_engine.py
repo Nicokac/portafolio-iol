@@ -35,6 +35,12 @@ class TestAlertRules:
         alert = rule.check({'pct_liquidez_operativa': 20.0})
         assert not alert
 
+    def test_liquidity_alert_uses_deployable_liquidity_when_present(self):
+        rule = LiquidityAlert(threshold=40.0)
+        alert = rule.check({'pct_liquidez_desplegable_total': 55.0, 'pct_liquidez_operativa': 5.0})
+        assert alert
+        assert 'Liquidez desplegable elevada' in alert['mensaje']
+
     def test_country_exposure_alert_triggered(self):
         rule = CountryExposureAlert(threshold=60.0)
         alert = rule.check({'concentracion_pais': {'USA': 75.0, 'Argentina': 25.0}})

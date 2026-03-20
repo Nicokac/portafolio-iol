@@ -21,9 +21,12 @@ class TestPortfolioSnapshotService:
     def mock_kpis(self):
         return {
             'total_iol': 10000.0,
-            'liquidez_operativa': 2000.0,
+            'liquidez_operativa': 1200.0,
             'fci_cash_management': 1000.0,
             'portafolio_invertido': 7000.0,
+            'total_patrimonio_modelado': 10000.0,
+            'cash_disponible_broker': 1200.0,
+            'caucion_colocada': 800.0,
             'rendimiento_total_porcentaje': 5.5,
         }
 
@@ -40,6 +43,9 @@ class TestPortfolioSnapshotService:
         snapshot = service.generate_daily_snapshot()
         assert isinstance(snapshot, PortfolioSnapshot)
         assert PortfolioSnapshot.objects.count() == 1
+        assert snapshot.total_patrimonio_modelado == mock_kpis['total_patrimonio_modelado']
+        assert snapshot.cash_disponible_broker == mock_kpis['cash_disponible_broker']
+        assert snapshot.caucion_colocada == mock_kpis['caucion_colocada']
 
     @patch('apps.core.services.portfolio_snapshot_service.get_dashboard_kpis')
     @patch('apps.core.services.portfolio_snapshot_service.get_distribucion_pais')
@@ -58,6 +64,9 @@ class TestPortfolioSnapshotService:
             liquidez_operativa=1000,
             cash_management=500,
             portafolio_invertido=3500,
+            total_patrimonio_modelado=5000,
+            cash_disponible_broker=1000,
+            caucion_colocada=0,
             rendimiento_total=3.0,
             exposicion_usa=60.0,
             exposicion_argentina=40.0,
@@ -67,6 +76,7 @@ class TestPortfolioSnapshotService:
         assert PortfolioSnapshot.objects.count() == 1
         snapshot.refresh_from_db()
         assert snapshot.total_iol == mock_kpis['total_iol']
+        assert snapshot.total_patrimonio_modelado == mock_kpis['total_patrimonio_modelado']
         assert getattr(snapshot, '_refresh_action') == 'refreshed'
 
     def test_sync_iol_data_no_estado_cuenta(self, service):
@@ -86,9 +96,12 @@ class TestPortfolioSnapshotService:
     def test_sync_iol_data_success(self, mock_portafolio, mock_pais, mock_kpis_fn, service):
         mock_kpis_fn.return_value = {
             'total_iol': 10000.0,
-            'liquidez_operativa': 2000.0,
+            'liquidez_operativa': 1200.0,
             'fci_cash_management': 1000.0,
             'portafolio_invertido': 7000.0,
+            'total_patrimonio_modelado': 10000.0,
+            'cash_disponible_broker': 1200.0,
+            'caucion_colocada': 800.0,
             'rendimiento_total_porcentaje': 5.5,
         }
         mock_pais.return_value = {'USA': 5000.0, 'Argentina': 2000.0}

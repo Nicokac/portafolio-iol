@@ -44,6 +44,27 @@ class PortfolioSnapshot(models.Model):
     liquidez_operativa = models.DecimalField(max_digits=15, decimal_places=2, help_text="Cash + caución + FCI disponibles")
     cash_management = models.DecimalField(max_digits=15, decimal_places=2, help_text="FCI de cash management")
     portafolio_invertido = models.DecimalField(max_digits=15, decimal_places=2, help_text="Activos de inversión")
+    total_patrimonio_modelado = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total patrimonial modelado con capas explícitas",
+    )
+    cash_disponible_broker = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Cash broker explícito persistido para snapshots nuevos",
+    )
+    caucion_colocada = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Caución colocada persistida para snapshots nuevos",
+    )
 
     # Rendimiento
     rendimiento_total = models.FloatField(help_text="Rendimiento total del portafolio (%)")
@@ -68,6 +89,12 @@ class PortfolioSnapshot(models.Model):
     @property
     def liquidez_total(self):
         """Liquidez operativa + cash management."""
+        if self.cash_disponible_broker is not None or self.caucion_colocada is not None:
+            return (
+                (self.cash_disponible_broker or 0)
+                + (self.caucion_colocada or 0)
+                + self.cash_management
+            )
         return self.liquidez_operativa + self.cash_management
 
 

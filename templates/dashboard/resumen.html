@@ -128,6 +128,15 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Caución colocada como capa táctica de liquidez. No es cash real en broker, pero tampoco se interpreta como capital de riesgo.">Caución colocada</div>
+                <div class="kpi-value text-secondary">{{ kpis.caucion_colocada|currency:0 }}</div>
+                <div class="text-body-secondary small">{{ kpis.pct_caucion_colocada|pct:1 }} del total modelado</div>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section id="resumen-macro" class="mb-3">
