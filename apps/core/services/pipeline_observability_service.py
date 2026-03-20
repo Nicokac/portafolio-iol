@@ -92,6 +92,7 @@ class PipelineObservabilityService:
             "iol_historical_recent_sync_by_symbol": self._build_iol_historical_recent_sync_by_symbol(
                 iol_historical_recent_sync_rows
             ),
+            "iol_historical_ops_cta": self._build_iol_historical_ops_cta(iol_historical_recent_sync_rows),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
             "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
             "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
@@ -335,6 +336,42 @@ class PipelineObservabilityService:
         else:
             priority = 2
         return (priority, 0 if symbol_key == "-" else 1, f"{latest_at}|{symbol_key}")
+
+    @staticmethod
+    def _build_iol_historical_ops_cta(rows: list[dict]) -> dict | None:
+        failed_rows = [row for row in rows if str(row.get("status") or "") == "failed"]
+        metadata_rows = [row for row in rows if str(row.get("scope") or "") == "metadata"]
+
+        if failed_rows:
+            symbol_keys = [str(row.get("symbol_key") or "-") for row in failed_rows if str(row.get("symbol_key") or "-") != "-"]
+            return {
+                "level": "danger",
+                "title": "Atención inmediata en históricos IOL",
+                "message": "Hay sincronizaciones fallidas. Conviene revisar el detalle antes de seguir reforzando cobertura.",
+                "action_hint": "Priorizá revisión manual de los símbolos fallidos y luego reintentá el flujo correspondiente.",
+                "symbol_keys": symbol_keys[:5],
+            }
+
+        if metadata_rows:
+            symbol_keys = [str(row.get("symbol_key") or "-") for row in metadata_rows if str(row.get("symbol_key") or "-") != "-"]
+            return {
+                "level": "warning",
+                "title": "Cobertura recuperable por metadata",
+                "message": "No hay fallos activos, pero todavía quedan símbolos que dependen de reintento de metadata.",
+                "action_hint": "Usá 'Reintentar metadata IOL no resuelta' sobre los símbolos recuperables.",
+                "symbol_keys": symbol_keys[:5],
+            }
+
+        if rows:
+            return {
+                "level": "success",
+                "title": "Cobertura operativa estable",
+                "message": "No hay fallos recientes ni reintentos de metadata pendientes en el historial manual.",
+                "action_hint": "No hace falta intervenir ahora. Solo monitoreá nuevos faltantes o parciales.",
+                "symbol_keys": [],
+            }
+
+        return None
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
         audits = SensitiveActionAudit.objects.filter(

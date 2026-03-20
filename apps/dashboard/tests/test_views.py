@@ -1159,6 +1159,13 @@ class TestDashboardView:
                             ],
                         },
                     ],
+                    'iol_historical_ops_cta': {
+                        'level': 'danger',
+                        'title': 'Atención inmediata en históricos IOL',
+                        'message': 'Hay sincronizaciones fallidas. Conviene revisar el detalle antes de seguir reforzando cobertura.',
+                        'action_hint': 'Priorizá revisión manual de los símbolos fallidos y luego reintentá el flujo correspondiente.',
+                        'symbol_keys': ['NYSE:KO'],
+                    },
                     'local_macro_status_summary': {
                         'ready': 3,
                         'total_series': 4,
@@ -1282,6 +1289,8 @@ class TestDashboardView:
         assert 'No elegibles' in body
         assert 'FCI: 1 · Otros: 1' in body or 'FCI: 1' in body
         assert 'Historial IOL agrupado por símbolo' in body or 'Historial IOL agrupado por simbolo' in body
+        assert 'Atención inmediata en históricos IOL' in body or 'Atencion inmediata en historicos IOL' in body
+        assert 'Priorizá revisión manual de los símbolos fallidos' in body or 'Prioriza revision manual de los simbolos fallidos' in body
         assert 'Ordenado por severidad y recuperabilidad' in body
         assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
         assert 'Sync faltantes' in body

@@ -286,7 +286,21 @@
         </div>
     </div>
     <div class="col-12">
-            <div class="card border-info-subtle">
+        {% if pipeline_observability.iol_historical_ops_cta %}
+        <div class="alert alert-{{ pipeline_observability.iol_historical_ops_cta.level }} mb-3">
+            <strong>{{ pipeline_observability.iol_historical_ops_cta.title }}</strong><br>
+            {{ pipeline_observability.iol_historical_ops_cta.message }}
+            <div class="small mt-2">
+                {{ pipeline_observability.iol_historical_ops_cta.action_hint }}
+                {% if pipeline_observability.iol_historical_ops_cta.symbol_keys %}
+                <div class="mt-1 text-muted">
+                    Símbolos: {{ pipeline_observability.iol_historical_ops_cta.symbol_keys|join:", " }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="card border-info-subtle">
             <div class="card-header bg-transparent">
                 <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
                     <h5 class="mb-0">Historial IOL agrupado por símbolo</h5>
