@@ -129,7 +129,7 @@
                             <td><strong>Históricos IOL por símbolo</strong></td>
                             <td class="text-end">
                                 {{ pipeline_observability.iol_historical_price_summary.ready_count }}/{{ pipeline_observability.iol_historical_price_summary.total_symbols }}
-                                listos · parcial {{ pipeline_observability.iol_historical_price_summary.partial_count }} · missing {{ pipeline_observability.iol_historical_price_summary.missing_count }} · no elegibles {{ pipeline_observability.iol_historical_price_summary.unsupported_count }}
+                                listos · parcial {{ pipeline_observability.iol_historical_price_summary.partial_count }} · missing {{ pipeline_observability.iol_historical_price_summary.missing_count }} · no elegibles {{ pipeline_observability.iol_historical_price_summary.unsupported_count }} (FCI {{ pipeline_observability.iol_historical_price_summary.unsupported_fci_count }} · otros {{ pipeline_observability.iol_historical_price_summary.unsupported_other_count }})
                                 ({{ pipeline_observability.iol_historical_price_summary.overall_status }})
                             </td>
                         </tr>
@@ -266,6 +266,9 @@
                                 <span class="badge text-bg-secondary">{{ pipeline_observability.iol_historical_price_symbol_groups.unsupported|length }}</span>
                             </div>
                             {% if pipeline_observability.iol_historical_price_symbol_groups.unsupported %}
+                            <div class="small text-muted mb-2">
+                                FCI: {{ pipeline_observability.iol_historical_price_symbol_groups.unsupported_fci|length }} · Otros: {{ pipeline_observability.iol_historical_price_symbol_groups.unsupported_other|length }}
+                            </div>
                             <div class="small">
                                 {{ pipeline_observability.iol_historical_price_symbol_groups.unsupported|join:", " }}
                             </div>
@@ -345,6 +348,11 @@
                                 <span class="badge text-bg-secondary">No elegible</span>
                                 {% else %}
                                 <span class="badge text-bg-danger">Sin historia</span>
+                                {% endif %}
+                                {% if row.eligibility_status == 'unsupported_fci' %}
+                                <div class="small text-muted mt-1">Clase: FCI confirmado</div>
+                                {% elif row.status == 'unsupported' %}
+                                <div class="small text-muted mt-1">Clase: no elegible por otros motivos</div>
                                 {% endif %}
                                 {% if row.eligibility_reason %}
                                 <div class="small text-muted mt-1">{{ row.eligibility_reason }}</div>

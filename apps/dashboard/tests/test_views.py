@@ -1041,15 +1041,19 @@ class TestDashboardView:
                         'ready_count': 1,
                         'partial_count': 1,
                         'missing_count': 1,
-                        'unsupported_count': 1,
-                        'total_symbols': 4,
+                        'unsupported_count': 2,
+                        'unsupported_fci_count': 1,
+                        'unsupported_other_count': 1,
+                        'total_symbols': 5,
                         'overall_status': 'partial',
                     },
                     'iol_historical_price_symbol_groups': {
                         'ready': ['GGAL (BCBA)'],
                         'partial': ['AAPL (NASDAQ)'],
                         'missing': ['MSFT (NASDAQ)'],
-                        'unsupported': ['ADBAICA (BCBA)'],
+                        'unsupported': ['ADBAICA (BCBA)', 'CAUCION (BCBA)'],
+                        'unsupported_fci': ['ADBAICA (BCBA)'],
+                        'unsupported_other': ['CAUCION (BCBA)'],
                     },
                     'iol_historical_recent_sync_rows': [
                         {
@@ -1124,7 +1128,17 @@ class TestDashboardView:
                             'rows_count': 0,
                             'latest_date': None,
                             'status': 'unsupported',
-                            'eligibility_reason': 'FCI y cash management usan un pipeline distinto al de títulos',
+                            'eligibility_status': 'unsupported_fci',
+                            'eligibility_reason': 'Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos',
+                        },
+                        {
+                            'simbolo': 'CAUCION',
+                            'mercado': 'BCBA',
+                            'rows_count': 0,
+                            'latest_date': None,
+                            'status': 'unsupported',
+                            'eligibility_status': 'unsupported',
+                            'eligibility_reason': 'La caución no expone serie histórica de cotización como un título estándar',
                         },
                     ],
                     'local_macro_status_rows': [],
@@ -1174,13 +1188,15 @@ class TestDashboardView:
         assert 'Resumen benchmarks' in body
         assert '2/3' in body
         assert 'Históricos IOL por símbolo' in body
-        assert '1/4 listos' in body
+        assert '1/5 listos' in body
         assert 'Símbolos cubiertos y faltantes del proxy IOL' in body or 'Simbolos cubiertos y faltantes del proxy IOL' in body
         assert 'GGAL (BCBA)' in body
         assert 'AAPL (NASDAQ)' in body
         assert 'MSFT (NASDAQ)' in body
         assert 'ADBAICA (BCBA)' in body
+        assert 'CAUCION (BCBA)' in body
         assert 'No elegibles' in body
+        assert 'FCI: 1 · Otros: 1' in body or 'FCI: 1' in body
         assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
         assert 'Sync faltantes' in body
         assert 'Reforzar parciales' in body
@@ -1193,6 +1209,8 @@ class TestDashboardView:
         assert 'Parcial' in body
         assert 'Sin historia' in body
         assert 'No elegible' in body
+        assert 'Clase: FCI confirmado' in body
+        assert 'Clase: no elegible por otros motivos' in body
         assert 'sin configurar 1' in body
         assert 'Series macro críticas' in body
         assert '4/7' in body

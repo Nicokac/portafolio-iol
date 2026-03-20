@@ -163,6 +163,8 @@ class PipelineObservabilityService:
         partial_count = sum(1 for row in rows if row.get("status") == "partial")
         missing_count = sum(1 for row in rows if row.get("status") == "missing")
         unsupported_count = sum(1 for row in rows if row.get("status") == "unsupported")
+        unsupported_fci_count = sum(1 for row in rows if row.get("eligibility_status") == "unsupported_fci")
+        unsupported_other_count = max(unsupported_count - unsupported_fci_count, 0)
         if total == 0:
             overall_status = "missing"
         elif missing_count == 0 and partial_count == 0:
@@ -177,6 +179,8 @@ class PipelineObservabilityService:
             "partial_count": partial_count,
             "missing_count": missing_count,
             "unsupported_count": unsupported_count,
+            "unsupported_fci_count": unsupported_fci_count,
+            "unsupported_other_count": unsupported_other_count,
             "overall_status": overall_status,
         }
 
@@ -191,11 +195,19 @@ class PipelineObservabilityService:
         partial = [_label(row) for row in rows if row.get("status") == "partial"]
         missing = [_label(row) for row in rows if row.get("status") == "missing"]
         unsupported = [_label(row) for row in rows if row.get("status") == "unsupported"]
+        unsupported_fci = [_label(row) for row in rows if row.get("eligibility_status") == "unsupported_fci"]
+        unsupported_other = [
+            _label(row)
+            for row in rows
+            if row.get("status") == "unsupported" and row.get("eligibility_status") != "unsupported_fci"
+        ]
         return {
             "ready": ready,
             "partial": partial,
             "missing": missing,
             "unsupported": unsupported,
+            "unsupported_fci": unsupported_fci,
+            "unsupported_other": unsupported_other,
         }
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:

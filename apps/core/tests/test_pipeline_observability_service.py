@@ -88,7 +88,22 @@ def test_pipeline_observability_service_builds_unified_summary():
                 {"simbolo": "GGAL", "mercado": "BCBA", "rows_count": 12, "latest_date": "2026-03-17", "status": "ready"},
                 {"simbolo": "AAPL", "mercado": "NASDAQ", "rows_count": 3, "latest_date": "2026-03-17", "status": "partial"},
                 {"simbolo": "MSFT", "mercado": "NASDAQ", "rows_count": 0, "latest_date": None, "status": "missing"},
-                {"simbolo": "ADBAICA", "mercado": "BCBA", "rows_count": 0, "latest_date": None, "status": "unsupported"},
+                {
+                    "simbolo": "ADBAICA",
+                    "mercado": "BCBA",
+                    "rows_count": 0,
+                    "latest_date": None,
+                    "status": "unsupported",
+                    "eligibility_status": "unsupported_fci",
+                },
+                {
+                    "simbolo": "CAUCION",
+                    "mercado": "BCBA",
+                    "rows_count": 0,
+                    "latest_date": None,
+                    "status": "unsupported",
+                    "eligibility_status": "unsupported",
+                },
             ]
 
     class DummyLocalMacroService:
@@ -124,17 +139,21 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["covariance_readiness"]["status"] == "ready"
     assert summary["benchmark_status_summary"]["ready_count"] == 1
     assert summary["benchmark_status_summary"]["overall_status"] == "partial"
-    assert summary["iol_historical_price_summary"]["total_symbols"] == 4
+    assert summary["iol_historical_price_summary"]["total_symbols"] == 5
     assert summary["iol_historical_price_summary"]["ready_count"] == 1
     assert summary["iol_historical_price_summary"]["partial_count"] == 1
     assert summary["iol_historical_price_summary"]["missing_count"] == 1
-    assert summary["iol_historical_price_summary"]["unsupported_count"] == 1
+    assert summary["iol_historical_price_summary"]["unsupported_count"] == 2
+    assert summary["iol_historical_price_summary"]["unsupported_fci_count"] == 1
+    assert summary["iol_historical_price_summary"]["unsupported_other_count"] == 1
     assert summary["iol_historical_price_summary"]["overall_status"] == "partial"
     assert summary["iol_historical_price_rows"][0]["simbolo"] == "GGAL"
     assert summary["iol_historical_price_symbol_groups"]["ready"] == ["GGAL (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["partial"] == ["AAPL (NASDAQ)"]
     assert summary["iol_historical_price_symbol_groups"]["missing"] == ["MSFT (NASDAQ)"]
-    assert summary["iol_historical_price_symbol_groups"]["unsupported"] == ["ADBAICA (BCBA)"]
+    assert summary["iol_historical_price_symbol_groups"]["unsupported"] == ["ADBAICA (BCBA)", "CAUCION (BCBA)"]
+    assert summary["iol_historical_price_symbol_groups"]["unsupported_fci"] == ["ADBAICA (BCBA)"]
+    assert summary["iol_historical_price_symbol_groups"]["unsupported_other"] == ["CAUCION (BCBA)"]
     assert len(summary["iol_historical_recent_sync_rows"]) == 2
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial"}
     assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales"}
@@ -217,6 +236,8 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["iol_historical_price_symbol_groups"]["partial"] == []
     assert summary["iol_historical_price_symbol_groups"]["missing"] == []
     assert summary["iol_historical_price_symbol_groups"]["unsupported"] == []
+    assert summary["iol_historical_price_symbol_groups"]["unsupported_fci"] == []
+    assert summary["iol_historical_price_symbol_groups"]["unsupported_other"] == []
     assert summary["iol_historical_recent_sync_rows"] == []
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["overall_status"] == "missing"
