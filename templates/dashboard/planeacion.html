@@ -148,6 +148,9 @@
                         <p class="small text-muted mb-2">Perfil UI actual: <strong>{{ risk_profile|default:'moderado' }}</strong></p>
                         <p class="small text-muted mb-2">Total patrimonio modelado: <strong>{{ kpis.total_patrimonio_modelado|currency:0 }}</strong></p>
                         <p class="small text-muted mb-2">Cash disponible: <strong>{{ kpis.cash_disponible_broker|currency:0 }}</strong></p>
+                        {% if kpis.cash_a_liquidar_broker %}
+                        <p class="small text-muted mb-2">Cash a liquidar: <strong>{{ kpis.cash_a_liquidar_broker|currency:0 }}</strong></p>
+                        {% endif %}
                         <p class="small text-muted mb-0">Caucion colocada: <strong>{{ kpis.caucion_colocada|currency:0 }}</strong></p>
                     </div>
                 </div>
@@ -187,6 +190,15 @@
                                 <div class="h5 mb-0">{{ scope.cash_available_broker|currency:0 }}</div>
                                 {% if scope.cash_available_broker_usd %}
                                 <div class="small text-muted mt-1">USD sin convertir: {{ scope.cash_available_broker_usd|floatformat:2 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Cash a liquidar</div>
+                                <div class="h5 mb-0">{{ scope.cash_settling_broker|default:0|currency:0 }}</div>
+                                {% if scope.cash_settling_broker_usd %}
+                                <div class="small text-muted mt-1">USD sin convertir: {{ scope.cash_settling_broker_usd|floatformat:2 }}</div>
                                 {% endif %}
                             </div>
                         </div>

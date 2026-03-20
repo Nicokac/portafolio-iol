@@ -73,6 +73,15 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Saldos a liquidar provenientes de estadocuenta. No son cash inmediato, pero forman parte del capital broker que entra en próximas liquidaciones.">Cash a liquidar</div>
+                <div class="kpi-value text-warning-emphasis">{{ kpis.cash_a_liquidar_broker|currency:0 }}</div>
+                <div class="text-body-secondary small">No inmediato en broker</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 kpi-card">
+            <div class="card-body">
                 <div class="text-muted small" data-bs-toggle="tooltip" title="Rendimiento simple del portafolio invertido calculado como ganancia acumulada sobre costo estimado. Puede diferir del simple de IOL.">Rendimiento simple invertido</div>
                 <div class="kpi-value {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">
                     {{ kpis.rendimiento_total_porcentaje|pct:2 }}

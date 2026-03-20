@@ -432,6 +432,9 @@ class TestDashboardView:
                     'cash_available_broker': 11039915.47,
                     'cash_available_broker_ars': 11039915.47,
                     'cash_available_broker_usd': 0.56,
+                    'cash_settling_broker': 10063847.36,
+                    'cash_settling_broker_ars': 10063847.36,
+                    'cash_settling_broker_usd': 0.0,
                     'cash_ratio_total': 0.6959,
                     'invested_ratio_total': 0.8403,
                     'fci_ratio_total': 0.1597,
@@ -608,6 +611,7 @@ class TestDashboardView:
         assert 'Universo patrimonial' in body
         assert 'Patrimonio total broker' in body
         assert 'Cash disponible' in body
+        assert 'Cash a liquidar' in body
         assert 'Caucion colocada' in body
         assert 'Capital invertido analizado' in body
         assert 'FCI cash management' in body
