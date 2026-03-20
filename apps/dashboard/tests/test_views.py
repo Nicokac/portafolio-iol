@@ -1049,6 +1049,24 @@ class TestDashboardView:
                         'partial': ['AAPL (NASDAQ)'],
                         'missing': ['MSFT (NASDAQ)'],
                     },
+                    'iol_historical_recent_sync_rows': [
+                        {
+                            'scope': 'missing',
+                            'symbol_key': 'NASDAQ:AAPL',
+                            'rows_received': 30,
+                            'status': 'success',
+                            'created_at': '2026-03-17 10:00',
+                            'message': '',
+                        },
+                        {
+                            'scope': 'partial',
+                            'symbol_key': 'BCBA:GGAL',
+                            'rows_received': 12,
+                            'status': 'success',
+                            'created_at': '2026-03-17 10:05',
+                            'message': '',
+                        },
+                    ],
                     'local_macro_status_summary': {
                         'ready': 3,
                         'total_series': 4,
@@ -1147,6 +1165,9 @@ class TestDashboardView:
         assert 'GGAL (BCBA)' in body
         assert 'AAPL (NASDAQ)' in body
         assert 'MSFT (NASDAQ)' in body
+        assert 'Últimas sincronizaciones IOL por símbolo' in body or 'Ultimas sincronizaciones IOL por simbolo' in body
+        assert 'NASDAQ:AAPL' in body
+        assert 'BCBA:GGAL' in body
         assert 'Cobertura de históricos IOL por símbolo' in body
         assert 'GGAL' in body
         assert 'NASDAQ' in body

@@ -10,6 +10,7 @@ from apps.core.services.iol_historical_price_service import IOLHistoricalPriceSe
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.market_data.argentina_datos_client import ArgentinaDatosClient
+from apps.core.models import SensitiveActionAudit
 from django.utils import timezone
 
 
@@ -85,6 +86,7 @@ class PipelineObservabilityService:
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
             "iol_historical_price_summary": self._build_iol_historical_price_summary(iol_historical_price_rows),
             "iol_historical_price_symbol_groups": self._build_iol_historical_symbol_groups(iol_historical_price_rows),
+            "iol_historical_recent_sync_rows": self._build_iol_historical_recent_sync_rows(limit=12),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
             "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
             "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
@@ -191,6 +193,43 @@ class PipelineObservabilityService:
             "partial": partial,
             "missing": missing,
         }
+
+    def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
+        audits = SensitiveActionAudit.objects.filter(
+            action__in=["sync_iol_historical_prices", "sync_iol_historical_prices_partial"]
+        ).order_by("-created_at", "-id")[:limit]
+
+        rows: list[dict] = []
+        for audit in audits:
+            details = audit.details or {}
+            result = details.get("result") or {}
+            results = result.get("results") or {}
+            sync_scope = "missing" if audit.action == "sync_iol_historical_prices" else "partial"
+            if not results:
+                rows.append(
+                    {
+                        "scope": sync_scope,
+                        "symbol_key": "-",
+                        "rows_received": 0,
+                        "status": audit.status,
+                        "created_at": self._format_local_datetime(audit.created_at),
+                        "message": "Sin simbolos seleccionados",
+                    }
+                )
+                continue
+
+            for symbol_key, payload in results.items():
+                rows.append(
+                    {
+                        "scope": sync_scope,
+                        "symbol_key": symbol_key,
+                        "rows_received": int(payload.get("rows_received") or 0),
+                        "status": "success" if payload.get("success", True) else "failed",
+                        "created_at": self._format_local_datetime(audit.created_at),
+                        "message": payload.get("error") or "",
+                    }
+                )
+        return rows[:limit]
 
     @staticmethod
     def _build_critical_local_macro_summary(rows: list[dict]) -> dict:

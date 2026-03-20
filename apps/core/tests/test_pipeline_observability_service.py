@@ -1,11 +1,38 @@
+import pytest
+
 from datetime import date, datetime, timezone as dt_timezone
 
 from django.utils import timezone
 
+from apps.core.models import SensitiveActionAudit
 from apps.core.services.pipeline_observability_service import PipelineObservabilityService
 
 
+@pytest.mark.django_db
 def test_pipeline_observability_service_builds_unified_summary():
+    SensitiveActionAudit.objects.create(
+        action="sync_iol_historical_prices",
+        status="success",
+        details={
+            "result": {
+                "results": {
+                    "NASDAQ:AAPL": {"success": True, "rows_received": 30},
+                }
+            }
+        },
+    )
+    SensitiveActionAudit.objects.create(
+        action="sync_iol_historical_prices_partial",
+        status="success",
+        details={
+            "result": {
+                "results": {
+                    "BCBA:GGAL": {"success": True, "rows_received": 12},
+                }
+            }
+        },
+    )
+
     class DummySyncAuditService:
         def run_audit(self, freshness_hours=24):
             assert freshness_hours == 24
@@ -91,6 +118,8 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_price_symbol_groups"]["ready"] == ["GGAL (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["partial"] == ["AAPL (NASDAQ)"]
     assert summary["iol_historical_price_symbol_groups"]["missing"] == ["MSFT (NASDAQ)"]
+    assert summary["iol_historical_recent_sync_rows"][0]["symbol_key"] in {"BCBA:GGAL", "NASDAQ:AAPL"}
+    assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial"}
     assert summary["local_macro_status_summary"]["ready"] == 1
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1
@@ -110,6 +139,7 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["snapshot_integrity_issues_count"] == 2
 
 
+@pytest.mark.django_db
 def test_pipeline_observability_service_handles_missing_sync_and_history():
     class DummySyncAuditService:
         def run_audit(self, freshness_hours=24):
@@ -164,6 +194,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["iol_historical_price_symbol_groups"]["ready"] == []
     assert summary["iol_historical_price_symbol_groups"]["partial"] == []
     assert summary["iol_historical_price_symbol_groups"]["missing"] == []
+    assert summary["iol_historical_recent_sync_rows"] == []
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["attention_count"] == 7
