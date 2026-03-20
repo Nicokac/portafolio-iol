@@ -270,3 +270,18 @@ class IOLAPIClient:
         url = f"{self.base_url}/api/v2/operaciones"
         data = self._request_json(operation="get_operaciones", url=url, params=params)
         return data if isinstance(data, list) else None
+
+    def get_titulo_historicos(
+        self,
+        mercado: str,
+        simbolo: str,
+        params: Optional[Dict] = None,
+    ) -> Optional[List[Dict]]:
+        """Obtiene precios historicos de un titulo."""
+        url = f"{self.base_url}/api/v2/titulos/{mercado}/{simbolo}/historicos"
+        data = self._request_json(
+            operation=f"get_titulo_historicos:{mercado}:{simbolo}",
+            url=url,
+            params=params,
+        )
+        return data if isinstance(data, list) else None

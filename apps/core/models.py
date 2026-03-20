@@ -330,6 +330,38 @@ class BenchmarkSnapshot(models.Model):
         return f"{self.benchmark_key} {self.interval} {self.fecha} ({self.source})"
 
 
+class IOLHistoricalPriceSnapshot(models.Model):
+    """Serie historica diaria de precios por simbolo obtenida desde IOL."""
+
+    simbolo = models.CharField(max_length=20)
+    mercado = models.CharField(max_length=20)
+    source = models.CharField(max_length=32, default="iol")
+    fecha = models.DateField()
+    open = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    high = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    low = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    close = models.DecimalField(max_digits=18, decimal_places=6)
+    volume = models.BigIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "simbolo"]
+        indexes = [
+            models.Index(fields=["simbolo", "mercado", "fecha"]),
+            models.Index(fields=["mercado", "fecha"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["simbolo", "mercado", "source", "fecha"],
+                name="unique_iol_historical_price_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.simbolo} {self.mercado} {self.fecha} ({self.source})"
+
+
 class MacroSeriesSnapshot(models.Model):
     """Serie macro local persistida para contexto analitico del portafolio."""
 
