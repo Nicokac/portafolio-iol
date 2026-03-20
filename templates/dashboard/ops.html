@@ -331,7 +331,7 @@
                 <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
-                        <tr><th>Prioridad</th><th>Símbolo</th><th>Usuarios</th><th>Scopes</th><th>Última actividad</th></tr>
+                        <tr><th>Prioridad</th><th>Símbolo</th><th>Usuarios</th><th>Flujos</th><th>Última actividad</th></tr>
                     </thead>
                     <tbody>
                         {% for row in pipeline_observability.iol_historical_recent_sync_by_symbol %}
@@ -344,11 +344,11 @@
                             <td class="small">
                                 {% for item in row.items %}
                                 <div>
-                                    <strong>{{ item.scope }}</strong>: {{ item.rows_received }} rows
+                                    <strong>{{ item.scope }}</strong>: {{ item.rows_received }} filas
                                     {% if item.status == 'success' %}
-                                    <span class="badge text-bg-success">Success</span>
+                                    <span class="badge text-bg-success">Exitoso</span>
                                     {% elif item.status == 'failed' %}
-                                    <span class="badge text-bg-danger">Failed</span>
+                                    <span class="badge text-bg-danger">Fallido</span>
                                     {% else %}
                                     <span class="badge text-bg-secondary">{{ item.status }}</span>
                                     {% endif %}
@@ -374,7 +374,7 @@
             <div class="card-body table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
-                        <tr><th>Acción</th><th>Usuario</th><th>Scope</th><th>Símbolo</th><th class="text-end">Rows</th><th>Estado</th><th>Ejecutado</th><th>Detalle</th></tr>
+                        <tr><th>Acción</th><th>Usuario</th><th>Flujo</th><th>Símbolo</th><th class="text-end">Filas</th><th>Estado</th><th>Ejecutado</th><th>Detalle</th></tr>
                     </thead>
                     <tbody>
                         {% for row in pipeline_observability.iol_historical_recent_sync_rows %}
@@ -386,9 +386,9 @@
                             <td class="text-end">{{ row.rows_received }}</td>
                             <td>
                                 {% if row.status == 'success' %}
-                                <span class="badge text-bg-success">Success</span>
+                                <span class="badge text-bg-success">Exitoso</span>
                                 {% elif row.status == 'failed' %}
-                                <span class="badge text-bg-danger">Failed</span>
+                                <span class="badge text-bg-danger">Fallido</span>
                                 {% else %}
                                 <span class="badge text-bg-secondary">{{ row.status }}</span>
                                 {% endif %}

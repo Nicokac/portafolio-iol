@@ -1344,7 +1344,10 @@ class TestDashboardView:
         assert 'Atención inmediata' in body or 'Atencion inmediata' in body
         assert 'Recuperable' in body
         assert 'Estable' in body
-        assert 'Failed' in body
+        assert 'Fallido' in body
+        assert 'Exitoso' in body
+        assert 'Flujos' in body
+        assert 'Filas' in body
         assert 'staffuser' in body
         assert 'NASDAQ:AAPL' in body
         assert 'BCBA:GGAL' in body
