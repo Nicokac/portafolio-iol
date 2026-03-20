@@ -32,6 +32,7 @@ class IOLSyncService:
             return False
 
         fecha_extraccion = timezone.now()
+        total_en_pesos = data.get("totalEnPesos")
         for cuenta in data.get('cuentas', []):
             ResumenCuentaSnapshot.objects.create(
                 fecha_extraccion=fecha_extraccion,
@@ -43,7 +44,9 @@ class IOLSyncService:
                 saldo=cuenta['saldo'],
                 titulos_valorizados=cuenta['titulosValorizados'],
                 total=cuenta['total'],
+                total_en_pesos=total_en_pesos,
                 margen_descubierto=cuenta.get('margenDescubierto'),
+                saldos_detalle=cuenta.get('saldos', []),
                 estado=cuenta['estado'],
             )
         logger.info(

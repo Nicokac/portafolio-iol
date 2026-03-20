@@ -5,13 +5,15 @@ class ResumenCuentaSnapshot(models.Model):
     fecha_extraccion = models.DateTimeField()
     numero_cuenta = models.CharField(max_length=50)
     tipo_cuenta = models.CharField(max_length=50)
-    moneda = models.CharField(max_length=10)
+    moneda = models.CharField(max_length=50)
     disponible = models.DecimalField(max_digits=15, decimal_places=2)
     comprometido = models.DecimalField(max_digits=15, decimal_places=2)
     saldo = models.DecimalField(max_digits=15, decimal_places=2)
     titulos_valorizados = models.DecimalField(max_digits=15, decimal_places=2)
     total = models.DecimalField(max_digits=15, decimal_places=2)
+    total_en_pesos = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
     margen_descubierto = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    saldos_detalle = models.JSONField(default=list, blank=True)
     estado = models.CharField(max_length=50)
 
     class Meta:

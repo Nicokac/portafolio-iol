@@ -161,6 +161,7 @@ class PortfolioSnapshotService:
     def _save_estado_cuenta(self, data: dict):
         cuentas = data.get("cuentas", [])
         fecha_extraccion = timezone.now()
+        total_en_pesos = data.get("totalEnPesos")
 
         for cuenta in cuentas:
             numero_cuenta = cuenta.get("numero")
@@ -180,7 +181,9 @@ class PortfolioSnapshotService:
                 saldo=cuenta.get("saldo", 0),
                 titulos_valorizados=cuenta.get("titulosValorizados", 0),
                 total=cuenta.get("total", 0),
+                total_en_pesos=total_en_pesos,
                 margen_descubierto=cuenta.get("margenDescubierto"),
+                saldos_detalle=cuenta.get("saldos", []),
                 estado=estado,
             )
 

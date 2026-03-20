@@ -24,21 +24,36 @@ class TestIOLSyncService:
 
     def test_sync_estado_cuenta_success(self, service):
         service.client.get_estado_cuenta.return_value = {
+            'totalEnPesos': 26317309.04,
             'cuentas': [{
                 'numero': '12345',
                 'tipo': 'CA',
-                'moneda': 'ARS',
+                'moneda': 'peso_Argentino',
                 'disponible': 1000.0,
                 'comprometido': 0.0,
                 'saldo': 1000.0,
                 'titulosValorizados': 0.0,
                 'total': 1000.0,
+                'saldos': [
+                    {
+                        'liquidacion': 'inmediato',
+                        'saldo': 1000.0,
+                        'comprometido': 0.0,
+                        'disponible': 1000.0,
+                        'disponibleOperar': 1000.0,
+                    }
+                ],
                 'estado': 'activa',
             }]
         }
         result = service.sync_estado_cuenta()
         assert result is True
         assert ResumenCuentaSnapshot.objects.count() == 1
+        snapshot = ResumenCuentaSnapshot.objects.get()
+        assert snapshot.moneda == 'peso_Argentino'
+        assert float(snapshot.total_en_pesos) == 26317309.04
+        assert snapshot.saldos_detalle[0]['liquidacion'] == 'inmediato'
+        assert snapshot.saldos_detalle[0]['disponibleOperar'] == 1000.0
 
     def test_sync_estado_cuenta_empty_cuentas(self, service):
         service.client.get_estado_cuenta.return_value = {'cuentas': []}

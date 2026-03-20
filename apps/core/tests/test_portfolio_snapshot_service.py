@@ -107,15 +107,25 @@ class TestPortfolioSnapshotService:
         mock_pais.return_value = {'USA': 5000.0, 'Argentina': 2000.0}
         mock_portafolio.return_value = {'inversion': [], 'liquidez': [], 'fci_cash_management': []}
         service.api_client.get_estado_cuenta.return_value = {
+            'totalEnPesos': 26317309.04,
             'cuentas': [{
                 'numero': '123',
                 'tipo': 'CA',
-                'moneda': 'ARS',
+                'moneda': 'peso_Argentino',
                 'disponible': 1000.0,
                 'comprometido': 0.0,
                 'saldo': 1000.0,
                 'titulosValorizados': 0.0,
                 'total': 1000.0,
+                'saldos': [
+                    {
+                        'liquidacion': 'inmediato',
+                        'saldo': 1000.0,
+                        'comprometido': 0.0,
+                        'disponible': 1000.0,
+                        'disponibleOperar': 1000.0,
+                    }
+                ],
                 'estado': 'activa',
             }]
         }
@@ -156,6 +166,10 @@ class TestPortfolioSnapshotService:
         assert result["success"] is True
         assert result["snapshot_generated"] is True
         assert ResumenCuentaSnapshot.objects.count() == 1
+        resumen = ResumenCuentaSnapshot.objects.get()
+        assert resumen.moneda == 'peso_Argentino'
+        assert float(resumen.total_en_pesos) == 26317309.04
+        assert resumen.saldos_detalle[0]['disponibleOperar'] == 1000.0
         assert ActivoPortafolioSnapshot.objects.count() == 1
         assert OperacionIOL.objects.count() == 1
         assert PortfolioSnapshot.objects.count() == 1
