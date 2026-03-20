@@ -209,9 +209,11 @@ class PipelineObservabilityService:
                 rows.append(
                     {
                         "scope": sync_scope,
+                        "action_label": "Sync faltantes" if sync_scope == "missing" else "Reforzar parciales",
                         "symbol_key": "-",
                         "rows_received": 0,
                         "status": audit.status,
+                        "user_label": audit.user.username if audit.user else "system",
                         "created_at": self._format_local_datetime(audit.created_at),
                         "message": "Sin simbolos seleccionados",
                     }
@@ -222,9 +224,11 @@ class PipelineObservabilityService:
                 rows.append(
                     {
                         "scope": sync_scope,
+                        "action_label": "Sync faltantes" if sync_scope == "missing" else "Reforzar parciales",
                         "symbol_key": symbol_key,
                         "rows_received": int(payload.get("rows_received") or 0),
                         "status": "success" if payload.get("success", True) else "failed",
+                        "user_label": audit.user.username if audit.user else "system",
                         "created_at": self._format_local_datetime(audit.created_at),
                         "message": payload.get("error") or "",
                     }

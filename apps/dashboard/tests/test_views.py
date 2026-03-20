@@ -1051,6 +1051,8 @@ class TestDashboardView:
                     },
                     'iol_historical_recent_sync_rows': [
                         {
+                            'action_label': 'Sync faltantes',
+                            'user_label': 'staffuser',
                             'scope': 'missing',
                             'symbol_key': 'NASDAQ:AAPL',
                             'rows_received': 30,
@@ -1059,6 +1061,8 @@ class TestDashboardView:
                             'message': '',
                         },
                         {
+                            'action_label': 'Reforzar parciales',
+                            'user_label': 'staffuser',
                             'scope': 'partial',
                             'symbol_key': 'BCBA:GGAL',
                             'rows_received': 12,
@@ -1166,6 +1170,9 @@ class TestDashboardView:
         assert 'AAPL (NASDAQ)' in body
         assert 'MSFT (NASDAQ)' in body
         assert 'Últimas sincronizaciones IOL por símbolo' in body or 'Ultimas sincronizaciones IOL por simbolo' in body
+        assert 'Sync faltantes' in body
+        assert 'Reforzar parciales' in body
+        assert 'staffuser' in body
         assert 'NASDAQ:AAPL' in body
         assert 'BCBA:GGAL' in body
         assert 'Cobertura de históricos IOL por símbolo' in body

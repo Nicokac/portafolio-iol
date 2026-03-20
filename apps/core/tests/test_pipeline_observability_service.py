@@ -11,6 +11,7 @@ from apps.core.services.pipeline_observability_service import PipelineObservabil
 @pytest.mark.django_db
 def test_pipeline_observability_service_builds_unified_summary():
     SensitiveActionAudit.objects.create(
+        user=None,
         action="sync_iol_historical_prices",
         status="success",
         details={
@@ -22,6 +23,7 @@ def test_pipeline_observability_service_builds_unified_summary():
         },
     )
     SensitiveActionAudit.objects.create(
+        user=None,
         action="sync_iol_historical_prices_partial",
         status="success",
         details={
@@ -120,6 +122,8 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_price_symbol_groups"]["missing"] == ["MSFT (NASDAQ)"]
     assert summary["iol_historical_recent_sync_rows"][0]["symbol_key"] in {"BCBA:GGAL", "NASDAQ:AAPL"}
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial"}
+    assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales"}
+    assert {row["user_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"system"}
     assert summary["local_macro_status_summary"]["ready"] == 1
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1

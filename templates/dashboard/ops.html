@@ -271,11 +271,13 @@
             <div class="card-body table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
-                        <tr><th>Scope</th><th>Símbolo</th><th class="text-end">Rows</th><th>Estado</th><th>Ejecutado</th><th>Detalle</th></tr>
+                        <tr><th>Acción</th><th>Usuario</th><th>Scope</th><th>Símbolo</th><th class="text-end">Rows</th><th>Estado</th><th>Ejecutado</th><th>Detalle</th></tr>
                     </thead>
                     <tbody>
                         {% for row in pipeline_observability.iol_historical_recent_sync_rows %}
                         <tr>
+                            <td>{{ row.action_label }}</td>
+                            <td>{{ row.user_label }}</td>
                             <td>{{ row.scope }}</td>
                             <td>{{ row.symbol_key }}</td>
                             <td class="text-end">{{ row.rows_received }}</td>
@@ -292,7 +294,7 @@
                             <td class="small text-muted">{{ row.message|default:"-" }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="text-muted">Sin sincronizaciones manuales recientes de históricos IOL.</td></tr>
+                        <tr><td colspan="8" class="text-muted">Sin sincronizaciones manuales recientes de históricos IOL.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
