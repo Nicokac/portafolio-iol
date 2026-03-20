@@ -127,10 +127,17 @@ class IOLHistoricalPriceService:
         *,
         statuses: tuple[str, ...] = ("missing",),
         minimum_ready_rows: int = 5,
+        eligibility_reason_keys: tuple[str, ...] | None = None,
         params: dict | None = None,
     ) -> dict:
         coverage_rows = self.get_current_portfolio_coverage_rows(minimum_ready_rows=minimum_ready_rows)
         selected_rows = [row for row in coverage_rows if row.get("status") in set(statuses)]
+        if eligibility_reason_keys:
+            selected_rows = [
+                row
+                for row in selected_rows
+                if row.get("eligibility_reason_key") in set(eligibility_reason_keys)
+            ]
 
         results = {}
         processed = 0
@@ -146,6 +153,7 @@ class IOLHistoricalPriceService:
             "selected_count": len(selected_rows),
             "processed": processed,
             "statuses": list(statuses),
+            "eligibility_reason_keys": list(eligibility_reason_keys or ()),
             "results": results,
         }
 

@@ -674,3 +674,53 @@ class SyncIOLHistoricalPricesPartialView(StaffRequiredMixin, View):
             messages.error(request, "No fue posible reforzar historicos IOL parciales.")
         return redirect('dashboard:ops')
 
+
+class SyncIOLHistoricalPricesRetryMetadataView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        try:
+            result = IOLHistoricalPriceService().sync_current_portfolio_symbols_by_status(
+                statuses=('unsupported',),
+                eligibility_reason_keys=('title_metadata_unresolved',),
+            )
+            has_failures = any(not payload.get('success', True) for payload in result.get('results', {}).values())
+            audit_status = 'failed' if has_failures else 'success'
+            record_sensitive_action(
+                request,
+                action='sync_iol_historical_prices_retry_metadata',
+                status=audit_status,
+                details={
+                    'result': result,
+                    'statuses': ['unsupported'],
+                    'eligibility_reason_keys': ['title_metadata_unresolved'],
+                },
+            )
+
+            selected_count = int(result.get('selected_count') or 0)
+            if selected_count == 0:
+                messages.info(request, "No hay exclusiones por metadata para reintentar históricos IOL.")
+            else:
+                completed = ", ".join(
+                    f"{key}: {payload.get('rows_received', 0)} rows"
+                    for key, payload in result.get('results', {}).items()
+                )
+                if has_failures:
+                    messages.warning(request, f"Reintento de metadata IOL completado con fallos. {completed}.")
+                else:
+                    messages.success(request, f"Reintento de metadata IOL ejecutado. {completed}.")
+        except Exception as exc:
+            record_sensitive_action(
+                request,
+                action='sync_iol_historical_prices_retry_metadata',
+                status='failed',
+                details={
+                    'reason': 'exception',
+                    'message': str(exc),
+                    'statuses': ['unsupported'],
+                    'eligibility_reason_keys': ['title_metadata_unresolved'],
+                },
+            )
+            messages.error(request, "No fue posible reintentar exclusiones por metadata IOL.")
+        return redirect('dashboard:ops')
+

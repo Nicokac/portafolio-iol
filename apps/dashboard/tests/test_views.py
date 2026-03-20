@@ -1348,6 +1348,11 @@ class TestDashboardView:
         assert response.status_code == 403
 
     @pytest.mark.django_db
+    def test_sync_iol_historical_prices_retry_metadata_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:sync_iol_historical_prices_retry_metadata'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
     def test_sync_benchmarks_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_all(self, outputsize='compact'):
@@ -1495,6 +1500,67 @@ class TestDashboardView:
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
         assert any('No hay símbolos parciales para reforzar históricos IOL' in str(message) or 'No hay simbolos parciales para reforzar historicos IOL' in str(message) for message in messages)
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_retry_metadata_view_success_message(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_current_portfolio_symbols_by_status(
+                self,
+                statuses=('unsupported',),
+                minimum_ready_rows=5,
+                eligibility_reason_keys=None,
+                params=None,
+            ):
+                assert statuses == ('unsupported',)
+                assert minimum_ready_rows == 5
+                assert eligibility_reason_keys == ('title_metadata_unresolved',)
+                return {
+                    'success': True,
+                    'selected_count': 1,
+                    'processed': 1,
+                    'statuses': ['unsupported'],
+                    'eligibility_reason_keys': ['title_metadata_unresolved'],
+                    'results': {
+                        'NASDAQ:MSFT': {
+                            'success': True,
+                            'rows_received': 18,
+                        }
+                    },
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_iol_historical_prices_retry_metadata'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Reintento de metadata IOL ejecutado' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='sync_iol_historical_prices_retry_metadata')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_retry_metadata_view_handles_empty_selection(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_current_portfolio_symbols_by_status(
+                self,
+                statuses=('unsupported',),
+                minimum_ready_rows=5,
+                eligibility_reason_keys=None,
+                params=None,
+            ):
+                return {
+                    'success': True,
+                    'selected_count': 0,
+                    'processed': 0,
+                    'statuses': ['unsupported'],
+                    'eligibility_reason_keys': ['title_metadata_unresolved'],
+                    'results': {},
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_iol_historical_prices_retry_metadata'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('No hay exclusiones por metadata para reintentar históricos IOL' in str(message) or 'No hay exclusiones por metadata para reintentar historicos IOL' in str(message) for message in messages)
 
     def test_save_incremental_proposal_passes_decision_payload_to_history_service(self, auth_client, monkeypatch):
         captured = {}

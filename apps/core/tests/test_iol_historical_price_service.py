@@ -238,6 +238,43 @@ def test_iol_historical_price_service_syncs_only_partial_symbols_by_status():
 
 
 @pytest.mark.django_db
+def test_iol_historical_price_service_syncs_only_metadata_unresolved_symbols():
+    _make_asset_snapshot("GGAL", "BCBA")
+    unresolved = _make_asset_snapshot("MSFT", "NASDAQ")
+    unresolved.descripcion = "Acción exterior"
+    unresolved.save(update_fields=["descripcion"])
+    caucion = _make_asset_snapshot("CAUCION", "BCBA")
+    caucion.tipo = "CAUCION"
+    caucion.descripcion = "Caucion colocadora"
+    caucion.save(update_fields=["tipo", "descripcion"])
+
+    client = Mock()
+    client.get_titulo.return_value = {"simbolo": "MSFT", "mercado": "NASDAQ", "tipo": "ACCIONES"}
+    client.get_titulo_historicos.return_value = [
+        {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0},
+    ]
+
+    service = IOLHistoricalPriceService(client=client)
+    coverage_rows = [
+        {"simbolo": "GGAL", "mercado": "BCBA", "status": "ready", "eligibility_reason_key": ""},
+        {"simbolo": "MSFT", "mercado": "NASDAQ", "status": "unsupported", "eligibility_reason_key": "title_metadata_unresolved"},
+        {"simbolo": "CAUCION", "mercado": "BCBA", "status": "unsupported", "eligibility_reason_key": "caucion_not_title_series"},
+    ]
+    service.get_current_portfolio_coverage_rows = Mock(return_value=coverage_rows)
+
+    result = service.sync_current_portfolio_symbols_by_status(
+        statuses=("unsupported",),
+        eligibility_reason_keys=("title_metadata_unresolved",),
+    )
+
+    assert result["selected_count"] == 1
+    assert result["processed"] == 1
+    assert result["eligibility_reason_keys"] == ["title_metadata_unresolved"]
+    assert "NASDAQ:MSFT" in result["results"]
+    assert "BCBA:CAUCION" not in result["results"]
+
+
+@pytest.mark.django_db
 def test_iol_historical_price_service_skips_fci_symbols_in_title_history_pipeline():
     client = Mock()
     client.get_fci.return_value = {"simbolo": "ADBAICA", "tipoFondo": "money_market"}

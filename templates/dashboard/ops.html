@@ -21,6 +21,10 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-warning">Reforzar históricos IOL parciales</button>
             </form>
+            <form method="post" action="{% url 'dashboard:sync_iol_historical_prices_retry_metadata' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-dark">Reintentar metadata IOL no resuelta</button>
+            </form>
             <form method="post" action="{% url 'dashboard:sync_benchmarks' %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-primary">Sincronizar Benchmarks</button>
