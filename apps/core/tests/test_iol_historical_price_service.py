@@ -252,9 +252,24 @@ def test_iol_historical_price_service_skips_fci_symbols_in_title_history_pipelin
 
 
 @pytest.mark.django_db
+def test_iol_historical_price_service_treats_prpedob_as_cash_management_symbol():
+    client = Mock()
+    client.get_fci.return_value = None
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "PRPEDOB")
+
+    assert result["success"] is True
+    assert result["skipped"] is True
+    assert result["eligibility_status"] == "unsupported_fci"
+    assert "cash management" in result["error"].lower()
+    client.get_titulo_historicos.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_iol_historical_price_service_marks_caucion_and_fci_as_unsupported_in_coverage_rows():
     _make_asset_snapshot("GGAL", "BCBA")
     _make_asset_snapshot("ADBAICA", "BCBA")
+    _make_asset_snapshot("PRPEDOB", "BCBA")
     caucion = _make_asset_snapshot("CAUCIÓN COLOCADORA", "BCBA")
     caucion.tipo = "CAUCION"
     caucion.descripcion = "Caución colocadora"
@@ -286,6 +301,8 @@ def test_iol_historical_price_service_marks_caucion_and_fci_as_unsupported_in_co
     row_by_symbol = {row["simbolo"]: row for row in rows}
     assert row_by_symbol["GGAL"]["status"] == "ready"
     assert row_by_symbol["ADBAICA"]["status"] == "unsupported"
+    assert row_by_symbol["PRPEDOB"]["status"] == "unsupported"
+    assert row_by_symbol["PRPEDOB"]["eligibility_status"] == "unsupported_fci"
     assert "pipeline distinto" in row_by_symbol["ADBAICA"]["eligibility_reason"]
     assert row_by_symbol["CAUCIÓN COLOCADORA"]["status"] == "unsupported"
     assert "caución" in row_by_symbol["CAUCIÓN COLOCADORA"]["eligibility_reason"].lower()

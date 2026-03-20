@@ -17,7 +17,7 @@ from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 class IOLHistoricalPriceService:
     """Persistencia minima de historicos diarios por simbolo desde IOL."""
 
-    EXCLUDED_FCI_SYMBOLS = {"ADBAICA", "IOLPORA"}
+    CASH_MANAGEMENT_SYMBOLS = {"ADBAICA", "IOLPORA", "PRPEDOB"}
     MARKET_ALIASES = {
         "BCBA": ("BCBA", "bCBA", "bcba"),
         "NASDAQ": ("NASDAQ", "nasdaq"),
@@ -302,7 +302,7 @@ class IOLHistoricalPriceService:
                 "eligibility_status": "unsupported",
                 "reason": "Instrumento sin simbolo o mercado valido",
             }
-        if simbolo_norm in self.EXCLUDED_FCI_SYMBOLS or "FCI" in tipo or "FONDO" in descripcion:
+        if simbolo_norm in self.CASH_MANAGEMENT_SYMBOLS or "FCI" in tipo or "FONDO" in descripcion:
             return {
                 "supported": False,
                 "mercado": mercado,
