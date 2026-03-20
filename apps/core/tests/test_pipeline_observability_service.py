@@ -59,6 +59,18 @@ def test_pipeline_observability_service_builds_unified_summary():
             }
         },
     )
+    SensitiveActionAudit.objects.create(
+        user=None,
+        action="sync_iol_historical_prices_partial",
+        status="failed",
+        details={
+            "result": {
+                "results": {
+                    "NYSE:KO": {"success": False, "rows_received": 0, "error": "provider timeout"},
+                }
+            }
+        },
+    )
 
     class DummySyncAuditService:
         def run_audit(self, freshness_hours=24):
@@ -175,11 +187,17 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_exclusion_rows"][0]["count"] == 1
     assert summary["iol_historical_exclusion_rows"][1]["reason_key"] == "fci_confirmed_by_iol"
     assert summary["iol_historical_exclusion_rows"][1]["symbols"] == ["ADBAICA (BCBA)"]
-    assert len(summary["iol_historical_recent_sync_rows"]) == 4
+    assert len(summary["iol_historical_recent_sync_rows"]) == 5
     grouped_by_symbol = {row["symbol_key"]: row for row in summary["iol_historical_recent_sync_by_symbol"]}
+    assert summary["iol_historical_recent_sync_by_symbol"][0]["symbol_key"] == "NYSE:KO"
+    assert summary["iol_historical_recent_sync_by_symbol"][0]["priority_key"] == "critical"
+    assert summary["iol_historical_recent_sync_by_symbol"][1]["symbol_key"] == "NASDAQ:AAPL"
+    assert summary["iol_historical_recent_sync_by_symbol"][1]["priority_key"] == "recoverable"
     assert grouped_by_symbol["NASDAQ:AAPL"]["user_labels"] == ["system"]
     assert {item["scope"] for item in grouped_by_symbol["NASDAQ:AAPL"]["items"]} == {"missing", "metadata"}
     assert {item["rows_received"] for item in grouped_by_symbol["NASDAQ:AAPL"]["items"]} == {30, 7}
+    assert grouped_by_symbol["NYSE:KO"]["priority_label"] == "Atención inmediata"
+    assert grouped_by_symbol["BCBA:GGAL"]["priority_label"] == "Estable"
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial", "metadata"}
     assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales", "Reintentar metadata"}
     assert {row["user_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"system"}
@@ -188,6 +206,7 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert rows_by_scope_symbol[("partial", "BCBA:GGAL")]["rows_received"] == 12
     assert rows_by_scope_symbol[("metadata", "NASDAQ:MSFT")]["rows_received"] == 18
     assert rows_by_scope_symbol[("metadata", "NASDAQ:AAPL")]["rows_received"] == 7
+    assert rows_by_scope_symbol[("partial", "NYSE:KO")]["status"] == "failed"
     assert summary["local_macro_status_summary"]["ready"] == 1
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1

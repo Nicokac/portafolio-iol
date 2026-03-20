@@ -274,9 +274,67 @@ class PipelineObservabilityService:
                     "message": row.get("message"),
                 }
             )
+            latest_at = row.get("created_at")
+            if latest_at and (group["latest_at"] is None or str(latest_at) > str(group["latest_at"])):
+                group["latest_at"] = latest_at
+
         result = list(grouped.values())
-        result.sort(key=lambda item: (item["symbol_key"] != "-", item["symbol_key"]))
+        for group in result:
+            group["items"].sort(key=PipelineObservabilityService._sort_recent_sync_item_key)
+            priority = PipelineObservabilityService._build_recent_sync_priority(group["items"])
+            group["priority_key"] = priority["key"]
+            group["priority_label"] = priority["label"]
+            group["priority_badge"] = priority["badge"]
+        result.sort(key=PipelineObservabilityService._sort_recent_sync_group_key)
         return result
+
+    @staticmethod
+    def _sort_recent_sync_item_key(item: dict) -> tuple[int, str, str]:
+        status = str(item.get("status") or "")
+        scope = str(item.get("scope") or "")
+        created_at = str(item.get("created_at") or "")
+        if status == "failed":
+            priority = 0
+        elif scope == "metadata":
+            priority = 1
+        else:
+            priority = 2
+        return (priority, created_at, scope)
+
+    @staticmethod
+    def _build_recent_sync_priority(items: list[dict]) -> dict:
+        has_failed = any(str(item.get("status") or "") == "failed" for item in items)
+        has_metadata = any(str(item.get("scope") or "") == "metadata" for item in items)
+        if has_failed:
+            return {
+                "key": "critical",
+                "label": "Atención inmediata",
+                "badge": "danger",
+            }
+        if has_metadata:
+            return {
+                "key": "recoverable",
+                "label": "Recuperable",
+                "badge": "warning",
+            }
+        return {
+            "key": "stable",
+            "label": "Estable",
+            "badge": "success",
+        }
+
+    @staticmethod
+    def _sort_recent_sync_group_key(group: dict) -> tuple[int, int, str]:
+        priority_key = str(group.get("priority_key") or "")
+        latest_at = str(group.get("latest_at") or "")
+        symbol_key = str(group.get("symbol_key") or "")
+        if priority_key == "critical":
+            priority = 0
+        elif priority_key == "recoverable":
+            priority = 1
+        else:
+            priority = 2
+        return (priority, 0 if symbol_key == "-" else 1, f"{latest_at}|{symbol_key}")
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
         audits = SensitiveActionAudit.objects.filter(
