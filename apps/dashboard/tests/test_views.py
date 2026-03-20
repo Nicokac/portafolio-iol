@@ -1113,6 +1113,25 @@ class TestDashboardView:
                             'message': '',
                         },
                     ],
+                    'iol_historical_recent_sync_by_symbol': [
+                        {
+                            'symbol_key': 'NASDAQ:AAPL',
+                            'user_labels': ['staffuser'],
+                            'latest_at': '2026-03-17 10:12',
+                            'items': [
+                                {'scope': 'missing', 'action_label': 'Sync faltantes', 'rows_received': 30, 'status': 'success', 'created_at': '2026-03-17 10:00', 'message': ''},
+                                {'scope': 'metadata', 'action_label': 'Reintentar metadata', 'rows_received': 7, 'status': 'success', 'created_at': '2026-03-17 10:12', 'message': ''},
+                            ],
+                        },
+                        {
+                            'symbol_key': 'BCBA:GGAL',
+                            'user_labels': ['staffuser'],
+                            'latest_at': '2026-03-17 10:05',
+                            'items': [
+                                {'scope': 'partial', 'action_label': 'Reforzar parciales', 'rows_received': 12, 'status': 'success', 'created_at': '2026-03-17 10:05', 'message': ''},
+                            ],
+                        },
+                    ],
                     'local_macro_status_summary': {
                         'ready': 3,
                         'total_series': 4,
@@ -1235,6 +1254,7 @@ class TestDashboardView:
         assert 'CAUCION (BCBA)' in body
         assert 'No elegibles' in body
         assert 'FCI: 1 · Otros: 1' in body or 'FCI: 1' in body
+        assert 'Historial IOL agrupado por símbolo' in body or 'Historial IOL agrupado por simbolo' in body
         assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
         assert 'Sync faltantes' in body
         assert 'Reforzar parciales' in body

@@ -176,6 +176,10 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_exclusion_rows"][1]["reason_key"] == "fci_confirmed_by_iol"
     assert summary["iol_historical_exclusion_rows"][1]["symbols"] == ["ADBAICA (BCBA)"]
     assert len(summary["iol_historical_recent_sync_rows"]) == 4
+    grouped_by_symbol = {row["symbol_key"]: row for row in summary["iol_historical_recent_sync_by_symbol"]}
+    assert grouped_by_symbol["NASDAQ:AAPL"]["user_labels"] == ["system"]
+    assert {item["scope"] for item in grouped_by_symbol["NASDAQ:AAPL"]["items"]} == {"missing", "metadata"}
+    assert {item["rows_received"] for item in grouped_by_symbol["NASDAQ:AAPL"]["items"]} == {30, 7}
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial", "metadata"}
     assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales", "Reintentar metadata"}
     assert {row["user_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"system"}
@@ -262,6 +266,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["iol_historical_price_symbol_groups"]["unsupported_fci"] == []
     assert summary["iol_historical_price_symbol_groups"]["unsupported_other"] == []
     assert summary["iol_historical_exclusion_rows"] == []
+    assert summary["iol_historical_recent_sync_by_symbol"] == []
     assert summary["iol_historical_recent_sync_rows"] == []
     assert summary["local_macro_status_summary"]["overall_status"] == "missing"
     assert summary["critical_local_macro_summary"]["overall_status"] == "missing"

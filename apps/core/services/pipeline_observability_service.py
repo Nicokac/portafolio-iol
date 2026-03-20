@@ -51,6 +51,7 @@ class PipelineObservabilityService:
         snapshot_integrity = self.snapshot_integrity_service.run_checks(days=integrity_days)
         benchmark_status_rows = self.benchmark_service.get_status_summary()
         iol_historical_price_rows = self.iol_historical_price_service.get_current_portfolio_coverage_rows()
+        iol_historical_recent_sync_rows = self._build_iol_historical_recent_sync_rows(limit=12)
         local_macro_status_rows = self.local_macro_service.get_status_summary()
         critical_local_macro_rows = self._build_critical_local_macro_rows(local_macro_status_rows)
         external_source_status_rows = self._build_external_source_status_rows()
@@ -87,7 +88,10 @@ class PipelineObservabilityService:
             "iol_historical_price_summary": self._build_iol_historical_price_summary(iol_historical_price_rows),
             "iol_historical_price_symbol_groups": self._build_iol_historical_symbol_groups(iol_historical_price_rows),
             "iol_historical_exclusion_rows": self._build_iol_historical_exclusion_rows(iol_historical_price_rows),
-            "iol_historical_recent_sync_rows": self._build_iol_historical_recent_sync_rows(limit=12),
+            "iol_historical_recent_sync_rows": iol_historical_recent_sync_rows,
+            "iol_historical_recent_sync_by_symbol": self._build_iol_historical_recent_sync_by_symbol(
+                iol_historical_recent_sync_rows
+            ),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
             "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
             "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
@@ -242,6 +246,37 @@ class PipelineObservabilityService:
         exclusion_rows = list(grouped.values())
         exclusion_rows.sort(key=lambda item: (-int(item["count"]), item["reason_label"]))
         return exclusion_rows
+
+    @staticmethod
+    def _build_iol_historical_recent_sync_by_symbol(rows: list[dict]) -> list[dict]:
+        grouped: dict[str, dict] = {}
+        for row in rows:
+            symbol_key = str(row.get("symbol_key") or "-")
+            group = grouped.setdefault(
+                symbol_key,
+                {
+                    "symbol_key": symbol_key,
+                    "user_labels": [],
+                    "items": [],
+                    "latest_at": row.get("created_at"),
+                },
+            )
+            user_label = str(row.get("user_label") or "system")
+            if user_label not in group["user_labels"]:
+                group["user_labels"].append(user_label)
+            group["items"].append(
+                {
+                    "scope": row.get("scope"),
+                    "action_label": row.get("action_label"),
+                    "rows_received": row.get("rows_received"),
+                    "status": row.get("status"),
+                    "created_at": row.get("created_at"),
+                    "message": row.get("message"),
+                }
+            )
+        result = list(grouped.values())
+        result.sort(key=lambda item: (item["symbol_key"] != "-", item["symbol_key"]))
+        return result
 
     def _build_iol_historical_recent_sync_rows(self, limit: int = 12) -> list[dict]:
         audits = SensitiveActionAudit.objects.filter(

@@ -288,6 +288,45 @@
     <div class="col-12">
         <div class="card border-info-subtle">
             <div class="card-header bg-transparent">
+                <h5 class="mb-0">Historial IOL agrupado por símbolo</h5>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr><th>Símbolo</th><th>Usuarios</th><th>Scopes</th><th>Última actividad</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for row in pipeline_observability.iol_historical_recent_sync_by_symbol %}
+                        <tr>
+                            <td>{{ row.symbol_key }}</td>
+                            <td>{{ row.user_labels|join:", " }}</td>
+                            <td class="small">
+                                {% for item in row.items %}
+                                <div>
+                                    <strong>{{ item.scope }}</strong>: {{ item.rows_received }} rows
+                                    {% if item.status == 'success' %}
+                                    <span class="badge text-bg-success">Success</span>
+                                    {% elif item.status == 'failed' %}
+                                    <span class="badge text-bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge text-bg-secondary">{{ item.status }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </td>
+                            <td>{{ row.latest_at|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-muted">Sin historial IOL reciente agrupado por símbolo.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card border-info-subtle">
+            <div class="card-header bg-transparent">
                 <h5 class="mb-0">Última ejecución IOL por símbolo</h5>
             </div>
             <div class="card-body table-responsive">
