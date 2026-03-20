@@ -202,16 +202,26 @@ class TemporalMetricsService:
     def _get_performance_metrics(self, days: int) -> Dict:
         returns = self.get_portfolio_returns(days)
         volatility = self.get_portfolio_volatility(days)
+        var = self.var_service.calculate_var_set()
+        cvar = self.cvar_service.calculate_cvar_set()
+        benchmarking = self.tracking_error_service.calculate(days=days)
 
         metrics = {
             'returns': returns,
             'volatility': volatility,
-            'var': self.var_service.calculate_var_set(),
-            'cvar': self.cvar_service.calculate_cvar_set(),
+            'var': var,
+            'cvar': cvar,
             'attribution': self.attribution_service.calculate_attribution(days=days),
-            'benchmarking': self.tracking_error_service.calculate(days=days),
+            'benchmarking': benchmarking,
             'period_days': days,
-            'calculated_at': timezone.now().isoformat()
+            'calculated_at': timezone.now().isoformat(),
+            'fallback_sources': self._collect_fallback_sources(
+                returns=returns,
+                volatility=volatility,
+                var=var,
+                cvar=cvar,
+                benchmarking=benchmarking,
+            ),
         }
 
         if returns and volatility:
@@ -238,7 +248,18 @@ class TemporalMetricsService:
                     'available_history_days': history_span_days,
                     'observations': returns.get('observations'),
                     'is_partial_window': history_span_days < period,
+                    'returns_fallback_source': returns.get('fallback_source'),
+                    'volatility_fallback_source': volatility.get('fallback_source'),
+                    'volatility_proxy_coverage_pct': volatility.get('proxy_coverage_pct'),
                 }
 
         logger.info(f"Historical comparison: {comparison}")
         return comparison
+
+    @staticmethod
+    def _collect_fallback_sources(**sections: Dict) -> Dict[str, str]:
+        return {
+            key: value.get('fallback_source')
+            for key, value in sections.items()
+            if isinstance(value, dict) and value.get('fallback_source')
+        }

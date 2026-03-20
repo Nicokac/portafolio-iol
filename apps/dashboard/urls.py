@@ -23,6 +23,8 @@ from apps.dashboard.views import (
     SetPreferencesView,
     SyncLocalMacroView,
     SyncBenchmarksView,
+    SyncIOLHistoricalPricesView,
+    SyncIOLHistoricalPricesPartialView,
 )
 
 app_name = 'dashboard'
@@ -51,4 +53,6 @@ urlpatterns = [
     path('acciones/snapshot/', GenerateSnapshotView.as_view(), name='generate_snapshot'),
     path('acciones/benchmarks/', SyncBenchmarksView.as_view(), name='sync_benchmarks'),
     path('acciones/macro-local/', SyncLocalMacroView.as_view(), name='sync_local_macro'),
+    path('acciones/iol-historicos/', SyncIOLHistoricalPricesView.as_view(), name='sync_iol_historical_prices'),
+    path('acciones/iol-historicos-parciales/', SyncIOLHistoricalPricesPartialView.as_view(), name='sync_iol_historical_prices_partial'),
 ]

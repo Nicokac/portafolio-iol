@@ -84,6 +84,7 @@ class PipelineObservabilityService:
             "available_price_dates_count": available_price_dates_count,
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
             "iol_historical_price_summary": self._build_iol_historical_price_summary(iol_historical_price_rows),
+            "iol_historical_price_symbol_groups": self._build_iol_historical_symbol_groups(iol_historical_price_rows),
             "local_macro_status_summary": self._build_local_macro_status_summary(local_macro_status_rows),
             "critical_local_macro_summary": self._build_critical_local_macro_summary(critical_local_macro_rows),
             "external_sources_status_summary": self._build_external_sources_status_summary(external_source_status_rows),
@@ -173,6 +174,22 @@ class PipelineObservabilityService:
             "partial_count": partial_count,
             "missing_count": missing_count,
             "overall_status": overall_status,
+        }
+
+    @staticmethod
+    def _build_iol_historical_symbol_groups(rows: list[dict]) -> dict:
+        def _label(row: dict) -> str:
+            simbolo = str(row.get("simbolo") or "-")
+            mercado = str(row.get("mercado") or "-")
+            return f"{simbolo} ({mercado})"
+
+        ready = [_label(row) for row in rows if row.get("status") == "ready"]
+        partial = [_label(row) for row in rows if row.get("status") == "partial"]
+        missing = [_label(row) for row in rows if row.get("status") == "missing"]
+        return {
+            "ready": ready,
+            "partial": partial,
+            "missing": missing,
         }
 
     @staticmethod

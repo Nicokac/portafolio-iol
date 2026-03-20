@@ -6,13 +6,19 @@ import numpy as np
 import pandas as pd
 from django.utils import timezone
 
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
+from apps.core.services.risk.volatility_service import VolatilityService
 from apps.portafolio_iol.models import PortfolioSnapshot
 
 
 class VaRService:
     """Value at Risk (Historical + Parametric) sobre retornos de patrimonio."""
 
-    def _get_returns(self, days: int = 252) -> pd.Series:
+    def __init__(self, historical_price_service: IOLHistoricalPriceService | None = None):
+        self.historical_price_service = historical_price_service or IOLHistoricalPriceService()
+        self.volatility_service = VolatilityService(historical_price_service=self.historical_price_service)
+
+    def _get_returns_with_metadata(self, days: int = 252) -> tuple[pd.Series, str | None, int]:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
 
@@ -20,17 +26,25 @@ class VaRService:
             fecha__range=(start_date, end_date)
         ).order_by("fecha")
 
-        if snapshots.count() < 2:
-            return pd.Series(dtype=float)
+        observations = snapshots.count()
+        if observations < 2:
+            proxy_returns = self.volatility_service.build_iol_proxy_return_series(days=days)
+            if not proxy_returns.empty:
+                return proxy_returns, "iol_historical_prices_proxy", int(len(proxy_returns.index) + 1)
+            return pd.Series(dtype=float), None, observations
 
         df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
         if df.empty:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), None, observations
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
         df = df.set_index("fecha").sort_index()
-        return df["total_iol"].pct_change().dropna()
+        return df["total_iol"].pct_change().dropna(), None, observations
+
+    def _get_returns(self, days: int = 252) -> pd.Series:
+        returns, _, _ = self._get_returns_with_metadata(days=days)
+        return returns
 
     @staticmethod
     def _scale_horizon(value: float, horizon_days: int) -> float:
@@ -70,12 +84,12 @@ class VaRService:
         return round(var, 2)
 
     def calculate_var_set(self, confidence: float = 0.95, lookback_days: int = 252) -> Dict[str, float]:
-        returns = self._get_returns(days=lookback_days)
+        returns, fallback_source, observations = self._get_returns_with_metadata(days=lookback_days)
         if returns.empty:
             return {
                 "warning": "insufficient_history",
                 "required_min_observations": 2,
-                "observations": 0,
+                "observations": observations,
             }
 
         historical_1d = self.historical_var(confidence=confidence, horizon_days=1, lookback_days=lookback_days)
@@ -92,5 +106,7 @@ class VaRService:
             result["parametric_var_95_1d"] = parametric_1d
         if parametric_10d is not None:
             result["parametric_var_95_10d"] = parametric_10d
+        if fallback_source:
+            result["fallback_source"] = fallback_source
 
         return result

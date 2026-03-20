@@ -8,7 +8,9 @@ from django.utils import timezone
 
 from apps.core.config.parametros_benchmark import ParametrosBenchmark
 from apps.core.services.benchmark_series_service import BenchmarkSeriesService
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
+from apps.core.services.risk.volatility_service import VolatilityService
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
@@ -24,29 +26,41 @@ class TrackingErrorService:
         self,
         benchmark_service: BenchmarkSeriesService | None = None,
         local_macro_service: LocalMacroSeriesService | None = None,
+        historical_price_service: IOLHistoricalPriceService | None = None,
     ):
         self.benchmark_service = benchmark_service or BenchmarkSeriesService()
         self.local_macro_service = local_macro_service or LocalMacroSeriesService()
+        self.historical_price_service = historical_price_service or IOLHistoricalPriceService()
+        self.volatility_service = VolatilityService(
+            local_macro_service=self.local_macro_service,
+            historical_price_service=self.historical_price_service,
+        )
 
     def calculate(self, days: int = 90) -> Dict[str, float]:
-        portfolio_returns, benchmark_returns, frequency_used = self._resolve_return_series(days=days)
+        portfolio_returns, benchmark_returns, frequency_used, fallback_source = self._resolve_return_series(days=days)
         if portfolio_returns.empty or benchmark_returns.empty:
             observations = int(len(portfolio_returns)) if not portfolio_returns.empty else 0
-            return {
+            result = {
                 "warning": "insufficient_history",
                 "observations": observations,
                 "requested_days": days,
                 "benchmark_trace": self._build_benchmark_trace(frequency_used),
             }
+            if fallback_source:
+                result["fallback_source"] = fallback_source
+            return result
 
         active_returns = portfolio_returns - benchmark_returns
         if active_returns.empty:
-            return {
+            result = {
                 "warning": "insufficient_history",
                 "observations": int(len(portfolio_returns)),
                 "requested_days": days,
                 "benchmark_trace": self._build_benchmark_trace(frequency_used),
             }
+            if fallback_source:
+                result["fallback_source"] = fallback_source
+            return result
 
         annualization_factor = self.TRADING_DAYS_PER_YEAR if frequency_used == "daily" else self.TRADING_WEEKS_PER_YEAR
         tracking_error = float(active_returns.std()) * (annualization_factor ** 0.5) * 100
@@ -76,19 +90,24 @@ class TrackingErrorService:
             result["warning"] = "insufficient_history"
         if information_ratio is not None:
             result["information_ratio"] = round(information_ratio, 2)
+        if fallback_source:
+            result["fallback_source"] = fallback_source
         return result
 
     def build_comparison_curve(self, days: int = 365, base_value: float = 100.0) -> Dict[str, object]:
-        portfolio_returns, benchmark_returns, frequency_used = self._resolve_return_series(days=days)
+        portfolio_returns, benchmark_returns, frequency_used, fallback_source = self._resolve_return_series(days=days)
         if portfolio_returns.empty or benchmark_returns.empty:
             observations = int(len(portfolio_returns)) if not portfolio_returns.empty else 0
-            return {
+            result = {
                 "warning": "insufficient_history",
                 "requested_days": days,
                 "observations": observations,
                 "benchmark_trace": self._build_benchmark_trace(frequency_used),
                 "series": [],
             }
+            if fallback_source:
+                result["fallback_source"] = fallback_source
+            return result
 
         portfolio_curve = (1 + portfolio_returns).cumprod() * base_value
         benchmark_curve = (1 + benchmark_returns).cumprod() * base_value
@@ -102,7 +121,7 @@ class TrackingErrorService:
             for idx in portfolio_curve.index
             if idx in benchmark_curve.index
         ]
-        return {
+        result = {
             "requested_days": days,
             "observations": len(series),
             "benchmark_frequency_used": frequency_used,
@@ -110,8 +129,11 @@ class TrackingErrorService:
             "base_value": base_value,
             "series": series,
         }
+        if fallback_source:
+            result["fallback_source"] = fallback_source
+        return result
 
-    def _get_portfolio_returns(self, days: int) -> pd.Series:
+    def _get_portfolio_returns_with_metadata(self, days: int) -> tuple[pd.Series, str | None]:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
 
@@ -119,18 +141,25 @@ class TrackingErrorService:
             fecha__range=(start_date, end_date)
         ).order_by("fecha")
         if snapshots.count() < 2:
-            return pd.Series(dtype=float)
+            proxy_returns = self.volatility_service.build_iol_proxy_return_series(days=days)
+            if not proxy_returns.empty:
+                return proxy_returns, "iol_historical_prices_proxy"
+            return pd.Series(dtype=float), None
 
         df = pd.DataFrame(list(snapshots.values("fecha", "total_iol")))
         if df.empty:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), None
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
         df = df.dropna(subset=["total_iol"]).set_index("fecha").sort_index()
         if len(df.index) < 2:
-            return pd.Series(dtype=float)
-        return df["total_iol"].pct_change().dropna()
+            return pd.Series(dtype=float), None
+        return df["total_iol"].pct_change().dropna(), None
+
+    def _get_portfolio_returns(self, days: int) -> pd.Series:
+        returns, _ = self._get_portfolio_returns_with_metadata(days=days)
+        return returns
 
     def _get_portfolio_weekly_returns(self, days: int) -> pd.Series:
         end_date = timezone.now().date()
@@ -198,7 +227,7 @@ class TrackingErrorService:
         return benchmark_returns.astype(float)
 
     def _resolve_return_series(self, days: int):
-        daily_portfolio_returns = self._get_portfolio_returns(days=days)
+        daily_portfolio_returns, daily_fallback_source = self._get_portfolio_returns_with_metadata(days=days)
         weekly_portfolio_returns = self._get_portfolio_weekly_returns(days=days)
 
         daily_historical_observations = self._count_historical_observations(
@@ -215,18 +244,18 @@ class TrackingErrorService:
                 daily_portfolio_returns.index,
                 frequency="daily",
             )
-            return daily_portfolio_returns, daily_benchmark_returns, "daily"
+            return daily_portfolio_returns, daily_benchmark_returns, "daily", daily_fallback_source
         if weekly_historical_observations >= 2:
             weekly_benchmark_returns = self._get_composite_benchmark_returns(
                 weekly_portfolio_returns.index,
                 frequency="weekly",
             )
-            return weekly_portfolio_returns, weekly_benchmark_returns, "weekly"
+            return weekly_portfolio_returns, weekly_benchmark_returns, "weekly", None
         daily_benchmark_returns = self._get_composite_benchmark_returns(
             daily_portfolio_returns.index,
             frequency="daily",
         ) if not daily_portfolio_returns.empty else pd.Series(dtype=float)
-        return daily_portfolio_returns, daily_benchmark_returns, "daily"
+        return daily_portfolio_returns, daily_benchmark_returns, "daily", daily_fallback_source
 
     def _count_historical_observations(self, index, frequency: str) -> int:
         weights = self._infer_weights_from_portfolio()

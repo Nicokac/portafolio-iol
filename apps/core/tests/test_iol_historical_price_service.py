@@ -167,3 +167,63 @@ def test_iol_historical_price_service_builds_current_portfolio_coverage_rows():
     assert row_by_symbol["GGAL"]["rows_count"] == 3
     assert row_by_symbol["AAPL"]["status"] == "missing"
     assert row_by_symbol["AAPL"]["rows_count"] == 0
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_syncs_only_missing_symbols_by_status():
+    _make_asset_snapshot("GGAL", "BCBA")
+    _make_asset_snapshot("AAPL", "NASDAQ")
+    for day, close in [(date(2026, 3, 18), 100), (date(2026, 3, 19), 102), (date(2026, 3, 20), 103)]:
+        IOLHistoricalPriceSnapshot.objects.create(
+            simbolo="GGAL",
+            mercado="BCBA",
+            source="iol",
+            fecha=day,
+            close=close,
+        )
+
+    client = Mock()
+    client.get_titulo_historicos.return_value = [
+        {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0},
+    ]
+
+    result = IOLHistoricalPriceService(client=client).sync_current_portfolio_symbols_by_status(
+        statuses=("missing",),
+        minimum_ready_rows=3,
+    )
+
+    assert result["selected_count"] == 1
+    assert result["processed"] == 1
+    assert result["success"] is True
+    assert "NASDAQ:AAPL" in result["results"]
+    assert "BCBA:GGAL" not in result["results"]
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_syncs_only_partial_symbols_by_status():
+    _make_asset_snapshot("GGAL", "BCBA")
+    _make_asset_snapshot("AAPL", "NASDAQ")
+    for day, close in [(date(2026, 3, 18), 100), (date(2026, 3, 19), 102), (date(2026, 3, 20), 103)]:
+        IOLHistoricalPriceSnapshot.objects.create(
+            simbolo="GGAL",
+            mercado="BCBA",
+            source="iol",
+            fecha=day,
+            close=close,
+        )
+
+    client = Mock()
+    client.get_titulo_historicos.return_value = [
+        {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0},
+    ]
+
+    result = IOLHistoricalPriceService(client=client).sync_current_portfolio_symbols_by_status(
+        statuses=("partial",),
+        minimum_ready_rows=5,
+    )
+
+    assert result["selected_count"] == 1
+    assert result["processed"] == 1
+    assert result["success"] is True
+    assert "BCBA:GGAL" in result["results"]
+    assert "NASDAQ:AAPL" not in result["results"]

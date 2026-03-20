@@ -15,6 +15,7 @@ from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrity
 from apps.core.services.data_quality.daily_snapshot_continuity_service import DailySnapshotContinuityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
 from apps.core.services.observability import record_state
 from apps.core.services.pipeline_observability_service import PipelineObservabilityService
@@ -596,3 +597,80 @@ class SyncLocalMacroView(StaffRequiredMixin, View):
             )
             messages.error(request, "No fue posible sincronizar macro local.")
         return redirect('dashboard:ops')
+
+
+class SyncIOLHistoricalPricesView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        try:
+            result = IOLHistoricalPriceService().sync_current_portfolio_symbols_by_status(statuses=('missing',))
+            has_failures = any(not payload.get('success', True) for payload in result.get('results', {}).values())
+            audit_status = 'failed' if has_failures else 'success'
+            record_sensitive_action(
+                request,
+                action='sync_iol_historical_prices',
+                status=audit_status,
+                details={'result': result, 'statuses': ['missing']},
+            )
+
+            selected_count = int(result.get('selected_count') or 0)
+            if selected_count == 0:
+                messages.info(request, "No hay símbolos faltantes para sincronizar históricos IOL.")
+            else:
+                completed = ", ".join(
+                    f"{key}: {payload.get('rows_received', 0)} rows"
+                    for key, payload in result.get('results', {}).items()
+                )
+                if has_failures:
+                    messages.warning(request, f"Históricos IOL sincronizados con fallos parciales. {completed}.")
+                else:
+                    messages.success(request, f"Históricos IOL sincronizados para símbolos faltantes. {completed}.")
+        except Exception as exc:
+            record_sensitive_action(
+                request,
+                action='sync_iol_historical_prices',
+                status='failed',
+                details={'reason': 'exception', 'message': str(exc), 'statuses': ['missing']},
+            )
+            messages.error(request, "No fue posible sincronizar históricos IOL faltantes.")
+        return redirect('dashboard:ops')
+
+
+class SyncIOLHistoricalPricesPartialView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        try:
+            result = IOLHistoricalPriceService().sync_current_portfolio_symbols_by_status(statuses=('partial',))
+            has_failures = any(not payload.get('success', True) for payload in result.get('results', {}).values())
+            audit_status = 'failed' if has_failures else 'success'
+            record_sensitive_action(
+                request,
+                action='sync_iol_historical_prices_partial',
+                status=audit_status,
+                details={'result': result, 'statuses': ['partial']},
+            )
+
+            selected_count = int(result.get('selected_count') or 0)
+            if selected_count == 0:
+                messages.info(request, "No hay simbolos parciales para reforzar historicos IOL.")
+            else:
+                completed = ", ".join(
+                    f"{key}: {payload.get('rows_received', 0)} rows"
+                    for key, payload in result.get('results', {}).items()
+                )
+                if has_failures:
+                    messages.warning(request, f"Historicos IOL parciales sincronizados con fallos. {completed}.")
+                else:
+                    messages.success(request, f"Historicos IOL parciales reforzados. {completed}.")
+        except Exception as exc:
+            record_sensitive_action(
+                request,
+                action='sync_iol_historical_prices_partial',
+                status='failed',
+                details={'reason': 'exception', 'message': str(exc), 'statuses': ['partial']},
+            )
+            messages.error(request, "No fue posible reforzar historicos IOL parciales.")
+        return redirect('dashboard:ops')
+

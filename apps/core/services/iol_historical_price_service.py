@@ -104,6 +104,33 @@ class IOLHistoricalPriceService:
             "results": results,
         }
 
+    def sync_current_portfolio_symbols_by_status(
+        self,
+        *,
+        statuses: tuple[str, ...] = ("missing",),
+        minimum_ready_rows: int = 5,
+        params: dict | None = None,
+    ) -> dict:
+        coverage_rows = self.get_current_portfolio_coverage_rows(minimum_ready_rows=minimum_ready_rows)
+        selected_rows = [row for row in coverage_rows if row.get("status") in set(statuses)]
+
+        results = {}
+        processed = 0
+        success = True
+        for row in selected_rows:
+            processed += 1
+            result = self.sync_symbol_history(row["mercado"], row["simbolo"], params=params)
+            results[f'{row["mercado"]}:{row["simbolo"]}'] = result
+            success = success and bool(result.get("success"))
+
+        return {
+            "success": success,
+            "selected_count": len(selected_rows),
+            "processed": processed,
+            "statuses": list(statuses),
+            "results": results,
+        }
+
     def build_close_series(self, simbolo: str, mercado: str, dates: Iterable[pd.Timestamp]) -> pd.Series:
         normalized_dates = pd.to_datetime(list(dates))
         if len(normalized_dates) == 0:

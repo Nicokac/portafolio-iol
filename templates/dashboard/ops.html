@@ -13,6 +13,14 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-secondary">Sincronizar Macro Local</button>
             </form>
+            <form method="post" action="{% url 'dashboard:sync_iol_historical_prices' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-info">Sincronizar históricos IOL faltantes</button>
+            </form>
+            <form method="post" action="{% url 'dashboard:sync_iol_historical_prices_partial' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-warning">Reforzar históricos IOL parciales</button>
+            </form>
             <form method="post" action="{% url 'dashboard:sync_benchmarks' %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-primary">Sincronizar Benchmarks</button>
@@ -199,6 +207,62 @@
 </section>
 
 <section class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card border-info-subtle">
+            <div class="card-header bg-transparent">
+                <h5 class="mb-0">Símbolos cubiertos y faltantes del proxy IOL</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <strong>Listos</strong>
+                                <span class="badge text-bg-success">{{ pipeline_observability.iol_historical_price_symbol_groups.ready|length }}</span>
+                            </div>
+                            {% if pipeline_observability.iol_historical_price_symbol_groups.ready %}
+                            <div class="small">
+                                {{ pipeline_observability.iol_historical_price_symbol_groups.ready|join:", " }}
+                            </div>
+                            {% else %}
+                            <div class="small text-muted">Sin símbolos listos.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <strong>Parciales</strong>
+                                <span class="badge text-bg-warning">{{ pipeline_observability.iol_historical_price_symbol_groups.partial|length }}</span>
+                            </div>
+                            {% if pipeline_observability.iol_historical_price_symbol_groups.partial %}
+                            <div class="small">
+                                {{ pipeline_observability.iol_historical_price_symbol_groups.partial|join:", " }}
+                            </div>
+                            {% else %}
+                            <div class="small text-muted">Sin símbolos parciales.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <strong>Faltantes</strong>
+                                <span class="badge text-bg-danger">{{ pipeline_observability.iol_historical_price_symbol_groups.missing|length }}</span>
+                            </div>
+                            {% if pipeline_observability.iol_historical_price_symbol_groups.missing %}
+                            <div class="small">
+                                {{ pipeline_observability.iol_historical_price_symbol_groups.missing|join:", " }}
+                            </div>
+                            {% else %}
+                            <div class="small text-muted">Sin símbolos faltantes.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="col-12">
         <div class="card border-info-subtle">
             <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">

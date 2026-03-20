@@ -164,15 +164,48 @@ class TestTemporalMetricsService:
 
         assert volatility["fallback_source"] == "iol_historical_prices_proxy"
         assert "annualized_volatility" in volatility
+        assert volatility["proxy_coverage_pct"] == 100.0
 
     def test_calculate_max_drawdown_uses_running_peak(self):
         service = TemporalMetricsService()
         result = service._calculate_max_drawdown([100, 120, 90, 110])
         assert round(result, 2) == -25.0
 
+    @patch("apps.core.services.temporal_metrics_service.TrackingErrorService.calculate")
+    @patch("apps.core.services.temporal_metrics_service.CVaRService.calculate_cvar_set")
+    @patch("apps.core.services.temporal_metrics_service.VaRService.calculate_var_set")
+    @patch("apps.core.services.temporal_metrics_service.AttributionService.calculate_attribution")
     @patch("apps.core.services.temporal_metrics_service.TemporalMetricsService.get_portfolio_volatility")
+    @patch("apps.core.services.temporal_metrics_service.TemporalMetricsService.get_portfolio_returns")
+    def test_performance_metrics_collects_fallback_sources(
+        self,
+        mock_returns,
+        mock_volatility,
+        mock_attribution,
+        mock_var,
+        mock_cvar,
+        mock_benchmarking,
+    ):
+        mock_returns.return_value = {"total_period_return": 10.0, "fallback_source": "evolucion_historica"}
+        mock_volatility.return_value = {"annualized_volatility": 12.0, "fallback_source": "iol_historical_prices_proxy"}
+        mock_var.return_value = {"historical_var_95_1d": 2.0, "fallback_source": "iol_historical_prices_proxy"}
+        mock_cvar.return_value = {"historical_cvar_95_1d": 3.0}
+        mock_benchmarking.return_value = {"tracking_error_annualized": 5.0, "fallback_source": "iol_historical_prices_proxy"}
+        mock_attribution.return_value = {}
+
+        metrics = TemporalMetricsService().get_performance_metrics(days=90)
+
+        assert metrics["fallback_sources"] == {
+            "returns": "evolucion_historica",
+            "volatility": "iol_historical_prices_proxy",
+            "var": "iol_historical_prices_proxy",
+            "benchmarking": "iol_historical_prices_proxy",
+        }
+
+    @patch("apps.core.services.temporal_metrics_service.TemporalMetricsService.get_portfolio_volatility")
+    @patch("apps.core.services.temporal_metrics_service.TemporalMetricsService.get_portfolio_returns")
     @patch("apps.dashboard.selectors.get_evolucion_historica")
-    def test_historical_comparison_marks_partial_windows(self, mock_evolution, mock_volatility):
+    def test_historical_comparison_marks_partial_windows(self, mock_evolution, mock_returns, mock_volatility):
         mock_evolution.return_value = {
             "tiene_datos": True,
             "fechas": ["2026-03-10", "2026-03-11", "2026-03-12"],
@@ -181,7 +214,25 @@ class TestTemporalMetricsService:
             "portafolio_invertido": [700, 780, 860],
             "cash_management": [100, 110, 130],
         }
-        mock_volatility.return_value = {"annualized_volatility": 12.34}
+        mock_returns.side_effect = [
+            {
+                "total_period_return": 21.0,
+                "history_span_days": 2,
+                "observations": 3,
+                "fallback_source": "evolucion_historica",
+            },
+            {
+                "total_period_return": 21.0,
+                "history_span_days": 2,
+                "observations": 3,
+                "fallback_source": "evolucion_historica",
+            },
+        ]
+        mock_volatility.return_value = {
+            "annualized_volatility": 12.34,
+            "fallback_source": "iol_historical_prices_proxy",
+            "proxy_coverage_pct": 80.0,
+        }
 
         service = TemporalMetricsService()
         comparison = service.get_historical_comparison([7, 30])
@@ -189,3 +240,6 @@ class TestTemporalMetricsService:
         assert comparison["7d"]["is_partial_window"] is True
         assert comparison["30d"]["available_history_days"] == 2
         assert comparison["30d"]["volatility"] == 12.34
+        assert comparison["30d"]["returns_fallback_source"] == "evolucion_historica"
+        assert comparison["30d"]["volatility_fallback_source"] == "iol_historical_prices_proxy"
+        assert comparison["30d"]["volatility_proxy_coverage_pct"] == 80.0

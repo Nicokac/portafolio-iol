@@ -54,6 +54,12 @@ Uso habilitado hoy:
 - `VolatilityService`
   - fallback proxy de volatilidad de portafolio cuando no hay historia suficiente de `PortfolioSnapshot`
   - usa pesos actuales mas cierres IOL por simbolo
+- `VaRService` y `CVaRService`
+  - fallback controlado sobre la misma serie proxy
+  - exponen `fallback_source = iol_historical_prices_proxy` cuando no hay historia patrimonial suficiente
+- `TemporalMetricsService`
+  - consolida `fallback_sources` en el bloque de performance
+  - expone trazabilidad por periodo en `get_historical_comparison()`
 
 ## Limitaciones
 

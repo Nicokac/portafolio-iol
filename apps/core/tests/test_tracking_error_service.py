@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from django.utils import timezone
 
+from apps.core.models import IOLHistoricalPriceSnapshot
 from apps.core.services.performance.tracking_error import TrackingErrorService
 from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
@@ -427,3 +428,82 @@ def test_tracking_error_service_builds_comparison_curve():
     assert isinstance(result["benchmark_trace"], list)
     assert result["series"][0]["portfolio"] > 0
     assert result["series"][0]["benchmark"] > 0
+
+
+@pytest.mark.django_db
+def test_tracking_error_service_uses_iol_proxy_fallback_when_snapshot_history_is_insufficient():
+    now = timezone.now()
+    today = now.date()
+
+    ParametroActivo.objects.create(
+        simbolo="GGAL",
+        sector="Finanzas",
+        bloque_estrategico="Argentina",
+        pais_exposicion="Argentina",
+        tipo_patrimonial="Equity",
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today,
+        total_iol=1000,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=700,
+        rendimiento_total=0.0,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion=now,
+        pais_consulta="argentina",
+        simbolo="GGAL",
+        descripcion="GGAL",
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=100,
+        ppc=90,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=1000,
+        pais_titulo="Argentina",
+        mercado="BCBA",
+        tipo="ACCIONES",
+        moneda="ARS",
+    )
+    ResumenCuentaSnapshot.objects.create(
+        fecha_extraccion=now,
+        numero_cuenta="123",
+        tipo_cuenta="CA",
+        moneda="ARS",
+        disponible=0,
+        comprometido=0,
+        saldo=0,
+        titulos_valorizados=1000,
+        total=1000,
+        estado="activa",
+    )
+    for offset, close in enumerate([100, 101, 103, 102, 104, 106]):
+        IOLHistoricalPriceSnapshot.objects.create(
+            simbolo="GGAL",
+            mercado="BCBA",
+            source="iol",
+            fecha=today - timedelta(days=5 - offset),
+            close=close,
+        )
+
+    benchmark_service = Mock()
+    benchmark_service.build_daily_returns.return_value = pd.Series(dtype=float)
+    benchmark_service.build_weekly_returns.return_value = pd.Series(dtype=float)
+    local_macro_service = Mock()
+    local_macro_service.build_rate_returns.return_value = pd.Series(dtype=float)
+
+    result = TrackingErrorService(
+        benchmark_service=benchmark_service,
+        local_macro_service=local_macro_service,
+    ).calculate(days=365)
+
+    assert result["fallback_source"] == "iol_historical_prices_proxy"
+    assert result["benchmark_frequency_used"] == "daily"
+    assert "tracking_error_annualized" in result

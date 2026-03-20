@@ -951,11 +951,24 @@ class TestDashboardView:
         url = reverse('dashboard:performance')
         response = auth_client.get(url)
         assert response.status_code == 200
+        body = response.content.decode()
+        assert 'performance-fallback-wrap' in body
+        assert 'Trazabilidad de fallback activa.' in body
+        assert 'Históricos IOL proxy' in body or 'Historicos IOL proxy' in body
+        assert 'Obs:' in body
+        assert 'Span:' in body
+        assert 'Cobertura:' in body
+        assert 'formatCoverageNote' in body
 
     def test_metricas_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:metricas')
         response = auth_client.get(url)
         assert response.status_code == 200
+        body = response.content.decode()
+        assert 'Fallback activo:' in body
+        assert 'Fallback retornos' in body
+        assert 'Fallback volatilidad' in body
+        assert 'Fallback benchmarking' in body
 
     def test_ops_requires_staff(self, auth_client, staff_client):
         url = reverse('dashboard:ops')
@@ -1030,6 +1043,11 @@ class TestDashboardView:
                         'partial_count': 1,
                         'missing_count': 1,
                         'overall_status': 'partial',
+                    },
+                    'iol_historical_price_symbol_groups': {
+                        'ready': ['GGAL (BCBA)'],
+                        'partial': ['AAPL (NASDAQ)'],
+                        'missing': ['MSFT (NASDAQ)'],
                     },
                     'local_macro_status_summary': {
                         'ready': 3,
@@ -1125,6 +1143,10 @@ class TestDashboardView:
         assert '2/3' in body
         assert 'Históricos IOL por símbolo' in body
         assert '1/3 listos' in body
+        assert 'Símbolos cubiertos y faltantes del proxy IOL' in body or 'Simbolos cubiertos y faltantes del proxy IOL' in body
+        assert 'GGAL (BCBA)' in body
+        assert 'AAPL (NASDAQ)' in body
+        assert 'MSFT (NASDAQ)' in body
         assert 'Cobertura de históricos IOL por símbolo' in body
         assert 'GGAL' in body
         assert 'NASDAQ' in body
@@ -1236,6 +1258,16 @@ class TestDashboardView:
         assert response.status_code == 403
 
     @pytest.mark.django_db
+    def test_sync_iol_historical_prices_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:sync_iol_historical_prices'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_partial_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:sync_iol_historical_prices_partial'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
     def test_sync_benchmarks_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_all(self, outputsize='compact'):
@@ -1291,6 +1323,98 @@ class TestDashboardView:
         from apps.core.services.observability import get_state_summary
         summary = get_state_summary('analytics_v2.local_macro.sync_status')
         assert summary['latest_state'] == 'success_with_skips'
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_view_success_message(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_current_portfolio_symbols_by_status(self, statuses=('missing',), minimum_ready_rows=5, params=None):
+                assert statuses == ('missing',)
+                assert minimum_ready_rows == 5
+                return {
+                    'success': True,
+                    'selected_count': 1,
+                    'processed': 1,
+                    'statuses': ['missing'],
+                    'results': {
+                        'NASDAQ:AAPL': {
+                            'success': True,
+                            'rows_received': 30,
+                        }
+                    },
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_iol_historical_prices'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Históricos IOL sincronizados para símbolos faltantes' in str(message) or 'Historicos IOL sincronizados para simbolos faltantes' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='sync_iol_historical_prices')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_view_handles_empty_selection(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_current_portfolio_symbols_by_status(self, statuses=('missing',), minimum_ready_rows=5, params=None):
+                return {
+                    'success': True,
+                    'selected_count': 0,
+                    'processed': 0,
+                    'statuses': ['missing'],
+                    'results': {},
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_iol_historical_prices'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('No hay símbolos faltantes para sincronizar históricos IOL' in str(message) or 'No hay simbolos faltantes para sincronizar historicos IOL' in str(message) for message in messages)
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_partial_view_success_message(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_current_portfolio_symbols_by_status(self, statuses=('partial',), minimum_ready_rows=5, params=None):
+                assert statuses == ('partial',)
+                assert minimum_ready_rows == 5
+                return {
+                    'success': True,
+                    'selected_count': 1,
+                    'processed': 1,
+                    'statuses': ['partial'],
+                    'results': {
+                        'BCBA:GGAL': {
+                            'success': True,
+                            'rows_received': 12,
+                        }
+                    },
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_iol_historical_prices_partial'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Históricos IOL parciales reforzados' in str(message) or 'Historicos IOL parciales reforzados' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='sync_iol_historical_prices_partial')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
+
+    @pytest.mark.django_db
+    def test_sync_iol_historical_prices_partial_view_handles_empty_selection(self, staff_client, monkeypatch):
+        class DummyService:
+            def sync_current_portfolio_symbols_by_status(self, statuses=('partial',), minimum_ready_rows=5, params=None):
+                return {
+                    'success': True,
+                    'selected_count': 0,
+                    'processed': 0,
+                    'statuses': ['partial'],
+                    'results': {},
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:sync_iol_historical_prices_partial'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('No hay símbolos parciales para reforzar históricos IOL' in str(message) or 'No hay simbolos parciales para reforzar historicos IOL' in str(message) for message in messages)
 
     def test_save_incremental_proposal_passes_decision_payload_to_history_service(self, auth_client, monkeypatch):
         captured = {}

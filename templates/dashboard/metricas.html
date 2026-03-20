@@ -155,6 +155,12 @@ function formatNumMetric(payload, key) {
     if (hasInsufficientHistory(payload)) return 'Historico insuficiente';
     return formatNumOrNA(payload ? payload[key] : null);
 }
+function formatFallbackLabel(source) {
+    if (!source) return 'N/D';
+    if (source === 'iol_historical_prices_proxy') return 'Historicos IOL proxy';
+    if (source === 'evolucion_historica') return 'Evolucion historica';
+    return source;
+}
 
 Promise.all([
     fetch('/api/metrics/volatility/?days=365').then(r => r.json()),
@@ -185,6 +191,17 @@ Promise.all([
             `Historico insuficiente para calcular con robustez: ${warningTexts.join(', ')}.`;
     }
 
+    const fallbackTexts = [];
+    if (ret.fallback_source) fallbackTexts.push(`Retornos: ${formatFallbackLabel(ret.fallback_source)}`);
+    if (vol.fallback_source) fallbackTexts.push(`Volatilidad: ${formatFallbackLabel(vol.fallback_source)}`);
+    if (bench.fallback_source) fallbackTexts.push(`Benchmarking: ${formatFallbackLabel(bench.fallback_source)}`);
+    if (fallbackTexts.length) {
+        document.getElementById('metrics-warning-wrap').classList.remove('d-none');
+        const baseText = document.getElementById('metrics-warning-text').textContent;
+        document.getElementById('metrics-warning-text').textContent =
+            `${baseText ? `${baseText} ` : ''}Fallback activo: ${fallbackTexts.join(' | ')}.`;
+    }
+
     const detail = [
         ['Retorno diario', formatPctOrNA(ret.daily_return)],
         ['Retorno semanal', formatPctOrNA(ret.weekly_return)],
@@ -206,6 +223,9 @@ Promise.all([
         ['Tracking error', formatPctMetric(bench, 'tracking_error_annualized')],
         ['Information ratio', formatNumMetric(bench, 'information_ratio')],
         ['Frecuencia benchmark usada', bench.benchmark_frequency_used || 'N/D'],
+        ['Fallback retornos', formatFallbackLabel(ret.fallback_source)],
+        ['Fallback volatilidad', formatFallbackLabel(vol.fallback_source)],
+        ['Fallback benchmarking', formatFallbackLabel(bench.fallback_source)],
     ];
     document.getElementById('metrics-detail-body').innerHTML = detail.map(([k,v]) => `<tr><td>${k}</td><td class="text-end">${v}</td></tr>`).join('');
 

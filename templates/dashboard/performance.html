@@ -25,6 +25,10 @@
     </div>
 </section>
 
+<section class="mb-4 d-none" id="performance-fallback-wrap">
+    <div class="alert alert-warning mb-0" id="performance-fallback-text"></div>
+</section>
+
 <section class="mb-4">
     <div class="card border-0 shadow-sm">
         <div class="card-body py-3">
@@ -179,6 +183,28 @@ function formatInlineNote(text, isWarning=false) {
     if (!text) return '<span class="text-muted">-</span>';
     return `<span class="${isWarning ? 'text-warning-emphasis' : 'text-muted'}">${text}</span>`;
 }
+function formatFallbackLabel(source) {
+    if (!source) return '';
+    if (source === 'iol_historical_prices_proxy') return 'Históricos IOL proxy';
+    if (source === 'evolucion_historica') return 'Evolución histórica';
+    return source;
+}
+function formatCoverageNote({ observations, historySpanDays, proxyObservations, coveragePct } = {}) {
+    const parts = [];
+    if (observations !== undefined && observations !== null && Number.isFinite(Number(observations))) {
+        parts.push(`Obs: ${Number(observations)}`);
+    }
+    if (historySpanDays !== undefined && historySpanDays !== null && Number.isFinite(Number(historySpanDays))) {
+        parts.push(`Span: ${Number(historySpanDays)}d`);
+    }
+    if (proxyObservations !== undefined && proxyObservations !== null && Number.isFinite(Number(proxyObservations))) {
+        parts.push(`Proxy obs: ${Number(proxyObservations)}`);
+    }
+    if (coveragePct !== undefined && coveragePct !== null && Number.isFinite(Number(coveragePct))) {
+        parts.push(`Cobertura: ${window.formatNumberAr(Number(coveragePct), 1)}%`);
+    }
+    return parts.join(' | ');
+}
 
 function computeDrawdownSeries(values) {
     let runningMax = -Infinity;
@@ -218,14 +244,45 @@ function loadPerformanceData() {
         const partialSuffix = returns.portfolio_return_ytd_is_partial ? ' | Base parcial' : '';
         document.getElementById('ret-real-ytd-note').innerHTML = formatInlineNote(`${ytdNote}${partialSuffix}`, !!returns.portfolio_return_ytd_is_partial);
 
+        const fallbackNotes = [];
+        if (returns.fallback_source) {
+            const returnsCoverage = formatCoverageNote({
+                observations: returns.observations,
+                historySpanDays: returns.history_span_days,
+            });
+            fallbackNotes.push(`Retornos: ${formatFallbackLabel(returns.fallback_source)}${returnsCoverage ? ` (${returnsCoverage})` : ''}`);
+        }
+        if (benchmarkCurve && benchmarkCurve.fallback_source) {
+            const benchmarkCoverage = formatCoverageNote({
+                observations: benchmarkCurve.observations,
+            });
+            fallbackNotes.push(`Benchmarking: ${formatFallbackLabel(benchmarkCurve.fallback_source)}${benchmarkCoverage ? ` (${benchmarkCoverage})` : ''}`);
+        }
+        if (fallbackNotes.length) {
+            document.getElementById('performance-fallback-wrap').classList.remove('d-none');
+            document.getElementById('performance-fallback-text').textContent =
+                `Trazabilidad de fallback activa. ${fallbackNotes.join(' | ')}.`;
+        }
+
         const comparisonBody = document.getElementById('comparison-body');
         const keys = ['7d', '30d', '90d', '180d', '365d'];
         comparisonBody.innerHTML = keys.map(k => {
             const row = comparison[k] || {};
-            const note = row.is_partial_window ? `<div class="small text-muted">Base real: ${row.available_history_days || 0}d</div>` : '';
+            const noteParts = [];
+            if (row.is_partial_window) noteParts.push(`Base real: ${row.available_history_days || 0}d`);
+            if (row.returns_fallback_source) noteParts.push(`Retorno: ${formatFallbackLabel(row.returns_fallback_source)}`);
+            const returnsCoverage = formatCoverageNote({
+                observations: row.observations,
+                historySpanDays: row.available_history_days,
+            });
+            if (returnsCoverage) noteParts.push(returnsCoverage);
+            const volatilityCoverage = formatCoverageNote({
+                coveragePct: row.volatility_proxy_coverage_pct,
+            });
+            const note = noteParts.length ? `<div class="small text-muted">${noteParts.join(' | ')}</div>` : '';
             const volatilityCell = row.is_partial_window || Number(row.available_history_days || 0) < 60
                 ? formatHistoryWarning()
-                : formatPctOrNA(row.volatility);
+                : `${formatPctOrNA(row.volatility)}${row.volatility_fallback_source ? `<div class="small text-muted">${formatFallbackLabel(row.volatility_fallback_source)}${volatilityCoverage ? ` | ${volatilityCoverage}` : returnsCoverage ? ` | ${returnsCoverage}` : ''}</div>` : ''}`;
             return `<tr><td>${k}${note}</td><td class="text-end">${formatPctOrNA(row.total_return)}</td><td class="text-end">${volatilityCell}</td></tr>`;
         }).join('');
 

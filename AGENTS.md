@@ -163,6 +163,24 @@ test(analytics-v2): agrega cobertura para factor exposure proxy
 
 Si el proyecto ya muestra una estructura más específica, el agente debe detectarla y replicarla.
 
+### 8.1. Regla operativa de Git
+
+El agente puede ejecutar operaciones Git de cierre de trabajo, pero solo bajo estas condiciones:
+
+* puede ejecutar `git add`
+* puede ejecutar `git commit`
+* puede ejecutar `git push`
+* el push está permitido **solo** hacia la rama `develop`
+* antes de ejecutar cualquiera de estas acciones debe existir confirmaci?n humana expl?cita
+* para estas acciones, una respuesta del usuario de solo `Si` es confirmaci?n suficiente
+
+Restricciones:
+
+* no hacer push a ramas distintas de `develop`
+* no hacer push si no hubo confirmaci?n expl?cita del usuario
+* no usar esta regla para saltear la revisi?n y cierre de m?dulo
+
+
 ### 9. Regla de trazabilidad
 
 Toda propuesta debe indicar:

@@ -57,7 +57,7 @@ class VolatilityService:
         return result
 
     def _fallback_volatility_from_iol_historical_prices(self, days: int, observations: int) -> Dict[str, float]:
-        proxy_returns = self._build_iol_proxy_return_series(days=days)
+        proxy_returns, proxy_metadata = self.build_iol_proxy_return_series_with_metadata(days=days)
         proxy_observations = int(len(proxy_returns.index) + 1) if not proxy_returns.empty else 0
         history_span_days = (
             int((proxy_returns.index.max() - proxy_returns.index.min()).days)
@@ -76,6 +76,7 @@ class VolatilityService:
         result["fallback_source"] = "iol_historical_prices_proxy"
         result["returns_basis"] = "current_weights_proxy"
         result["proxy_observations"] = proxy_observations
+        result.update(proxy_metadata)
         return result
 
     def _fallback_volatility_from_evolution(self, days: int, observations: int) -> Dict[str, float]:
@@ -128,10 +129,14 @@ class VolatilityService:
                 "observations": observations,
             }
 
-    def _build_iol_proxy_return_series(self, days: int) -> pd.Series:
+    def build_iol_proxy_return_series(self, days: int) -> pd.Series:
+        proxy_returns, _ = self.build_iol_proxy_return_series_with_metadata(days=days)
+        return proxy_returns
+
+    def build_iol_proxy_return_series_with_metadata(self, days: int) -> tuple[pd.Series, Dict[str, float | int]]:
         latest_extraction = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
         if not latest_extraction:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), self._build_proxy_metadata()
 
         positions = list(
             ActivoPortafolioSnapshot.objects.filter(fecha_extraccion=latest_extraction)
@@ -142,19 +147,24 @@ class VolatilityService:
             .values("simbolo", "mercado", "valorizado")
         )
         if not positions:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), self._build_proxy_metadata()
 
         total_value = sum(float(position["valorizado"] or 0.0) for position in positions)
         if total_value <= 0:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), self._build_proxy_metadata(total_positions=len(positions))
 
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
         business_dates = pd.bdate_range(start=start_date, end=end_date)
         if len(business_dates) < 2:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), self._build_proxy_metadata(
+                total_positions=len(positions),
+                total_value=total_value,
+            )
 
         weighted_returns = []
+        covered_value = 0.0
+        covered_positions = 0
         for position in positions:
             symbol = position["simbolo"]
             market = position["mercado"]
@@ -166,14 +176,38 @@ class VolatilityService:
             if asset_returns.empty:
                 continue
 
-            weight = float(position["valorizado"] or 0.0) / total_value
+            position_value = float(position["valorizado"] or 0.0)
+            weight = position_value / total_value
             weighted_returns.append(asset_returns.mul(weight))
+            covered_value += position_value
+            covered_positions += 1
+
+        proxy_metadata = self._build_proxy_metadata(
+            total_positions=len(positions),
+            covered_positions=covered_positions,
+            total_value=total_value,
+            covered_value=covered_value,
+        )
 
         if not weighted_returns:
-            return pd.Series(dtype=float)
+            return pd.Series(dtype=float), proxy_metadata
 
         proxy_returns = pd.concat(weighted_returns, axis=1).fillna(0.0).sum(axis=1)
-        return pd.to_numeric(proxy_returns, errors="coerce").dropna().sort_index()
+        return pd.to_numeric(proxy_returns, errors="coerce").dropna().sort_index(), proxy_metadata
+
+    @staticmethod
+    def _build_proxy_metadata(
+        total_positions: int = 0,
+        covered_positions: int = 0,
+        total_value: float = 0.0,
+        covered_value: float = 0.0,
+    ) -> Dict[str, float | int]:
+        coverage_pct = (covered_value / total_value * 100) if total_value > 0 else 0.0
+        return {
+            "proxy_total_positions": int(total_positions),
+            "proxy_covered_positions": int(covered_positions),
+            "proxy_coverage_pct": round(coverage_pct, 2),
+        }
 
     def _build_volatility_result(self, df: pd.DataFrame) -> Dict[str, float]:
         returns = df["total_iol"].pct_change().dropna()
