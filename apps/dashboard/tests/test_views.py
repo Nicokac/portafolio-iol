@@ -1169,7 +1169,7 @@ class TestDashboardView:
         assert 'GGAL (BCBA)' in body
         assert 'AAPL (NASDAQ)' in body
         assert 'MSFT (NASDAQ)' in body
-        assert 'Últimas sincronizaciones IOL por símbolo' in body or 'Ultimas sincronizaciones IOL por simbolo' in body
+        assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
         assert 'Sync faltantes' in body
         assert 'Reforzar parciales' in body
         assert 'staffuser' in body

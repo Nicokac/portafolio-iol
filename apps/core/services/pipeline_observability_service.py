@@ -200,12 +200,16 @@ class PipelineObservabilityService:
         ).order_by("-created_at", "-id")[:limit]
 
         rows: list[dict] = []
+        seen_symbol_keys: set[str] = set()
         for audit in audits:
             details = audit.details or {}
             result = details.get("result") or {}
             results = result.get("results") or {}
             sync_scope = "missing" if audit.action == "sync_iol_historical_prices" else "partial"
             if not results:
+                if "-" in seen_symbol_keys:
+                    continue
+                seen_symbol_keys.add("-")
                 rows.append(
                     {
                         "scope": sync_scope,
@@ -221,6 +225,9 @@ class PipelineObservabilityService:
                 continue
 
             for symbol_key, payload in results.items():
+                if symbol_key in seen_symbol_keys:
+                    continue
+                seen_symbol_keys.add(symbol_key)
                 rows.append(
                     {
                         "scope": sync_scope,
@@ -233,6 +240,8 @@ class PipelineObservabilityService:
                         "message": payload.get("error") or "",
                     }
                 )
+                if len(rows) >= limit:
+                    return rows
         return rows[:limit]
 
     @staticmethod

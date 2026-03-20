@@ -17,6 +17,18 @@ def test_pipeline_observability_service_builds_unified_summary():
         details={
             "result": {
                 "results": {
+                    "NASDAQ:AAPL": {"success": True, "rows_received": 10},
+                }
+            }
+        },
+    )
+    SensitiveActionAudit.objects.create(
+        user=None,
+        action="sync_iol_historical_prices",
+        status="success",
+        details={
+            "result": {
+                "results": {
                     "NASDAQ:AAPL": {"success": True, "rows_received": 30},
                 }
             }
@@ -120,10 +132,13 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_price_symbol_groups"]["ready"] == ["GGAL (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["partial"] == ["AAPL (NASDAQ)"]
     assert summary["iol_historical_price_symbol_groups"]["missing"] == ["MSFT (NASDAQ)"]
-    assert summary["iol_historical_recent_sync_rows"][0]["symbol_key"] in {"BCBA:GGAL", "NASDAQ:AAPL"}
+    assert len(summary["iol_historical_recent_sync_rows"]) == 2
     assert {row["scope"] for row in summary["iol_historical_recent_sync_rows"]} == {"missing", "partial"}
     assert {row["action_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"Sync faltantes", "Reforzar parciales"}
     assert {row["user_label"] for row in summary["iol_historical_recent_sync_rows"]} == {"system"}
+    rows_by_symbol = {row["symbol_key"]: row for row in summary["iol_historical_recent_sync_rows"]}
+    assert rows_by_symbol["NASDAQ:AAPL"]["rows_received"] == 30
+    assert rows_by_symbol["BCBA:GGAL"]["rows_received"] == 12
     assert summary["local_macro_status_summary"]["ready"] == 1
     assert summary["local_macro_status_summary"]["stale"] == 1
     assert summary["local_macro_status_summary"]["not_configured"] == 1
