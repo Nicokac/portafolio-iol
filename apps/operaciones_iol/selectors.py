@@ -118,6 +118,7 @@ def build_operation_audit_summary_context(limit: int = 3) -> dict:
     rows = []
     for action_key, label in tracked_actions[:limit]:
         audit = latest_by_action.get(action_key)
+        details = audit.details if audit else {}
         rows.append(
             {
                 'action': action_key,
@@ -127,7 +128,10 @@ def build_operation_audit_summary_context(limit: int = 3) -> dict:
                 'status_tone': _build_audit_status_tone(audit.status if audit else 'missing'),
                 'user_label': audit.user.username if audit and audit.user else 'system',
                 'created_at_label': _format_audit_datetime(audit.created_at) if audit else 'Sin registros',
-                'details': audit.details if audit else {},
+                'details': details,
+                'filters_label': _build_audit_filters_label(details),
+                'summary_label': _build_audit_summary_label(action_key, details, audit.status if audit else 'missing'),
+                'failed_items_label': _build_audit_failed_items_label(action_key, details),
             }
         )
 
@@ -371,3 +375,45 @@ def _format_audit_datetime(value) -> str:
         return 'Sin registros'
     localized = timezone.localtime(value) if timezone.is_aware(value) else value
     return localized.strftime('%Y-%m-%d %H:%M')
+
+
+def _build_audit_filters_label(details: dict) -> str:
+    filters = details.get('filters') or {}
+    parts = []
+    if filters.get('numero'):
+        parts.append(f"Numero {filters['numero']}")
+    if filters.get('estado') and filters['estado'] != 'todas':
+        parts.append(f"Estado {filters['estado']}")
+    if filters.get('pais') and filters['pais'] != 'argentina':
+        parts.append(f"Pais {filters['pais']}")
+    if filters.get('fecha_desde') or filters.get('fecha_hasta'):
+        desde = filters.get('fecha_desde') or '...'
+        hasta = filters.get('fecha_hasta') or '...'
+        parts.append(f"Fechas {desde} a {hasta}")
+    return ' · '.join(parts) if parts else 'Sin filtros activos'
+
+
+def _build_audit_summary_label(action: str, details: dict, status: str) -> str:
+    if status == 'missing':
+        return 'Sin ejecuciones previas'
+    if action == 'sync_operaciones_filtered':
+        return 'Sync remoto ejecutado con los filtros visibles'
+    if action == 'enrich_operaciones_filtered_details':
+        selected = details.get('selected_count', 0)
+        success = details.get('success_count', 0)
+        return f"Seleccionadas {selected} · enriquecidas {success}"
+    if action == 'backfill_operaciones_filtered_country':
+        selected = details.get('selected_count', 0)
+        resolved = details.get('resolved_count', 0)
+        return f"Seleccionadas {selected} · resueltas {resolved}"
+    return 'Sin resumen'
+
+
+def _build_audit_failed_items_label(action: str, details: dict) -> str:
+    failed_numbers = details.get('failed_numbers') or []
+    unresolved_numbers = details.get('unresolved_numbers') or []
+    if action == 'enrich_operaciones_filtered_details' and failed_numbers:
+        return f"Fallidas: {', '.join(map(str, failed_numbers[:3]))}"
+    if action == 'backfill_operaciones_filtered_country' and unresolved_numbers:
+        return f"Sin resolver: {', '.join(map(str, unresolved_numbers[:3]))}"
+    return ''

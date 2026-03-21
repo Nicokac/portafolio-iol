@@ -289,8 +289,43 @@ def test_build_operation_audit_summary_context_returns_latest_rows_per_action(dj
     assert context["rows"][0]["action"] == "sync_operaciones_filtered"
     assert context["rows"][0]["status"] == "success"
     assert context["rows"][0]["user_label"] == "audit-ops-user"
+    assert context["rows"][0]["filters_label"] == "Sin filtros activos"
+    assert context["rows"][0]["summary_label"] == "Sync remoto ejecutado con los filtros visibles"
     assert context["rows"][1]["action"] == "enrich_operaciones_filtered_details"
     assert context["rows"][1]["status_label"] == "OK"
+    assert context["rows"][1]["summary_label"] == "Seleccionadas 3 · enriquecidas 0"
     assert context["rows"][2]["action"] == "backfill_operaciones_filtered_country"
     assert context["rows"][2]["status"] == "missing"
     assert context["rows"][2]["created_at_label"] == "Sin registros"
+
+
+@pytest.mark.django_db
+def test_build_operation_audit_summary_context_formats_filters_and_failures(django_user_model):
+    user = django_user_model.objects.create_user(username="audit-ops-user-2", password="testpass123")
+    SensitiveActionAudit.objects.create(
+        user=user,
+        action="enrich_operaciones_filtered_details",
+        status="failed",
+        details={
+            "filters": {
+                "numero": "167788363",
+                "estado": "terminada",
+                "pais": "estados_Unidos",
+                "fecha_desde": "2026-03-01",
+                "fecha_hasta": "2026-03-21",
+            },
+            "selected_count": 2,
+            "success_count": 1,
+            "failed_numbers": ["A", "B", "C", "D"],
+        },
+    )
+
+    context = build_operation_audit_summary_context()
+    enrich_row = next(row for row in context["rows"] if row["action"] == "enrich_operaciones_filtered_details")
+
+    assert "Numero 167788363" in enrich_row["filters_label"]
+    assert "Estado terminada" in enrich_row["filters_label"]
+    assert "Pais estados_Unidos" in enrich_row["filters_label"]
+    assert "Fechas 2026-03-01 a 2026-03-21" in enrich_row["filters_label"]
+    assert enrich_row["summary_label"] == "Seleccionadas 2 · enriquecidas 1"
+    assert enrich_row["failed_items_label"] == "Fallidas: A, B, C"

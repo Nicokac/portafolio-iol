@@ -148,6 +148,37 @@ def test_operaciones_list_view_renders_latest_audit_statuses(client):
 
 
 @pytest.mark.django_db
+def test_operaciones_list_view_renders_audit_drilldown_details(client):
+    SensitiveActionAudit.objects.create(
+        user=None,
+        action="enrich_operaciones_filtered_details",
+        status="failed",
+        details={
+            "filters": {
+                "numero": "167788363",
+                "estado": "terminada",
+                "pais": "estados_Unidos",
+            },
+            "selected_count": 2,
+            "success_count": 1,
+            "failed_numbers": ["167788363", "167700000"],
+        },
+    )
+    user = User.objects.create_user(username="operaciones-audit-detail-user", password="testpass123")
+    client.force_login(user)
+
+    response = client.get(reverse("operaciones_iol:operaciones_list"))
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Numero 167788363" in body
+    assert "Estado terminada" in body
+    assert "Pais estados_Unidos" in body
+    assert "Seleccionadas 2 · enriquecidas 1" in body
+    assert "Fallidas: 167788363, 167700000" in body
+
+
+@pytest.mark.django_db
 def test_sync_operaciones_filtered_requires_staff(client):
     user = User.objects.create_user(username="operaciones-non-staff", password="testpass123")
     client.force_login(user)

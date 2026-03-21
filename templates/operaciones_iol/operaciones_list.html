@@ -239,6 +239,11 @@
                         <span class="badge bg-{{ item.status_tone }}">{{ item.status_label }}</span>
                     </div>
                     <div class="small text-muted mt-2">Usuario: {{ item.user_label }}</div>
+                    <div class="small text-muted mt-1">{{ item.filters_label }}</div>
+                    <div class="small mt-2">{{ item.summary_label }}</div>
+                    {% if item.failed_items_label %}
+                    <div class="small text-danger mt-1">{{ item.failed_items_label }}</div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
