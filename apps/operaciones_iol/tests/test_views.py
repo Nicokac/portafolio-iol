@@ -117,6 +117,58 @@ def test_operaciones_list_view_renders_execution_analytics_block(client):
 
 
 @pytest.mark.django_db
+def test_operaciones_list_view_renders_execution_analytics_type_groups(client):
+    OperacionIOL.objects.create(
+        numero="TYPE-VIEW-1",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        monto_operacion=100,
+        aranceles_ars=1.5,
+        operaciones_detalle=[{"fecha": "2026-03-18T14:05:57", "cantidad": 1, "precio": 100}],
+    )
+    OperacionIOL.objects.create(
+        numero="TYPE-VIEW-2",
+        fecha_orden=timezone.now(),
+        tipo="Pago de Dividendos",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MCD US$",
+        modalidad="precio_Mercado",
+        monto_operado=0.15,
+        aranceles_usd=0.01,
+    )
+    OperacionIOL.objects.create(
+        numero="TYPE-VIEW-3",
+        fecha_orden=timezone.now(),
+        tipo="Suscripción FCI",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="PRPEDOB",
+        modalidad="precio_Mercado",
+        monto=9.19,
+    )
+    user = User.objects.create_user(username="operaciones-type-user", password="testpass123")
+    client.force_login(user)
+
+    response = client.get(reverse("operaciones_iol:operaciones_list"))
+
+    assert response.status_code == 200
+    groups = {item["key"]: item for item in response.context["operations_execution_analytics"]["type_groups"]}
+    assert groups["trade"]["count"] == 1
+    assert groups["dividend"]["count"] == 1
+    assert groups["fci_flow"]["count"] == 1
+    body = response.content.decode()
+    assert "Desagregado por familia operativa" in body
+    assert "Trades" in body
+    assert "Dividendos" in body
+    assert "Flujos FCI" in body
+
+
+@pytest.mark.django_db
 def test_operaciones_list_view_applies_filters_from_query_params(client):
     OperacionIOL.objects.create(
         numero="167788363",

@@ -129,6 +129,8 @@ def build_operation_execution_analytics_context(queryset: QuerySet[OperacionIOL]
     if fills_visible_count > 0:
         avg_fills_per_visible = (Decimal(sum(len(list(operacion.operaciones_detalle or [])) for operacion in operaciones if operacion.operaciones_detalle)) / Decimal(fills_visible_count)).quantize(Decimal('0.01'))
 
+    type_groups = _build_operation_type_groups(operaciones)
+
     return {
         'total_count': total_count,
         'fee_visible_count': fee_visible_count,
@@ -141,6 +143,7 @@ def build_operation_execution_analytics_context(queryset: QuerySet[OperacionIOL]
         'avg_fills_per_visible': avg_fills_per_visible,
         'executed_amount_total': executed_amount_total,
         'executed_amount_visible_count': executed_amount_visible_count,
+        'type_groups': type_groups,
     }
 
 
@@ -475,3 +478,60 @@ def _resolve_operation_amount(operacion: OperacionIOL) -> Decimal | None:
         if value is not None:
             return Decimal(str(value))
     return None
+
+
+def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
+    grouped: dict[str, dict] = {}
+    for operacion in operaciones:
+        group_key, group_label = _classify_operation_type(str(operacion.tipo or ''))
+        current = grouped.setdefault(
+            group_key,
+            {
+                'key': group_key,
+                'label': group_label,
+                'count': 0,
+                'executed_amount_total': Decimal('0'),
+                'fees_ars_total': Decimal('0'),
+                'fees_usd_total': Decimal('0'),
+                'fills_visible_count': 0,
+            },
+        )
+        current['count'] += 1
+        current['fees_ars_total'] += Decimal(str(operacion.aranceles_ars or 0))
+        current['fees_usd_total'] += Decimal(str(operacion.aranceles_usd or 0))
+        amount = _resolve_operation_amount(operacion)
+        if amount is not None:
+            current['executed_amount_total'] += amount
+        if operacion.operaciones_detalle:
+            current['fills_visible_count'] += 1
+
+    rows = []
+    total_count = len(operaciones)
+    for group in sorted(grouped.values(), key=lambda item: (-item['count'], item['label'])):
+        rows.append(
+            {
+                **group,
+                'pct': _safe_percentage(group['count'], total_count),
+            }
+        )
+    return rows
+
+
+def _classify_operation_type(raw_tipo: str) -> tuple[str, str]:
+    normalized = (
+        raw_tipo.strip()
+        .lower()
+        .replace('ó', 'o')
+        .replace('í', 'i')
+        .replace('á', 'a')
+        .replace('é', 'e')
+        .replace('ú', 'u')
+        .replace('?', '')
+    )
+    if normalized in {'compra', 'venta'}:
+        return 'trade', 'Trades'
+    if 'dividendo' in normalized:
+        return 'dividend', 'Dividendos'
+    if 'suscripcion fci' in normalized or 'rescata fci' in normalized or 'rescate fci' in normalized:
+        return 'fci_flow', 'Flujos FCI'
+    return 'other', 'Otros'

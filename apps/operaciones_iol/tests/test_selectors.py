@@ -313,6 +313,55 @@ def test_build_operation_execution_analytics_context_summarizes_cost_and_fragmen
     assert context["avg_fills_per_visible"] == Decimal("1.50")
     assert context["executed_amount_total"] == Decimal("78720.15")
     assert context["executed_amount_visible_count"] == 2
+    assert context["type_groups"][0]["label"] in {"Trades", "Dividendos"}
+
+
+@pytest.mark.django_db
+def test_build_operation_execution_analytics_context_groups_by_operation_family():
+    OperacionIOL.objects.create(
+        numero="TYPE-1",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        monto_operacion=Decimal("100"),
+        aranceles_ars=Decimal("1.50"),
+        operaciones_detalle=[{"fecha": "2026-03-18T14:05:57", "cantidad": 1, "precio": 100}],
+    )
+    OperacionIOL.objects.create(
+        numero="TYPE-2",
+        fecha_orden=timezone.now(),
+        tipo="Pago de Dividendos",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MCD US$",
+        modalidad="precio_Mercado",
+        monto_operado=Decimal("0.15"),
+        aranceles_usd=Decimal("0.01"),
+    )
+    OperacionIOL.objects.create(
+        numero="TYPE-3",
+        fecha_orden=timezone.now(),
+        tipo="Suscripción FCI",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="PRPEDOB",
+        modalidad="precio_Mercado",
+        monto=Decimal("9.19"),
+    )
+
+    context = build_operation_execution_analytics_context(OperacionIOL.objects.order_by("numero"))
+    groups = {item["key"]: item for item in context["type_groups"]}
+
+    assert groups["trade"]["label"] == "Trades"
+    assert groups["trade"]["count"] == 1
+    assert groups["trade"]["executed_amount_total"] == Decimal("100")
+    assert groups["dividend"]["label"] == "Dividendos"
+    assert groups["dividend"]["fees_usd_total"] == Decimal("0.01")
+    assert groups["fci_flow"]["label"] == "Flujos FCI"
+    assert groups["fci_flow"]["executed_amount_total"] == Decimal("9.19")
 
 
 @pytest.mark.django_db

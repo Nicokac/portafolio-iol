@@ -253,6 +253,25 @@
                 </div>
             </div>
         </div>
+        {% if operations_execution_analytics.type_groups %}
+        <div class="mt-3 pt-3 border-top">
+            <div class="small text-muted mb-2">Desagregado por familia operativa</div>
+            <div class="row g-3">
+                {% for item in operations_execution_analytics.type_groups %}
+                <div class="col-lg-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">{{ item.label }}</div>
+                        <div class="h5 mb-1">{{ item.count }}</div>
+                        <div class="small text-muted">{{ item.pct }}% del subset filtrado</div>
+                        <div class="small mt-2">Monto visible: {{ item.executed_amount_total|currency:2 }}</div>
+                        <div class="small">ARS {{ item.fees_ars_total|currency:2 }} · USD {{ item.fees_usd_total|currency:2 }}</div>
+                        <div class="small text-muted mt-1">{{ item.fills_visible_count }} con fills visibles</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
