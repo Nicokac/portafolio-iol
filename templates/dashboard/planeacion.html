@@ -329,13 +329,16 @@
                                     <div class="border rounded p-2">
                                         <div class="d-flex flex-wrap align-items-center gap-2">
                                             <div class="fw-semibold">{{ item.symbol }}</div>
-                                            {% if item.is_conditioned_by_parking %}
+                                            {% if item.is_conditioned_by_parking or item.is_conditioned_by_market_history %}
                                             <span class="badge bg-warning text-dark">{{ item.priority_label }}</span>
                                             {% endif %}
                                         </div>
                                         <div class="small text-muted">{{ item.block }} · score {{ item.score|floatformat:2 }}</div>
                                         {% if item.is_conditioned_by_parking %}
                                         <div class="small text-muted">Conviene revisar parking visible en este bloque antes de usarlo como candidato principal.</div>
+                                        {% endif %}
+                                        {% if item.is_conditioned_by_market_history %}
+                                        <div class="small text-muted">{{ item.market_history_note }}</div>
                                         {% endif %}
                                     </div>
                                     {% endfor %}

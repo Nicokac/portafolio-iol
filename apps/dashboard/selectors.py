@@ -2864,10 +2864,15 @@ def get_decision_engine_summary(
         parking_feature = get_portfolio_parking_feature_context()
         market_history_feature = get_market_snapshot_history_feature_context()
         recommendation = _build_decision_recommendation(monthly_plan, parking_feature=parking_feature)
-        suggested_assets = _build_decision_suggested_assets(ranking, parking_feature=parking_feature)
+        suggested_assets = _build_decision_suggested_assets(
+            ranking,
+            parking_feature=parking_feature,
+            market_history_feature=market_history_feature,
+        )
         preferred_proposal = _build_decision_preferred_proposal(
             preferred_payload,
             parking_feature=parking_feature,
+            market_history_feature=market_history_feature,
         )
         expected_impact = _build_decision_expected_impact(simulation)
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
@@ -3930,15 +3935,29 @@ def _normalize_decision_block_label(value: str | None) -> str:
     return " ".join(ascii_only.replace("/", " ").split())
 
 
-def _is_parking_overlap_with_recommendation(recommendation_block: str | None, parking_blocks: list[Dict] | None) -> bool:
-    target = _normalize_decision_block_label(recommendation_block)
+def _has_block_overlap(target_block: str | None, candidate_blocks: list[Dict] | list[str] | None) -> bool:
+    target = _normalize_decision_block_label(target_block)
     if not target:
         return False
-    for item in parking_blocks or []:
-        candidate = _normalize_decision_block_label(item.get("label"))
+    for item in candidate_blocks or []:
+        if isinstance(item, dict):
+            candidate = _normalize_decision_block_label(item.get("label"))
+        else:
+            candidate = _normalize_decision_block_label(item)
         if candidate and (candidate == target or candidate in target or target in candidate):
             return True
     return False
+
+
+def _is_parking_overlap_with_recommendation(recommendation_block: str | None, parking_blocks: list[Dict] | None) -> bool:
+    return _has_block_overlap(recommendation_block, parking_blocks)
+
+
+def _is_market_history_overlap_with_recommendation(
+    recommendation_block: str | None,
+    weak_blocks: list[Dict] | list[str] | None,
+) -> bool:
+    return _has_block_overlap(recommendation_block, weak_blocks)
 
 
 def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature: Dict | None = None) -> Dict:
@@ -3973,7 +3992,12 @@ def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature
     }
 
 
-def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: Dict | None = None) -> list[Dict]:
+def _build_decision_suggested_assets(
+    ranking: Dict | None,
+    *,
+    parking_feature: Dict | None = None,
+    market_history_feature: Dict | None = None,
+) -> list[Dict]:
     ranking = ranking or {}
     assets = []
     for item in (ranking.get("candidate_assets") or []):
@@ -3982,6 +4006,16 @@ def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: D
             block_label,
             (parking_feature or {}).get("parking_blocks") or [],
         )
+        conditioned_by_market_history = _is_market_history_overlap_with_recommendation(
+            block_label,
+            (market_history_feature or {}).get("weak_blocks") or [],
+        )
+        if conditioned_by_parking:
+            priority_label = "Condicionado por parking"
+        elif conditioned_by_market_history:
+            priority_label = "Condicionado por liquidez reciente"
+        else:
+            priority_label = ""
         assets.append(
             {
                 "symbol": item.get("asset"),
@@ -3989,12 +4023,19 @@ def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: D
                 "score": _coerce_optional_float(item.get("score")),
                 "reason": item.get("main_reason"),
                 "is_conditioned_by_parking": conditioned_by_parking,
-                "priority_label": "Condicionado por parking" if conditioned_by_parking else "",
+                "is_conditioned_by_market_history": conditioned_by_market_history,
+                "priority_label": priority_label,
+                "market_history_note": (
+                    "La liquidez reciente de este bloque viene debil y conviene revisar spread y actividad antes de usarlo como candidato principal."
+                    if conditioned_by_market_history
+                    else ""
+                ),
             }
         )
     assets.sort(
         key=lambda item: (
             1 if item["is_conditioned_by_parking"] else 0,
+            1 if item["is_conditioned_by_market_history"] else 0,
             -(item["score"] or 0),
         )
     )
@@ -4014,7 +4055,12 @@ def _build_purchase_plan_blocks(purchase_plan: list[Dict]) -> list[str]:
     return labels
 
 
-def _annotate_decision_proposal_with_parking(proposal: Dict, *, parking_feature: Dict | None = None) -> Dict:
+def _annotate_decision_proposal_with_market_context(
+    proposal: Dict,
+    *,
+    parking_feature: Dict | None = None,
+    market_history_feature: Dict | None = None,
+) -> Dict:
     annotated = dict(proposal or {})
     purchase_plan = list(annotated.get("purchase_plan") or [])
     purchase_plan_blocks = _build_purchase_plan_blocks(purchase_plan)
@@ -4022,18 +4068,31 @@ def _annotate_decision_proposal_with_parking(proposal: Dict, *, parking_feature:
         _is_parking_overlap_with_recommendation(block_label, (parking_feature or {}).get("parking_blocks") or [])
         for block_label in purchase_plan_blocks
     )
+    market_history_overlap = any(
+        _is_market_history_overlap_with_recommendation(block_label, (market_history_feature or {}).get("weak_blocks") or [])
+        for block_label in purchase_plan_blocks
+    )
+    if parking_overlap:
+        priority_label = "Condicionada por parking"
+        priority_tone = "warning"
+        note = "La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa."
+    elif market_history_overlap:
+        priority_label = "Condicionada por liquidez reciente"
+        priority_tone = "warning"
+        note = "La propuesta preferida cae en un bloque con liquidez reciente debil y conviene revisar spread y actividad antes de ejecutarla."
+    else:
+        priority_label = "Lista"
+        priority_tone = "success"
+        note = ""
     annotated.update(
         {
             "purchase_plan": purchase_plan,
             "purchase_plan_blocks": purchase_plan_blocks,
             "is_conditioned_by_parking": parking_overlap,
-            "priority_label": "Condicionada por parking" if parking_overlap else "Lista",
-            "priority_tone": "warning" if parking_overlap else "success",
-            "parking_note": (
-                "La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa."
-                if parking_overlap
-                else ""
-            ),
+            "is_conditioned_by_market_history": market_history_overlap,
+            "priority_label": priority_label,
+            "priority_tone": priority_tone,
+            "parking_note": note,
             "was_reprioritized_by_parking": False,
         }
     )
@@ -4050,7 +4109,12 @@ def _should_promote_clean_alternative(conditioned: Dict, clean: Dict) -> bool:
     return clean_score >= (conditioned_score - 0.25)
 
 
-def _build_decision_preferred_proposal(preferred_payload: Dict | None, *, parking_feature: Dict | None = None) -> Dict | None:
+def _build_decision_preferred_proposal(
+    preferred_payload: Dict | None,
+    *,
+    parking_feature: Dict | None = None,
+    market_history_feature: Dict | None = None,
+) -> Dict | None:
     preferred_payload = preferred_payload or {}
     preferred = preferred_payload.get("preferred")
     if not preferred:
@@ -4076,7 +4140,11 @@ def _build_decision_preferred_proposal(preferred_payload: Dict | None, *, parkin
         raw_candidates = [normalize_candidate(preferred)]
 
     annotated_candidates = [
-        _annotate_decision_proposal_with_parking(item, parking_feature=parking_feature)
+        _annotate_decision_proposal_with_market_context(
+            item,
+            parking_feature=parking_feature,
+            market_history_feature=market_history_feature,
+        )
         for item in raw_candidates
     ]
 
