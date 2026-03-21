@@ -985,6 +985,40 @@ class TestDashboardSelectors(TestCase):
         assert governance["recommendation"]["original_block_label"] == "Growth USA"
         assert governance["preferred_proposal"]["reprioritized_by_market_history"] is True
 
+    def test_get_incremental_proposal_history_builds_tactical_trace_from_explanation(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+                return_value=[
+                    {
+                        "id": 1,
+                        "proposal_label": "Plan SPY",
+                        "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                        "decision_explanation": [
+                            "La liquidez reciente observada por IOL pide revisar la ejecucion antes de comprar.",
+                            "La propuesta preferida fue reemplazada por una alternativa con liquidez reciente mas limpia frente a Plan MELI.",
+                        ],
+                        "manual_decision_status": "pending",
+                        "is_backlog_front": False,
+                        "is_tracking_baseline": False,
+                    }
+                ],
+            ),
+            patch(
+                "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+                return_value={"total": 1, "pending": 1, "accepted": 0, "deferred": 0, "rejected": 0},
+            ),
+        ):
+            history = get_incremental_proposal_history(user=DummyUser(), limit=5, decision_status="all")
+
+        trace = history["items"][0]["tactical_trace"]
+        assert trace["has_trace"] is True
+        assert trace["headline"] == "Se promovio una alternativa mas limpia por liquidez reciente."
+        assert [badge["label"] for badge in trace["badges"]] == ["Liquidez reciente", "Alternativa promovida"]
+
     def test_get_decision_engine_summary_degrades_score_and_confidence_when_market_history_is_visible(self):
         class DummyUser:
             pk = 15

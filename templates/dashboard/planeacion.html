@@ -952,6 +952,23 @@
                                                 {% if item.reapply_truncated %}
                                                 <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
                                                 {% endif %}
+                                                {% if item.tactical_trace.has_trace %}
+                                                <div class="mt-2">
+                                                    {% for badge in item.tactical_trace.badges %}
+                                                    <span class="badge bg-{% if badge.tone == 'warning' %}warning text-dark{% elif badge.tone == 'info' %}info text-dark{% elif badge.tone == 'primary' %}primary{% else %}secondary{% endif %} me-1">{{ badge.label }}</span>
+                                                    {% endfor %}
+                                                    {% if item.tactical_trace.headline %}
+                                                    <div class="small text-muted mt-2">{{ item.tactical_trace.headline }}</div>
+                                                    {% endif %}
+                                                    {% if item.tactical_trace.reasons %}
+                                                    <ul class="small mb-0 mt-2 ps-3 text-muted">
+                                                        {% for reason in item.tactical_trace.reasons %}
+                                                        <li>{{ reason }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
                                                 {% if item.decision_explanation %}
                                                 <details class="mt-2">
                                                     <summary class="small text-muted">Por qué se tomó esta decisión</summary>

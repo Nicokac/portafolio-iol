@@ -2540,6 +2540,7 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
             str(item.get("manual_decision_status") or "pending")
         )
         enriched["is_backlog_front_label"] = "Al frente del backlog" if item.get("is_backlog_front") else ""
+        enriched["tactical_trace"] = _build_incremental_tactical_trace(item)
         enriched.update(reapply)
         items.append(enriched)
     return {
@@ -2551,6 +2552,51 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
         "decision_counts": counts,
         "available_filters": _build_incremental_history_available_filters(normalized_filter, counts),
         "headline": _build_incremental_history_headline(normalized_filter, counts, len(items)),
+    }
+
+
+def _build_incremental_tactical_trace(item: Dict | None) -> Dict:
+    explanation_items = [str(bullet).strip() for bullet in list((item or {}).get("decision_explanation") or []) if str(bullet).strip()]
+    badges = []
+
+    if any("parking" in bullet.lower() for bullet in explanation_items):
+        badges.append({"key": "parking", "label": "Parking", "tone": "warning"})
+    if any("liquidez reciente" in bullet.lower() for bullet in explanation_items):
+        badges.append({"key": "market_history", "label": "Liquidez reciente", "tone": "info"})
+    if any("reemplazada por una alternativa" in bullet.lower() for bullet in explanation_items):
+        badges.append({"key": "alternative_promoted", "label": "Alternativa promovida", "tone": "primary"})
+    if any("repriorizada" in bullet.lower() for bullet in explanation_items):
+        badges.append({"key": "reprioritized", "label": "Repriorizada", "tone": "secondary"})
+    if any("condicionada" in bullet.lower() for bullet in explanation_items):
+        badges.append({"key": "conditioned", "label": "Condicionada", "tone": "secondary"})
+
+    if any(badge["key"] == "market_history" for badge in badges) and any(
+        badge["key"] == "alternative_promoted" for badge in badges
+    ):
+        headline = "Se promovio una alternativa mas limpia por liquidez reciente."
+    elif any(badge["key"] == "parking" for badge in badges) and any(
+        badge["key"] == "alternative_promoted" for badge in badges
+    ):
+        headline = "Se promovio una alternativa mas limpia por parking visible."
+    elif any(badge["key"] == "market_history" for badge in badges):
+        headline = "La propuesta quedo bajo revision por liquidez reciente."
+    elif any(badge["key"] == "parking" for badge in badges):
+        headline = "La propuesta quedo bajo revision por parking visible."
+    else:
+        headline = ""
+
+    compact_reasons = []
+    for bullet in explanation_items:
+        lowered = bullet.lower()
+        if "parking" in lowered or "liquidez reciente" in lowered or "repriorizada" in lowered or "reemplazada por una alternativa" in lowered:
+            compact_reasons.append(bullet)
+    compact_reasons = compact_reasons[:3]
+
+    return {
+        "has_trace": bool(badges or compact_reasons or headline),
+        "headline": headline,
+        "badges": badges[:4],
+        "reasons": compact_reasons,
     }
 
 

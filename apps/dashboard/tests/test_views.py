@@ -1377,6 +1377,15 @@ class TestDashboardView:
                         'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3},
                         'manual_decision_status': 'pending',
                         'manual_decision_status_label': 'Pendiente',
+                        'tactical_trace': {
+                            'has_trace': True,
+                            'headline': 'Se promovio una alternativa mas limpia por liquidez reciente.',
+                            'badges': [
+                                {'key': 'market_history', 'label': 'Liquidez reciente', 'tone': 'info'},
+                                {'key': 'alternative_promoted', 'label': 'Alternativa promovida', 'tone': 'primary'},
+                            ],
+                            'reasons': ['La propuesta preferida fue reemplazada por una alternativa con liquidez reciente mas limpia frente a Plan MELI.'],
+                        },
                         'is_backlog_front': False,
                         'is_tracking_baseline': False,
                         'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000',
