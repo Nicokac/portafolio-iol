@@ -276,12 +276,16 @@ class IncrementalProposalHistoryService:
     def _normalize_decision_payload(self, decision_payload: dict | None) -> dict:
         payload = dict(decision_payload or {})
         tracking = dict(payload.get("tracking_payload") or {})
+        explanation = self._merge_decision_explanation(
+            self._coerce_optional_explanation(payload.get("explanation")),
+            self._build_governance_explanation_from_tracking(tracking),
+        )
         return {
             "decision_score": self._coerce_optional_score(payload.get("score", tracking.get("score"))),
             "decision_confidence": self._coerce_optional_confidence(
                 payload.get("confidence", tracking.get("confidence"))
             ),
-            "decision_explanation": self._coerce_optional_explanation(payload.get("explanation")),
+            "decision_explanation": explanation,
             "macro_state": self._coerce_optional_state(
                 payload.get("macro_state", tracking.get("macro_state"))
             ),
@@ -289,6 +293,53 @@ class IncrementalProposalHistoryService:
                 payload.get("portfolio_state", tracking.get("portfolio_state"))
             ),
         }
+
+    def _merge_decision_explanation(self, explicit_items: list[str] | None, governance_items: list[str]) -> list[str] | None:
+        merged = []
+        for item in list(explicit_items or []) + list(governance_items or []):
+            normalized = str(item or "").strip()
+            if normalized and normalized not in merged:
+                merged.append(normalized)
+        if not merged:
+            return None if explicit_items is None else []
+        return merged
+
+    def _build_governance_explanation_from_tracking(self, tracking: dict | None) -> list[str]:
+        governance = dict((tracking or {}).get("governance") or {})
+        recommendation = dict(governance.get("recommendation") or {})
+        preferred = dict(governance.get("preferred_proposal") or {})
+        items = []
+
+        if governance.get("parking_signal_active"):
+            items.append("Hay parking visible en cartera y la decision quedo bajo revision tactica.")
+        if governance.get("market_history_signal_active"):
+            items.append("La liquidez reciente observada por IOL pide revisar la ejecucion antes de comprar.")
+
+        if recommendation.get("reprioritized_by_parking"):
+            original_label = str(recommendation.get("original_block_label") or "el bloque original").strip()
+            items.append(f"La recomendacion principal fue repriorizada por parking visible sobre {original_label}.")
+        elif recommendation.get("conditioned_by_parking"):
+            items.append("La recomendacion principal quedo condicionada por parking visible en el mismo bloque.")
+
+        if recommendation.get("reprioritized_by_market_history"):
+            original_label = str(recommendation.get("original_block_label") or "el bloque original").strip()
+            items.append(f"La recomendacion principal fue repriorizada por liquidez reciente debil en {original_label}.")
+        elif recommendation.get("conditioned_by_market_history"):
+            items.append("La recomendacion principal quedo condicionada por liquidez reciente debil.")
+
+        if preferred.get("reprioritized_by_parking"):
+            proposal_label = str(preferred.get("proposal_label") or "la propuesta original").strip()
+            items.append(f"La propuesta preferida fue reemplazada por una alternativa mas limpia frente a parking visible sobre {proposal_label}.")
+        elif preferred.get("conditioned_by_parking"):
+            items.append("La propuesta preferida quedo condicionada por parking visible.")
+
+        if preferred.get("reprioritized_by_market_history"):
+            proposal_label = str(preferred.get("proposal_label") or "la propuesta original").strip()
+            items.append(f"La propuesta preferida fue reemplazada por una alternativa con liquidez reciente mas limpia frente a {proposal_label}.")
+        elif preferred.get("conditioned_by_market_history"):
+            items.append("La propuesta preferida quedo condicionada por liquidez reciente debil.")
+
+        return items
 
     def _coerce_optional_score(self, value) -> int | None:
         try:

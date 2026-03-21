@@ -227,6 +227,57 @@ def test_save_preferred_proposal_ignores_invalid_decision_fields():
 
 
 @pytest.mark.django_db
+def test_save_preferred_proposal_appends_governance_trace_from_tracking_payload():
+    user = User.objects.create_user(username="history-governance", password="testpass123")
+    service = IncrementalProposalHistoryService()
+
+    saved = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "candidate_split",
+            "source_label": "Comparador por split",
+            "proposal_key": "plan_spy",
+            "proposal_label": "Plan SPY",
+            "purchase_plan": [{"symbol": "SPY", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        decision_payload={
+            "score": 61,
+            "confidence": "Media",
+            "explanation": ["El contexto macro no invalida la decision principal."],
+            "tracking_payload": {
+                "score": 61,
+                "confidence": "Media",
+                "macro_state": "normal",
+                "portfolio_state": "ok",
+                "governance": {
+                    "parking_signal_active": True,
+                    "market_history_signal_active": True,
+                    "recommendation": {
+                        "reprioritized_by_parking": True,
+                        "original_block_label": "Growth USA",
+                    },
+                    "preferred_proposal": {
+                        "proposal_label": "Plan MELI",
+                        "reprioritized_by_market_history": True,
+                    },
+                },
+            },
+        },
+        capital_amount=100000,
+    )
+
+    snapshot = IncrementalProposalSnapshot.objects.get(pk=saved["id"])
+    assert snapshot.decision_explanation == [
+        "El contexto macro no invalida la decision principal.",
+        "Hay parking visible en cartera y la decision quedo bajo revision tactica.",
+        "La liquidez reciente observada por IOL pide revisar la ejecucion antes de comprar.",
+        "La recomendacion principal fue repriorizada por parking visible sobre Growth USA.",
+        "La propuesta preferida fue reemplazada por una alternativa con liquidez reciente mas limpia frente a Plan MELI.",
+    ]
+
+
+@pytest.mark.django_db
 def test_save_preferred_proposal_rejects_empty_purchase_plan():
     user = User.objects.create_user(username="history-empty", password="testpass123")
     service = IncrementalProposalHistoryService()

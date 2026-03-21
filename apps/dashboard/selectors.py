@@ -2921,6 +2921,7 @@ def get_decision_engine_summary(
             confidence=confidence,
             preferred_proposal=preferred_proposal,
             parking_signal=parking_signal,
+            market_history_signal=market_history_signal,
         )
         tracking_payload = _build_decision_tracking_payload(
             preferred_proposal=preferred_proposal,
@@ -2930,6 +2931,9 @@ def get_decision_engine_summary(
             confidence=confidence,
             macro_state=macro_state,
             portfolio_state=portfolio_state,
+            parking_signal=parking_signal,
+            market_history_signal=market_history_signal,
+            execution_gate=execution_gate,
         )
 
         return {
@@ -4408,6 +4412,17 @@ def _build_decision_market_history_signal(
     recommendation_block = str((recommendation or {}).get("block") or "").strip()
     if recommendation_block and recommendation_block in weak_blocks:
         overlap_blocks.append(recommendation_block)
+    original_block_label = str((recommendation or {}).get("original_block_label") or "").strip()
+    if (
+        original_block_label
+        and original_block_label in weak_blocks
+        and original_block_label not in overlap_blocks
+        and (
+            (recommendation or {}).get("was_reprioritized_by_market_history")
+            or (recommendation or {}).get("is_conditioned_by_market_history")
+        )
+    ):
+        overlap_blocks.append(original_block_label)
     for block in (preferred_proposal or {}).get("purchase_plan_blocks") or []:
         block_label = str(block or "").strip()
         if block_label and block_label in weak_blocks and block_label not in overlap_blocks:
@@ -4557,6 +4572,7 @@ def _build_decision_explanation(
     confidence: str,
     preferred_proposal: Dict | None,
     parking_signal: Dict | None = None,
+    market_history_signal: Dict | None = None,
 ) -> list[str]:
     recommendation_block = recommendation.get("block") or "el bloque sugerido"
     recommendation_reason = recommendation.get("reason") or "es la prioridad mas clara del mes"
@@ -4576,7 +4592,19 @@ def _build_decision_explanation(
     ]
     if (parking_signal or {}).get("has_signal"):
         bullets.append("Hay parking visible en cartera y conviene revisar esas restricciones antes de ejecutar la propuesta.")
-    return bullets[:5]
+    if recommendation.get("was_reprioritized_by_parking"):
+        bullets.append("La recomendacion principal fue repriorizada porque el bloque original quedaba condicionado por parking visible.")
+    elif recommendation.get("is_conditioned_by_parking"):
+        bullets.append("La recomendacion principal quedo condicionada por parking visible en el mismo bloque estrategico.")
+    if recommendation.get("was_reprioritized_by_market_history"):
+        bullets.append("La recomendacion principal fue repriorizada porque el bloque original mostraba liquidez reciente debil.")
+    elif recommendation.get("is_conditioned_by_market_history") or (market_history_signal or {}).get("has_signal"):
+        bullets.append("La liquidez reciente del bloque sugerido pide validar mejor la ejecucion antes de comprar.")
+    if (preferred_proposal or {}).get("was_reprioritized_by_parking"):
+        bullets.append("La propuesta preferida guardable fue reemplazada por una alternativa mas limpia frente a parking visible.")
+    elif (preferred_proposal or {}).get("was_reprioritized_by_market_history"):
+        bullets.append("La propuesta preferida guardable fue reemplazada por una alternativa con liquidez reciente mas limpia.")
+    return bullets[:8]
 
 
 def _build_decision_tracking_payload(
@@ -4588,8 +4616,14 @@ def _build_decision_tracking_payload(
     confidence: str,
     macro_state: Dict,
     portfolio_state: Dict,
+    parking_signal: Dict | None = None,
+    market_history_signal: Dict | None = None,
+    execution_gate: Dict | None = None,
 ) -> Dict:
     preferred_proposal = preferred_proposal or {}
+    parking_signal = parking_signal or {}
+    market_history_signal = market_history_signal or {}
+    execution_gate = execution_gate or {}
     return {
         "recommended_block": recommendation.get("block"),
         "recommended_amount": recommendation.get("amount"),
@@ -4605,6 +4639,39 @@ def _build_decision_tracking_payload(
         "macro_state": macro_state.get("key"),
         "portfolio_state": portfolio_state.get("key"),
         "expected_impact_status": expected_impact.get("status"),
+        "governance": {
+            "execution_gate_key": execution_gate.get("key"),
+            "parking_signal_active": bool(parking_signal.get("has_signal")),
+            "parking_blocks": [
+                str(item.get("label") or "").strip()
+                for item in (parking_signal.get("parking_blocks") or [])
+                if str(item.get("label") or "").strip()
+            ],
+            "market_history_signal_active": bool(market_history_signal.get("has_signal")),
+            "market_history_blocks": [
+                str(item.get("label") or "").strip()
+                for item in (
+                    [{"label": block} for block in (market_history_signal.get("overlap_blocks") or [])]
+                )
+                if str(item.get("label") or "").strip()
+            ],
+            "recommendation": {
+                "block": recommendation.get("block"),
+                "priority_label": recommendation.get("priority_label"),
+                "conditioned_by_parking": bool(recommendation.get("is_conditioned_by_parking")),
+                "reprioritized_by_parking": bool(recommendation.get("was_reprioritized_by_parking")),
+                "conditioned_by_market_history": bool(recommendation.get("is_conditioned_by_market_history")),
+                "reprioritized_by_market_history": bool(recommendation.get("was_reprioritized_by_market_history")),
+                "original_block_label": recommendation.get("original_block_label"),
+            },
+            "preferred_proposal": {
+                "proposal_label": preferred_proposal.get("proposal_label"),
+                "conditioned_by_parking": bool(preferred_proposal.get("is_conditioned_by_parking")),
+                "reprioritized_by_parking": bool(preferred_proposal.get("was_reprioritized_by_parking")),
+                "conditioned_by_market_history": bool(preferred_proposal.get("is_conditioned_by_market_history")),
+                "reprioritized_by_market_history": bool(preferred_proposal.get("was_reprioritized_by_market_history")),
+            },
+        },
     }
 
 

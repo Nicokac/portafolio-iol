@@ -897,6 +897,94 @@ class TestDashboardSelectors(TestCase):
         assert detail["preferred_proposal"]["priority_label"] == "Repriorizada por liquidez reciente"
         assert "liquidez reciente debil" in detail["preferred_proposal"]["parking_note"].lower()
 
+    def test_get_decision_engine_summary_tracks_tactical_governance_in_tracking_payload(self):
+        class DummyUser:
+            pk = 14_2
+
+        cache.clear()
+        ParametroActivo.objects.create(
+            simbolo="MELI",
+            sector="Tecnologia",
+            bloque_estrategico="Growth USA",
+            pais_exposicion="USA",
+            tipo_patrimonial="Equity",
+        )
+        ParametroActivo.objects.create(
+            simbolo="SPY",
+            sector="Indice",
+            bloque_estrategico="Indice global",
+            pais_exposicion="USA",
+            tipo_patrimonial="ETF",
+        )
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch(
+                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                return_value={
+                    "recommended_blocks": [
+                        {"label": "Growth USA", "suggested_amount": 350000, "reason": "Se prioriza crecimiento."},
+                        {"label": "Indice global", "suggested_amount": 250000, "reason": "Mantiene liquidez mas limpia."},
+                    ]
+                },
+            ),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_key": "plan_meli",
+                        "proposal_label": "Plan MELI",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "MELI", "amount": 600000}],
+                        "comparison_score": 4.60,
+                        "priority_rank": 4,
+                    },
+                    "candidates": [
+                        {
+                            "proposal_key": "plan_meli",
+                            "proposal_label": "Plan MELI",
+                            "source_label": "Comparador manual",
+                            "purchase_plan": [{"symbol": "MELI", "amount": 600000}],
+                            "comparison_score": 4.60,
+                            "priority_rank": 4,
+                        },
+                        {
+                            "proposal_key": "plan_spy",
+                            "proposal_label": "Plan SPY",
+                            "source_label": "Comparador por candidato",
+                            "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                            "comparison_score": 4.50,
+                            "priority_rank": 2,
+                        },
+                    ],
+                },
+            ),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch(
+                "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
+                return_value={
+                    "summary": {"weak_count": 1},
+                    "rows": [{"simbolo": "MELI", "bloque_estrategico": "Growth USA", "quality_status": "weak"}],
+                    "weak_blocks": [{"label": "Growth USA", "value_total": Decimal("900000")}],
+                    "alerts": [],
+                    "has_history": True,
+                    "lookback_days": 7,
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        governance = detail["tracking_payload"]["governance"]
+        assert governance["market_history_signal_active"] is True
+        assert governance["market_history_blocks"] == ["Growth USA"]
+        assert governance["recommendation"]["reprioritized_by_market_history"] is True
+        assert governance["recommendation"]["original_block_label"] == "Growth USA"
+        assert governance["preferred_proposal"]["reprioritized_by_market_history"] is True
+
     def test_get_decision_engine_summary_degrades_score_and_confidence_when_market_history_is_visible(self):
         class DummyUser:
             pk = 15

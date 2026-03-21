@@ -67,6 +67,7 @@ Jerarquia actual en `Planeacion`:
 - dentro de ese nucleo, la propuesta incremental preferida funciona como decision sugerida y la simulacion before/after queda como validacion inmediata del impacto
 - la exploracion comparativa queda como lectura secundaria
 - el seguimiento y governance permanece en la misma hoja, pero el historial accionable queda subordinado como trazabilidad operativa
+- los snapshots incrementales guardados preservan tambien la causa tactica de gobierno visible en `Modo decision`, incluyendo reglas de `parking` y liquidez reciente observada desde `CotizacionDetalle`
 
 ## Limitaciones
 

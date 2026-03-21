@@ -122,11 +122,13 @@ class TestDecisionEngineSummary:
         assert 0 <= detail["score"] <= 100
         assert detail["confidence"] in {"Alta", "Media", "Baja"}
         assert detail["confidence"] == "Alta"
-        assert 1 <= len(detail["explanation"]) <= 4
+        assert 1 <= len(detail["explanation"]) <= 8
         assert all(isinstance(item, str) and item for item in detail["explanation"])
         assert detail["tracking_payload"]["score"] == detail["score"]
         assert detail["tracking_payload"]["confidence"] == "Alta"
         assert detail["tracking_payload"]["purchase_plan"] == [{"symbol": "KO", "amount": 600000}]
+        assert detail["tracking_payload"]["governance"]["parking_signal_active"] is False
+        assert detail["tracking_payload"]["governance"]["market_history_signal_active"] is False
 
     def test_get_decision_engine_summary_handles_missing_macro_preferred_and_simulation(self):
         class DummyUser:
