@@ -39,7 +39,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
-| `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops` market snapshot | Medio | no se persiste ni se usa todavia en dashboard general |
+| `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops`, `Resumen`, `Estrategia`, `Planeacion` via snapshot cacheado | Alto | no se persiste; la capa principal depende de refresh puntual cacheado |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo/performance, `Ops` | Alto | sigue siendo opt-in via sync, no cobertura total garantizada |
 
 ## Endpoint por endpoint
@@ -156,6 +156,7 @@ Se usa hoy como:
 - fuente primaria de market data puntual
 - validacion operativa en `Ops`
 - fallback de elegibilidad para historicos cuando falla metadata de titulo
+- capa táctica compartida para `Resumen`, `Estrategia` y `Planeacion`
 
 Valor diferencial real:
 
@@ -169,8 +170,8 @@ Valor diferencial real:
 
 Conclusion:
 
-- es uno de los endpoints mas valiosos para seguir explotando
-- hoy la app todavia no le saca el maximo provecho
+- ya dejó de estar aislado en observabilidad
+- hoy potencia lectura táctica de producto, aunque todavía no se persiste como snapshot histórico puntual
 
 ### 8. `seriehistorica`
 

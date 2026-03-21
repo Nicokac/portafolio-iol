@@ -6,6 +6,7 @@ from typing import Iterable
 import unicodedata
 
 import pandas as pd
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Count, Max
 from django.utils import timezone
@@ -19,6 +20,8 @@ class IOLHistoricalPriceService:
     """Persistencia minima de historicos diarios por simbolo desde IOL."""
 
     CASH_MANAGEMENT_SYMBOLS = {"ADBAICA", "IOLPORA", "PRPEDOB"}
+    MARKET_SNAPSHOT_CACHE_KEY = "iol:current_portfolio_market_snapshot:v1"
+    MARKET_SNAPSHOT_CACHE_TTL_SECONDS = 300
     MARKET_ALIASES = {
         "BCBA": ("BCBA", "bCBA", "bcba"),
         "NASDAQ": ("NASDAQ", "nasdaq"),
@@ -384,6 +387,29 @@ class IOLHistoricalPriceService:
             "order_book_count": order_book_count,
             "overall_status": overall_status,
         }
+
+    def build_current_portfolio_market_snapshot_payload(self, *, limit: int = 25) -> dict:
+        rows = self.get_current_portfolio_market_snapshot_rows(limit=limit)
+        return {
+            "rows": rows,
+            "summary": self.summarize_market_snapshot_rows(rows),
+            "refreshed_at": timezone.now().isoformat(),
+            "limit": limit,
+        }
+
+    def refresh_cached_current_portfolio_market_snapshot(self, *, limit: int = 25) -> dict:
+        payload = self.build_current_portfolio_market_snapshot_payload(limit=limit)
+        cache.set(
+            self.MARKET_SNAPSHOT_CACHE_KEY,
+            payload,
+            timeout=self.MARKET_SNAPSHOT_CACHE_TTL_SECONDS,
+        )
+        return payload
+
+    @classmethod
+    def get_cached_current_portfolio_market_snapshot(cls) -> dict | None:
+        cached = cache.get(cls.MARKET_SNAPSHOT_CACHE_KEY)
+        return cached if isinstance(cached, dict) else None
 
     def resolve_symbol_history_support(self, *, mercado: str, simbolo: str, row: dict | None = None) -> dict:
         local_row = row or {"simbolo": simbolo, "mercado": mercado}

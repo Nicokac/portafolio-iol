@@ -4,6 +4,7 @@ import warnings
 
 import pandas as pd
 import pytest
+from django.core.cache import cache
 from django.utils import timezone
 
 from apps.core.models import IOLHistoricalPriceSnapshot
@@ -522,6 +523,30 @@ def test_iol_historical_price_service_summarizes_market_snapshot_rows():
         "order_book_count": 1,
         "overall_status": "partial",
     }
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_refreshes_and_reads_cached_market_snapshot_payload():
+    cache.delete(IOLHistoricalPriceService.MARKET_SNAPSHOT_CACHE_KEY)
+
+    service = IOLHistoricalPriceService(client=Mock())
+    service.get_current_portfolio_market_snapshot_rows = Mock(
+        return_value=[
+            {
+                "simbolo": "GGAL",
+                "snapshot_status": "available",
+                "snapshot_source_key": "cotizacion_detalle",
+                "puntas_count": 1,
+            }
+        ]
+    )
+
+    payload = service.refresh_cached_current_portfolio_market_snapshot(limit=12)
+
+    assert payload["summary"]["available_count"] == 1
+    assert payload["limit"] == 12
+    assert payload["rows"][0]["simbolo"] == "GGAL"
+    assert IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot() == payload
 
 
 def test_iol_historical_price_service_formats_snapshot_datetime_without_nanosecond_warning():

@@ -30,6 +30,7 @@ from apps.dashboard.selectors import (
     get_incremental_portfolio_simulation,
     get_incremental_portfolio_simulation_comparison,
     get_liquidity_contract_summary,
+    get_market_snapshot_feature_context,
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
@@ -109,6 +110,89 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
 
 
 class TestDashboardSelectors(TestCase):
+    def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
+        fecha = timezone.now()
+        make_activo(fecha, "MELI", Decimal("900000"), tipo="CEDEARS", mercado="BCBA")
+        make_activo(fecha, "GGAL", Decimal("600000"), tipo="ACCIONES", mercado="BCBA")
+        make_activo(fecha, "ADBAICA", Decimal("300000"), tipo="FondoComundeInversion", mercado="BCBA")
+
+        cached_payload = {
+            "rows": [
+                {
+                    "simbolo": "MELI",
+                    "mercado": "BCBA",
+                    "descripcion": "Cedear Mercadolibre Inc.",
+                    "snapshot_status": "available",
+                    "snapshot_source_key": "cotizacion_detalle",
+                    "snapshot_source_label": "CotizacionDetalle",
+                    "fecha_hora_label": "2026-03-21 10:00",
+                    "ultimo_precio": Decimal("20080"),
+                    "variacion": Decimal("-1.66"),
+                    "cantidad_operaciones": 5341,
+                    "puntas_count": 5,
+                    "spread_abs": Decimal("860"),
+                    "spread_pct": Decimal("4.29"),
+                    "plazo": "t1",
+                },
+                {
+                    "simbolo": "GGAL",
+                    "mercado": "BCBA",
+                    "descripcion": "Grupo Financiero Galicia",
+                    "snapshot_status": "missing",
+                    "snapshot_source_key": "",
+                    "snapshot_source_label": "",
+                    "snapshot_reason": "IOL no devolvio cotizacion puntual para el instrumento.",
+                    "fecha_hora_label": "",
+                    "ultimo_precio": None,
+                    "variacion": None,
+                    "cantidad_operaciones": 0,
+                    "puntas_count": 0,
+                    "spread_abs": None,
+                    "spread_pct": None,
+                    "plazo": "",
+                },
+            ],
+            "summary": {
+                "total_symbols": 2,
+                "available_count": 1,
+                "missing_count": 1,
+                "unsupported_count": 0,
+                "detail_count": 1,
+                "fallback_count": 0,
+                "order_book_count": 1,
+                "overall_status": "partial",
+            },
+            "refreshed_at": "2026-03-21T10:00:00-03:00",
+        }
+
+        with patch(
+            "apps.dashboard.selectors.IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot",
+            return_value=cached_payload,
+        ):
+            context = get_market_snapshot_feature_context(top_limit=3)
+
+        assert context["has_cached_snapshot"] is True
+        assert context["refreshed_at_label"] == "2026-03-21 10:00"
+        assert context["top_rows"][0]["simbolo"] == "MELI"
+        assert context["top_rows"][0]["snapshot_status"] == "available"
+        assert context["top_rows"][1]["simbolo"] == "GGAL"
+        assert context["top_rows"][1]["snapshot_status"] == "missing"
+        assert context["top_missing_count"] == 1
+        assert context["wide_spread_count"] == 1
+        assert any(alert["title"] == "Cobertura parcial en posiciones relevantes" for alert in context["alerts"])
+
+    def test_get_market_snapshot_feature_context_handles_missing_cached_payload(self):
+        with patch(
+            "apps.dashboard.selectors.IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot",
+            return_value=None,
+        ):
+            context = get_market_snapshot_feature_context(top_limit=3)
+
+        assert context["has_cached_snapshot"] is False
+        assert context["summary"]["total_symbols"] == 0
+        assert context["top_rows"] == []
+        assert context["alerts"][0]["title"] == "Snapshot puntual pendiente"
+
     def test_get_liquidity_contract_summary_uses_explicit_layers(self):
         summary = get_liquidity_contract_summary(
             {

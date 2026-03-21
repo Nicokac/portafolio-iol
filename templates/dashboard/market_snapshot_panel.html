@@ -1,0 +1,124 @@
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-light border-bottom-0">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h3 class="h5 mb-1">{{ title }}</h3>
+                <small class="text-muted">{{ subtitle }}</small>
+            </div>
+            <div class="text-end">
+                <div class="small text-muted">
+                    {% if market_snapshot_feature.refreshed_at_label %}
+                    Refrescado {{ market_snapshot_feature.refreshed_at_label }}
+                    {% else %}
+                    Sin refresh reciente
+                    {% endif %}
+                </div>
+                {% if user.is_staff %}
+                <form method="post" action="{% url 'dashboard:refresh_iol_market_snapshot' %}" class="mt-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ current_path }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Refrescar market snapshot</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Snapshots disponibles</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.summary.available_count }}/{{ market_snapshot_feature.summary.total_symbols }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Libro visible</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.summary.order_book_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Fallbacks</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.summary.fallback_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Top sin snapshot</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.top_missing_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if market_snapshot_feature.alerts %}
+        <div class="mb-3">
+            {% for alert in market_snapshot_feature.alerts %}
+            <div class="alert alert-{{ alert.tone }} mb-2">
+                <strong>{{ alert.title }}.</strong> {{ alert.message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if market_snapshot_feature.top_rows %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Símbolo</th>
+                        <th class="text-end">Peso</th>
+                        <th class="text-end">Var %</th>
+                        <th class="text-end">Spread</th>
+                        <th class="text-end">Ops</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in market_snapshot_feature.top_rows|slice:row_limit %}
+                    <tr>
+                        <td>
+                            <strong>{{ row.simbolo }}</strong>
+                            <div class="small text-muted">{{ row.descripcion|truncatechars:36 }}</div>
+                        </td>
+                        <td class="text-end">{{ row.peso_porcentual|floatformat:1 }}%</td>
+                        <td class="text-end {% if row.variacion is not None and row.variacion >= 0 %}text-success{% elif row.variacion is not None %}text-danger{% else %}text-muted{% endif %}">
+                            {% if row.variacion is not None %}
+                            {{ row.variacion|floatformat:2 }}%
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if row.spread_pct is not None %}
+                            {{ row.spread_pct|floatformat:2 }}%
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ row.cantidad_operaciones|default:0 }}</td>
+                        <td>
+                            <div>{{ row.snapshot_status_label }}</div>
+                            <div class="small text-muted">
+                                {% if row.snapshot_source_label %}
+                                {{ row.snapshot_source_label }}
+                                {% elif row.snapshot_reason %}
+                                {{ row.snapshot_reason|truncatechars:52 }}
+                                {% else %}
+                                {{ row.fecha_hora_label|default:"Sin hora" }}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-3">
+            <div class="empty-state-title">Sin posiciones relevantes para market snapshot</div>
+            <div class="empty-state-description mb-0">No hay instrumentos invertidos listos para enriquecer con cotización puntual.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>

@@ -68,6 +68,42 @@ class TestDashboardView:
         assert 'Fuente: ArgentinaDatos' in body
         assert 'Cambio 30d:' in body
 
+    def test_resumen_renders_market_snapshot_panel(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_market_snapshot_feature_context',
+            lambda: {
+                'has_cached_snapshot': True,
+                'refreshed_at_label': '2026-03-21 10:00',
+                'summary': {
+                    'available_count': 2,
+                    'total_symbols': 3,
+                    'order_book_count': 1,
+                    'fallback_count': 1,
+                },
+                'top_missing_count': 1,
+                'alerts': [
+                    {'tone': 'warning', 'title': 'Cobertura parcial en posiciones relevantes', 'message': '1 posicion relevante sin snapshot.'},
+                ],
+                'top_rows': [
+                    {
+                        'simbolo': 'MELI',
+                        'descripcion': 'Cedear Mercadolibre Inc.',
+                        'peso_porcentual': 12.5,
+                        'variacion': -1.66,
+                        'spread_pct': 4.29,
+                        'cantidad_operaciones': 5341,
+                        'snapshot_status_label': 'Disponible',
+                        'snapshot_source_label': 'CotizacionDetalle',
+                    }
+                ],
+            },
+        )
+        response = auth_client.get(reverse('dashboard:resumen'))
+        body = response.content.decode()
+        assert 'Pulso de mercado puntual' in body
+        assert 'CotizacionDetalle' in body
+        assert 'Cobertura parcial en posiciones relevantes' in body
+
     def test_analisis_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:analisis')
         response = auth_client.get(url)
@@ -150,6 +186,40 @@ class TestDashboardView:
         assert 'Snapshots:' in body
         assert 'Operaciones:' in body
         assert "const syncReasonText = syncReasons.length" in body
+
+    def test_estrategia_renders_market_snapshot_panel(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_market_snapshot_feature_context',
+            lambda: {
+                'has_cached_snapshot': True,
+                'refreshed_at_label': '2026-03-21 10:00',
+                'summary': {
+                    'available_count': 3,
+                    'total_symbols': 4,
+                    'order_book_count': 2,
+                    'fallback_count': 0,
+                },
+                'top_missing_count': 0,
+                'alerts': [],
+                'top_rows': [
+                    {
+                        'simbolo': 'GGAL',
+                        'descripcion': 'Grupo Financiero Galicia',
+                        'peso_porcentual': 8.1,
+                        'variacion': 1.2,
+                        'spread_pct': 0.25,
+                        'cantidad_operaciones': 321,
+                        'snapshot_status_label': 'Disponible',
+                        'snapshot_source_label': 'CotizacionDetalle',
+                    }
+                ],
+            },
+        )
+        response = auth_client.get(reverse('dashboard:estrategia'))
+        body = response.content.decode()
+        assert 'Capa operativa puntual' in body
+        assert 'CotizacionDetalle como lectura táctica' in body or 'CotizacionDetalle como lectura tactica' in body
+        assert 'GGAL' in body
 
     def test_risk_contribution_detail_route_accessible_authenticated(self, auth_client):
         response = auth_client.get(reverse('dashboard:risk_contribution_detail'))
@@ -421,6 +491,31 @@ class TestDashboardView:
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert 'Liquidez desplegable = cash disponible + caucion colocada + cash management' in body
+
+    def test_planeacion_renders_market_snapshot_panel(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_market_snapshot_feature_context',
+            lambda: {
+                'has_cached_snapshot': False,
+                'refreshed_at_label': '',
+                'summary': {
+                    'available_count': 0,
+                    'total_symbols': 0,
+                    'order_book_count': 0,
+                    'fallback_count': 0,
+                },
+                'top_missing_count': 0,
+                'alerts': [
+                    {'tone': 'secondary', 'title': 'Snapshot puntual pendiente', 'message': 'Todavia no hay market snapshot IOL cacheado.'},
+                ],
+                'top_rows': [],
+            },
+        )
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+        assert 'Chequeo de mercado puntual' in body
+        assert 'Snapshot puntual pendiente' in body
+        assert 'Sin posiciones relevantes para market snapshot' in body
         assert 'Modelo de riesgo:' in body
 
     def test_planeacion_shows_monthly_allocation_proposal(self, auth_client, monkeypatch):
@@ -1788,42 +1883,41 @@ class TestDashboardView:
     @pytest.mark.django_db
     def test_refresh_iol_market_snapshot_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
-            def get_current_portfolio_market_snapshot_rows(self, limit=8):
-                assert limit == 8
-                return [
-                    {
-                        'simbolo': 'GGAL',
-                        'mercado': 'bcba',
-                        'snapshot_status': 'available',
-                        'snapshot_source_key': 'cotizacion_detalle',
-                        'puntas_count': 1,
-                    },
-                    {
-                        'simbolo': 'AAPL',
-                        'mercado': 'NASDAQ',
-                        'snapshot_status': 'missing',
-                        'snapshot_source_key': '',
-                        'puntas_count': 0,
-                    },
-                ]
-
-            @staticmethod
-            def summarize_market_snapshot_rows(rows):
-                assert len(rows) == 2
+            def refresh_cached_current_portfolio_market_snapshot(self, limit=25):
+                assert limit == 25
                 return {
-                    'total_symbols': 2,
-                    'available_count': 1,
-                    'missing_count': 1,
-                    'unsupported_count': 0,
-                    'detail_count': 1,
-                    'fallback_count': 0,
-                    'order_book_count': 1,
-                    'overall_status': 'partial',
+                    'rows': [
+                        {
+                            'simbolo': 'GGAL',
+                            'mercado': 'bcba',
+                            'snapshot_status': 'available',
+                            'snapshot_source_key': 'cotizacion_detalle',
+                            'puntas_count': 1,
+                        },
+                        {
+                            'simbolo': 'AAPL',
+                            'mercado': 'NASDAQ',
+                            'snapshot_status': 'missing',
+                            'snapshot_source_key': '',
+                            'puntas_count': 0,
+                        },
+                    ],
+                    'summary': {
+                        'total_symbols': 2,
+                        'available_count': 1,
+                        'missing_count': 1,
+                        'unsupported_count': 0,
+                        'detail_count': 1,
+                        'fallback_count': 0,
+                        'order_book_count': 1,
+                        'overall_status': 'partial',
+                    },
                 }
 
         monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
-        response = staff_client.post(reverse('dashboard:refresh_iol_market_snapshot'))
+        response = staff_client.post(reverse('dashboard:refresh_iol_market_snapshot'), {'next': reverse('dashboard:resumen')})
         assert response.status_code == 302
+        assert response['Location'].endswith(reverse('dashboard:resumen'))
         messages = list(get_messages(response.wsgi_request))
         assert any('Market snapshot IOL refrescado con cobertura parcial' in str(message) for message in messages)
         audit = SensitiveActionAudit.objects.get(action='refresh_iol_market_snapshot')
@@ -1833,20 +1927,19 @@ class TestDashboardView:
     @pytest.mark.django_db
     def test_refresh_iol_market_snapshot_view_handles_empty_selection(self, staff_client, monkeypatch):
         class DummyService:
-            def get_current_portfolio_market_snapshot_rows(self, limit=8):
-                return []
-
-            @staticmethod
-            def summarize_market_snapshot_rows(rows):
+            def refresh_cached_current_portfolio_market_snapshot(self, limit=25):
                 return {
-                    'total_symbols': 0,
-                    'available_count': 0,
-                    'missing_count': 0,
-                    'unsupported_count': 0,
-                    'detail_count': 0,
-                    'fallback_count': 0,
-                    'order_book_count': 0,
-                    'overall_status': 'missing',
+                    'rows': [],
+                    'summary': {
+                        'total_symbols': 0,
+                        'available_count': 0,
+                        'missing_count': 0,
+                        'unsupported_count': 0,
+                        'detail_count': 0,
+                        'fallback_count': 0,
+                        'order_book_count': 0,
+                        'overall_status': 'missing',
+                    },
                 }
 
         monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())

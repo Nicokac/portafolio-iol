@@ -46,6 +46,7 @@ from apps.dashboard.selectors import (
     get_expected_return_detail,
     get_incremental_proposal_history,
     get_macro_local_context,
+    get_market_snapshot_feature_context,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
     get_risk_contribution_detail,
@@ -71,10 +72,12 @@ class DashboardContextMixin:
         context['active_section'] = self.active_section
         context['ui_mode'] = self.request.session.get('ui_mode', 'compacto')
         context['risk_profile'] = self.request.session.get('risk_profile', 'moderado')
+        context['current_path'] = self.request.get_full_path()
 
         context['kpis'] = get_dashboard_kpis()
         context['macro_local'] = get_macro_local_context(context['kpis'].get('total_iol'))
         context['portafolio'] = get_portafolio_enriquecido_actual()
+        context['market_snapshot_feature'] = get_market_snapshot_feature_context()
 
         def to_json(data):
             return json.dumps(data, default=lambda o: float(o) if isinstance(o, Decimal) else str(o))
@@ -730,9 +733,17 @@ class RefreshIOLMarketSnapshotView(StaffRequiredMixin, View):
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         service = IOLHistoricalPriceService()
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or reverse('dashboard:ops')
+        if not url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = reverse('dashboard:ops')
         try:
-            rows = service.get_current_portfolio_market_snapshot_rows(limit=8)
-            summary = service.summarize_market_snapshot_rows(rows)
+            payload = service.refresh_cached_current_portfolio_market_snapshot(limit=25)
+            rows = payload["rows"]
+            summary = payload["summary"]
             has_available = int(summary.get('available_count') or 0) > 0
             record_sensitive_action(
                 request,
@@ -770,5 +781,5 @@ class RefreshIOLMarketSnapshotView(StaffRequiredMixin, View):
                 details={'reason': 'exception', 'message': str(exc)},
             )
             messages.error(request, "No fue posible refrescar el market snapshot IOL.")
-        return redirect('dashboard:ops')
+        return redirect(next_url)
 

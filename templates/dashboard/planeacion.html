@@ -232,6 +232,9 @@
         </section>
         {% endwith %}
         <section class="mb-4">
+            {% include 'dashboard/market_snapshot_panel.html' with title='Chequeo de mercado puntual' subtitle='Validación táctica sobre las posiciones más relevantes antes de decidir despliegue, refuerzo o espera del aporte.' row_limit=':4' %}
+        </section>
+        <section class="mb-4">
             {% with decision=decision_engine_summary %}
             <div class="card border-primary shadow-sm">
                 <div class="card-header bg-primary-subtle border-bottom-0">

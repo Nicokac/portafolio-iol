@@ -12,6 +12,7 @@ from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
+from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
@@ -87,6 +88,123 @@ def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
     return list(ResumenCuentaSnapshot.objects.filter(
         fecha_extraccion=latest_date
     ))
+
+
+def get_market_snapshot_feature_context(*, top_limit: int = 5) -> Dict:
+    payload = IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot() or {}
+    cached_rows = payload.get("rows") or []
+    summary = payload.get("summary") or IOLHistoricalPriceService.summarize_market_snapshot_rows(cached_rows)
+    refreshed_at_label = IOLHistoricalPriceService._format_snapshot_datetime(payload.get("refreshed_at"))
+
+    relevant_positions = get_portafolio_enriquecido_actual()["inversion"][: max(int(top_limit or 0), 1)]
+    snapshot_rows_by_key = {
+        (
+            str(row.get("simbolo") or "").strip().upper(),
+            str(row.get("mercado") or "").strip().upper(),
+        ): row
+        for row in cached_rows
+    }
+
+    top_rows = []
+    for item in relevant_positions:
+        activo = item["activo"]
+        snapshot_row = snapshot_rows_by_key.get(
+            (
+                str(activo.simbolo or "").strip().upper(),
+                str(activo.mercado or "").strip().upper(),
+            )
+        )
+        snapshot_status = str((snapshot_row or {}).get("snapshot_status") or "missing")
+        top_rows.append(
+            {
+                "simbolo": activo.simbolo,
+                "mercado": activo.mercado,
+                "descripcion": (snapshot_row or {}).get("descripcion") or activo.descripcion,
+                "peso_porcentual": item.get("peso_porcentual") or 0,
+                "valorizado": activo.valorizado,
+                "snapshot_status": snapshot_status,
+                "snapshot_status_label": {
+                    "available": "Disponible",
+                    "unsupported": "No elegible",
+                    "missing": "Sin snapshot",
+                }.get(snapshot_status, "Sin snapshot"),
+                "snapshot_source_key": (snapshot_row or {}).get("snapshot_source_key") or "",
+                "snapshot_source_label": (snapshot_row or {}).get("snapshot_source_label") or "",
+                "snapshot_reason": (snapshot_row or {}).get("snapshot_reason") or "",
+                "fecha_hora_label": (snapshot_row or {}).get("fecha_hora_label") or "",
+                "ultimo_precio": (snapshot_row or {}).get("ultimo_precio"),
+                "variacion": (snapshot_row or {}).get("variacion"),
+                "cantidad_operaciones": int((snapshot_row or {}).get("cantidad_operaciones") or 0),
+                "puntas_count": int((snapshot_row or {}).get("puntas_count") or 0),
+                "spread_abs": (snapshot_row or {}).get("spread_abs"),
+                "spread_pct": (snapshot_row or {}).get("spread_pct"),
+                "plazo": (snapshot_row or {}).get("plazo") or "",
+                "has_order_book": int((snapshot_row or {}).get("puntas_count") or 0) > 0,
+            }
+        )
+
+    top_available_count = sum(1 for row in top_rows if row["snapshot_status"] == "available")
+    top_missing_count = sum(1 for row in top_rows if row["snapshot_status"] == "missing")
+    wide_spread_rows = [
+        row for row in top_rows
+        if row["snapshot_status"] == "available"
+        and row.get("spread_pct") is not None
+        and Decimal(str(row["spread_pct"])) >= Decimal("1.0")
+    ]
+
+    alerts = []
+    if not payload:
+        alerts.append(
+            {
+                "tone": "secondary",
+                "title": "Snapshot puntual pendiente",
+                "message": "Todavía no hay market snapshot IOL cacheado para enriquecer la lectura táctica de estas pantallas.",
+            }
+        )
+    else:
+        if top_missing_count > 0:
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Cobertura parcial en posiciones relevantes",
+                    "message": f"{top_missing_count} posicion(es) relevantes siguen sin snapshot puntual disponible.",
+                }
+            )
+        if wide_spread_rows:
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Spreads anchos en posiciones relevantes",
+                    "message": ", ".join(row["simbolo"] for row in wide_spread_rows[:3]),
+                }
+            )
+        if int(summary.get("fallback_count") or 0) > 0:
+            alerts.append(
+                {
+                    "tone": "info",
+                    "title": "Parte de la cobertura viene por fallback",
+                    "message": f"{summary['fallback_count']} simbolo(s) usan Cotizacion simple en lugar de CotizacionDetalle.",
+                }
+            )
+        if int(summary.get("order_book_count") or 0) == 0 and int(summary.get("available_count") or 0) > 0:
+            alerts.append(
+                {
+                    "tone": "secondary",
+                    "title": "Sin libro visible",
+                    "message": "Hay precios puntuales disponibles, pero sin puntas visibles para lectura de spread.",
+                }
+            )
+
+    return {
+        "has_cached_snapshot": bool(payload),
+        "refreshed_at_label": refreshed_at_label,
+        "summary": summary,
+        "top_rows": top_rows,
+        "top_available_count": top_available_count,
+        "top_missing_count": top_missing_count,
+        "wide_spread_count": len(wide_spread_rows),
+        "alerts": alerts[:3],
+    }
 
 
 def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
