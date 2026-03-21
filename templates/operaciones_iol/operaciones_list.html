@@ -267,8 +267,10 @@
                         <div class="small text-muted">Promedio visible: {{ item.avg_visible_amount|currency:2 }}</div>
                         <div class="small">ARS {{ item.fees_ars_total|currency:2 }} · USD {{ item.fees_usd_total|currency:2 }}</div>
                         <div class="small text-muted mt-1">Aranceles visibles: {{ item.fee_visible_pct }}%</div>
+                        <div class="small text-muted">Fee / monto visible: {{ item.fee_over_visible_amount_pct }}%</div>
                         <div class="small text-muted">Fills visibles: {{ item.fills_visible_count }} ({{ item.fills_visible_pct }}%)</div>
                         <div class="small text-muted">Promedio de fills visibles: {{ item.avg_fills_per_visible }}</div>
+                        <div class="small text-muted">Fragmentacion visible: {{ item.fragmented_pct }}%</div>
                     </div>
                 </div>
                 {% endfor %}

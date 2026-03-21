@@ -373,22 +373,88 @@ def test_build_operation_execution_analytics_context_groups_by_operation_family(
     assert groups["buy_trade"]["fee_visible_pct"] == Decimal("100.00")
     assert groups["buy_trade"]["fills_visible_pct"] == Decimal("100.00")
     assert groups["buy_trade"]["avg_fills_per_visible"] == Decimal("1.00")
+    assert groups["buy_trade"]["fee_over_visible_amount_pct"] == Decimal("1.50")
+    assert groups["buy_trade"]["fragmented_pct"] == Decimal("0.00")
     assert groups["sell_trade"]["label"] == "Ventas"
     assert groups["sell_trade"]["count"] == 1
     assert groups["sell_trade"]["executed_amount_total"] == Decimal("50")
     assert groups["sell_trade"]["avg_visible_amount"] == Decimal("50.00")
     assert groups["sell_trade"]["fee_visible_pct"] == Decimal("100.00")
     assert groups["sell_trade"]["fills_visible_pct"] == Decimal("0.00")
+    assert groups["sell_trade"]["fee_over_visible_amount_pct"] == Decimal("1.00")
+    assert groups["sell_trade"]["fragmented_pct"] == Decimal("0.00")
     assert groups["dividend"]["label"] == "Dividendos"
     assert groups["dividend"]["fees_usd_total"] == Decimal("0.01")
     assert groups["dividend"]["avg_visible_amount"] == Decimal("0.15")
     assert groups["dividend"]["fee_visible_pct"] == Decimal("100.00")
     assert groups["dividend"]["fills_visible_pct"] == Decimal("0.00")
+    assert groups["dividend"]["fee_over_visible_amount_pct"] == Decimal("6.67")
     assert groups["fci_flow"]["label"] == "Flujos FCI"
     assert groups["fci_flow"]["executed_amount_total"] == Decimal("9.19")
     assert groups["fci_flow"]["avg_visible_amount"] == Decimal("9.19")
     assert groups["fci_flow"]["fee_visible_pct"] == Decimal("0.00")
     assert groups["fci_flow"]["fills_visible_pct"] == Decimal("0.00")
+    assert groups["fci_flow"]["fee_over_visible_amount_pct"] == Decimal("0.00")
+
+
+@pytest.mark.django_db
+def test_build_operation_execution_analytics_context_tracks_fragmentation_inside_trade_families():
+    OperacionIOL.objects.create(
+        numero="FRAG-BUY-1",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        monto_operacion=Decimal("100"),
+        aranceles_ars=Decimal("1.00"),
+        operaciones_detalle=[
+            {"fecha": "2026-03-18T14:05:57", "cantidad": 1, "precio": 50},
+            {"fecha": "2026-03-18T14:05:58", "cantidad": 1, "precio": 50},
+        ],
+    )
+    OperacionIOL.objects.create(
+        numero="FRAG-BUY-2",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+        monto_operacion=Decimal("200"),
+        aranceles_ars=Decimal("2.00"),
+        operaciones_detalle=[
+            {"fecha": "2026-03-18T14:06:00", "cantidad": 2, "precio": 100},
+        ],
+    )
+    OperacionIOL.objects.create(
+        numero="FRAG-SELL-1",
+        fecha_orden=timezone.now(),
+        tipo="Venta",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="SPY",
+        modalidad="precio_Mercado",
+        monto_operacion=Decimal("50"),
+        aranceles_ars=Decimal("0.50"),
+        operaciones_detalle=[
+            {"fecha": "2026-03-18T14:07:00", "cantidad": 1, "precio": 25},
+            {"fecha": "2026-03-18T14:07:01", "cantidad": 1, "precio": 25},
+        ],
+    )
+
+    context = build_operation_execution_analytics_context(OperacionIOL.objects.order_by("numero"))
+    groups = {item["key"]: item for item in context["type_groups"]}
+
+    assert groups["buy_trade"]["count"] == 2
+    assert groups["buy_trade"]["fills_visible_count"] == 2
+    assert groups["buy_trade"]["fragmented_count"] == 1
+    assert groups["buy_trade"]["fragmented_pct"] == Decimal("50.00")
+    assert groups["buy_trade"]["avg_fills_per_visible"] == Decimal("1.50")
+    assert groups["buy_trade"]["fee_over_visible_amount_pct"] == Decimal("1.00")
+    assert groups["sell_trade"]["fragmented_count"] == 1
+    assert groups["sell_trade"]["fragmented_pct"] == Decimal("100.00")
 @pytest.mark.django_db
 def test_build_operation_audit_summary_context_returns_latest_rows_per_action(django_user_model):
     user = django_user_model.objects.create_user(username="audit-ops-user", password="testpass123")

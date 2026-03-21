@@ -496,6 +496,7 @@ def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
                 'fee_visible_count': 0,
                 'fills_visible_count': 0,
                 'fills_total': 0,
+                'fragmented_count': 0,
                 'executed_amount_visible_count': 0,
             },
         )
@@ -515,6 +516,8 @@ def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
         current['fills_total'] += fills_count
         if fills_count > 0:
             current['fills_visible_count'] += 1
+        if fills_count > 1:
+            current['fragmented_count'] += 1
 
     rows = []
     total_count = len(operaciones)
@@ -531,14 +534,23 @@ def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
                 Decimal(group['fills_total']) / Decimal(group['fills_visible_count'])
             ).quantize(Decimal('0.01'))
 
+        fee_over_visible_amount_pct = Decimal('0')
+        if group['executed_amount_total'] > 0:
+            total_fees = group['fees_ars_total'] + group['fees_usd_total']
+            fee_over_visible_amount_pct = (
+                total_fees / group['executed_amount_total'] * Decimal('100')
+            ).quantize(Decimal('0.01'))
+
         rows.append(
             {
                 **group,
                 'pct': _safe_percentage(group['count'], total_count),
                 'fee_visible_pct': _safe_percentage(group['fee_visible_count'], group['count']),
                 'fills_visible_pct': _safe_percentage(group['fills_visible_count'], group['count']),
+                'fragmented_pct': _safe_percentage(group['fragmented_count'], group['fills_visible_count']),
                 'avg_visible_amount': avg_visible_amount,
                 'avg_fills_per_visible': avg_fills_per_visible,
+                'fee_over_visible_amount_pct': fee_over_visible_amount_pct,
             }
         )
     return rows
