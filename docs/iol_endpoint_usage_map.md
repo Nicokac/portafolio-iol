@@ -39,7 +39,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
-| `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops`, `Resumen`, `Estrategia`, `Planeacion` via snapshot cacheado | Alto | no se persiste; la capa principal depende de refresh puntual cacheado |
+| `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops`, `Resumen`, `Estrategia`, `Planeacion` via snapshot cacheado y lectura historica corta de ejecucion reciente | Alto | la persistencia historica sigue acotada al universo refrescado manualmente |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo/performance, `Ops` | Alto | sigue siendo opt-in via sync, no cobertura total garantizada |
 
 ## Endpoint por endpoint
@@ -210,6 +210,8 @@ Se usa hoy como:
 - validacion operativa en `Ops`
 - fallback de elegibilidad para historicos cuando falla metadata de titulo
 - capa tactica compartida para `Resumen`, `Estrategia` y `Planeacion`
+- persistencia minima de observaciones puntuales para leer spread, libro y actividad reciente antes de decidir compras futuras
+- señal historica corta de ejecucion dentro de `Planeacion`
 
 Valor diferencial real:
 
@@ -224,7 +226,9 @@ Valor diferencial real:
 Conclusion:
 
 - ya dejo de estar aislado en observabilidad
-- hoy potencia lectura tactica de producto, aunque todavia no se persiste como snapshot historico puntual
+- hoy potencia lectura tactica de producto
+- ya no queda solo como foto puntual; ahora tambien deja una huella historica minima para decidir compras futuras con menos friccion operativa
+- la brecha actual ya no es si conviene persistirlo, sino cuanta automatizacion y cobertura adicional merece ese historial
 
 ### 8. `seriehistorica`
 

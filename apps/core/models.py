@@ -362,6 +362,44 @@ class IOLHistoricalPriceSnapshot(models.Model):
         return f"{self.simbolo} {self.mercado} {self.fecha} ({self.source})"
 
 
+class IOLMarketSnapshotObservation(models.Model):
+    """Observacion puntual persistida de Cotizacion/CotizacionDetalle para lectura tactica reciente."""
+
+    simbolo = models.CharField(max_length=20)
+    mercado = models.CharField(max_length=20)
+    source_key = models.CharField(max_length=32, default="cotizacion_detalle")
+    snapshot_status = models.CharField(max_length=16, default="available")
+    captured_at = models.DateTimeField()
+    captured_date = models.DateField()
+    descripcion = models.CharField(max_length=200, blank=True, default="")
+    tipo = models.CharField(max_length=50, blank=True, default="")
+    plazo = models.CharField(max_length=16, blank=True, default="")
+    ultimo_precio = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    variacion = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    cantidad_operaciones = models.IntegerField(default=0)
+    puntas_count = models.PositiveIntegerField(default=0)
+    spread_abs = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    spread_pct = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-captured_at", "simbolo"]
+        indexes = [
+            models.Index(fields=["simbolo", "mercado", "captured_at"]),
+            models.Index(fields=["captured_date", "mercado"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["simbolo", "mercado", "captured_at"],
+                name="unique_iol_market_snapshot_observation",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.simbolo} {self.mercado} {self.captured_at} ({self.source_key})"
+
+
 class MacroSeriesSnapshot(models.Model):
     """Serie macro local persistida para contexto analitico del portafolio."""
 

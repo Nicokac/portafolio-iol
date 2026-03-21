@@ -148,6 +148,7 @@ Salidas operativas:
   - recomendaciones
   - simulacion
   - optimizacion
+  - lectura historica corta de ejecucion reciente desde `CotizacionDetalle` para decidir compras futuras con mejor spread/libro/actividad
   - chequeo tactico de `parking` antes de decidir despliegue
   - señal tactica de `parking` dentro de `Modo decision`
   - compuerta de ejecucion cuando `parking` sigue visible

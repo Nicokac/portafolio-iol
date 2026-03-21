@@ -215,6 +215,93 @@ def get_market_snapshot_feature_context(*, top_limit: int = 5) -> Dict:
     }
 
 
+def get_market_snapshot_history_feature_context(*, top_limit: int = 5, lookback_days: int = 7) -> Dict:
+    def build():
+        service = IOLHistoricalPriceService()
+        history_rows = service.get_recent_market_history_rows(lookback_days=lookback_days)
+        summary = service.summarize_recent_market_history_rows(history_rows)
+
+        current_portafolio = get_portafolio_enriquecido_actual()
+        position_rows = current_portafolio["inversion"] + current_portafolio["fci_cash_management"]
+        metadata_by_key = {
+            (
+                str(item["activo"].simbolo or "").strip().upper(),
+                str(item["activo"].mercado or "").strip().upper(),
+            ): {
+                "valorizado": item["activo"].valorizado,
+                "peso_porcentual": item.get("peso_porcentual") or 0,
+                "bloque_estrategico": item.get("bloque_estrategico") or "N/A",
+            }
+            for item in position_rows
+        }
+
+        enriched_rows = []
+        weak_blocks = {}
+        for row in history_rows:
+            metadata = metadata_by_key.get(
+                (
+                    str(row.get("simbolo") or "").strip().upper(),
+                    str(row.get("mercado") or "").strip().upper(),
+                ),
+                {},
+            )
+            enriched_row = {
+                **row,
+                "valorizado": metadata.get("valorizado") or Decimal("0"),
+                "peso_porcentual": metadata.get("peso_porcentual") or 0,
+                "bloque_estrategico": metadata.get("bloque_estrategico") or "N/A",
+            }
+            enriched_rows.append(enriched_row)
+            if enriched_row["quality_status"] == "weak" and enriched_row["bloque_estrategico"] != "N/A":
+                weak_blocks[enriched_row["bloque_estrategico"]] = (
+                    weak_blocks.get(enriched_row["bloque_estrategico"], Decimal("0")) + enriched_row["valorizado"]
+                )
+
+        severity_order = {"weak": 0, "watch": 1, "insufficient": 2, "strong": 3}
+        top_rows = sorted(
+            enriched_rows,
+            key=lambda item: (
+                severity_order.get(str(item.get("quality_status") or ""), 9),
+                -(item.get("valorizado") or Decimal("0")),
+                str(item.get("simbolo") or ""),
+            ),
+        )[: max(int(top_limit or 0), 1)]
+        weak_block_rows = [
+            {"label": label, "value_total": value_total}
+            for label, value_total in sorted(weak_blocks.items(), key=lambda item: item[1], reverse=True)
+        ]
+
+        alerts = []
+        if int(summary.get("weak_count") or 0) > 0:
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Liquidez reciente debil en posiciones actuales",
+                    "message": f"{summary['weak_count']} simbolo(s) muestran spread o actividad reciente debil para reforzar compras.",
+                }
+            )
+        if int(summary.get("insufficient_count") or 0) > 0:
+            alerts.append(
+                {
+                    "tone": "secondary",
+                    "title": "Historial puntual todavia corto",
+                    "message": f"{summary['insufficient_count']} simbolo(s) todavia no acumulan observaciones suficientes para lectura reciente.",
+                }
+            )
+
+        return {
+            "lookback_days": lookback_days,
+            "summary": summary,
+            "rows": enriched_rows,
+            "top_rows": top_rows,
+            "weak_blocks": weak_block_rows,
+            "alerts": alerts[:3],
+            "has_history": bool(enriched_rows),
+        }
+
+    return _get_cached_selector_result(f"market_snapshot_history_feature:{int(lookback_days)}", build)
+
+
 def get_portfolio_parking_feature_context(*, top_limit: int = 5) -> Dict:
     def build():
         portafolio = get_portafolio_enriquecido_actual()
@@ -2775,6 +2862,7 @@ def get_decision_engine_summary(
         macro_state = _build_decision_macro_state(macro_local)
         portfolio_state = _build_decision_portfolio_state(analytics)
         parking_feature = get_portfolio_parking_feature_context()
+        market_history_feature = get_market_snapshot_history_feature_context()
         recommendation = _build_decision_recommendation(monthly_plan, parking_feature=parking_feature)
         suggested_assets = _build_decision_suggested_assets(ranking, parking_feature=parking_feature)
         preferred_proposal = _build_decision_preferred_proposal(
@@ -2785,6 +2873,11 @@ def get_decision_engine_summary(
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
         strategy_bias = _build_decision_strategy_bias(recommendation_context)
         parking_signal = _build_decision_parking_signal(parking_feature)
+        market_history_signal = _build_decision_market_history_signal(
+            market_history_feature=market_history_feature,
+            recommendation=recommendation,
+            preferred_proposal=preferred_proposal,
+        )
         execution_gate = _build_decision_execution_gate(
             parking_signal=parking_signal,
             preferred_proposal=preferred_proposal,
@@ -2792,6 +2885,7 @@ def get_decision_engine_summary(
         action_suggestions = _build_decision_action_suggestions(
             strategy_bias,
             parking_signal=parking_signal,
+            market_history_signal=market_history_signal,
         )
         score = _compute_decision_score(
             macro_state=macro_state,
@@ -2832,6 +2926,7 @@ def get_decision_engine_summary(
             "recommendation_context": recommendation_context,
             "strategy_bias": strategy_bias,
             "parking_signal": parking_signal,
+            "market_history_signal": market_history_signal,
             "execution_gate": execution_gate,
             "action_suggestions": action_suggestions,
             "macro_state": macro_state,
@@ -4143,7 +4238,61 @@ def _build_decision_parking_signal(parking_feature: Dict | None) -> Dict:
     }
 
 
-def _build_decision_action_suggestions(strategy_bias: str | None, *, parking_signal: Dict | None = None) -> list[Dict]:
+def _build_decision_market_history_signal(
+    *,
+    market_history_feature: Dict | None,
+    recommendation: Dict | None,
+    preferred_proposal: Dict | None,
+) -> Dict:
+    market_history_feature = market_history_feature or {}
+    weak_blocks = {
+        str(item.get("label") or "").strip()
+        for item in market_history_feature.get("weak_blocks", [])
+        if str(item.get("label") or "").strip()
+    }
+    overlap_blocks = []
+    recommendation_block = str((recommendation or {}).get("block") or "").strip()
+    if recommendation_block and recommendation_block in weak_blocks:
+        overlap_blocks.append(recommendation_block)
+    for block in (preferred_proposal or {}).get("purchase_plan_blocks") or []:
+        block_label = str(block or "").strip()
+        if block_label and block_label in weak_blocks and block_label not in overlap_blocks:
+            overlap_blocks.append(block_label)
+
+    if not overlap_blocks:
+        return {
+            "has_signal": False,
+            "title": "",
+            "summary": "",
+            "overlap_blocks": [],
+        }
+
+    overlap_rows = [
+        row for row in market_history_feature.get("rows", [])
+        if str(row.get("bloque_estrategico") or "").strip() in set(overlap_blocks)
+        and row.get("quality_status") == "weak"
+    ]
+    overlap_symbols = ", ".join(row["simbolo"] for row in overlap_rows[:3])
+    summary = (
+        f"El bloque sugerido viene con liquidez reciente debil en {', '.join(overlap_blocks)}."
+    )
+    if overlap_symbols:
+        summary += f" Revisar spread y actividad reciente en {overlap_symbols} antes de comprar."
+
+    return {
+        "has_signal": True,
+        "title": "Liquidez reciente debil en la zona sugerida",
+        "summary": summary,
+        "overlap_blocks": overlap_blocks,
+    }
+
+
+def _build_decision_action_suggestions(
+    strategy_bias: str | None,
+    *,
+    parking_signal: Dict | None = None,
+    market_history_signal: Dict | None = None,
+) -> list[Dict]:
     suggestions = []
     if strategy_bias == "deploy_cash":
         suggestions.append(
@@ -4167,6 +4316,14 @@ def _build_decision_action_suggestions(strategy_bias: str | None, *, parking_sig
                 "type": "parking",
                 "message": "Hay posiciones con parking visible en cartera",
                 "suggestion": "Conviene revisar esas restricciones antes de reforzar la misma zona de exposicion.",
+            }
+        )
+    if (market_history_signal or {}).get("has_signal"):
+        suggestions.append(
+            {
+                "type": "market_history",
+                "message": "La liquidez reciente del bloque sugerido viene debil",
+                "suggestion": "Conviene priorizar compras en zonas con mejor spread y actividad reciente o esperar un punto de entrada mas limpio.",
             }
         )
     return suggestions

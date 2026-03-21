@@ -1,4 +1,5 @@
-﻿import pytest
+import pytest
+from decimal import Decimal
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.core.cache import cache
@@ -559,6 +560,48 @@ class TestDashboardView:
         assert 'Sin posiciones relevantes para market snapshot' in body
         assert 'Fallbacks' not in body
         assert 'Modelo de riesgo:' in body
+
+    def test_planeacion_renders_market_snapshot_history_panel(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_market_snapshot_history_feature_context',
+            lambda: {
+                'lookback_days': 7,
+                'summary': {
+                    'strong_count': 0,
+                    'watch_count': 1,
+                    'weak_count': 1,
+                    'insufficient_count': 0,
+                },
+                'alerts': [
+                    {
+                        'tone': 'warning',
+                        'title': 'Liquidez reciente debil en posiciones actuales',
+                        'message': '1 simbolo(s) muestran spread o actividad reciente debil para reforzar compras.',
+                    },
+                ],
+                'top_rows': [
+                    {
+                        'simbolo': 'MELI',
+                        'bloque_estrategico': 'Growth USA',
+                        'quality_status': 'weak',
+                        'quality_status_label': 'Debil',
+                        'quality_summary': 'spread medio 1.50%, ops medias 80, libro visible 50.00%.',
+                        'avg_spread_pct': Decimal('1.50'),
+                        'avg_operations': 80,
+                        'last_captured_at_label': '2026-03-21 10:00',
+                    }
+                ],
+                'weak_blocks': [{'label': 'Growth USA', 'value_total': Decimal('900000')}],
+                'rows': [],
+                'has_history': True,
+            },
+        )
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+        assert 'Calidad reciente de ejecucion' in body
+        assert 'Liquidez reciente debil en posiciones actuales' in body
+        assert 'Growth USA' in body
+        assert 'Debil' in body
 
     def test_planeacion_renders_parking_panel(self, auth_client, monkeypatch):
         monkeypatch.setattr(
@@ -2110,7 +2153,7 @@ class TestDashboardView:
     @pytest.mark.django_db
     def test_refresh_iol_market_snapshot_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
-            def refresh_cached_current_portfolio_market_snapshot(self, limit=25):
+            def refresh_and_persist_current_portfolio_market_snapshot(self, limit=25):
                 assert limit == 25
                 return {
                     'rows': [
@@ -2139,6 +2182,7 @@ class TestDashboardView:
                         'order_book_count': 1,
                         'overall_status': 'partial',
                     },
+                    'persistence': {'persisted_count': 1, 'created': 1, 'updated': 0, 'skipped': 1},
                 }
 
         monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
@@ -2154,7 +2198,7 @@ class TestDashboardView:
     @pytest.mark.django_db
     def test_refresh_iol_market_snapshot_view_handles_empty_selection(self, staff_client, monkeypatch):
         class DummyService:
-            def refresh_cached_current_portfolio_market_snapshot(self, limit=25):
+            def refresh_and_persist_current_portfolio_market_snapshot(self, limit=25):
                 return {
                     'rows': [],
                     'summary': {
@@ -2167,6 +2211,7 @@ class TestDashboardView:
                         'order_book_count': 0,
                         'overall_status': 'missing',
                     },
+                    'persistence': {'persisted_count': 0, 'created': 0, 'updated': 0, 'skipped': 0},
                 }
 
         monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())

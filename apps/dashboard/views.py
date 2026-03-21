@@ -47,6 +47,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_history,
     get_macro_local_context,
     get_market_snapshot_feature_context,
+    get_market_snapshot_history_feature_context,
     get_portfolio_parking_feature_context,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
@@ -79,6 +80,7 @@ class DashboardContextMixin:
         context['macro_local'] = get_macro_local_context(context['kpis'].get('total_iol'))
         context['portafolio'] = get_portafolio_enriquecido_actual()
         context['market_snapshot_feature'] = get_market_snapshot_feature_context()
+        context['market_snapshot_history_feature'] = get_market_snapshot_history_feature_context()
         context['parking_feature'] = get_portfolio_parking_feature_context()
 
         def to_json(data):
@@ -743,15 +745,16 @@ class RefreshIOLMarketSnapshotView(StaffRequiredMixin, View):
         ):
             next_url = reverse('dashboard:ops')
         try:
-            payload = service.refresh_cached_current_portfolio_market_snapshot(limit=25)
+            payload = service.refresh_and_persist_current_portfolio_market_snapshot(limit=25)
             rows = payload["rows"]
             summary = payload["summary"]
+            persistence = payload.get("persistence") or {}
             has_available = int(summary.get('available_count') or 0) > 0
             record_sensitive_action(
                 request,
                 action='refresh_iol_market_snapshot',
                 status='success',
-                details={'summary': summary, 'rows': rows},
+                details={'summary': summary, 'rows': rows, 'persistence': persistence},
             )
 
             if int(summary.get('total_symbols') or 0) == 0:
@@ -772,7 +775,8 @@ class RefreshIOLMarketSnapshotView(StaffRequiredMixin, View):
                         "Market snapshot IOL refrescado con cobertura parcial. "
                         f"Disponibles {summary['available_count']}, "
                         f"missing {summary['missing_count']}, "
-                        f"no elegibles {summary['unsupported_count']}."
+                        f"no elegibles {summary['unsupported_count']}. "
+                        f"Persistidos {persistence.get('persisted_count', 0)}."
                     ),
                 )
         except Exception as exc:

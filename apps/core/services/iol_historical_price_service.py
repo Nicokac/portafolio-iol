@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import Count, Max
 from django.utils import timezone
 
-from apps.core.models import IOLHistoricalPriceSnapshot
+from apps.core.models import IOLHistoricalPriceSnapshot, IOLMarketSnapshotObservation
 from apps.core.services.iol_api_client import IOLAPIClient
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 
@@ -22,6 +22,7 @@ class IOLHistoricalPriceService:
     CASH_MANAGEMENT_SYMBOLS = {"ADBAICA", "IOLPORA", "PRPEDOB"}
     MARKET_SNAPSHOT_CACHE_KEY = "iol:current_portfolio_market_snapshot:v1"
     MARKET_SNAPSHOT_CACHE_TTL_SECONDS = 300
+    MARKET_SNAPSHOT_HISTORY_LOOKBACK_DAYS = 7
     MARKET_ALIASES = {
         "BCBA": ("BCBA", "bCBA", "bcba"),
         "NASDAQ": ("NASDAQ", "nasdaq"),
@@ -406,10 +407,161 @@ class IOLHistoricalPriceService:
         )
         return payload
 
+    def refresh_and_persist_current_portfolio_market_snapshot(self, *, limit: int = 25) -> dict:
+        payload = self.refresh_cached_current_portfolio_market_snapshot(limit=limit)
+        payload["persistence"] = self.persist_market_snapshot_payload(payload)
+        return payload
+
     @classmethod
     def get_cached_current_portfolio_market_snapshot(cls) -> dict | None:
         cached = cache.get(cls.MARKET_SNAPSHOT_CACHE_KEY)
         return cached if isinstance(cached, dict) else None
+
+    def persist_market_snapshot_payload(self, payload: dict | None) -> dict:
+        payload = payload or {}
+        rows = payload.get("rows") or []
+        refreshed_at = self._coerce_datetime(payload.get("refreshed_at")) or timezone.now()
+        created = 0
+        updated = 0
+        skipped = 0
+
+        with transaction.atomic():
+            for row in rows:
+                if str(row.get("snapshot_status") or "") != "available":
+                    skipped += 1
+                    continue
+
+                captured_at = self._coerce_datetime(row.get("fecha_hora")) or refreshed_at
+                _, was_created = IOLMarketSnapshotObservation.objects.update_or_create(
+                    simbolo=str(row.get("simbolo") or "").strip().upper(),
+                    mercado=str(row.get("mercado") or "").strip(),
+                    captured_at=captured_at,
+                    defaults={
+                        "captured_date": captured_at.date(),
+                        "source_key": str(row.get("snapshot_source_key") or "cotizacion_detalle"),
+                        "snapshot_status": "available",
+                        "descripcion": str(row.get("descripcion") or ""),
+                        "tipo": str(row.get("tipo") or ""),
+                        "plazo": str(row.get("plazo") or ""),
+                        "ultimo_precio": self._coerce_decimal(row.get("ultimo_precio")),
+                        "variacion": self._coerce_decimal(row.get("variacion")),
+                        "cantidad_operaciones": self._coerce_int(row.get("cantidad_operaciones")) or 0,
+                        "puntas_count": self._coerce_int(row.get("puntas_count")) or 0,
+                        "spread_abs": self._coerce_decimal(row.get("spread_abs")),
+                        "spread_pct": self._coerce_decimal(row.get("spread_pct")),
+                    },
+                )
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
+
+        return {
+            "persisted_count": created + updated,
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "lookback_days": self.MARKET_SNAPSHOT_HISTORY_LOOKBACK_DAYS,
+        }
+
+    def get_recent_market_history_rows(self, *, lookback_days: int | None = None) -> list[dict]:
+        latest_positions = self._get_latest_position_rows()
+        if not latest_positions:
+            return []
+
+        days = int(lookback_days or self.MARKET_SNAPSHOT_HISTORY_LOOKBACK_DAYS)
+        cutoff = timezone.now() - pd.Timedelta(days=days)
+        observations = list(
+            IOLMarketSnapshotObservation.objects.filter(captured_at__gte=cutoff)
+            .order_by("simbolo", "mercado", "-captured_at")
+            .values(
+                "simbolo",
+                "mercado",
+                "captured_at",
+                "source_key",
+                "spread_pct",
+                "cantidad_operaciones",
+                "puntas_count",
+            )
+        )
+        observations_by_key: dict[tuple[str, str], list[dict]] = {}
+        for observation in observations:
+            key = (
+                str(observation.get("simbolo") or "").strip().upper(),
+                str(observation.get("mercado") or "").strip().upper(),
+            )
+            observations_by_key.setdefault(key, []).append(observation)
+
+        rows = []
+        for position in latest_positions:
+            key = (
+                str(position.get("simbolo") or "").strip().upper(),
+                str(position.get("mercado") or "").strip().upper(),
+            )
+            symbol_observations = observations_by_key.get(key, [])
+            latest_observation = symbol_observations[0] if symbol_observations else None
+            spreads = [
+                self._coerce_decimal(item.get("spread_pct"))
+                for item in symbol_observations
+                if self._coerce_decimal(item.get("spread_pct")) is not None
+            ]
+            operation_counts = [
+                self._coerce_int(item.get("cantidad_operaciones")) or 0
+                for item in symbol_observations
+            ]
+            order_book_count = sum(1 for item in symbol_observations if int(item.get("puntas_count") or 0) > 0)
+            observations_count = len(symbol_observations)
+            avg_spread_pct = self._average_decimal(spreads)
+            avg_operations = self._average_int(operation_counts)
+            order_book_coverage_pct = self._coverage_percentage(order_book_count, observations_count)
+            quality_status = self._classify_recent_market_quality(
+                observations_count=observations_count,
+                avg_spread_pct=avg_spread_pct,
+                avg_operations=avg_operations,
+                order_book_coverage_pct=order_book_coverage_pct,
+            )
+            rows.append(
+                {
+                    "simbolo": position["simbolo"],
+                    "mercado": position["mercado"],
+                    "descripcion": position.get("descripcion") or "",
+                    "tipo": position.get("tipo") or "",
+                    "observations_count": observations_count,
+                    "last_captured_at": latest_observation.get("captured_at") if latest_observation else None,
+                    "last_captured_at_label": self._format_snapshot_datetime(
+                        latest_observation.get("captured_at") if latest_observation else None
+                    ),
+                    "latest_source_key": str((latest_observation or {}).get("source_key") or ""),
+                    "avg_spread_pct": avg_spread_pct,
+                    "avg_operations": avg_operations,
+                    "order_book_coverage_pct": order_book_coverage_pct,
+                    "quality_status": quality_status,
+                    "quality_status_label": self._build_recent_market_quality_label(quality_status),
+                    "quality_summary": self._build_recent_market_quality_summary(
+                        quality_status=quality_status,
+                        avg_spread_pct=avg_spread_pct,
+                        avg_operations=avg_operations,
+                        order_book_coverage_pct=order_book_coverage_pct,
+                    ),
+                }
+            )
+        return rows
+
+    @staticmethod
+    def summarize_recent_market_history_rows(rows: list[dict]) -> dict:
+        total = len(rows)
+        strong_count = sum(1 for row in rows if row.get("quality_status") == "strong")
+        watch_count = sum(1 for row in rows if row.get("quality_status") == "watch")
+        weak_count = sum(1 for row in rows if row.get("quality_status") == "weak")
+        insufficient_count = sum(1 for row in rows if row.get("quality_status") == "insufficient")
+        return {
+            "total_symbols": total,
+            "strong_count": strong_count,
+            "watch_count": watch_count,
+            "weak_count": weak_count,
+            "insufficient_count": insufficient_count,
+            "overall_status": "weak" if weak_count else "watch" if watch_count else "ready" if strong_count else "missing",
+        }
 
     def resolve_symbol_history_support(self, *, mercado: str, simbolo: str, row: dict | None = None) -> dict:
         local_row = row or {"simbolo": simbolo, "mercado": mercado}
@@ -752,6 +904,18 @@ class IOLHistoricalPriceService:
             return None
 
     @staticmethod
+    def _coerce_datetime(value):
+        if value in (None, ""):
+            return None
+        try:
+            parsed = pd.Timestamp(pd.to_datetime(value)).to_pydatetime(warn=False)
+        except Exception:
+            return None
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return timezone.localtime(parsed)
+
+    @staticmethod
     def _coerce_int(value) -> int | None:
         if value in (None, ""):
             return None
@@ -759,3 +923,75 @@ class IOLHistoricalPriceService:
             return int(float(value))
         except Exception:
             return None
+
+    @staticmethod
+    def _average_decimal(values: list[Decimal]) -> Decimal | None:
+        if not values:
+            return None
+        total = sum(values, Decimal("0"))
+        return total / Decimal(len(values))
+
+    @staticmethod
+    def _average_int(values: list[int]) -> int | None:
+        if not values:
+            return None
+        return int(round(sum(values) / len(values)))
+
+    @staticmethod
+    def _coverage_percentage(numerator: int, denominator: int) -> Decimal:
+        if denominator <= 0:
+            return Decimal("0")
+        return (Decimal(numerator) / Decimal(denominator) * Decimal("100")).quantize(Decimal("0.01"))
+
+    @staticmethod
+    def _classify_recent_market_quality(
+        *,
+        observations_count: int,
+        avg_spread_pct: Decimal | None,
+        avg_operations: int | None,
+        order_book_coverage_pct: Decimal,
+    ) -> str:
+        if observations_count < 2:
+            return "insufficient"
+        if (
+            (avg_spread_pct is not None and avg_spread_pct >= Decimal("1.50"))
+            or order_book_coverage_pct < Decimal("50")
+            or (avg_operations is not None and avg_operations < 100)
+        ):
+            return "weak"
+        if (
+            (avg_spread_pct is not None and avg_spread_pct >= Decimal("0.75"))
+            or order_book_coverage_pct < Decimal("75")
+            or (avg_operations is not None and avg_operations < 300)
+        ):
+            return "watch"
+        return "strong"
+
+    @staticmethod
+    def _build_recent_market_quality_label(status: str) -> str:
+        labels = {
+            "strong": "Favorable",
+            "watch": "Mixta",
+            "weak": "Debil",
+            "insufficient": "Sin historico suficiente",
+        }
+        return labels.get(status, "Sin historico suficiente")
+
+    @staticmethod
+    def _build_recent_market_quality_summary(
+        *,
+        quality_status: str,
+        avg_spread_pct: Decimal | None,
+        avg_operations: int | None,
+        order_book_coverage_pct: Decimal,
+    ) -> str:
+        if quality_status == "insufficient":
+            return "Todavia no hay suficiente historial puntual para evaluar spread y actividad reciente."
+        spread_text = (
+            f"spread medio {avg_spread_pct.quantize(Decimal('0.01'))}%"
+            if avg_spread_pct is not None
+            else "spread medio N/D"
+        )
+        ops_text = f"ops medias {avg_operations}" if avg_operations is not None else "ops medias N/D"
+        book_text = f"libro visible {order_book_coverage_pct}%"
+        return f"{spread_text}, {ops_text}, {book_text}."

@@ -1,0 +1,96 @@
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h3 class="h6 mb-1">{{ title|default:"Calidad reciente de ejecucion" }}</h3>
+                {% if subtitle %}
+                <div class="small text-muted">{{ subtitle }}</div>
+                {% endif %}
+            </div>
+            <div class="text-end small text-muted">
+                Ultimos {{ market_snapshot_history_feature.lookback_days }} dias
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-3 col-6">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Favorables</div>
+                    <div class="h5 mb-0">{{ market_snapshot_history_feature.summary.strong_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Mixtas</div>
+                    <div class="h5 mb-0">{{ market_snapshot_history_feature.summary.watch_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Debiles</div>
+                    <div class="h5 mb-0">{{ market_snapshot_history_feature.summary.weak_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Sin historial</div>
+                    <div class="h5 mb-0">{{ market_snapshot_history_feature.summary.insufficient_count }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if market_snapshot_history_feature.alerts %}
+        <div class="d-flex flex-column gap-2 mb-3">
+            {% for alert in market_snapshot_history_feature.alerts %}
+            <div class="alert alert-{{ alert.tone }} py-2 px-3 mb-0">
+                <strong>{{ alert.title }}</strong><br>
+                {{ alert.message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if market_snapshot_history_feature.top_rows %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr class="text-muted small">
+                        <th>Simbolo</th>
+                        <th>Bloque</th>
+                        <th>Lectura</th>
+                        <th class="text-end">Spread medio</th>
+                        <th class="text-end">Ops medias</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in market_snapshot_history_feature.top_rows %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ row.simbolo }}</div>
+                            <div class="small text-muted">{{ row.last_captured_at_label|default:"-" }}</div>
+                        </td>
+                        <td>{{ row.bloque_estrategico|default:"N/A" }}</td>
+                        <td>
+                            <span class="badge {% if row.quality_status == 'weak' %}bg-warning text-dark{% elif row.quality_status == 'watch' %}bg-info text-dark{% elif row.quality_status == 'strong' %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ row.quality_status_label }}
+                            </span>
+                            <div class="small text-muted mt-1">{{ row.quality_summary }}</div>
+                        </td>
+                        <td class="text-end">
+                            {% if row.avg_spread_pct is not None %}
+                            {{ row.avg_spread_pct|floatformat:2 }}%
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ row.avg_operations|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted">Todavia no hay historial puntual persistido para evaluar la calidad reciente de ejecucion.</div>
+        {% endif %}
+    </div>
+</div>

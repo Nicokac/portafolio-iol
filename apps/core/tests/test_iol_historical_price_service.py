@@ -1,13 +1,15 @@
 from datetime import date
+from datetime import timedelta
 from unittest.mock import Mock
 import warnings
+from decimal import Decimal
 
 import pandas as pd
 import pytest
 from django.core.cache import cache
 from django.utils import timezone
 
-from apps.core.models import IOLHistoricalPriceSnapshot
+from apps.core.models import IOLHistoricalPriceSnapshot, IOLMarketSnapshotObservation
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 
@@ -547,6 +549,131 @@ def test_iol_historical_price_service_refreshes_and_reads_cached_market_snapshot
     assert payload["limit"] == 12
     assert payload["rows"][0]["simbolo"] == "GGAL"
     assert IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot() == payload
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_refresh_and_persist_includes_persistence_summary():
+    cache.delete(IOLHistoricalPriceService.MARKET_SNAPSHOT_CACHE_KEY)
+
+    service = IOLHistoricalPriceService(client=Mock())
+    service.refresh_cached_current_portfolio_market_snapshot = Mock(
+        return_value={
+            "rows": [
+                {
+                    "simbolo": "GGAL",
+                    "mercado": "BCBA",
+                    "snapshot_status": "available",
+                    "snapshot_source_key": "cotizacion_detalle",
+                    "fecha_hora": "2026-03-21T10:00:00-03:00",
+                    "cantidad_operaciones": 100,
+                    "puntas_count": 1,
+                }
+            ],
+            "summary": {"available_count": 1},
+            "refreshed_at": "2026-03-21T10:00:00-03:00",
+        }
+    )
+
+    payload = service.refresh_and_persist_current_portfolio_market_snapshot(limit=25)
+
+    assert payload["persistence"]["persisted_count"] == 1
+    assert IOLMarketSnapshotObservation.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_persists_available_market_snapshot_rows():
+    service = IOLHistoricalPriceService(client=Mock())
+    payload = {
+        "refreshed_at": "2026-03-21T10:00:00-03:00",
+        "rows": [
+            {
+                "simbolo": "GGAL",
+                "mercado": "BCBA",
+                "descripcion": "Grupo Galicia",
+                "tipo": "ACCIONES",
+                "snapshot_status": "available",
+                "snapshot_source_key": "cotizacion_detalle",
+                "fecha_hora": "2026-03-21T09:58:00-03:00",
+                "ultimo_precio": Decimal("100"),
+                "variacion": Decimal("1.25"),
+                "cantidad_operaciones": 240,
+                "puntas_count": 3,
+                "spread_abs": Decimal("0.50"),
+                "spread_pct": Decimal("0.50"),
+                "plazo": "T0",
+            },
+            {
+                "simbolo": "AAPL",
+                "mercado": "NASDAQ",
+                "snapshot_status": "missing",
+            },
+        ],
+    }
+
+    summary = service.persist_market_snapshot_payload(payload)
+
+    assert summary["persisted_count"] == 1
+    assert summary["skipped"] == 1
+    observation = IOLMarketSnapshotObservation.objects.get(simbolo="GGAL")
+    assert observation.source_key == "cotizacion_detalle"
+    assert observation.cantidad_operaciones == 240
+    assert observation.puntas_count == 3
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_builds_recent_market_history_rows():
+    _make_asset_snapshot("GGAL", "BCBA")
+    now = timezone.now()
+    IOLMarketSnapshotObservation.objects.create(
+        simbolo="GGAL",
+        mercado="BCBA",
+        source_key="cotizacion_detalle",
+        snapshot_status="available",
+        captured_at=now - timedelta(days=1),
+        captured_date=(now - timedelta(days=1)).date(),
+        cantidad_operaciones=420,
+        puntas_count=1,
+        spread_pct=Decimal("0.40"),
+    )
+    IOLMarketSnapshotObservation.objects.create(
+        simbolo="GGAL",
+        mercado="BCBA",
+        source_key="cotizacion_detalle",
+        snapshot_status="available",
+        captured_at=now - timedelta(days=2),
+        captured_date=(now - timedelta(days=2)).date(),
+        cantidad_operaciones=380,
+        puntas_count=1,
+        spread_pct=Decimal("0.60"),
+    )
+
+    rows = IOLHistoricalPriceService(client=Mock()).get_recent_market_history_rows(lookback_days=7)
+
+    assert len(rows) == 1
+    assert rows[0]["simbolo"] == "GGAL"
+    assert rows[0]["observations_count"] == 2
+    assert rows[0]["quality_status"] == "strong"
+    assert rows[0]["avg_operations"] == 400
+
+
+def test_iol_historical_price_service_summarizes_recent_market_history_rows():
+    summary = IOLHistoricalPriceService.summarize_recent_market_history_rows(
+        [
+            {"quality_status": "strong"},
+            {"quality_status": "watch"},
+            {"quality_status": "weak"},
+            {"quality_status": "insufficient"},
+        ]
+    )
+
+    assert summary == {
+        "total_symbols": 4,
+        "strong_count": 1,
+        "watch_count": 1,
+        "weak_count": 1,
+        "insufficient_count": 1,
+        "overall_status": "weak",
+    }
 
 
 def test_iol_historical_price_service_formats_snapshot_datetime_without_nanosecond_warning():

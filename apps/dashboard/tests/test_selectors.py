@@ -31,6 +31,7 @@ from apps.dashboard.selectors import (
     get_incremental_portfolio_simulation_comparison,
     get_liquidity_contract_summary,
     get_market_snapshot_feature_context,
+    get_market_snapshot_history_feature_context,
     get_portfolio_parking_feature_context,
     get_decision_engine_summary,
     get_candidate_incremental_portfolio_comparison,
@@ -64,6 +65,7 @@ from apps.parametros.models import ParametroActivo
 from apps.operaciones_iol.models import OperacionIOL
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
+from apps.core.models import IOLMarketSnapshotObservation
 
 
 def make_activo(fecha, simbolo, valorizado, tipo='ACCIONES', moneda='ARS', **kwargs):
@@ -543,6 +545,101 @@ class TestDashboardSelectors(TestCase):
         assert context["summary"]["total_symbols"] == 0
         assert context["top_rows"] == []
         assert context["alerts"][0]["title"] == "Snapshot puntual pendiente"
+
+    def test_get_market_snapshot_history_feature_context_summarizes_recent_execution_quality(self):
+        cache.clear()
+        fecha = timezone.now()
+        make_activo(fecha, "MELI", Decimal("900000"), tipo="CEDEARS", mercado="BCBA")
+        ParametroActivo.objects.create(
+            simbolo="MELI",
+            sector="Tecnologia",
+            bloque_estrategico="Growth USA",
+            pais_exposicion="USA",
+            tipo_patrimonial="Renta variable",
+        )
+        IOLMarketSnapshotObservation.objects.create(
+            simbolo="MELI",
+            mercado="BCBA",
+            source_key="cotizacion_detalle",
+            snapshot_status="available",
+            captured_at=fecha - timedelta(days=1),
+            captured_date=(fecha - timedelta(days=1)).date(),
+            cantidad_operaciones=40,
+            puntas_count=0,
+            spread_pct=Decimal("2.20"),
+        )
+        IOLMarketSnapshotObservation.objects.create(
+            simbolo="MELI",
+            mercado="BCBA",
+            source_key="cotizacion_detalle",
+            snapshot_status="available",
+            captured_at=fecha - timedelta(days=2),
+            captured_date=(fecha - timedelta(days=2)).date(),
+            cantidad_operaciones=60,
+            puntas_count=1,
+            spread_pct=Decimal("1.80"),
+        )
+
+        context = get_market_snapshot_history_feature_context(top_limit=3, lookback_days=7)
+
+        assert context["has_history"] is True
+        assert context["summary"]["weak_count"] == 1
+        assert context["top_rows"][0]["simbolo"] == "MELI"
+        assert context["top_rows"][0]["quality_status"] == "weak"
+        assert context["weak_blocks"][0]["label"] == "Growth USA"
+
+    def test_get_decision_engine_summary_adds_market_history_signal_when_recommendation_overlaps_weak_block(self):
+        cache.clear()
+
+        class DummyUser:
+            pk = 1
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 20}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors._build_decision_macro_state", return_value={"key": "normal", "label": "Normal", "summary": ""}),
+            patch("apps.dashboard.selectors._build_decision_portfolio_state", return_value={"key": "ok", "label": "OK", "summary": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch(
+                "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
+                return_value={
+                    "summary": {"weak_count": 1},
+                    "rows": [{"simbolo": "MELI", "bloque_estrategico": "Growth USA", "quality_status": "weak"}],
+                    "weak_blocks": [{"label": "Growth USA", "value_total": Decimal("900000")}],
+                    "alerts": [],
+                    "has_history": True,
+                    "lookback_days": 7,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors._build_decision_recommendation",
+                return_value={
+                    "block": "Growth USA",
+                    "amount": 600000,
+                    "reason": "prioridad simple",
+                    "has_recommendation": True,
+                    "priority_label": "Prioritaria",
+                    "priority_tone": "success",
+                },
+            ),
+            patch("apps.dashboard.selectors._build_decision_suggested_assets", return_value=[]),
+            patch("apps.dashboard.selectors._build_decision_preferred_proposal", return_value=None),
+            patch("apps.dashboard.selectors._build_decision_expected_impact", return_value={"status": "neutral", "summary": ""}),
+            patch("apps.dashboard.selectors._build_decision_recommendation_context", return_value="high_cash"),
+            patch("apps.dashboard.selectors._build_decision_strategy_bias", return_value="deploy_cash"),
+            patch("apps.dashboard.selectors._build_decision_explanation", return_value=[]),
+            patch("apps.dashboard.selectors._build_decision_tracking_payload", return_value={}),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["market_history_signal"]["has_signal"] is True
+        assert "Growth USA" in detail["market_history_signal"]["summary"]
+        assert any(item["type"] == "market_history" for item in detail["action_suggestions"])
 
     def test_get_liquidity_contract_summary_uses_explicit_layers(self):
         summary = get_liquidity_contract_summary(
