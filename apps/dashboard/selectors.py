@@ -2800,12 +2800,14 @@ def get_decision_engine_summary(
             suggested_assets=suggested_assets,
             preferred_proposal=preferred_proposal,
             expected_impact=expected_impact,
+            parking_signal=parking_signal,
         )
         confidence = _compute_decision_confidence(
             macro_state=macro_state,
             portfolio_state=portfolio_state,
             preferred_proposal=preferred_proposal,
             expected_impact=expected_impact,
+            parking_signal=parking_signal,
         )
         explanation = _build_decision_explanation(
             macro_state=macro_state,
@@ -4071,6 +4073,7 @@ def _compute_decision_score(
     suggested_assets: list[Dict],
     preferred_proposal: Dict | None,
     expected_impact: Dict,
+    parking_signal: Dict | None = None,
 ) -> int:
     recommendation_score = 0
     if recommendation.get("has_recommendation"):
@@ -4089,6 +4092,8 @@ def _compute_decision_score(
         + recommendation_score
         + int(expected_impact.get("score_component") or 0)
     )
+    if (parking_signal or {}).get("has_signal"):
+        total -= 5
     return max(0, min(100, total))
 
 
@@ -4202,6 +4207,7 @@ def _compute_decision_confidence(
     portfolio_state: Dict,
     preferred_proposal: Dict | None,
     expected_impact: Dict,
+    parking_signal: Dict | None = None,
 ) -> str:
     if preferred_proposal is None:
         return "Baja"
@@ -4214,8 +4220,15 @@ def _compute_decision_confidence(
         and portfolio_state.get("key") != "riesgo"
         and expected_impact.get("status") in {"positive", "neutral"}
     ):
-        return "Alta"
-    return "Media"
+        confidence = "Alta"
+    else:
+        confidence = "Media"
+
+    if (parking_signal or {}).get("has_signal") or (preferred_proposal or {}).get("was_reprioritized_by_parking") or (preferred_proposal or {}).get("is_conditioned_by_parking"):
+        if confidence == "Alta":
+            return "Media"
+        return "Baja"
+    return confidence
 
 
 def _build_decision_explanation(

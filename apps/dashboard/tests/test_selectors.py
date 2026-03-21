@@ -373,6 +373,94 @@ class TestDashboardSelectors(TestCase):
         assert detail["preferred_proposal"]["priority_label"] == "Repriorizada por parking"
         assert "se promovio esta alternativa" in detail["preferred_proposal"]["parking_note"].lower()
 
+    def test_get_decision_engine_summary_degrades_score_and_confidence_when_parking_is_visible(self):
+        class DummyUser:
+            pk = 12
+
+        cache.clear()
+        ParametroActivo.objects.create(
+            simbolo="SPY",
+            sector="Indice",
+            bloque_estrategico="Indice global",
+            pais_exposicion="USA",
+            tipo_patrimonial="ETF",
+        )
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={"headline": "ok"}),
+            patch(
+                "apps.dashboard.selectors.get_analytics_v2_dashboard_summary",
+                return_value={
+                    "stress_testing": {"fragility_score": 40, "total_loss_pct": -10},
+                    "expected_return": {"real_expected_return_pct": 5},
+                    "risk_contribution": {"top_asset": {"contribution_pct": 0.10}},
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                return_value={
+                    "recommended_blocks": [{"label": "Indice global", "suggested_amount": 600000, "reason": "prioridad limpia"}]
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                return_value={
+                    "candidate_assets": [
+                        {"asset": "SPY", "block_label": "Indice global", "score": 7.0, "main_reason": "stable_global_exposure"},
+                    ]
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_key": "plan_spy",
+                        "proposal_label": "Plan SPY",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                        "comparison_score": 4.8,
+                        "priority_rank": 4,
+                    },
+                    "candidates": [
+                        {
+                            "proposal_key": "plan_spy",
+                            "proposal_label": "Plan SPY",
+                            "source_label": "Comparador manual",
+                            "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                            "comparison_score": 4.8,
+                            "priority_rank": 4,
+                        }
+                    ],
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_portfolio_simulation",
+                return_value={
+                    "delta": {
+                        "expected_return_change": 0.4,
+                        "fragility_change": -0.8,
+                        "scenario_loss_change": 0.2,
+                    },
+                    "interpretation": "Impacto favorable.",
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_portfolio_parking_feature_context",
+                return_value={
+                    "has_visible_parking": True,
+                    "summary": {"parking_count": 1, "parking_value_total": Decimal("100000")},
+                    "parking_blocks": [{"label": "Defensive / resiliente", "value_total": Decimal("100000")}],
+                    "top_rows": [],
+                    "alerts": [],
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["score"] == 79
+        assert detail["confidence"] == "Baja"
+
     def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
         fecha = timezone.now()
         make_activo(fecha, "MELI", Decimal("900000"), tipo="CEDEARS", mercado="BCBA")
