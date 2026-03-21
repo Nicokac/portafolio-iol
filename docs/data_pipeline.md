@@ -130,6 +130,7 @@ Salidas operativas:
 
 - `Resumen`
   - KPIs de portafolio y contexto macro
+  - chequeo tactico de `parking` visible en cartera
 - `Estrategia`
   - composicion
   - riesgo
@@ -147,6 +148,10 @@ Salidas operativas:
   - recomendaciones
   - simulacion
   - optimizacion
+  - chequeo tactico de `parking` antes de decidir despliegue
+- `Portafolio`
+  - lectura visible de `parking` por activo
+  - valorizado y disponible inmediato sobre la hoja actual
 - `Operaciones`
   - filtros locales y sync remoto contra IOL
   - enriquecimiento batch de detalle y backfill de `pais_consulta`
