@@ -45,6 +45,7 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "operation_rows" in response.context
     assert "operations_summary" in response.context
     assert "operations_universe_coverage" in response.context
+    assert "operations_execution_analytics" in response.context
     assert "operations_audit_summary" in response.context
     assert response.context["operations_summary"]["enriched_count"] == 1
     assert str(response.context["operations_summary"]["enriched_pct"]) == "100.00"
@@ -61,12 +62,58 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "Cobertura de pais" in body
     assert "Calidad de ejecucion visible" in body
     assert "Cobertura historica del subset filtrado" in body
+    assert "Metricas historicas de ejecucion y costo" in body
     assert "Ultimas acciones operativas" in body
     assert "Sin registro" in body
     assert "1 de 1 operaciones con detalle IOL utilizable." in body
     assert "1 de 1 operaciones visibles ya tienen `pais_consulta` resuelto." in body
     assert "1 de 1 operaciones filtradas ya tienen detalle utilizable." in body
     assert "Compra: 1" in body
+
+
+@pytest.mark.django_db
+def test_operaciones_list_view_renders_execution_analytics_block(client):
+    OperacionIOL.objects.create(
+        numero="EXEC-VIEW-1",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        monto_operacion=78720,
+        aranceles_ars=523.89,
+        operaciones_detalle=[
+            {"fecha": "2026-03-18T14:05:57", "cantidad": 2, "precio": 19680},
+            {"fecha": "2026-03-18T14:05:58", "cantidad": 2, "precio": 19680},
+        ],
+    )
+    OperacionIOL.objects.create(
+        numero="EXEC-VIEW-2",
+        fecha_orden=timezone.now(),
+        tipo="Pago de Dividendos",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MCD US$",
+        modalidad="precio_Mercado",
+        monto_operado=0.15,
+        aranceles_usd=0.01,
+        operaciones_detalle=[{"fecha": "2026-03-18T13:56:58.353", "cantidad": 1, "precio": 0.15}],
+    )
+    user = User.objects.create_user(username="operaciones-exec-user", password="testpass123")
+    client.force_login(user)
+
+    response = client.get(reverse("operaciones_iol:operaciones_list"))
+
+    assert response.status_code == 200
+    assert str(response.context["operations_execution_analytics"]["avg_fills_per_visible"]) == "1.50"
+    body = response.content.decode()
+    assert "Metricas historicas de ejecucion y costo" in body
+    assert "Volumen con monto visible" in body
+    assert "Costo transaccional visible" in body
+    assert "Fills visibles" in body
+    assert "Fragmentacion historica" in body
+    assert "Promedio" in body
 
 
 @pytest.mark.django_db

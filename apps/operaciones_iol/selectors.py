@@ -95,6 +95,55 @@ def build_operation_universe_coverage_context(queryset: QuerySet[OperacionIOL]) 
     }
 
 
+def build_operation_execution_analytics_context(queryset: QuerySet[OperacionIOL]) -> dict:
+    operaciones = list(queryset)
+    total_count = len(operaciones)
+    fee_visible_count = 0
+    fills_visible_count = 0
+    fragmented_count = 0
+    fees_ars_total = Decimal('0')
+    fees_usd_total = Decimal('0')
+    executed_amount_total = Decimal('0')
+    executed_amount_visible_count = 0
+
+    for operacion in operaciones:
+        fills_count = len(list(operacion.operaciones_detalle or []))
+        fees_ars = Decimal(str(operacion.aranceles_ars or 0))
+        fees_usd = Decimal(str(operacion.aranceles_usd or 0))
+        executed_amount = _resolve_operation_amount(operacion)
+
+        if fills_count > 0:
+            fills_visible_count += 1
+        if fills_count > 1:
+            fragmented_count += 1
+        if fees_ars > 0 or fees_usd > 0:
+            fee_visible_count += 1
+
+        fees_ars_total += fees_ars
+        fees_usd_total += fees_usd
+        if executed_amount is not None:
+            executed_amount_total += executed_amount
+            executed_amount_visible_count += 1
+
+    avg_fills_per_visible = Decimal('0')
+    if fills_visible_count > 0:
+        avg_fills_per_visible = (Decimal(sum(len(list(operacion.operaciones_detalle or [])) for operacion in operaciones if operacion.operaciones_detalle)) / Decimal(fills_visible_count)).quantize(Decimal('0.01'))
+
+    return {
+        'total_count': total_count,
+        'fee_visible_count': fee_visible_count,
+        'fee_visible_pct': _safe_percentage(fee_visible_count, total_count),
+        'fees_ars_total': fees_ars_total,
+        'fees_usd_total': fees_usd_total,
+        'fills_visible_count': fills_visible_count,
+        'fragmented_count': fragmented_count,
+        'fragmented_pct': _safe_percentage(fragmented_count, fills_visible_count),
+        'avg_fills_per_visible': avg_fills_per_visible,
+        'executed_amount_total': executed_amount_total,
+        'executed_amount_visible_count': executed_amount_visible_count,
+    }
+
+
 def build_operation_audit_summary_context(limit: int = 3) -> dict:
     tracked_actions = [
         ('sync_operaciones_filtered', 'Sync remoto filtrado'),
@@ -268,6 +317,7 @@ def build_operation_list_row(operacion: OperacionIOL) -> dict:
     fill_count = len(fills)
     fees_ars = Decimal(str(operacion.aranceles_ars or 0))
     fees_usd = Decimal(str(operacion.aranceles_usd or 0))
+    executed_amount = _resolve_operation_amount(operacion)
     execution_label = _build_execution_label(fill_count, has_detail)
 
     return {
@@ -284,6 +334,7 @@ def build_operation_list_row(operacion: OperacionIOL) -> dict:
         'execution_tone': 'warning' if fill_count > 1 else 'secondary',
         'fees_ars': fees_ars,
         'fees_usd': fees_usd,
+        'executed_amount': executed_amount,
         'status_tone': _build_status_tone(operacion.estado_actual or operacion.estado),
     }
 
@@ -417,3 +468,10 @@ def _build_audit_failed_items_label(action: str, details: dict) -> str:
     if action == 'backfill_operaciones_filtered_country' and unresolved_numbers:
         return f"Sin resolver: {', '.join(map(str, unresolved_numbers[:3]))}"
     return ''
+
+
+def _resolve_operation_amount(operacion: OperacionIOL) -> Decimal | None:
+    for value in (operacion.monto_operacion, operacion.monto_operado, operacion.monto):
+        if value is not None:
+            return Decimal(str(value))
+    return None

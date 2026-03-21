@@ -13,6 +13,7 @@ from apps.core.services.security_audit import record_sensitive_action
 from apps.operaciones_iol.models import OperacionIOL
 from apps.operaciones_iol.selectors import (
     build_operation_audit_summary_context,
+    build_operation_execution_analytics_context,
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
@@ -39,11 +40,14 @@ class OperacionesListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         list_context = build_operation_list_context(context['operaciones'])
-        universe_coverage = build_operation_universe_coverage_context(getattr(self, 'filtered_queryset', OperacionIOL.objects.none()))
+        filtered_queryset = getattr(self, 'filtered_queryset', OperacionIOL.objects.none())
+        universe_coverage = build_operation_universe_coverage_context(filtered_queryset)
+        execution_analytics = build_operation_execution_analytics_context(filtered_queryset)
         filter_context = build_operation_filter_context(getattr(self, 'normalized_filters', {}))
         context['operation_rows'] = list_context['rows']
         context['operations_summary'] = list_context['summary']
         context['operations_universe_coverage'] = universe_coverage
+        context['operations_execution_analytics'] = execution_analytics
         context['operations_audit_summary'] = build_operation_audit_summary_context()
         context['operation_filters'] = filter_context
         return context

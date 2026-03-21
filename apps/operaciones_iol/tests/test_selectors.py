@@ -8,6 +8,7 @@ from apps.operaciones_iol.models import OperacionIOL
 from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_audit_summary_context,
+    build_operation_execution_analytics_context,
     build_operation_filter_context,
     build_operation_list_context,
     build_operation_universe_coverage_context,
@@ -256,6 +257,62 @@ def test_build_operation_universe_coverage_context_summarizes_filtered_universe(
     assert context["country_pct"] == Decimal("66.67")
     assert context["country_argentina_count"] == 1
     assert context["country_estados_unidos_count"] == 1
+
+
+@pytest.mark.django_db
+def test_build_operation_execution_analytics_context_summarizes_cost_and_fragmentation():
+    OperacionIOL.objects.create(
+        numero="EXEC-1",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        monto_operacion=Decimal("78720"),
+        aranceles_ars=Decimal("523.89"),
+        operaciones_detalle=[
+            {"fecha": "2026-03-18T14:05:57", "cantidad": 2, "precio": 19680},
+            {"fecha": "2026-03-18T14:05:58", "cantidad": 2, "precio": 19680},
+        ],
+    )
+    OperacionIOL.objects.create(
+        numero="EXEC-2",
+        fecha_orden=timezone.now(),
+        tipo="Pago de Dividendos",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MCD US$",
+        modalidad="precio_Mercado",
+        monto_operado=Decimal("0.15"),
+        aranceles_usd=Decimal("0.01"),
+        operaciones_detalle=[
+            {"fecha": "2026-03-18T13:56:58.353", "cantidad": 1, "precio": 0.15},
+        ],
+    )
+    OperacionIOL.objects.create(
+        numero="EXEC-3",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+    )
+
+    context = build_operation_execution_analytics_context(OperacionIOL.objects.order_by("numero"))
+
+    assert context["total_count"] == 3
+    assert context["fee_visible_count"] == 2
+    assert context["fee_visible_pct"] == Decimal("66.67")
+    assert context["fees_ars_total"] == Decimal("523.89")
+    assert context["fees_usd_total"] == Decimal("0.01")
+    assert context["fills_visible_count"] == 2
+    assert context["fragmented_count"] == 1
+    assert context["fragmented_pct"] == Decimal("50.00")
+    assert context["avg_fills_per_visible"] == Decimal("1.50")
+    assert context["executed_amount_total"] == Decimal("78720.15")
+    assert context["executed_amount_visible_count"] == 2
 
 
 @pytest.mark.django_db

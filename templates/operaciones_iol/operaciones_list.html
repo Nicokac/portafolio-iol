@@ -218,6 +218,48 @@
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
             <div>
+                <h2 class="h5 mb-1">Metricas historicas de ejecucion y costo</h2>
+                <p class="text-muted small mb-0">Lectura agregada del subset filtrado completo para fills visibles, fragmentacion y costo transaccional.</p>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-lg-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Volumen con monto visible</div>
+                    <div class="h5 mb-1">{{ operations_execution_analytics.executed_amount_total|currency:2 }}</div>
+                    <div class="small text-muted">{{ operations_execution_analytics.executed_amount_visible_count }} operaciones con monto utilizable.</div>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Costo transaccional visible</div>
+                    <div class="h6 mb-1">ARS {{ operations_execution_analytics.fees_ars_total|currency:2 }}</div>
+                    <div class="h6 mb-0">USD {{ operations_execution_analytics.fees_usd_total|currency:2 }}</div>
+                    <div class="small text-muted mt-2">{{ operations_execution_analytics.fee_visible_count }} operaciones con aranceles visibles.</div>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Fills visibles</div>
+                    <div class="h4 mb-1">{{ operations_execution_analytics.fills_visible_count }}</div>
+                    <div class="small text-muted">Promedio {{ operations_execution_analytics.avg_fills_per_visible }} fills por operacion con fills visibles.</div>
+                </div>
+            </div>
+            <div class="col-lg-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Fragmentacion historica</div>
+                    <div class="h4 mb-1">{{ operations_execution_analytics.fragmented_pct }}%</div>
+                    <div class="small text-muted">{{ operations_execution_analytics.fragmented_count }} de {{ operations_execution_analytics.fills_visible_count }} operaciones con fills visibles tienen multiples fills.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
                 <h2 class="h5 mb-1">Ultimas acciones operativas</h2>
                 <p class="text-muted small mb-0">Estado reciente de sync remoto, enriquecimiento batch y backfill de `pais_consulta`.</p>
             </div>
