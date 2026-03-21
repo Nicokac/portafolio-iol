@@ -34,8 +34,8 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
 | `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, dashboard | Alto | `parking` se persiste pero no se consume |
-| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, vistas legacy, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | no enriquece automatico con detalle por numero |
-| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills y aranceles | Medio-Alto | no se explota todavia para metricas agregadas de calidad de ejecucion |
+| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | la tabla local todavia no puede filtrar por pais porque `OperacionIOL` no lo persiste |
+| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles y batch sobre subset filtrado | Alto | no se explota todavia para metricas historicas agregadas de ejecucion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
@@ -96,8 +96,10 @@ Se usa para:
 - listado historico
 - sync de operaciones
 - filtros por numero, estado, fechas y pais
+- sync remoto filtrado desde la hoja de operaciones
 - flujo operativo mensual en `Resumen`, `Estrategia` y `Planeacion`
 - lectura reciente de compras, ventas, dividendos y suscripciones FCI
+- soporte de acciones batch previas al enriquecimiento por numero
 
 Hallazgo operativo importante:
 
@@ -109,8 +111,9 @@ Hallazgo operativo importante:
 
 Conclusion:
 
-- ya dejó de ser solo trazabilidad base
-- sigue faltando explotar mejor fills, aranceles y detalle por número en producto
+- ya dejo de ser solo trazabilidad base
+- ya tiene uso visible y accionable en producto
+- la brecha principal ya no es filtrado ni sync, sino persistencia adicional para `pais` y mejor analitica historica
 
 ### 4. `operaciones/{numero}`
 
@@ -124,12 +127,14 @@ Se usa para:
 - abrir el detalle desde el numero clickable en la hoja de operaciones
 - mostrar timeline de estados, fills y aranceles on-demand
 - permitir re-sincronizacion manual desde IOL
+- enriquecer en batch solo las operaciones sin detalle de la pagina filtrada actual
 
 Conclusion:
 
 - el contrato ya esta endurecido
 - ya tiene un consumidor visible y correcto en producto
-- el siguiente salto es explotarlo en metricas agregadas de ejecucion y costo
+- ya alimenta lectura operativa real en la hoja
+- el siguiente salto es explotarlo en metricas historicas agregadas de ejecucion y costo
 
 ### 5. `Titulos/{simbolo}` y `Titulos/FCI/{simbolo}`
 
@@ -162,7 +167,7 @@ Se usa hoy como:
 - fuente primaria de market data puntual
 - validacion operativa en `Ops`
 - fallback de elegibilidad para historicos cuando falla metadata de titulo
-- capa táctica compartida para `Resumen`, `Estrategia` y `Planeacion`
+- capa tactica compartida para `Resumen`, `Estrategia` y `Planeacion`
 
 Valor diferencial real:
 
@@ -176,8 +181,8 @@ Valor diferencial real:
 
 Conclusion:
 
-- ya dejó de estar aislado en observabilidad
-- hoy potencia lectura táctica de producto, aunque todavía no se persiste como snapshot histórico puntual
+- ya dejo de estar aislado en observabilidad
+- hoy potencia lectura tactica de producto, aunque todavia no se persiste como snapshot historico puntual
 
 ### 8. `seriehistorica`
 
@@ -197,11 +202,11 @@ Conclusion:
 Los endpoints con mayor potencial todavia no exprimido son:
 
 1. `CotizacionDetalle`
-   - hoy ya sirve en `Ops`, pero todavia no alimenta mas decisiones operativas o surfaces de producto
+   - ya mejoro mucho, pero todavia no se persiste ni entra en una capa historica propia
 2. `operaciones/{numero}`
-   - tiene detalle util de fills y aranceles que no se explota visualmente
+   - ya se explota visualmente; falta convertirlo en series y metricas agregadas de ejecucion
 3. `operaciones`
-   - podria usarse mejor para lectura de flujos, dividendos y actividad reciente
+   - ya se usa bien en hoja y dashboard; falta persistir `pais` o equivalente para filtros locales mas completos
 4. `portafolio/{pais}`
    - `parking` ya entra, pero sigue sin valor de negocio visible
 
