@@ -52,9 +52,15 @@ def test_build_operation_list_context_summarizes_detail_fills_and_fees():
     assert context["summary"]["total_count"] == 3
     assert context["summary"]["enriched_count"] == 2
     assert context["summary"]["missing_detail_count"] == 1
+    assert context["summary"]["enriched_pct"] == Decimal("66.67")
     assert context["summary"]["fills_count"] == 1
     assert context["summary"]["fragmented_count"] == 1
+    assert context["summary"]["fragmented_pct"] == Decimal("100.00")
+    assert context["summary"]["fees_visible_count"] == 2
+    assert context["summary"]["fees_visible_pct"] == Decimal("66.67")
     assert context["summary"]["fees_ars_total"] == Decimal("523.89")
     assert context["summary"]["fees_usd_total"] == Decimal("0.15")
+    assert context["summary"]["type_breakdown"][0]["tipo"] == "Pago de Dividendos"
+    assert context["summary"]["type_breakdown"][0]["count"] == 2
     assert context["rows"][0]["execution_label"] == "Multiples fills"
     assert context["rows"][1]["detail_status_label"] == "Solo local"

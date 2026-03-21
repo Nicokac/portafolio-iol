@@ -44,12 +44,16 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "operation_rows" in response.context
     assert "operations_summary" in response.context
     assert response.context["operations_summary"]["enriched_count"] == 1
+    assert str(response.context["operations_summary"]["enriched_pct"]) == "100.00"
     assert reverse("operaciones_iol:operacion_detail", args=["OP-1"]) in response.content.decode()
     body = response.content.decode()
     assert "Hoja de operaciones" in body
     assert "Detalle IOL" in body
     assert "Ejecucion" in body
     assert "Enriquecido" in body
+    assert "Calidad de ejecucion visible" in body
+    assert "1 de 1 operaciones con detalle IOL utilizable." in body
+    assert "Compra: 1" in body
 
 
 @pytest.mark.django_db
