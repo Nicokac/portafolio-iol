@@ -221,6 +221,7 @@ class PortfolioSnapshotService:
                 tipo=titulo.get("tipo", ""),
                 plazo=titulo.get("plazo"),
                 moneda=titulo.get("moneda", ""),
+                parking=activo.get("parking"),
             )
 
     def _save_operaciones(self, data: list[dict]):

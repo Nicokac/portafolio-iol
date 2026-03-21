@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
+from decimal import Decimal
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
@@ -74,26 +75,37 @@ class TestIOLSyncService:
                 'titulo': {
                     'simbolo': 'AAPL',
                     'descripcion': 'Apple Inc',
-                    'pais': 'USA',
-                    'mercado': 'NASDAQ',
+                    'pais': 'argentina',
+                    'mercado': 'bcba',
                     'tipo': 'CEDEARS',
-                    'moneda': 'ARS',
-                    'plazo': None,
+                    'moneda': 'peso_Argentino',
+                    'plazo': 't1',
                 },
-                'cantidad': 10,
+                'cantidad': 46765.7428,
                 'comprometido': 0,
-                'puntosVariacion': 0.5,
-                'variacionDiaria': 1.0,
-                'ultimoPrecio': 100.0,
-                'ppc': 90.0,
-                'gananciaPorcentaje': 11.11,
-                'gananciaDinero': 100.0,
-                'valorizado': 1000.0,
+                'puntosVariacion': 0.137598,
+                'variacionDiaria': 0.37,
+                'ultimoPrecio': 37.128598,
+                'ppc': 20.207,
+                'gananciaPorcentaje': 83.74,
+                'gananciaDinero': 791346.46,
+                'valorizado': 1736346.4645925944,
+                'parking': None,
             }]
         }
         result = service.sync_portafolio()
         assert result is True
         assert ActivoPortafolioSnapshot.objects.count() == 1
+        snapshot = ActivoPortafolioSnapshot.objects.get()
+        assert snapshot.moneda == 'peso_Argentino'
+        assert snapshot.plazo == 't1'
+        assert snapshot.mercado == 'bcba'
+        assert snapshot.cantidad == Decimal('46765.7428')
+        assert snapshot.puntos_variacion == Decimal('0.137598')
+        assert snapshot.ultimo_precio == Decimal('37.128598')
+        assert snapshot.ppc == Decimal('20.207000')
+        assert snapshot.valorizado == Decimal('1736346.464593')
+        assert snapshot.parking is None
 
     def test_sync_portafolio_missing_key_skips(self, service):
         service.client.get_portafolio.return_value = {

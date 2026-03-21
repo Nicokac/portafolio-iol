@@ -96,6 +96,7 @@ class IOLSyncService:
                     tipo=titulo.get('tipo'),
                     plazo=titulo.get('plazo'),
                     moneda=titulo.get('moneda'),
+                    parking=activo.get('parking'),
                 )
             except KeyError as e:
                 logger.error(f"Missing key in activo data: {e}, data: {activo}")

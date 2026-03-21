@@ -93,6 +93,7 @@ class TestDashboardView:
         assert 'Bases de Cálculo' in body
         assert 'Total patrimonio modelado' in body
         assert 'Liquidez operativa' in body
+        assert 'Cash a liquidar' in body
         assert 'Liquidez Estrat' in body
         assert 'Liquidez total combinada' in body
         assert 'Caucion Colocada' in body
@@ -100,6 +101,7 @@ class TestDashboardView:
         assert 'Lectura del portafolio' in body
         assert 'Vista analítica' in body
         assert 'Cash real disponible' in body
+        assert 'Saldos próximos a liquidar' in body or 'Saldos proximos a liquidar' in body
         assert 'FCI cash management' in body
         assert 'Capital Invertido Analizado' in body
         assert '% Renta fija AR' in body

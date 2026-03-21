@@ -33,7 +33,8 @@ def test_portafolio_list_view_renders_template_and_context(client):
         pais_titulo="USA",
         mercado="NASDAQ",
         tipo="CEDEAR",
-        moneda="ARS",
+        moneda="peso_Argentino",
+        parking=None,
     )
     user = User.objects.create_user(username="portafolio-user", password="testpass123")
     client.force_login(user)

@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
+from decimal import Decimal
 from django.utils import timezone
 from apps.core.services.portfolio_snapshot_service import PortfolioSnapshotService
 from apps.operaciones_iol.models import OperacionIOL
@@ -133,22 +134,23 @@ class TestPortfolioSnapshotService:
             'activos': [{
                 'titulo': {
                     'simbolo': 'AAPL',
-                    'descripcion': 'Apple Inc',
-                    'pais': 'USA',
-                    'mercado': 'NASDAQ',
+                    'descripcion': 'Cedear Apple Inc.',
+                    'pais': 'argentina',
+                    'mercado': 'bcba',
                     'tipo': 'CEDEARS',
-                    'moneda': 'ARS',
-                    'plazo': None,
+                    'moneda': 'peso_Argentino',
+                    'plazo': 't1',
                 },
-                'cantidad': 10,
+                'cantidad': 64,
                 'comprometido': 1,
-                'puntosVariacion': 0.5,
-                'variacionDiaria': 1.0,
-                'ultimoPrecio': 100.0,
-                'ppc': 90.0,
-                'gananciaPorcentaje': 11.11,
-                'gananciaDinero': 100.0,
-                'valorizado': 1000.0,
+                'puntosVariacion': 0,
+                'variacionDiaria': 0.38,
+                'ultimoPrecio': 18340,
+                'ppc': 13755.812,
+                'gananciaPorcentaje': 33.32,
+                'gananciaDinero': 293388,
+                'valorizado': 1173760,
+                'parking': None,
             }]
         }
         service.api_client.get_operaciones.return_value = [{
@@ -171,6 +173,12 @@ class TestPortfolioSnapshotService:
         assert float(resumen.total_en_pesos) == 26317309.04
         assert resumen.saldos_detalle[0]['disponibleOperar'] == 1000.0
         assert ActivoPortafolioSnapshot.objects.count() == 1
+        activo = ActivoPortafolioSnapshot.objects.get()
+        assert activo.moneda == 'peso_Argentino'
+        assert activo.plazo == 't1'
+        assert activo.ppc == Decimal('13755.812000')
+        assert activo.ultimo_precio == Decimal('18340.000000')
+        assert activo.parking is None
         assert OperacionIOL.objects.count() == 1
         assert PortfolioSnapshot.objects.count() == 1
 
