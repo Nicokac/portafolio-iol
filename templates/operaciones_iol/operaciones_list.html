@@ -20,7 +20,7 @@
     <tbody>
         {% for operacion in operaciones %}
         <tr>
-            <td>{{ operacion.numero }}</td>
+            <td><a href="{% url 'operaciones_iol:operacion_detail' operacion.numero %}">{{ operacion.numero }}</a></td>
             <td>{{ operacion.fecha_orden|date:"d/m/Y H:i" }}</td>
             <td>{{ operacion.tipo }}</td>
             <td>{{ operacion.simbolo }}</td>

@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Operación {{ operacion.numero }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <h1 class="mb-1">Operación {{ operacion.numero }}</h1>
+        <p class="text-muted mb-0">Detalle operativo enriquecido on-demand desde IOL cuando hace falta.</p>
+    </div>
+    <a href="{% url 'operaciones_iol:operaciones_list' %}" class="btn btn-outline-secondary">Volver a operaciones</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="small text-muted">Símbolo</div>
+            <div class="h5 mb-0">{{ operacion.simbolo }}</div>
+            <div class="small text-muted mt-1">{{ operacion.mercado }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="small text-muted">Tipo</div>
+            <div class="h5 mb-0">{{ operacion.tipo }}</div>
+            <div class="small text-muted mt-1">{{ operacion.modalidad }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="small text-muted">Estado actual</div>
+            <div class="h5 mb-0">{{ operacion.estado_actual|default:operacion.estado }}</div>
+            <div class="small text-muted mt-1">{{ operacion.plazo|default:"Sin plazo" }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100"><div class="card-body">
+            <div class="small text-muted">Moneda</div>
+            <div class="h5 mb-0">{{ operacion.moneda|default:"N/D" }}</div>
+            <div class="small text-muted mt-1">Número IOL</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-light"><h2 class="h5 mb-0">Montos y ejecución</h2></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td><strong>Cantidad</strong></td><td class="text-end">{{ operacion.cantidad|default_if_none:"-" }}</td></tr>
+                        <tr><td><strong>Precio</strong></td><td class="text-end">{% if operacion.precio is not None %}{{ operacion.precio|currency:2 }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Monto</strong></td><td class="text-end">{% if operacion.monto is not None %}{{ operacion.monto|currency:2 }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Cantidad operada</strong></td><td class="text-end">{{ operacion.cantidad_operada|default_if_none:"-" }}</td></tr>
+                        <tr><td><strong>Precio operado</strong></td><td class="text-end">{% if operacion.precio_operado is not None %}{{ operacion.precio_operado|currency:2 }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Monto operado</strong></td><td class="text-end">{% if operacion.monto_operado is not None %}{{ operacion.monto_operado|currency:2 }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Monto operación</strong></td><td class="text-end">{% if operacion.monto_operacion is not None %}{{ operacion.monto_operacion|currency:2 }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Aranceles ARS</strong></td><td class="text-end">{% if operacion.aranceles_ars is not None %}{{ operacion.aranceles_ars|currency:2 }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Aranceles USD</strong></td><td class="text-end">{% if operacion.aranceles_usd is not None %}{{ operacion.aranceles_usd|currency:2 }}{% else %}-{% endif %}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-light"><h2 class="h5 mb-0">Fechas clave</h2></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td><strong>Fecha orden</strong></td><td class="text-end">{{ operacion.fecha_orden|date:"d/m/Y H:i" }}</td></tr>
+                        <tr><td><strong>Fecha alta</strong></td><td class="text-end">{% if operacion.fecha_alta %}{{ operacion.fecha_alta|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Validez</strong></td><td class="text-end">{% if operacion.validez %}{{ operacion.validez|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td></tr>
+                        <tr><td><strong>Fecha operada</strong></td><td class="text-end">{% if operacion.fecha_operada %}{{ operacion.fecha_operada|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td></tr>
+                    </tbody>
+                </table>
+                {% if operacion.fondos_para_operacion %}
+                <div class="small text-muted mt-3">Fondos para operación: {{ operacion.fondos_para_operacion }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-light"><h2 class="h5 mb-0">Estados</h2></div>
+            <div class="card-body">
+                {% if operacion.estados_detalle %}
+                <div class="list-group list-group-flush">
+                    {% for estado in operacion.estados_detalle %}
+                    <div class="list-group-item px-0">
+                        <div class="fw-semibold">{{ estado.detalle|default:"Sin detalle" }}</div>
+                        <div class="small text-muted">{{ estado.fecha|default:"Sin fecha" }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted">Sin estados detallados.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-light"><h2 class="h5 mb-0">Fills</h2></div>
+            <div class="card-body">
+                {% if operacion.operaciones_detalle %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Fecha</th><th class="text-end">Cantidad</th><th class="text-end">Precio</th></tr></thead>
+                        <tbody>
+                            {% for item in operacion.operaciones_detalle %}
+                            <tr>
+                                <td>{{ item.fecha|default:"-" }}</td>
+                                <td class="text-end">{{ item.cantidad|default:"-" }}</td>
+                                <td class="text-end">{{ item.precio|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted">Sin fills detallados.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-light"><h2 class="h5 mb-0">Aranceles</h2></div>
+            <div class="card-body">
+                {% if operacion.aranceles_detalle %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Tipo</th><th class="text-end">Neto</th><th class="text-end">IVA</th></tr></thead>
+                        <tbody>
+                            {% for item in operacion.aranceles_detalle %}
+                            <tr>
+                                <td>{{ item.tipo|default:"-" }}</td>
+                                <td class="text-end">{{ item.neto|default:"-" }}</td>
+                                <td class="text-end">{{ item.iva|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted">Sin aranceles detallados.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
