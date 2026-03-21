@@ -4,6 +4,13 @@
 
 Explicar cómo entra la data al sistema, cómo se persiste y qué superficies dependen del pipeline operativo.
 
+Complemento recomendado:
+
+- `docs/iol_endpoint_usage_map.md`
+  - explica endpoint por endpoint de IOL
+  - detalla donde se usa cada uno
+  - ayuda a detectar subaprovechamiento del contrato
+
 ## Inputs
 
 Fuentes principales:
@@ -12,6 +19,9 @@ Fuentes principales:
   - estado de cuenta
   - portafolio
   - operaciones
+  - metadata de titulos y FCI
+  - cotizacion puntual y cotizacion detalle
+  - serie historica por simbolo
 - Alpha Vantage
   - benchmarks históricos
 - BCRA
@@ -45,6 +55,14 @@ IOL API
 IOL API
   -> IOLSyncService.sync_operaciones()
   -> OperacionIOL
+
+IOL API
+  -> IOLHistoricalPriceService.sync_symbol_history()
+  -> IOLHistoricalPriceSnapshot
+
+IOL API
+  -> IOLHistoricalPriceService.resolve_symbol_history_support()
+  -> metadata de titulo / FCI / market snapshot puntual
 
 sync_all()
   -> PortfolioSnapshotService.generate_daily_snapshot()
@@ -106,6 +124,7 @@ Salidas operativas:
 - readiness para covarianza
 - estado de benchmarks
 - estado de macro local
+- market snapshot puntual para validacion operativa en `Ops`
 
 ## Superficies donde impacta
 
@@ -131,6 +150,7 @@ Salidas operativas:
 - `Ops`
   - observabilidad del pipeline
   - acciones staff
+  - validacion puntual de market snapshot IOL
 
 ## Cómo consumen los selectors
 
@@ -153,6 +173,7 @@ Estado actual:
 - el pipeline patrimonial funciona extremo a extremo
 - benchmarks y macro local tienen sync propio
 - `Ops` ya muestra un resumen unificado del pipeline
+- `Ops` tambien puede validar market snapshot puntual del portfolio actual
 
 Brechas:
 

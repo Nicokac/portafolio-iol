@@ -96,6 +96,8 @@ Drill-downs hoy visibles:
 Ver tambien:
 
 - `docs/architecture_diagram.md`
+- `docs/data_pipeline.md`
+- `docs/iol_endpoint_usage_map.md`
 - `docs/portfolio_analytics_v2_spec.md`
 - `docs/analytics_v2_feature_exposure_checklist.md`
 
@@ -141,6 +143,7 @@ Acciones manuales visibles para `staff`:
 - `Generar Snapshot`
 - `Sincronizar benchmarks`
 - `Sincronizar macro local`
+- `Refrescar market snapshot IOL`
 
 Flujo practico:
 
@@ -156,6 +159,10 @@ Chequeo operativo recomendado en `Ops` cuando falte contexto macro local:
 2. revisar `Series macro criticas para decision`
 3. ejecutar `Sincronizar macro local`
 4. recien despues volver a `Resumen`, `Estrategia` o `Planeacion`
+
+Si la duda es especificamente `que endpoint de IOL usa cada parte de la app y cuanto se aprovecha hoy`, la referencia principal ahora es:
+
+- `docs/iol_endpoint_usage_map.md`
 
 Si hay migraciones pendientes, aplicarlas antes de usar acciones manuales o modulos nuevos:
 

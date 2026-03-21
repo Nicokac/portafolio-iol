@@ -42,6 +42,13 @@ Tambien expone un bloque de `Estado de fuentes externas` para health checks oper
 
 Ademas, `Ops` ahora destaca un bloque de `Series macro criticas para decision`.
 
+Tambien expone un bloque de `Market snapshot puntual del portfolio` que reutiliza:
+
+- `IOLHistoricalPriceService.get_current_portfolio_market_snapshot_rows()`
+- `IOLAPIClient.get_titulo_market_snapshot()`
+  - prioriza `CotizacionDetalle`
+  - usa `Cotizacion` como fallback
+
 Series incluidas:
 
 - `usdars_oficial`
@@ -91,6 +98,21 @@ Lectura rapida recomendada:
 2. ejecutar `Sincronizar macro local`
 3. verificar si la serie quedo en `Sin configurar`, `Stale` o `Sin datos`
 4. recien despues revisar `Resumen`, `Estrategia` o `Planeacion`
+
+Para validacion puntual de instrumentos IOL:
+
+1. revisar `Market snapshot puntual del portfolio`
+2. usar `Refrescar market snapshot IOL`
+3. verificar:
+   - precio
+   - hora
+   - cantidad de operaciones
+   - puntas visibles
+   - spread
+4. si falta snapshot, distinguir entre:
+   - `Sin snapshot`
+   - `No elegible`
+   - `Cotizacion fallback`
 
 ## Limitaciones
 
