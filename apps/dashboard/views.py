@@ -47,6 +47,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_history,
     get_macro_local_context,
     get_market_snapshot_feature_context,
+    get_portfolio_parking_feature_context,
     get_portafolio_enriquecido_actual,
     get_factor_exposure_detail,
     get_risk_contribution_detail,
@@ -78,6 +79,7 @@ class DashboardContextMixin:
         context['macro_local'] = get_macro_local_context(context['kpis'].get('total_iol'))
         context['portafolio'] = get_portafolio_enriquecido_actual()
         context['market_snapshot_feature'] = get_market_snapshot_feature_context()
+        context['parking_feature'] = get_portfolio_parking_feature_context()
 
         def to_json(data):
             return json.dumps(data, default=lambda o: float(o) if isinstance(o, Decimal) else str(o))

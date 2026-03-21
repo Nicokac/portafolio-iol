@@ -156,6 +156,10 @@
     {% include 'dashboard/operations_flow_panel.html' with title='Actividad operativa reciente' subtitle='Flujos ejecutados que ya impactan lectura de aportes, dividendos y movimiento real del mes.' row_limit=':3' panel_mode='compact' %}
 </section>
 
+<section class="mb-4">
+    {% include 'dashboard/parking_panel.html' with title='Parking visible en cartera' subtitle='Chequeo rapido de posiciones que hoy siguen mostrando restriccion visible de parking en IOL.' row_limit=':3' panel_mode='compact' %}
+</section>
+
 <section id="resumen-macro" class="mb-3">
     <div class="border-start border-4 border-warning ps-3 mb-3">
         <h2 class="mb-1">Contexto macro local</h2>

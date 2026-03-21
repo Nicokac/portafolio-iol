@@ -31,6 +31,7 @@ from apps.dashboard.selectors import (
     get_incremental_portfolio_simulation_comparison,
     get_liquidity_contract_summary,
     get_market_snapshot_feature_context,
+    get_portfolio_parking_feature_context,
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
@@ -111,6 +112,23 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
 
 
 class TestDashboardSelectors(TestCase):
+    def test_get_portfolio_parking_feature_context_summarizes_visible_parking(self):
+        fecha = timezone.now()
+        make_activo(fecha, "AL30", Decimal("1000"), tipo="TitulosPublicos", parking={"cantidad": 5, "fecha": "2026-03-25"})
+        make_activo(fecha, "MELI", Decimal("5000"), tipo="CEDEARS", parking=None)
+        make_activo(fecha, "ADBAICA", Decimal("3000"), tipo="FondoComundeInversion", parking={"detalle": "Bloqueado"})
+
+        context = get_portfolio_parking_feature_context(top_limit=5)
+
+        assert context["has_visible_parking"] is True
+        assert context["summary"]["total_positions"] == 3
+        assert context["summary"]["parking_count"] == 2
+        assert context["summary"]["parking_pct"] == Decimal("66.67")
+        assert context["summary"]["parking_value_total"] == Decimal("4000")
+        assert len(context["top_rows"]) == 2
+        assert context["top_rows"][0]["activo"].simbolo == "ADBAICA"
+        assert context["alerts"][0]["tone"] == "warning"
+
     def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
         fecha = timezone.now()
         make_activo(fecha, "MELI", Decimal("900000"), tipo="CEDEARS", mercado="BCBA")

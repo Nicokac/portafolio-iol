@@ -10,6 +10,7 @@ from django.db.models import Max, Sum
 from django.utils import timezone
 
 from apps.parametros.models import ParametroActivo
+from apps.portafolio_iol.selectors import build_portafolio_row
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
@@ -45,6 +46,12 @@ from apps.core.services.analytics_v2 import (
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
+
+
+def _safe_percentage(numerator: int, denominator: int) -> Decimal:
+    if denominator <= 0:
+        return Decimal("0")
+    return (Decimal(numerator) / Decimal(denominator) * Decimal("100")).quantize(Decimal("0.01"))
 
 
 def _get_data_stamp() -> str:
@@ -206,6 +213,42 @@ def get_market_snapshot_feature_context(*, top_limit: int = 5) -> Dict:
         "wide_spread_count": len(wide_spread_rows),
         "alerts": alerts[:3],
     }
+
+
+def get_portfolio_parking_feature_context(*, top_limit: int = 5) -> Dict:
+    def build():
+        portafolio = get_portafolio_enriquecido_actual()
+        relevant_items = portafolio["inversion"] + portafolio["fci_cash_management"]
+        rows = [build_portafolio_row(item["activo"]) for item in relevant_items]
+        total_positions = len(rows)
+        parking_rows = [row for row in rows if row["has_parking"]]
+        parking_count = len(parking_rows)
+        parking_value_total = sum((row["valorizado"] for row in parking_rows), Decimal("0"))
+        top_rows = sorted(parking_rows, key=lambda row: row["valorizado"], reverse=True)[: max(int(top_limit or 0), 1)]
+
+        alerts = []
+        if parking_count > 0:
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Parking visible en posiciones actuales",
+                    "message": f"{parking_count} posicion(es) del portafolio invertido siguen mostrando parking visible en IOL.",
+                }
+            )
+
+        return {
+            "has_visible_parking": parking_count > 0,
+            "summary": {
+                "total_positions": total_positions,
+                "parking_count": parking_count,
+                "parking_pct": _safe_percentage(parking_count, total_positions),
+                "parking_value_total": parking_value_total,
+            },
+            "top_rows": top_rows,
+            "alerts": alerts,
+        }
+
+    return _get_cached_selector_result("portfolio_parking_feature", build)
 
 
 def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:

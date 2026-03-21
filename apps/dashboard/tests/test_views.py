@@ -107,6 +107,38 @@ class TestDashboardView:
         assert 'Fallbacks' not in body
         assert '<th class="text-end">Spread</th>' not in body
 
+    def test_resumen_renders_parking_panel(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_portfolio_parking_feature_context',
+            lambda: {
+                'has_visible_parking': True,
+                'summary': {
+                    'total_positions': 3,
+                    'parking_count': 1,
+                    'parking_pct': 33.33,
+                    'parking_value_total': 1500,
+                },
+                'alerts': [
+                    {'tone': 'warning', 'title': 'Parking visible en posiciones actuales', 'message': '1 posicion con parking visible.'},
+                ],
+                'top_rows': [
+                    {
+                        'activo': type('Activo', (), {'simbolo': 'AL30', 'descripcion': 'Bono AL30'})(),
+                        'parking_tone': 'warning',
+                        'parking_label': 'Con parking',
+                        'parking_detail_label': 'Cantidad 5 · Fecha 2026-03-25',
+                        'disponible_inmediato': 5,
+                        'valorizado': 1500,
+                    }
+                ],
+            },
+        )
+        response = auth_client.get(reverse('dashboard:resumen'))
+        body = response.content.decode()
+        assert 'Parking visible en cartera' in body
+        assert 'Con parking' in body
+        assert 'Cantidad 5' in body
+
     def test_analisis_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:analisis')
         response = auth_client.get(url)
@@ -527,6 +559,26 @@ class TestDashboardView:
         assert 'Sin posiciones relevantes para market snapshot' in body
         assert 'Fallbacks' not in body
         assert 'Modelo de riesgo:' in body
+
+    def test_planeacion_renders_parking_panel(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_portfolio_parking_feature_context',
+            lambda: {
+                'has_visible_parking': False,
+                'summary': {
+                    'total_positions': 2,
+                    'parking_count': 0,
+                    'parking_pct': 0,
+                    'parking_value_total': 0,
+                },
+                'alerts': [],
+                'top_rows': [],
+            },
+        )
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+        assert 'Parking visible antes de decidir' in body
+        assert 'Sin parking visible en el portafolio actual' in body
 
     def test_planeacion_shows_monthly_allocation_proposal(self, auth_client, monkeypatch):
         monkeypatch.setattr(

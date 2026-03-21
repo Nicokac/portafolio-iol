@@ -1,0 +1,82 @@
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1">{{ title|default:'Parking IOL visible' }}</h2>
+                <p class="text-muted small mb-0">{{ subtitle|default:'Lectura tactica de posiciones con restriccion visible de parking dentro del portafolio invertido actual.' }}</p>
+            </div>
+            {% if parking_feature.summary.total_positions %}
+            <span class="badge text-bg-light border">{{ parking_feature.summary.parking_count }} / {{ parking_feature.summary.total_positions }} con parking</span>
+            {% endif %}
+        </div>
+
+        {% if parking_feature.alerts %}
+            {% for alert in parking_feature.alerts %}
+            <div class="alert alert-{{ alert.tone }} py-2 mb-3">
+                <div class="fw-semibold">{{ alert.title }}</div>
+                <div class="small mb-0">{{ alert.message }}</div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Cobertura con parking</div>
+                    <div class="h4 mb-1">{{ parking_feature.summary.parking_pct }}%</div>
+                    <div class="small text-muted">{{ parking_feature.summary.parking_count }} posicion(es) con parking visible.</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Valor afectado</div>
+                    <div class="h5 mb-1">{{ parking_feature.summary.parking_value_total|currency:2 }}</div>
+                    <div class="small text-muted">Valorizado del subset con parking.</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Posiciones monitoreadas</div>
+                    <div class="h4 mb-1">{{ parking_feature.summary.total_positions }}</div>
+                    <div class="small text-muted">Solo portafolio invertido y FCI cash management.</div>
+                </div>
+            </div>
+        </div>
+
+        {% if parking_feature.top_rows %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Simbolo</th>
+                        <th>Detalle</th>
+                        {% if panel_mode != 'compact' %}<th class="text-end">Disponible inmediato</th>{% endif %}
+                        <th class="text-end">Valorizado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in parking_feature.top_rows|slice:row_limit|default:':3' %}
+                    <tr>
+                        <td>
+                            <div class="fw-semibold">{{ row.activo.simbolo }}</div>
+                            <div class="small text-muted">{{ row.activo.descripcion }}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ row.parking_tone }}">{{ row.parking_label }}</span>
+                            <div class="small text-muted mt-1">{{ row.parking_detail_label }}</div>
+                        </td>
+                        {% if panel_mode != 'compact' %}<td class="text-end">{{ row.disponible_inmediato|currency:2 }}</td>{% endif %}
+                        <td class="text-end">{{ row.valorizado|currency:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-3">
+            <div class="empty-state-title">Sin parking visible en el portafolio actual</div>
+            <div class="empty-state-description mb-0">No hay posiciones invertidas que hoy expongan restricciones de parking desde IOL.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>

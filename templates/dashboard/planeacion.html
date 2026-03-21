@@ -238,6 +238,9 @@
             {% include 'dashboard/operations_flow_panel.html' with title='Flujo operativo del mes' subtitle='Contexto corto para no decidir el aporte aislado del cash ya desplegado, dividendos cobrados o suscripciones FCI recientes.' row_limit=':3' panel_mode='compact' %}
         </section>
         <section class="mb-4">
+            {% include 'dashboard/parking_panel.html' with title='Parking visible antes de decidir' subtitle='Si parte del portafolio invertido sigue con parking visible, conviene leerlo antes de reforzar esa misma zona de exposición.' row_limit=':3' panel_mode='compact' %}
+        </section>
+        <section class="mb-4">
             {% with decision=decision_engine_summary %}
             <div class="card border-primary shadow-sm">
                 <div class="card-header bg-primary-subtle border-bottom-0">
