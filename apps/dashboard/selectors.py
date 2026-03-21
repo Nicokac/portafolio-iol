@@ -2900,6 +2900,7 @@ def get_decision_engine_summary(
             preferred_proposal=preferred_proposal,
             expected_impact=expected_impact,
             parking_signal=parking_signal,
+            market_history_signal=market_history_signal,
         )
         confidence = _compute_decision_confidence(
             macro_state=macro_state,
@@ -2907,6 +2908,7 @@ def get_decision_engine_summary(
             preferred_proposal=preferred_proposal,
             expected_impact=expected_impact,
             parking_signal=parking_signal,
+            market_history_signal=market_history_signal,
         )
         explanation = _build_decision_explanation(
             macro_state=macro_state,
@@ -4237,6 +4239,7 @@ def _compute_decision_score(
     preferred_proposal: Dict | None,
     expected_impact: Dict,
     parking_signal: Dict | None = None,
+    market_history_signal: Dict | None = None,
 ) -> int:
     recommendation_score = 0
     if recommendation.get("has_recommendation"):
@@ -4257,6 +4260,8 @@ def _compute_decision_score(
     )
     if (parking_signal or {}).get("has_signal"):
         total -= 5
+    if (market_history_signal or {}).get("has_signal"):
+        total -= 4
     return max(0, min(100, total))
 
 
@@ -4433,6 +4438,7 @@ def _compute_decision_confidence(
     preferred_proposal: Dict | None,
     expected_impact: Dict,
     parking_signal: Dict | None = None,
+    market_history_signal: Dict | None = None,
 ) -> str:
     if preferred_proposal is None:
         return "Baja"
@@ -4449,7 +4455,13 @@ def _compute_decision_confidence(
     else:
         confidence = "Media"
 
-    if (parking_signal or {}).get("has_signal") or (preferred_proposal or {}).get("was_reprioritized_by_parking") or (preferred_proposal or {}).get("is_conditioned_by_parking"):
+    if (
+        (parking_signal or {}).get("has_signal")
+        or (preferred_proposal or {}).get("was_reprioritized_by_parking")
+        or (preferred_proposal or {}).get("is_conditioned_by_parking")
+        or (market_history_signal or {}).get("has_signal")
+        or (preferred_proposal or {}).get("is_conditioned_by_market_history")
+    ):
         if confidence == "Alta":
             return "Media"
         return "Baja"

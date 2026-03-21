@@ -1277,10 +1277,10 @@ class TestDashboardView:
                         'was_reprioritized_by_parking': False,
                     },
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
-                    'score': 61,
-                    'confidence': 'Media',
+                    'score': 57,
+                    'confidence': 'Baja',
                     'explanation': ['Revisar friccion operativa reciente antes de desplegar mas capital.'],
-                    'tracking_payload': {'purchase_plan': [], 'score': 61, 'confidence': 'Media'},
+                    'tracking_payload': {'purchase_plan': [], 'score': 57, 'confidence': 'Baja'},
                 },
                 'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'headline': ''},
                 'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
@@ -1299,6 +1299,8 @@ class TestDashboardView:
         assert 'La liquidez reciente de este bloque viene debil' in body
         assert 'Condicionada por liquidez reciente' in body
         assert 'Plan MELI' in body
+        assert 'Score: 57/100' in body
+        assert 'Confianza: Baja' in body
 
     def test_planeacion_history_supports_old_snapshots_without_decision_fields(self, auth_client, monkeypatch):
         monkeypatch.setattr(
