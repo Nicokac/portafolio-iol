@@ -1,8 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.http import HttpResponse
 from django.http import Http404
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.views.generic import DetailView, ListView
+from django.views import View
 
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.security_audit import record_sensitive_action
@@ -35,6 +39,45 @@ class OperacionesListView(LoginRequiredMixin, ListView):
         context['operations_summary'] = list_context['summary']
         context['operation_filters'] = filter_context
         return context
+
+
+class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    raise_exception = True
+
+    def test_func(self):
+        return bool(self.request.user and self.request.user.is_staff)
+
+
+class SyncOperacionesFilteredView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        normalized_filters = normalize_operation_filters(request.POST)
+        sync_filters = {
+            key: value
+            for key, value in normalized_filters.items()
+            if (
+                (key == 'estado' and value != 'todas')
+                or (key == 'pais' and value)
+                or (key not in {'estado', 'pais'} and value)
+            )
+        }
+        success = IOLSyncService().sync_operaciones(sync_filters or None)
+        record_sensitive_action(
+            request,
+            action='sync_operaciones_filtered',
+            status='success' if success else 'failed',
+            details={'filters': normalized_filters},
+        )
+        if success:
+            messages.success(request, 'Operaciones sincronizadas desde IOL con los filtros solicitados.')
+        else:
+            messages.warning(request, 'No fue posible sincronizar operaciones desde IOL con los filtros solicitados.')
+        redirect_url = reverse('operaciones_iol:operaciones_list')
+        filter_context = build_operation_filter_context(normalized_filters)
+        if filter_context['query_string']:
+            redirect_url = f"{redirect_url}?{filter_context['query_string']}"
+        return redirect(redirect_url)
 
 
 class OperacionDetailView(LoginRequiredMixin, DetailView):

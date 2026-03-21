@@ -24,6 +24,7 @@ _DEFAULT_FILTERS = {
     'estado': 'todas',
     'fecha_desde': '',
     'fecha_hasta': '',
+    'pais': 'argentina',
 }
 
 
@@ -76,9 +77,12 @@ def normalize_operation_filters(params) -> dict:
         'estado': pick('estado', 'filtro.estado') or 'todas',
         'fecha_desde': pick('fecha_desde', 'fechaDesde', 'filtro.fechaDesde'),
         'fecha_hasta': pick('fecha_hasta', 'fechaHasta', 'filtro.fechaHasta'),
+        'pais': pick('pais', 'filtro.pais') or 'argentina',
     }
     if normalized['estado'] not in {'todas', 'terminada', 'iniciada', 'pendiente', 'cancelada', 'rechazada'}:
         normalized['estado'] = 'todas'
+    if normalized['pais'] not in {'argentina', 'estados_Unidos'}:
+        normalized['pais'] = 'argentina'
     return normalized
 
 
@@ -105,7 +109,15 @@ def apply_operation_filters(queryset: QuerySet[OperacionIOL], filters: dict) -> 
 def build_operation_filter_context(filters: dict) -> dict:
     clean_filters = {**_DEFAULT_FILTERS, **(filters or {})}
     query_string = urlencode({key: value for key, value in clean_filters.items() if value})
-    active_count = sum(1 for key, value in clean_filters.items() if key != 'estado' and value) + (0 if clean_filters['estado'] == 'todas' else 1)
+    active_count = sum(
+        1
+        for key, value in clean_filters.items()
+        if (
+            (key == 'estado' and value != 'todas')
+            or (key == 'pais' and value != 'argentina')
+            or (key not in {'estado', 'pais'} and value)
+        )
+    )
     return {
         'values': clean_filters,
         'active_count': active_count,
@@ -118,6 +130,10 @@ def build_operation_filter_context(filters: dict) -> dict:
             ('iniciada', 'Iniciadas'),
             ('cancelada', 'Canceladas'),
             ('rechazada', 'Rechazadas'),
+        ],
+        'pais_options': [
+            ('argentina', 'Argentina'),
+            ('estados_Unidos', 'Estados Unidos'),
         ],
     }
 

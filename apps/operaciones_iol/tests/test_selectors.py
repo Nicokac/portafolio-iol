@@ -79,6 +79,7 @@ def test_normalize_operation_filters_accepts_internal_and_explicit_keys():
             "estado": "terminada",
             "fechaDesde": "2026-03-01",
             "fecha_hasta": "2026-03-21",
+            "filtro.pais": "estados_Unidos",
         }
     )
 
@@ -87,6 +88,7 @@ def test_normalize_operation_filters_accepts_internal_and_explicit_keys():
         "estado": "terminada",
         "fecha_desde": "2026-03-01",
         "fecha_hasta": "2026-03-21",
+        "pais": "estados_Unidos",
     }
 
 
@@ -130,10 +132,12 @@ def test_build_operation_filter_context_tracks_active_filters():
             "estado": "terminada",
             "fecha_desde": "",
             "fecha_hasta": "2026-03-21",
+            "pais": "estados_Unidos",
         }
     )
 
     assert context["has_active_filters"] is True
-    assert context["active_count"] == 3
+    assert context["active_count"] == 4
     assert "numero=167788363" in context["query_string"]
     assert "estado=terminada" in context["query_string"]
+    assert "pais=estados_Unidos" in context["query_string"]

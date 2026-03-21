@@ -49,6 +49,7 @@ def test_operaciones_list_view_renders_template_and_context(client):
     body = response.content.decode()
     assert "Hoja de operaciones" in body
     assert "Filtros analiticos" in body
+    assert "Pais IOL" in body
     assert "Detalle IOL" in body
     assert "Ejecucion" in body
     assert "Enriquecido" in body
@@ -88,17 +89,68 @@ def test_operaciones_list_view_applies_filters_from_query_params(client):
             "estado": "terminada",
             "fecha_desde": (timezone.now() - timezone.timedelta(days=2)).date().isoformat(),
             "fecha_hasta": timezone.now().date().isoformat(),
+            "pais": "estados_Unidos",
         },
     )
 
     assert response.status_code == 200
     assert response.context["operaciones"].count() == 1
     assert response.context["operaciones"].first().numero == "167788363"
-    assert response.context["operation_filters"]["active_count"] == 4
+    assert response.context["operation_filters"]["active_count"] == 5
     body = response.content.decode()
-    assert "4 filtros activos" in body
+    assert "5 filtros activos" in body
     assert "167788363" in body
     assert "167700000" not in body
+
+
+@pytest.mark.django_db
+def test_sync_operaciones_filtered_requires_staff(client):
+    user = User.objects.create_user(username="operaciones-non-staff", password="testpass123")
+    client.force_login(user)
+    response = client.post(reverse("operaciones_iol:sync_operaciones_filtered"))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_sync_operaciones_filtered_calls_service_and_audits(client, monkeypatch):
+    staff = User.objects.create_user(username="staff-operaciones", password="testpass123", is_staff=True)
+    client.force_login(staff)
+
+    captured = {}
+
+    class DummyService:
+        def sync_operaciones(self, params=None):
+            captured["params"] = params
+            return True
+
+    monkeypatch.setattr("apps.operaciones_iol.views.IOLSyncService", lambda: DummyService())
+
+    response = client.post(
+        reverse("operaciones_iol:sync_operaciones_filtered"),
+        {
+            "numero": "167788363",
+            "estado": "terminada",
+            "fecha_desde": "2026-03-01",
+            "fecha_hasta": "2026-03-21",
+            "pais": "estados_Unidos",
+        },
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert captured["params"] == {
+        "numero": "167788363",
+        "estado": "terminada",
+        "fecha_desde": "2026-03-01",
+        "fecha_hasta": "2026-03-21",
+        "pais": "estados_Unidos",
+    }
+    messages = list(get_messages(response.wsgi_request))
+    assert any("Operaciones sincronizadas desde IOL" in str(message) for message in messages)
+    audit = SensitiveActionAudit.objects.get(action="sync_operaciones_filtered")
+    assert audit.status == "success"
+    assert audit.user.username == "staff-operaciones"
+    assert audit.details["filters"]["pais"] == "estados_Unidos"
 
 
 @pytest.mark.django_db
