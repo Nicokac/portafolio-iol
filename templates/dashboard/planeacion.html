@@ -969,6 +969,23 @@
                                                     {% endif %}
                                                 </div>
                                                 {% endif %}
+                                                {% if item.baseline_trace.has_trace %}
+                                                <div class="mt-2 border-top pt-2">
+                                                    {% for badge in item.baseline_trace.badges %}
+                                                    <span class="badge bg-{% if badge.tone == 'success' %}success{% elif badge.tone == 'danger' %}danger{% elif badge.tone == 'warning' %}warning text-dark{% elif badge.tone == 'info' %}info text-dark{% elif badge.tone == 'primary' %}primary{% else %}secondary{% endif %} me-1">{{ badge.label }}</span>
+                                                    {% endfor %}
+                                                    {% if item.baseline_trace.headline %}
+                                                    <div class="small text-muted mt-2">{{ item.baseline_trace.headline }}</div>
+                                                    {% endif %}
+                                                    {% if item.baseline_trace.metrics %}
+                                                    <ul class="small mb-0 mt-2 ps-3 text-muted">
+                                                        {% for metric in item.baseline_trace.metrics %}
+                                                        <li>{{ metric }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
                                                 {% if item.decision_explanation %}
                                                 <details class="mt-2">
                                                     <summary class="small text-muted">Por qué se tomó esta decisión</summary>

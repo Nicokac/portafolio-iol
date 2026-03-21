@@ -2532,6 +2532,8 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
     normalized_filter = _normalize_incremental_history_decision_filter(decision_status)
     raw_items = service.list_recent(user=user, limit=limit, decision_status=normalized_filter)
     counts = service.get_decision_counts(user=user)
+    baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
+    baseline_item = baseline_payload.get("item")
     items = []
     for item in raw_items:
         reapply = _build_incremental_snapshot_reapply_payload(item)
@@ -2541,6 +2543,11 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
         )
         enriched["is_backlog_front_label"] = "Al frente del backlog" if item.get("is_backlog_front") else ""
         enriched["tactical_trace"] = _build_incremental_tactical_trace(item)
+        enriched["baseline_trace"] = _build_incremental_history_baseline_trace(
+            baseline_item,
+            item,
+            tactical_trace=enriched["tactical_trace"],
+        )
         enriched.update(reapply)
         items.append(enriched)
     return {
@@ -2600,9 +2607,100 @@ def _build_incremental_tactical_trace(item: Dict | None) -> Dict:
     }
 
 
+def _build_incremental_history_baseline_trace(
+    baseline_item: Dict | None,
+    current_item: Dict | None,
+    *,
+    tactical_trace: Dict | None = None,
+) -> Dict:
+    current_item = current_item or {}
+    baseline_item = baseline_item or {}
+    tactical_trace = tactical_trace or {}
+
+    current_id = current_item.get("id")
+    baseline_id = baseline_item.get("id")
+    if not baseline_item or (current_id is not None and baseline_id is not None and current_id == baseline_id):
+        return {
+            "has_trace": False,
+            "headline": "",
+            "badges": [],
+            "metrics": [],
+        }
+
+    comparison = _build_incremental_snapshot_comparison(baseline_item, current_item)
+    winner = comparison.get("winner")
+    badges = []
+    metrics = []
+
+    expected_metric = next(
+        (metric for metric in comparison.get("metrics", []) if metric.get("key") == "expected_return_change"),
+        None,
+    )
+    fragility_metric = next(
+        (metric for metric in comparison.get("metrics", []) if metric.get("key") == "fragility_change"),
+        None,
+    )
+    scenario_metric = next(
+        (metric for metric in comparison.get("metrics", []) if metric.get("key") == "scenario_loss_change"),
+        None,
+    )
+
+    if winner == "current":
+        badges.append({"label": "Mejor que baseline", "tone": "success"})
+    elif winner == "saved":
+        badges.append({"label": "Peor que baseline", "tone": "danger"})
+    elif winner == "tie":
+        badges.append({"label": "Empata baseline", "tone": "secondary"})
+
+    if expected_metric and expected_metric.get("direction") == "favorable":
+        badges.append({"label": "Mejor retorno", "tone": "success"})
+        metrics.append("Mejora retorno esperado vs baseline.")
+    elif expected_metric and expected_metric.get("direction") == "unfavorable":
+        badges.append({"label": "Menor retorno", "tone": "warning"})
+        metrics.append("Pierde retorno esperado vs baseline.")
+
+    if fragility_metric and fragility_metric.get("direction") == "favorable":
+        badges.append({"label": "Menor fragilidad", "tone": "info"})
+        metrics.append("Reduce fragilidad vs baseline.")
+    elif fragility_metric and fragility_metric.get("direction") == "unfavorable":
+        metrics.append("Aumenta fragilidad vs baseline.")
+
+    if scenario_metric and scenario_metric.get("direction") == "favorable":
+        metrics.append("Mejora peor escenario vs baseline.")
+    elif scenario_metric and scenario_metric.get("direction") == "unfavorable":
+        metrics.append("Debilita peor escenario vs baseline.")
+
+    if tactical_trace.get("has_trace"):
+        badges.append({"label": "Mas ejecutable tacticamente", "tone": "primary"})
+        metrics.append("La propuesta incorpora gobierno tactico explicito frente a friccion de ejecucion.")
+
+    if winner == "current" and expected_metric and expected_metric.get("direction") == "favorable":
+        headline = "Supera al baseline en rentabilidad esperada y balance global."
+    elif winner == "current":
+        headline = "Supera al baseline en score comparativo."
+    elif winner == "saved":
+        headline = "Queda por detras del baseline actual."
+    elif tactical_trace.get("has_trace"):
+        headline = "No mejora claramente al baseline, pero deja una lectura tactica mas ejecutable."
+    else:
+        headline = ""
+
+    return {
+        "has_trace": bool(headline or badges or metrics),
+        "headline": headline,
+        "badges": badges[:4],
+        "metrics": metrics[:4],
+    }
+
+
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
     """Retorna el snapshot incremental activo como baseline de seguimiento del usuario."""
 
+    if user is None or not getattr(user, "is_authenticated", False) or not getattr(user, "pk", None):
+        return {
+            "item": None,
+            "has_baseline": False,
+        }
     item = IncrementalProposalHistoryService().get_tracking_baseline(user=user)
     return {
         "item": item,

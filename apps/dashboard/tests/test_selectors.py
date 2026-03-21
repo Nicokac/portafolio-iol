@@ -1019,6 +1019,62 @@ class TestDashboardSelectors(TestCase):
         assert trace["headline"] == "Se promovio una alternativa mas limpia por liquidez reciente."
         assert [badge["label"] for badge in trace["badges"]] == ["Liquidez reciente", "Alternativa promovida"]
 
+    def test_get_incremental_proposal_history_builds_baseline_trace_for_saved_snapshot(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with (
+            patch(
+                "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+                return_value=[
+                    {
+                        "id": 2,
+                        "proposal_label": "Plan SPY",
+                        "comparison_score": 4.8,
+                        "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                        "simulation_delta": {
+                            "expected_return_change": 0.6,
+                            "fragility_change": -1.5,
+                            "scenario_loss_change": 0.4,
+                        },
+                        "decision_explanation": [
+                            "La liquidez reciente observada por IOL pide revisar la ejecucion antes de comprar.",
+                        ],
+                        "manual_decision_status": "pending",
+                        "is_backlog_front": False,
+                        "is_tracking_baseline": False,
+                    }
+                ],
+            ),
+            patch(
+                "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+                return_value={"total": 1, "pending": 1, "accepted": 0, "deferred": 0, "rejected": 0},
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                return_value={
+                    "item": {
+                        "id": 1,
+                        "proposal_label": "Plan KO",
+                        "comparison_score": 4.0,
+                        "purchase_plan": [{"symbol": "KO", "amount": 600000}],
+                        "simulation_delta": {
+                            "expected_return_change": 0.3,
+                            "fragility_change": -1.0,
+                            "scenario_loss_change": 0.2,
+                        },
+                    },
+                    "has_baseline": True,
+                },
+            ),
+        ):
+            history = get_incremental_proposal_history(user=DummyUser(), limit=5, decision_status="all")
+
+        baseline_trace = history["items"][0]["baseline_trace"]
+        assert baseline_trace["has_trace"] is True
+        assert baseline_trace["headline"] == "Supera al baseline en rentabilidad esperada y balance global."
+        assert [badge["label"] for badge in baseline_trace["badges"][:2]] == ["Mejor que baseline", "Mejor retorno"]
+
     def test_get_decision_engine_summary_degrades_score_and_confidence_when_market_history_is_visible(self):
         class DummyUser:
             pk = 15
@@ -2771,6 +2827,7 @@ class TestDashboardSelectors(TestCase):
     def test_get_incremental_proposal_tracking_baseline_wraps_single_item(self):
         class DummyUser:
             is_authenticated = True
+            pk = 1
 
         with patch(
             "apps.dashboard.selectors.IncrementalProposalHistoryService.get_tracking_baseline",

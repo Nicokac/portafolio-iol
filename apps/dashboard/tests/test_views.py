@@ -1386,6 +1386,22 @@ class TestDashboardView:
                             ],
                             'reasons': ['La propuesta preferida fue reemplazada por una alternativa con liquidez reciente mas limpia frente a Plan MELI.'],
                         },
+                        'baseline_trace': {
+                            'has_trace': True,
+                            'headline': 'Supera al baseline en rentabilidad esperada y balance global.',
+                            'badges': [
+                                {'label': 'Mejor que baseline', 'tone': 'success'},
+                                {'label': 'Mejor retorno', 'tone': 'success'},
+                                {'label': 'Menor fragilidad', 'tone': 'info'},
+                                {'label': 'Mas ejecutable tacticamente', 'tone': 'primary'},
+                            ],
+                            'metrics': [
+                                'Mejora retorno esperado vs baseline.',
+                                'Reduce fragilidad vs baseline.',
+                                'Mejora peor escenario vs baseline.',
+                                'La propuesta incorpora gobierno tactico explicito frente a friccion de ejecucion.',
+                            ],
+                        },
                         'is_backlog_front': False,
                         'is_tracking_baseline': False,
                         'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000',
@@ -1416,6 +1432,12 @@ class TestDashboardView:
         assert 'Cartera altamente invertida' in body
         assert 'Evaluar reducción de concentración en top posiciones.' in body
         assert 'Por qué se tomó esta decisión' not in body
+        assert 'Se promovio una alternativa mas limpia por liquidez reciente.' in body
+        assert 'Liquidez reciente' in body
+        assert 'Alternativa promovida' in body
+        assert 'Supera al baseline en rentabilidad esperada y balance global.' in body
+        assert 'Mejor que baseline' in body
+        assert 'Mejor retorno' in body
         assert 'Reaplicar en comparador manual' in body
         assert 'Comparador manual de planes incrementales' in body
         assert 'Herramienta secundaria: plan mensual por perfil' in body
