@@ -486,13 +486,7 @@
 
 <div class="row mb-4">
     <div class="col-md-6">
-        <h3>Analytics Mensual</h3>
-        <div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>
-            <tr><td><strong>Compras del Mes</strong></td><td class="text-end text-success">{{ analytics_mensual.compras_mes|currency:0 }}</td></tr>
-            <tr><td><strong>Ventas del Mes</strong></td><td class="text-end text-danger">{{ analytics_mensual.ventas_mes|currency:0 }}</td></tr>
-            <tr><td><strong>Aporte Ejecutado</strong></td><td class="text-end {% if analytics_mensual.aporte_mensual_ejecutado >= 0 %}text-success{% else %}text-danger{% endif %}">{{ analytics_mensual.aporte_mensual_ejecutado|currency:0 }}</td></tr>
-            <tr><td><strong>Aporte Pendiente</strong></td><td class="text-end text-warning">{{ analytics_mensual.aporte_pendiente|currency:0 }}</td></tr>
-        </tbody></table></div></div>
+        {% include 'dashboard/operations_flow_panel.html' with title='Flujos y actividad reciente' subtitle='Lectura operativa del mes: compras, ventas, dividendos, suscripciones FCI y últimas ejecuciones cerradas.' row_limit=':5' panel_mode='detailed' %}
     </div>
     <div class="col-md-6">
         <h3>Calidad de datos (detalle)</h3>

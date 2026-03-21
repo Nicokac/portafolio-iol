@@ -34,7 +34,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
 | `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, dashboard | Alto | `parking` se persiste pero no se consume |
-| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, vistas legacy, observabilidad | Medio/alto | no enriquece automatico con detalle por numero |
+| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, vistas legacy, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | no enriquece automatico con detalle por numero |
 | `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria | Medio | no hay consumo fuerte en UI |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
@@ -96,6 +96,8 @@ Se usa para:
 - listado historico
 - sync de operaciones
 - filtros por numero, estado, fechas y pais
+- flujo operativo mensual en `Resumen`, `Estrategia` y `Planeacion`
+- lectura reciente de compras, ventas, dividendos y suscripciones FCI
 
 Hallazgo operativo importante:
 
@@ -107,8 +109,8 @@ Hallazgo operativo importante:
 
 Conclusion:
 
-- esta bien aprovechado para trazabilidad base
-- falta explotarlo mejor en UI y analitica de flujos
+- ya dejó de ser solo trazabilidad base
+- sigue faltando explotar mejor fills, aranceles y detalle por número en producto
 
 ### 4. `operaciones/{numero}`
 

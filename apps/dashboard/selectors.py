@@ -4,6 +4,7 @@ from decimal import Decimal
 import hashlib
 import json
 from urllib.parse import urlencode
+import unicodedata
 from django.core.cache import cache
 from django.db.models import Max, Sum
 from django.utils import timezone
@@ -971,25 +972,22 @@ def get_riesgo_portafolio() -> Dict[str, float]:
 
 
 def get_analytics_mensual() -> Dict[str, float]:
-    """Calcula métricas de operaciones del mes actual."""
+    """Calcula m?tricas operativas del mes actual a partir de operaciones ejecutadas."""
     from apps.operaciones_iol.models import OperacionIOL
     from apps.parametros.models import ConfiguracionDashboard
     from django.utils import timezone
     from dateutil.relativedelta import relativedelta
 
-    # Calcular fechas del mes actual
     hoy = timezone.now()
     inicio_mes = hoy.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     fin_mes = (inicio_mes + relativedelta(months=1)) - timezone.timedelta(seconds=1)
 
-    # Filtrar operaciones del mes ejecutadas (usar fecha_operada si existe, sino fecha_orden)
     operaciones_mes = OperacionIOL.objects.filter(
         fecha_operada__gte=inicio_mes,
         fecha_operada__lte=fin_mes,
         estado__in=['terminada', 'Terminada', 'TERMINADA']
     )
 
-    # Si no hay operaciones con fecha_operada, intentar con fecha_orden
     if not operaciones_mes.exists():
         operaciones_mes = OperacionIOL.objects.filter(
             fecha_orden__gte=inicio_mes,
@@ -997,45 +995,113 @@ def get_analytics_mensual() -> Dict[str, float]:
             estado__in=['terminada', 'Terminada', 'TERMINADA']
         )
 
-    # Compras del mes (operaciones de compra ejecutadas)
-    compras_mes = operaciones_mes.filter(tipo__in=['Compra', 'COMPRA'])
-    monto_compras = sum(
-        (op.cantidad_operada or 0) * (op.precio_operado or 0)
-        for op in compras_mes
-        if op.cantidad_operada and op.precio_operado
-    )
+    operaciones_mes_list = list(operaciones_mes.order_by('-fecha_operada', '-fecha_orden'))
+    monto_compras = Decimal('0')
+    monto_ventas = Decimal('0')
+    dividendos_mes = Decimal('0')
+    suscripciones_fci_mes = Decimal('0')
+    rescates_fci_mes = Decimal('0')
+    compras_count = 0
+    ventas_count = 0
+    dividendos_count = 0
+    suscripciones_fci_count = 0
+    rescates_fci_count = 0
+    recent_operations = []
 
-    # Ventas del mes (operaciones de venta ejecutadas)
-    ventas_mes = operaciones_mes.filter(tipo__in=['Venta', 'VENTA'])
-    monto_ventas = sum(
-        (op.cantidad_operada or 0) * (op.precio_operado or 0)
-        for op in ventas_mes
-        if op.cantidad_operada and op.precio_operado
-    )
+    for op in operaciones_mes_list:
+        operation_type_key = _classify_operation_type(op.tipo)
+        effective_amount = _get_effective_operation_amount(op)
 
-    # Aporte mensual ejecutado (flujo neto de inversiones: compras - ventas)
-    aporte_ejecutado = monto_compras - monto_ventas
+        if operation_type_key == 'buy':
+            compras_count += 1
+            monto_compras += effective_amount
+        elif operation_type_key == 'sell':
+            ventas_count += 1
+            monto_ventas += effective_amount
+        elif operation_type_key == 'dividend':
+            dividendos_count += 1
+            dividendos_mes += effective_amount
+        elif operation_type_key == 'fci_subscription':
+            suscripciones_fci_count += 1
+            suscripciones_fci_mes += effective_amount
+        elif operation_type_key == 'fci_redemption':
+            rescates_fci_count += 1
+            rescates_fci_mes += effective_amount
 
-    # Aporte mensual objetivo (configurable desde la base de datos)
+        if len(recent_operations) < 5:
+            event_at = op.fecha_operada or op.fecha_orden
+            recent_operations.append(
+                {
+                    'numero': op.numero,
+                    'simbolo': op.simbolo,
+                    'tipo': op.tipo,
+                    'tipo_key': operation_type_key,
+                    'estado': op.estado_actual or op.estado,
+                    'fecha_label': timezone.localtime(event_at).strftime("%Y-%m-%d %H:%M") if event_at else '',
+                    'monto': effective_amount,
+                    'plazo': op.plazo or '',
+                    'moneda': op.moneda or '',
+                }
+            )
+
     try:
         config_objetivo = ConfiguracionDashboard.objects.get(clave='contribucion_mensual')
         aporte_mensual_objetivo = float(config_objetivo.valor)
     except (ConfiguracionDashboard.DoesNotExist, ValueError):
-        aporte_mensual_objetivo = 50000.0  # Valor por defecto si no existe configuración
+        aporte_mensual_objetivo = 50000.0
 
-    # Convertir a Decimal para compatibilidad con los cálculos de montos
-    from decimal import Decimal
     aporte_mensual_objetivo = Decimal(str(aporte_mensual_objetivo))
-
-    # Aporte pendiente
+    aporte_ejecutado = monto_compras - monto_ventas
     aporte_pendiente = aporte_mensual_objetivo - aporte_ejecutado
 
     return {
         'compras_mes': monto_compras,
         'ventas_mes': monto_ventas,
+        'compras_count': compras_count,
+        'ventas_count': ventas_count,
+        'dividendos_mes': dividendos_mes,
+        'dividendos_count': dividendos_count,
+        'suscripciones_fci_mes': suscripciones_fci_mes,
+        'suscripciones_fci_count': suscripciones_fci_count,
+        'rescates_fci_mes': rescates_fci_mes,
+        'rescates_fci_count': rescates_fci_count,
+        'operaciones_ejecutadas_count': len(operaciones_mes_list),
         'aporte_mensual_ejecutado': aporte_ejecutado,
-        'aporte_pendiente': max(0, aporte_pendiente),  # No mostrar negativo
+        'aporte_pendiente': max(0, aporte_pendiente),
+        'recent_operations': recent_operations,
     }
+
+
+def _classify_operation_type(tipo: str | None) -> str:
+    normalized = unicodedata.normalize("NFKD", str(tipo or "").strip().lower())
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    if normalized == 'compra':
+        return 'buy'
+    if normalized == 'venta':
+        return 'sell'
+    if 'dividend' in normalized:
+        return 'dividend'
+    if 'fci' in normalized and ('suscrip' in normalized or 'suscripci?' in normalized):
+        return 'fci_subscription'
+    if 'fci' in normalized and 'rescat' in normalized:
+        return 'fci_redemption'
+    return 'other'
+
+
+def _get_effective_operation_amount(op) -> Decimal:
+    for candidate in (
+        getattr(op, 'monto_operado', None),
+        getattr(op, 'monto_operacion', None),
+        getattr(op, 'monto', None),
+    ):
+        if candidate not in (None, ''):
+            return Decimal(candidate)
+
+    cantidad_operada = getattr(op, 'cantidad_operada', None)
+    precio_operado = getattr(op, 'precio_operado', None)
+    if cantidad_operada not in (None, '') and precio_operado not in (None, ''):
+        return Decimal(cantidad_operada) * Decimal(precio_operado)
+    return Decimal('0')
 
 
 def get_portafolio_clasificado_fecha(portafolio_fecha) -> Dict[str, List[Dict]]:

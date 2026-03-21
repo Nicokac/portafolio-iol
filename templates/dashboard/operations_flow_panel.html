@@ -1,0 +1,120 @@
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-light border-bottom-0">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h3 class="h5 mb-1">{{ title }}</h3>
+                <small class="text-muted">{{ subtitle }}</small>
+            </div>
+            <div class="small text-muted">
+                {{ analytics_mensual.operaciones_ejecutadas_count|default:0 }} operación(es) ejecutadas este mes
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if panel_mode == 'compact' %}
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Aporte ejecutado</div>
+                    <div class="{% if analytics_mensual.aporte_mensual_ejecutado >= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                        {{ analytics_mensual.aporte_mensual_ejecutado|currency:0 }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Dividendos cobrados</div>
+                    <div class="fw-semibold">{{ analytics_mensual.dividendos_mes|currency:0 }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Suscripciones FCI</div>
+                    <div class="fw-semibold">{{ analytics_mensual.suscripciones_fci_mes|currency:0 }}</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Compras del mes</div>
+                    <div class="h5 mb-0 text-success">{{ analytics_mensual.compras_mes|currency:0 }}</div>
+                    <div class="small text-muted mt-1">{{ analytics_mensual.compras_count|default:0 }} operación(es)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Ventas del mes</div>
+                    <div class="h5 mb-0 text-danger">{{ analytics_mensual.ventas_mes|currency:0 }}</div>
+                    <div class="small text-muted mt-1">{{ analytics_mensual.ventas_count|default:0 }} operación(es)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Dividendos cobrados</div>
+                    <div class="h5 mb-0">{{ analytics_mensual.dividendos_mes|currency:0 }}</div>
+                    <div class="small text-muted mt-1">{{ analytics_mensual.dividendos_count|default:0 }} evento(s)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Suscripciones FCI</div>
+                    <div class="h5 mb-0">{{ analytics_mensual.suscripciones_fci_mes|currency:0 }}</div>
+                    <div class="small text-muted mt-1">{{ analytics_mensual.suscripciones_fci_count|default:0 }} evento(s)</div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Aporte ejecutado</div>
+                    <div class="h5 mb-0 {% if analytics_mensual.aporte_mensual_ejecutado >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ analytics_mensual.aporte_mensual_ejecutado|currency:0 }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Aporte pendiente</div>
+                    <div class="h5 mb-0 text-warning-emphasis">{{ analytics_mensual.aporte_pendiente|currency:0 }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analytics_mensual.recent_operations %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Últimas operaciones</th>
+                        <th class="text-end">Monto</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in analytics_mensual.recent_operations|slice:row_limit %}
+                    <tr>
+                        <td>
+                            <strong>{{ op.simbolo }}</strong>
+                            <div class="small text-muted">{{ op.tipo }} · {{ op.fecha_label }}</div>
+                        </td>
+                        <td class="text-end">{{ op.monto|currency:0 }}</td>
+                        <td>
+                            <div>{{ op.estado }}</div>
+                            <div class="small text-muted">{{ op.plazo|default:"Sin plazo" }}</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state py-3">
+            <div class="empty-state-title">Sin actividad operativa ejecutada este mes</div>
+            <div class="empty-state-description mb-0">Todavía no hay compras, ventas, dividendos o suscripciones FCI cerradas para este corte.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>

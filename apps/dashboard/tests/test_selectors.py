@@ -59,6 +59,7 @@ from apps.dashboard.selectors import (
     get_senales_rebalanceo,
 )
 from apps.parametros.models import ParametroActivo
+from apps.operaciones_iol.models import OperacionIOL
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
 
@@ -2844,6 +2845,76 @@ class TestDashboardSelectors(TestCase):
         # Debería tener datos de analytics
         assert isinstance(analytics, dict)
         assert len(analytics) > 0  # Al menos algún cálculo
+
+    def test_analytics_mensual_expands_recent_operational_flow(self):
+        fecha = timezone.now().replace(day=10, hour=12, minute=0, second=0, microsecond=0)
+
+        OperacionIOL.objects.create(
+            numero='1',
+            fecha_orden=fecha,
+            fecha_operada=fecha,
+            tipo='Compra',
+            estado='Terminada',
+            estado_actual='Terminada',
+            mercado='BCBA',
+            simbolo='MELI',
+            modalidad='precio_Mercado',
+            monto_operado=Decimal('120000'),
+            plazo='a24horas',
+        )
+        OperacionIOL.objects.create(
+            numero='2',
+            fecha_orden=fecha,
+            fecha_operada=fecha,
+            tipo='Venta',
+            estado='Terminada',
+            estado_actual='Terminada',
+            mercado='BCBA',
+            simbolo='GGAL',
+            modalidad='precio_Mercado',
+            monto_operado=Decimal('50000'),
+            plazo='inmediata',
+        )
+        OperacionIOL.objects.create(
+            numero='3',
+            fecha_orden=fecha,
+            fecha_operada=fecha,
+            tipo='Pago de Dividendos',
+            estado='Terminada',
+            estado_actual='Terminada',
+            mercado='BCBA',
+            simbolo='MCD US$',
+            modalidad='precio_Mercado',
+            monto_operado=Decimal('0.15'),
+            plazo='inmediata',
+        )
+        OperacionIOL.objects.create(
+            numero='4',
+            fecha_orden=fecha,
+            fecha_operada=fecha,
+            tipo='Suscripci?n FCI',
+            estado='Terminada',
+            estado_actual='Terminada',
+            mercado='BCBA',
+            simbolo='PRPEDOB',
+            modalidad='precio_Mercado',
+            monto_operado=Decimal('9.19'),
+            plazo='inmediata',
+        )
+
+        analytics = get_analytics_mensual()
+
+        assert analytics['compras_mes'] == Decimal('120000')
+        assert analytics['ventas_mes'] == Decimal('50000')
+        assert analytics['dividendos_mes'] == Decimal('0.15')
+        assert analytics['suscripciones_fci_mes'] == Decimal('9.19')
+        assert analytics['compras_count'] == 1
+        assert analytics['ventas_count'] == 1
+        assert analytics['dividendos_count'] == 1
+        assert analytics['suscripciones_fci_count'] == 1
+        assert analytics['operaciones_ejecutadas_count'] == 4
+        assert analytics['aporte_mensual_ejecutado'] == Decimal('70000')
+        assert len(analytics['recent_operations']) == 4
 
     def test_evolucion_historica_con_datos(self):
         """Test evolución histórica cuando hay datos suficientes."""

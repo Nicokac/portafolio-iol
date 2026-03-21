@@ -64,6 +64,7 @@ class TestDashboardView:
         assert 'Riesgo país Argentina' in body
         assert 'Dólar financiero y régimen FX' in body
         assert 'UVA y tasa real local' in body
+        assert 'Actividad operativa reciente' in body
         assert 'Real rate BADLAR vs UVA 30d anualizada' in body
         assert 'Fuente: ArgentinaDatos' in body
         assert 'Cambio 30d:' in body
@@ -163,6 +164,9 @@ class TestDashboardView:
         assert 'Ver detalle' in body
         assert 'Último snapshot' in body
         assert 'Gap máximo' in body
+        assert 'Flujos y actividad reciente' in body
+        assert 'Dividendos cobrados' in body
+        assert 'Suscripciones FCI' in body
         assert 'Posiciones completas' in body
         assert 'Proxy MVP' in body or 'Covarianza activa' in body
         assert (
@@ -495,6 +499,7 @@ class TestDashboardView:
         response = auth_client.get(reverse('dashboard:planeacion'))
         body = response.content.decode()
         assert 'Liquidez desplegable = cash disponible + caucion colocada + cash management' in body
+        assert 'Flujo operativo del mes' in body
 
     def test_planeacion_renders_market_snapshot_panel(self, auth_client, monkeypatch):
         monkeypatch.setattr(
