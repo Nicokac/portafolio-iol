@@ -103,6 +103,8 @@ class TestDashboardView:
         assert 'Pulso de mercado puntual' in body
         assert 'CotizacionDetalle' in body
         assert 'Cobertura parcial en posiciones relevantes' in body
+        assert 'Fallbacks' not in body
+        assert '<th class="text-end">Spread</th>' not in body
 
     def test_analisis_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:analisis')
@@ -220,6 +222,8 @@ class TestDashboardView:
         assert 'Capa operativa puntual' in body
         assert 'CotizacionDetalle como lectura táctica' in body or 'CotizacionDetalle como lectura tactica' in body
         assert 'GGAL' in body
+        assert 'Fallbacks' in body
+        assert '<th class="text-end">Spread</th>' in body
 
     def test_risk_contribution_detail_route_accessible_authenticated(self, auth_client):
         response = auth_client.get(reverse('dashboard:risk_contribution_detail'))
@@ -516,6 +520,7 @@ class TestDashboardView:
         assert 'Chequeo de mercado puntual' in body
         assert 'Snapshot puntual pendiente' in body
         assert 'Sin posiciones relevantes para market snapshot' in body
+        assert 'Fallbacks' not in body
         assert 'Modelo de riesgo:' in body
 
     def test_planeacion_shows_monthly_allocation_proposal(self, auth_client, monkeypatch):

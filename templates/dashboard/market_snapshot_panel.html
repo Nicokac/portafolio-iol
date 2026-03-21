@@ -24,6 +24,28 @@
         </div>
     </div>
     <div class="card-body">
+        {% if panel_mode == 'compact' %}
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Disponibles</div>
+                    <div class="fw-semibold">{{ market_snapshot_feature.summary.available_count }}/{{ market_snapshot_feature.summary.total_symbols }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Libro visible</div>
+                    <div class="fw-semibold">{{ market_snapshot_feature.summary.order_book_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded p-2 h-100">
+                    <div class="small text-muted">Top sin snapshot</div>
+                    <div class="fw-semibold">{{ market_snapshot_feature.top_missing_count }}</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <div class="border rounded p-3 h-100">
@@ -50,10 +72,11 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         {% if market_snapshot_feature.alerts %}
         <div class="mb-3">
-            {% for alert in market_snapshot_feature.alerts %}
+            {% for alert in market_snapshot_feature.alerts|slice:":2" %}
             <div class="alert alert-{{ alert.tone }} mb-2">
                 <strong>{{ alert.title }}.</strong> {{ alert.message }}
             </div>
@@ -67,10 +90,14 @@
                 <thead>
                     <tr>
                         <th>Símbolo</th>
+                        {% if panel_mode != 'compact' %}
                         <th class="text-end">Peso</th>
+                        {% endif %}
                         <th class="text-end">Var %</th>
+                        {% if panel_mode != 'compact' %}
                         <th class="text-end">Spread</th>
                         <th class="text-end">Ops</th>
+                        {% endif %}
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -81,7 +108,9 @@
                             <strong>{{ row.simbolo }}</strong>
                             <div class="small text-muted">{{ row.descripcion|truncatechars:36 }}</div>
                         </td>
+                        {% if panel_mode != 'compact' %}
                         <td class="text-end">{{ row.peso_porcentual|floatformat:1 }}%</td>
+                        {% endif %}
                         <td class="text-end {% if row.variacion is not None and row.variacion >= 0 %}text-success{% elif row.variacion is not None %}text-danger{% else %}text-muted{% endif %}">
                             {% if row.variacion is not None %}
                             {{ row.variacion|floatformat:2 }}%
@@ -89,6 +118,7 @@
                             -
                             {% endif %}
                         </td>
+                        {% if panel_mode != 'compact' %}
                         <td class="text-end">
                             {% if row.spread_pct is not None %}
                             {{ row.spread_pct|floatformat:2 }}%
@@ -97,6 +127,7 @@
                             {% endif %}
                         </td>
                         <td class="text-end">{{ row.cantidad_operaciones|default:0 }}</td>
+                        {% endif %}
                         <td>
                             <div>{{ row.snapshot_status_label }}</div>
                             <div class="small text-muted">
