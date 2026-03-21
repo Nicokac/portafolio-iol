@@ -8,6 +8,7 @@ from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
+    get_operation_subset_for_country_backfill,
     get_operation_subset_for_detail_enrichment,
     normalize_operation_filters,
 )
@@ -169,4 +170,29 @@ def test_get_operation_subset_for_detail_enrichment_returns_only_current_page_mi
 
     assert len(subset_page_1) == 24
     assert all(not operacion.moneda for operacion in subset_page_1)
+    assert len(subset_page_2) == 5
+
+
+@pytest.mark.django_db
+def test_get_operation_subset_for_country_backfill_returns_only_current_page_missing_country():
+    for index in range(30):
+        payload = {
+            "numero": f"OPC-{index:02d}",
+            "fecha_orden": timezone.now() - timezone.timedelta(minutes=index),
+            "tipo": "Compra",
+            "estado": "Terminada",
+            "mercado": "BCBA",
+            "simbolo": f"SYM{index:02d}",
+            "modalidad": "precio_Mercado",
+        }
+        if index == 0:
+            payload["pais_consulta"] = "argentina"
+        OperacionIOL.objects.create(**payload)
+
+    queryset = OperacionIOL.objects.all()
+    subset_page_1 = get_operation_subset_for_country_backfill(queryset, page_number=1, page_size=25)
+    subset_page_2 = get_operation_subset_for_country_backfill(queryset, page_number=2, page_size=25)
+
+    assert len(subset_page_1) == 24
+    assert all(not operacion.pais_consulta for operacion in subset_page_1)
     assert len(subset_page_2) == 5

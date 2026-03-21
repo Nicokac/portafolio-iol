@@ -163,6 +163,16 @@ def get_operation_subset_for_detail_enrichment(
     return [operacion for operacion in page.object_list if not has_operation_detail(operacion)]
 
 
+def get_operation_subset_for_country_backfill(
+    queryset: QuerySet[OperacionIOL],
+    *,
+    page_number: int | str = 1,
+    page_size: int = 25,
+) -> list[OperacionIOL]:
+    page = Paginator(queryset, page_size).get_page(page_number)
+    return [operacion for operacion in page.object_list if not str(operacion.pais_consulta or '').strip()]
+
+
 
 def build_operation_list_row(operacion: OperacionIOL) -> dict:
     has_detail = has_operation_detail(operacion)

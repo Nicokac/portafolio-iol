@@ -15,6 +15,7 @@ from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
+    get_operation_subset_for_country_backfill,
     get_operation_subset_for_detail_enrichment,
     has_operation_detail,
     normalize_operation_filters,
@@ -126,6 +127,69 @@ class EnrichOperacionesFilteredDetailsView(StaffRequiredMixin, View):
             )
         else:
             messages.success(request, f'Detalle IOL enriquecido para {success_count} operacion(es) de la pagina actual.')
+
+        redirect_url = reverse('operaciones_iol:operaciones_list')
+        filter_context = build_operation_filter_context(normalized_filters)
+        query_params = filter_context['query_string']
+        if page_number:
+            page_segment = f"page={page_number}"
+            query_params = f"{query_params}&{page_segment}" if query_params else page_segment
+        if query_params:
+            redirect_url = f"{redirect_url}?{query_params}"
+        return redirect(redirect_url)
+
+
+class BackfillOperacionesFilteredCountryView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        normalized_filters = normalize_operation_filters(request.POST)
+        page_number = request.POST.get('page') or 1
+        queryset = apply_operation_filters(OperacionIOL.objects.all(), normalized_filters)
+        subset = get_operation_subset_for_country_backfill(
+            queryset,
+            page_number=page_number,
+            page_size=OperacionesListView.paginate_by,
+        )
+
+        resolved_count = 0
+        unresolved_numbers: list[str] = []
+        service = IOLSyncService()
+        for operacion in subset:
+            matched = False
+            for pais in ('argentina', 'estados_Unidos'):
+                if service.sync_operaciones({'numero': operacion.numero, 'pais': pais}):
+                    operacion.refresh_from_db()
+                    if str(operacion.pais_consulta or '').strip():
+                        resolved_count += 1
+                        matched = True
+                        break
+            if not matched:
+                unresolved_numbers.append(str(operacion.numero))
+
+        audit_status = 'failed' if unresolved_numbers else 'success'
+        record_sensitive_action(
+            request,
+            action='backfill_operaciones_filtered_country',
+            status=audit_status,
+            details={
+                'filters': normalized_filters,
+                'page': str(page_number),
+                'selected_count': len(subset),
+                'resolved_count': resolved_count,
+                'unresolved_numbers': unresolved_numbers,
+            },
+        )
+
+        if not subset:
+            messages.info(request, 'No hay operaciones sin pais_consulta para backfill en la pagina filtrada actual.')
+        elif unresolved_numbers:
+            messages.warning(
+                request,
+                f'Backfill de pais_consulta parcial. OK={resolved_count}, sin resolver={len(unresolved_numbers)}.',
+            )
+        else:
+            messages.success(request, f'pais_consulta resuelto para {resolved_count} operacion(es) de la pagina actual.')
 
         redirect_url = reverse('operaciones_iol:operaciones_list')
         filter_context = build_operation_filter_context(normalized_filters)

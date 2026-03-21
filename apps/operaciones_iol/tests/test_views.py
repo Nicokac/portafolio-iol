@@ -156,6 +156,96 @@ def test_sync_operaciones_filtered_calls_service_and_audits(client, monkeypatch)
 
 
 @pytest.mark.django_db
+def test_backfill_operaciones_filtered_country_requires_staff(client):
+    user = User.objects.create_user(username="operaciones-non-staff-country", password="testpass123")
+    client.force_login(user)
+    response = client.post(reverse("operaciones_iol:backfill_operaciones_filtered_country"))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_backfill_operaciones_filtered_country_resolves_only_missing_rows_on_current_page(client, monkeypatch):
+    staff = User.objects.create_user(username="staff-operaciones-country", password="testpass123", is_staff=True)
+    client.force_login(staff)
+
+    OperacionIOL.objects.create(
+        numero="OP-COUNTRY-READY",
+        pais_consulta="argentina",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+    )
+    OperacionIOL.objects.create(
+        numero="OP-COUNTRY-1",
+        fecha_orden=timezone.now() - timezone.timedelta(minutes=1),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+    )
+    OperacionIOL.objects.create(
+        numero="OP-COUNTRY-2",
+        fecha_orden=timezone.now() - timezone.timedelta(minutes=2),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="YPFD",
+        modalidad="precio_Mercado",
+    )
+
+    attempts = []
+
+    class DummyService:
+        def sync_operaciones(self, params=None):
+            params = params or {}
+            attempts.append((params.get("numero"), params.get("pais")))
+            numero = str(params.get("numero"))
+            pais = str(params.get("pais"))
+            if numero == "OP-COUNTRY-1" and pais == "argentina":
+                operacion = OperacionIOL.objects.get(numero=numero)
+                operacion.pais_consulta = "argentina"
+                operacion.save(update_fields=["pais_consulta"])
+                return True
+            if numero == "OP-COUNTRY-2" and pais == "estados_Unidos":
+                operacion = OperacionIOL.objects.get(numero=numero)
+                operacion.pais_consulta = "estados_Unidos"
+                operacion.save(update_fields=["pais_consulta"])
+                return True
+            return False
+
+    monkeypatch.setattr("apps.operaciones_iol.views.IOLSyncService", lambda: DummyService())
+
+    response = client.post(
+        reverse("operaciones_iol:backfill_operaciones_filtered_country"),
+        {
+            "estado": "terminada",
+            "pais": "argentina",
+            "page": "1",
+        },
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert attempts == [
+        ("OP-COUNTRY-1", "argentina"),
+        ("OP-COUNTRY-2", "argentina"),
+        ("OP-COUNTRY-2", "estados_Unidos"),
+    ]
+    assert OperacionIOL.objects.get(numero="OP-COUNTRY-1").pais_consulta == "argentina"
+    assert OperacionIOL.objects.get(numero="OP-COUNTRY-2").pais_consulta == "estados_Unidos"
+    messages = list(get_messages(response.wsgi_request))
+    assert any("pais_consulta resuelto para 2 operacion(es)" in str(message) for message in messages)
+    audit = SensitiveActionAudit.objects.get(action="backfill_operaciones_filtered_country")
+    assert audit.status == "success"
+    assert audit.details["selected_count"] == 2
+    assert audit.details["resolved_count"] == 2
+
+
+@pytest.mark.django_db
 def test_enrich_operaciones_filtered_details_requires_staff(client):
     user = User.objects.create_user(username="operaciones-non-staff-batch", password="testpass123")
     client.force_login(user)

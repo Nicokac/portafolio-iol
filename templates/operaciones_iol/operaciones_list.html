@@ -65,6 +65,16 @@
             <input type="hidden" name="pais" value="{{ operation_filters.values.pais }}">
             <button type="submit" class="btn btn-outline-dark">Sincronizar desde IOL</button>
         </form>
+        <form method="post" action="{% url 'operaciones_iol:backfill_operaciones_filtered_country' %}" class="d-flex">
+            {% csrf_token %}
+            <input type="hidden" name="numero" value="{{ operation_filters.values.numero }}">
+            <input type="hidden" name="estado" value="{{ operation_filters.values.estado }}">
+            <input type="hidden" name="fecha_desde" value="{{ operation_filters.values.fecha_desde }}">
+            <input type="hidden" name="fecha_hasta" value="{{ operation_filters.values.fecha_hasta }}">
+            <input type="hidden" name="pais" value="{{ operation_filters.values.pais }}">
+            <input type="hidden" name="page" value="{{ page_obj.number|default:1 }}">
+            <button type="submit" class="btn btn-outline-secondary">Backfill pais_consulta</button>
+        </form>
         <form method="post" action="{% url 'operaciones_iol:enrich_operaciones_filtered_details' %}" class="d-flex">
             {% csrf_token %}
             <input type="hidden" name="numero" value="{{ operation_filters.values.numero }}">
@@ -77,7 +87,7 @@
         </form>
         </div>
         {% endif %}
-        <div class="small text-muted mt-2">`Pais IOL` se persiste como `pais_consulta` cuando la operacion entra por sync filtrado. El filtro local ya puede usarlo sobre las filas enriquecidas por syncs nuevos. `Enriquecer detalles faltantes` trabaja solo sobre la pagina filtrada actual.</div>
+        <div class="small text-muted mt-2">`Pais IOL` se persiste como `pais_consulta` cuando la operacion entra por sync filtrado. `Backfill pais_consulta` intenta resolverlo solo sobre operaciones sin pais en la pagina filtrada actual. `Enriquecer detalles faltantes` tambien trabaja solo sobre la pagina actual.</div>
     </div>
 </div>
 
