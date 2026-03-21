@@ -3966,6 +3966,14 @@ def _is_market_history_overlap_with_recommendation(
     return _has_block_overlap(recommendation_block, weak_blocks)
 
 
+def _should_promote_clean_recommendation_alternative(primary_block: dict, alternative_block: dict) -> bool:
+    primary_amount = _coerce_optional_float(primary_block.get("suggested_amount")) or 0.0
+    alternative_amount = _coerce_optional_float(alternative_block.get("suggested_amount")) or 0.0
+    if primary_amount <= 0:
+        return alternative_amount > 0
+    return alternative_amount >= (primary_amount * 0.5)
+
+
 def _build_decision_recommendation(
     monthly_plan: Dict | None,
     *,
@@ -3973,7 +3981,8 @@ def _build_decision_recommendation(
     market_history_feature: Dict | None = None,
 ) -> Dict:
     monthly_plan = monthly_plan or {}
-    primary_block = next(iter(monthly_plan.get("recommended_blocks") or []), None)
+    recommended_blocks = list(monthly_plan.get("recommended_blocks") or [])
+    primary_block = next(iter(recommended_blocks), None)
     if not primary_block:
         return {
             "block": None,
@@ -3994,6 +4003,36 @@ def _build_decision_recommendation(
         block_label,
         (market_history_feature or {}).get("weak_blocks") or [],
     )
+    if market_history_overlap:
+        clean_alternative = next(
+            (
+                block for block in recommended_blocks[1:]
+                if not _is_market_history_overlap_with_recommendation(
+                    str(block.get("label") or "").strip(),
+                    (market_history_feature or {}).get("weak_blocks") or [],
+                )
+                and _should_promote_clean_recommendation_alternative(primary_block, block)
+            ),
+            None,
+        )
+        if clean_alternative is not None:
+            alternative_label = str(clean_alternative.get("label") or "").strip()
+            alternative_reason = str(clean_alternative.get("reason") or "").strip()
+            return {
+                "block": alternative_label,
+                "amount": _coerce_optional_float(clean_alternative.get("suggested_amount")),
+                "reason": (
+                    f"Se prioriza {alternative_label} porque el bloque original {block_label} viene con liquidez reciente debil. "
+                    f"{alternative_reason or 'La alternativa limpia conserva una asignacion razonable dentro del mismo plan mensual.'}"
+                ).strip(),
+                "has_recommendation": True,
+                "priority_label": "Repriorizada por liquidez reciente",
+                "priority_tone": "warning",
+                "is_conditioned_by_parking": False,
+                "is_conditioned_by_market_history": False,
+                "was_reprioritized_by_market_history": True,
+                "original_block_label": block_label,
+            }
     if parking_overlap:
         reason = f"{reason} Hay parking visible dentro de este mismo bloque y conviene revisar la restriccion antes de ejecutar."
     elif market_history_overlap:
@@ -4007,6 +4046,8 @@ def _build_decision_recommendation(
         "priority_tone": "warning" if (parking_overlap or market_history_overlap) else "success",
         "is_conditioned_by_parking": parking_overlap,
         "is_conditioned_by_market_history": market_history_overlap,
+        "was_reprioritized_by_market_history": False,
+        "original_block_label": block_label,
     }
 
 

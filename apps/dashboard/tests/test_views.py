@@ -1242,14 +1242,16 @@ class TestDashboardView:
                     'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una señal macro dominante.'},
                     'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
                     'recommendation': {
-                        'block': 'Growth USA',
-                        'amount': 600000,
-                        'reason': 'prioridad simple. La liquidez reciente de este bloque viene debil y conviene revisar spread y actividad antes de tomarlo como prioridad limpia.',
+                        'block': 'Indice global',
+                        'amount': 250000,
+                        'reason': 'Se prioriza Indice global porque el bloque original Growth USA viene con liquidez reciente debil. Mantiene beta amplia y liquidez mas limpia.',
                         'has_recommendation': True,
-                        'priority_label': 'Condicionada',
+                        'priority_label': 'Repriorizada por liquidez reciente',
                         'priority_tone': 'warning',
                         'is_conditioned_by_parking': False,
-                        'is_conditioned_by_market_history': True,
+                        'is_conditioned_by_market_history': False,
+                        'was_reprioritized_by_market_history': True,
+                        'original_block_label': 'Growth USA',
                     },
                     'suggested_assets': [
                         {
@@ -1296,8 +1298,8 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'Liquidez reciente debil en la zona sugerida' in body
         assert 'La liquidez reciente del bloque sugerido viene debil' in body
-        assert 'Condicionada' in body
-        assert 'La liquidez reciente de este bloque viene debil' in body
+        assert 'Repriorizada por liquidez reciente' in body
+        assert 'Growth USA viene con liquidez reciente debil' in body
         assert 'Condicionado por liquidez reciente' in body
         assert 'Condicionada por liquidez reciente' in body
         assert 'Plan MELI' in body

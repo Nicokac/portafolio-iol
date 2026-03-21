@@ -252,6 +252,49 @@ class TestDashboardSelectors(TestCase):
         assert detail["recommendation"]["priority_label"] == "Condicionada"
         assert "liquidez reciente de este bloque viene debil" in detail["recommendation"]["reason"].lower()
 
+    def test_get_decision_engine_summary_promotes_clean_recommendation_when_primary_block_has_weak_liquidity(self):
+        class DummyUser:
+            pk = 8_2
+
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch(
+                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                return_value={
+                    "recommended_blocks": [
+                        {"label": "Growth USA", "suggested_amount": 350000, "reason": "Se prioriza crecimiento."},
+                        {"label": "Indice global", "suggested_amount": 250000, "reason": "Mantiene beta amplia y liquidez mas limpia."},
+                    ]
+                },
+            ),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch(
+                "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
+                return_value={
+                    "summary": {"weak_count": 1},
+                    "rows": [{"simbolo": "MELI", "bloque_estrategico": "Growth USA", "quality_status": "weak"}],
+                    "weak_blocks": [{"label": "Growth USA", "value_total": Decimal("900000")}],
+                    "alerts": [],
+                    "has_history": True,
+                    "lookback_days": 7,
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["recommendation"]["block"] == "Indice global"
+        assert detail["recommendation"]["priority_label"] == "Repriorizada por liquidez reciente"
+        assert detail["recommendation"]["was_reprioritized_by_market_history"] is True
+        assert detail["recommendation"]["original_block_label"] == "Growth USA"
+        assert "Growth USA" in detail["recommendation"]["reason"]
+
     def test_get_decision_engine_summary_conditions_suggested_assets_when_parking_overlaps_block(self):
         class DummyUser:
             pk = 9
