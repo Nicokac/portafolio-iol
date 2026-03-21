@@ -149,6 +149,7 @@ Salidas operativas:
   - simulacion
   - optimizacion
   - lectura historica corta de ejecucion reciente desde `CotizacionDetalle` para decidir compras futuras con mejor spread/libro/actividad
+  - recomendacion principal condicionada cuando el bloque sugerido viene con liquidez reciente debil
   - degradacion de shortlist y propuesta sugerida cuando la ejecucion reciente del bloque viene debil
   - degradacion de `score` y `confidence` cuando esa friccion reciente sigue activa
   - chequeo tactico de `parking` antes de decidir despliegue

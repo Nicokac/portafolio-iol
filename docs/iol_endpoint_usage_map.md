@@ -212,6 +212,7 @@ Se usa hoy como:
 - capa tactica compartida para `Resumen`, `Estrategia` y `Planeacion`
 - persistencia minima de observaciones puntuales para leer spread, libro y actividad reciente antes de decidir compras futuras
 - señal historica corta de ejecucion dentro de `Planeacion`
+- recomendacion principal condicionada cuando el bloque sugerido viene con liquidez reciente debil
 - shortlist sugerida condicionada cuando el bloque candidato viene con liquidez reciente debil
 - propuesta preferida condicionada cuando su `purchase_plan` cae en una zona con liquidez reciente debil
 - degradacion de `score` y `confidence` del `Modo decision` cuando la liquidez reciente del bloque sugerido sigue siendo debil
@@ -231,6 +232,7 @@ Conclusion:
 - ya dejo de estar aislado en observabilidad
 - hoy potencia lectura tactica de producto
 - ya no queda solo como foto puntual; ahora tambien deja una huella historica minima para decidir compras futuras con menos friccion operativa
+- ya puede degradar la recomendacion principal cuando el bloque sugerido no viene acompanado por una ejecucion reciente limpia
 - ya puede degradar candidatos y propuesta sugerida cuando la calidad reciente de ejecucion no acompaña
 - ya puede deteriorar la firmeza cuantitativa final de la decision cuando el contexto de ejecucion reciente no acompaña
 - la brecha actual ya no es si conviene persistirlo, sino cuanta automatizacion y cobertura adicional merece ese historial

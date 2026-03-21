@@ -1244,11 +1244,12 @@ class TestDashboardView:
                     'recommendation': {
                         'block': 'Growth USA',
                         'amount': 600000,
-                        'reason': 'prioridad simple',
+                        'reason': 'prioridad simple. La liquidez reciente de este bloque viene debil y conviene revisar spread y actividad antes de tomarlo como prioridad limpia.',
                         'has_recommendation': True,
-                        'priority_label': 'Prioritaria',
-                        'priority_tone': 'success',
+                        'priority_label': 'Condicionada',
+                        'priority_tone': 'warning',
                         'is_conditioned_by_parking': False,
+                        'is_conditioned_by_market_history': True,
                     },
                     'suggested_assets': [
                         {
@@ -1295,8 +1296,9 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'Liquidez reciente debil en la zona sugerida' in body
         assert 'La liquidez reciente del bloque sugerido viene debil' in body
-        assert 'Condicionado por liquidez reciente' in body
+        assert 'Condicionada' in body
         assert 'La liquidez reciente de este bloque viene debil' in body
+        assert 'Condicionado por liquidez reciente' in body
         assert 'Condicionada por liquidez reciente' in body
         assert 'Plan MELI' in body
         assert 'Score: 57/100' in body

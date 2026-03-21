@@ -2863,7 +2863,11 @@ def get_decision_engine_summary(
         portfolio_state = _build_decision_portfolio_state(analytics)
         parking_feature = get_portfolio_parking_feature_context()
         market_history_feature = get_market_snapshot_history_feature_context()
-        recommendation = _build_decision_recommendation(monthly_plan, parking_feature=parking_feature)
+        recommendation = _build_decision_recommendation(
+            monthly_plan,
+            parking_feature=parking_feature,
+            market_history_feature=market_history_feature,
+        )
         suggested_assets = _build_decision_suggested_assets(
             ranking,
             parking_feature=parking_feature,
@@ -3962,7 +3966,12 @@ def _is_market_history_overlap_with_recommendation(
     return _has_block_overlap(recommendation_block, weak_blocks)
 
 
-def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature: Dict | None = None) -> Dict:
+def _build_decision_recommendation(
+    monthly_plan: Dict | None,
+    *,
+    parking_feature: Dict | None = None,
+    market_history_feature: Dict | None = None,
+) -> Dict:
     monthly_plan = monthly_plan or {}
     primary_block = next(iter(monthly_plan.get("recommended_blocks") or []), None)
     if not primary_block:
@@ -3981,16 +3990,23 @@ def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature
         block_label,
         (parking_feature or {}).get("parking_blocks") or [],
     )
+    market_history_overlap = _is_market_history_overlap_with_recommendation(
+        block_label,
+        (market_history_feature or {}).get("weak_blocks") or [],
+    )
     if parking_overlap:
         reason = f"{reason} Hay parking visible dentro de este mismo bloque y conviene revisar la restriccion antes de ejecutar."
+    elif market_history_overlap:
+        reason = f"{reason} La liquidez reciente de este bloque viene debil y conviene revisar spread y actividad antes de tomarlo como prioridad limpia."
     return {
         "block": block_label,
         "amount": _coerce_optional_float(primary_block.get("suggested_amount")),
         "reason": reason,
         "has_recommendation": True,
-        "priority_label": "Condicionada" if parking_overlap else "Prioritaria",
-        "priority_tone": "warning" if parking_overlap else "success",
+        "priority_label": "Condicionada" if (parking_overlap or market_history_overlap) else "Prioritaria",
+        "priority_tone": "warning" if (parking_overlap or market_history_overlap) else "success",
         "is_conditioned_by_parking": parking_overlap,
+        "is_conditioned_by_market_history": market_history_overlap,
     }
 
 
