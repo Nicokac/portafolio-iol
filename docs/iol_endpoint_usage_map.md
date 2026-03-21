@@ -97,6 +97,7 @@ Se usa para:
 - sync de operaciones
 - filtros por numero, estado, fechas y pais
 - sync remoto filtrado desde la hoja de operaciones
+- lectura visible de cobertura de `pais_consulta` y pendientes de backfill sobre la pagina actual
 - flujo operativo mensual en `Resumen`, `Estrategia` y `Planeacion`
 - lectura reciente de compras, ventas, dividendos y suscripciones FCI
 - soporte de acciones batch previas al enriquecimiento por numero

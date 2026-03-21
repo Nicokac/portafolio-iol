@@ -33,12 +33,17 @@ def build_operation_list_context(operaciones: Iterable[OperacionIOL]) -> dict:
     rows = [build_operation_list_row(operacion) for operacion in operaciones]
     total_count = len(rows)
     enriched_count = sum(1 for row in rows if row['has_detail'])
+    country_resolved_count = sum(1 for row in rows if row['has_country'])
+    country_missing_count = total_count - country_resolved_count
+    argentina_count = sum(1 for row in rows if row['country_value'] == 'argentina')
+    us_count = sum(1 for row in rows if row['country_value'] == 'estados_Unidos')
     fills_count = sum(1 for row in rows if row['fills_count'] > 0)
     fragmented_count = sum(1 for row in rows if row['fills_count'] > 1)
     fees_visible_count = sum(1 for row in rows if row['fees_ars'] > 0 or row['fees_usd'] > 0)
     fees_ars_total = sum((row['fees_ars'] for row in rows), Decimal('0'))
     fees_usd_total = sum((row['fees_usd'] for row in rows), Decimal('0'))
     enriched_pct = _safe_percentage(enriched_count, total_count)
+    country_resolved_pct = _safe_percentage(country_resolved_count, total_count)
     fragmented_pct = _safe_percentage(fragmented_count, fills_count)
     fees_visible_pct = _safe_percentage(fees_visible_count, total_count)
     type_breakdown = _build_type_breakdown(rows, total_count)
@@ -50,6 +55,11 @@ def build_operation_list_context(operaciones: Iterable[OperacionIOL]) -> dict:
             'enriched_count': enriched_count,
             'missing_detail_count': total_count - enriched_count,
             'enriched_pct': enriched_pct,
+            'country_resolved_count': country_resolved_count,
+            'country_missing_count': country_missing_count,
+            'country_resolved_pct': country_resolved_pct,
+            'country_argentina_count': argentina_count,
+            'country_estados_unidos_count': us_count,
             'fills_count': fills_count,
             'fragmented_count': fragmented_count,
             'fragmented_pct': fragmented_pct,
@@ -176,6 +186,7 @@ def get_operation_subset_for_country_backfill(
 
 def build_operation_list_row(operacion: OperacionIOL) -> dict:
     has_detail = has_operation_detail(operacion)
+    country_value = str(operacion.pais_consulta or '').strip()
     fills = list(operacion.operaciones_detalle or [])
     fill_count = len(fills)
     fees_ars = Decimal(str(operacion.aranceles_ars or 0))
@@ -185,6 +196,9 @@ def build_operation_list_row(operacion: OperacionIOL) -> dict:
     return {
         'operacion': operacion,
         'has_detail': has_detail,
+        'has_country': bool(country_value),
+        'country_value': country_value,
+        'country_label': _build_country_label(country_value),
         'detail_status': 'enriched' if has_detail else 'local_only',
         'detail_status_label': 'Enriquecido' if has_detail else 'Solo local',
         'detail_tone': 'success' if has_detail else 'secondary',
@@ -230,6 +244,14 @@ def _build_execution_label(fill_count: int, has_detail: bool) -> str:
 def _build_status_tone(status: str | None) -> str:
     normalized = str(status or '').strip().lower()
     return _STATUS_TONE_MAP.get(normalized, 'secondary')
+
+
+def _build_country_label(country_value: str) -> str:
+    if country_value == 'argentina':
+        return 'Argentina'
+    if country_value == 'estados_Unidos':
+        return 'Estados Unidos'
+    return 'Pendiente'
 
 
 def _safe_percentage(numerator: int, denominator: int) -> Decimal:

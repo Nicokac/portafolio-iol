@@ -115,6 +115,13 @@
     </div>
     <div class="col-md-3">
         <div class="card h-100"><div class="card-body">
+            <div class="small text-muted">Pais resuelto</div>
+            <div class="h4 mb-0">{{ operations_summary.country_resolved_count }}</div>
+            <div class="small text-muted mt-1">{{ operations_summary.country_missing_count }} pendiente{{ operations_summary.country_missing_count|pluralize }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100"><div class="card-body">
             <div class="small text-muted">Aranceles visibles</div>
             <div class="h6 mb-1">ARS {{ operations_summary.fees_ars_total|currency:2 }}</div>
             <div class="h6 mb-0">USD {{ operations_summary.fees_usd_total|currency:2 }}</div>
@@ -143,6 +150,16 @@
                     <div class="small text-muted">Fragmentacion de ejecucion</div>
                     <div class="h4 mb-1">{{ operations_summary.fragmented_pct }}%</div>
                     <div class="small text-muted">{{ operations_summary.fragmented_count }} de {{ operations_summary.fills_count }} operaciones con fills visibles tienen multiples fills.</div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Cobertura de pais</div>
+                    <div class="h4 mb-1">{{ operations_summary.country_resolved_pct }}%</div>
+                    <div class="small text-muted">{{ operations_summary.country_resolved_count }} de {{ operations_summary.total_count }} operaciones visibles ya tienen `pais_consulta` resuelto.</div>
+                    <div class="small text-muted mt-2">
+                        Argentina: {{ operations_summary.country_argentina_count }} · Estados Unidos: {{ operations_summary.country_estados_unidos_count }} · Pendiente: {{ operations_summary.country_missing_count }}
+                    </div>
                 </div>
             </div>
             <div class="col-lg-4">
@@ -178,6 +195,7 @@
                         <th>Simbolo</th>
                         <th class="text-end">Monto</th>
                         <th>Estado</th>
+                        <th>Pais IOL</th>
                         <th>Detalle IOL</th>
                         <th>Ejecucion</th>
                         <th class="text-end">Aranceles</th>
@@ -214,6 +232,9 @@
                             <span class="badge bg-{{ row.status_tone }}">{{ row.operacion.estado_actual|default:row.operacion.estado }}</span>
                         </td>
                         <td>
+                            <span class="badge {% if row.has_country %}text-bg-light border{% else %}bg-secondary{% endif %}">{{ row.country_label }}</span>
+                        </td>
+                        <td>
                             <span class="badge bg-{{ row.detail_tone }}">{{ row.detail_status_label }}</span>
                         </td>
                         <td>
@@ -233,7 +254,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center py-4">No hay operaciones para mostrar.</td>
+                        <td colspan="10" class="text-center py-4">No hay operaciones para mostrar.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

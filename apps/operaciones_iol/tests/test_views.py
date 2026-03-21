@@ -19,6 +19,7 @@ def test_operaciones_list_view_redirects_anonymous(client):
 def test_operaciones_list_view_renders_template_and_context(client):
     OperacionIOL.objects.create(
         numero="OP-1",
+        pais_consulta="argentina",
         fecha_orden=timezone.now(),
         tipo="Compra",
         estado="Terminada",
@@ -53,8 +54,11 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "Detalle IOL" in body
     assert "Ejecucion" in body
     assert "Enriquecido" in body
+    assert "Pais resuelto" in body
+    assert "Cobertura de pais" in body
     assert "Calidad de ejecucion visible" in body
     assert "1 de 1 operaciones con detalle IOL utilizable." in body
+    assert "1 de 1 operaciones visibles ya tienen `pais_consulta` resuelto." in body
     assert "Compra: 1" in body
 
 
@@ -99,8 +103,10 @@ def test_operaciones_list_view_applies_filters_from_query_params(client):
     assert response.context["operaciones"].count() == 1
     assert response.context["operaciones"].first().numero == "167788363"
     assert response.context["operation_filters"]["active_count"] == 5
+    assert response.context["operations_summary"]["country_resolved_count"] == 1
     body = response.content.decode()
     assert "5 filtros activos" in body
+    assert "Estados Unidos" in body
     assert "167788363" in body
     assert "167700000" not in body
 
