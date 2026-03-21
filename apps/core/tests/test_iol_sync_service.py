@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from decimal import Decimal
+from django.utils import timezone
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
@@ -142,6 +143,10 @@ class TestIOLSyncService:
         result = service.sync_operaciones()
         assert result is True
         assert OperacionIOL.objects.count() == 1
+        operacion = OperacionIOL.objects.get()
+        assert operacion.estado == 'Terminada'
+        assert operacion.estado_actual == 'Terminada'
+        assert operacion.moneda == ''
 
     def test_sync_operaciones_no_duplicate(self, service):
         service.client.get_operaciones.return_value = [{
@@ -164,6 +169,103 @@ class TestIOLSyncService:
         result = service.sync_operaciones()
         assert result is True
         assert OperacionIOL.objects.count() == 0
+
+    def test_sync_operacion_detalle_success(self, service):
+        service.client.get_operacion.return_value = {
+            'numero': 167788363,
+            'mercado': 'bcba',
+            'simbolo': 'MCD',
+            'moneda': 'peso_Argentino',
+            'tipo': 'compra',
+            'fechaAlta': '2026-03-18T14:05:53.323',
+            'validez': '2026-03-18T17:00:00',
+            'fechaOperado': '2026-03-18T14:05:57',
+            'estadoActual': 'terminada',
+            'estados': [
+                {'detalle': 'Iniciada', 'fecha': '2026-03-18T14:05:53.323'},
+                {'detalle': 'Terminada', 'fecha': '2026-03-18T14:05:58.507'},
+            ],
+            'aranceles': [
+                {'tipo': 'Derechos De Mercado', 'neto': 39.36, 'iva': 8.27, 'moneda': 'PESO_ARGENTINO'},
+                {'tipo': 'Comisión', 'neto': 393.6, 'iva': 82.66, 'moneda': 'PESO_ARGENTINO'},
+            ],
+            'operaciones': [
+                {'fecha': '2026-03-18T14:05:57', 'cantidad': 4, 'precio': 19680},
+            ],
+            'precio': 19950,
+            'cantidad': 4,
+            'monto': 98300,
+            'fondosParaOperacion': None,
+            'montoOperacion': 78720,
+            'modalidad': 'precio_Mercado',
+            'arancelesARS': 523.89,
+            'arancelesUSD': 0,
+            'plazo': 'a24horas',
+        }
+
+        result = service.sync_operacion_detalle(167788363)
+
+        assert result is True
+        operacion = OperacionIOL.objects.get(numero='167788363')
+        assert operacion.moneda == 'peso_Argentino'
+        assert operacion.estado == 'terminada'
+        assert operacion.estado_actual == 'terminada'
+        assert operacion.estados_detalle[0]['detalle'] == 'Iniciada'
+        assert operacion.aranceles_detalle[1]['tipo'] == 'Comisión'
+        assert operacion.operaciones_detalle[0]['precio'] == 19680
+        assert operacion.monto_operacion == Decimal('78720')
+        assert operacion.aranceles_ars == Decimal('523.890000')
+        assert operacion.aranceles_usd == Decimal('0')
+
+    def test_sync_operacion_detalle_updates_existing_operacion(self, service):
+        OperacionIOL.objects.create(
+            numero='167788363',
+            fecha_orden=timezone.make_aware(timezone.datetime(2026, 3, 18, 14, 5, 53, 323000)),
+            tipo='Compra',
+            estado='Pendiente',
+            mercado='bcba',
+            simbolo='MCD',
+            cantidad=4,
+            monto=98300,
+            modalidad='precio_Mercado',
+        )
+        service.client.get_operacion.return_value = {
+            'numero': 167788363,
+            'mercado': 'bcba',
+            'simbolo': 'MCD',
+            'moneda': 'peso_Argentino',
+            'tipo': 'compra',
+            'fechaAlta': '2026-03-18T14:05:53.323',
+            'validez': '2026-03-18T17:00:00',
+            'fechaOperado': '2026-03-18T14:05:57',
+            'estadoActual': 'terminada',
+            'estados': [{'detalle': 'Terminada', 'fecha': '2026-03-18T14:05:58.507'}],
+            'aranceles': [],
+            'operaciones': [],
+            'precio': 19950,
+            'cantidad': 4,
+            'monto': 98300,
+            'modalidad': 'precio_Mercado',
+            'montoOperacion': 78720,
+            'arancelesARS': 523.89,
+            'arancelesUSD': 0,
+            'plazo': 'a24horas',
+        }
+
+        result = service.sync_operacion_detalle(167788363)
+
+        assert result is True
+        operacion = OperacionIOL.objects.get(numero='167788363')
+        assert operacion.estado == 'terminada'
+        assert operacion.moneda == 'peso_Argentino'
+        assert timezone.localtime(operacion.validez).isoformat().startswith('2026-03-18T17:00:00')
+
+    def test_sync_operacion_detalle_no_data(self, service):
+        service.client.get_operacion.return_value = None
+
+        result = service.sync_operacion_detalle(167788363)
+
+        assert result is False
 
     # --- sync_all ---
 

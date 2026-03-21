@@ -273,6 +273,13 @@ class IOLAPIClient:
         data = self._request_json(operation="get_operaciones", url=url, params=params)
         return data if isinstance(data, list) else None
 
+    def get_operacion(self, numero: str | int) -> Optional[Dict]:
+        """Obtiene el detalle de una operacion por numero."""
+        numero_path = quote(str(numero).strip(), safe="")
+        url = f"{self.base_url}/api/v2/operaciones/{numero_path}"
+        data = self._request_json(operation=f"get_operacion:{numero}", url=url)
+        return data if isinstance(data, dict) else None
+
     def get_titulo(self, mercado: str, simbolo: str) -> Optional[Dict]:
         """Obtiene metadata minima de un titulo en un mercado dado."""
         mercado_path = quote(str(mercado or "").strip(), safe="")

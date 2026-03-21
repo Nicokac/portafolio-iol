@@ -174,6 +174,26 @@ class TestIOLAPIClient:
         assert result is None
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_operacion_success(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {'numero': 167788363, 'simbolo': 'MCD'}
+        mock_get.return_value = mock_response
+
+        result = client.get_operacion(167788363)
+
+        assert result == {'numero': 167788363, 'simbolo': 'MCD'}
+        assert mock_get.call_args.args[0].endswith('/api/v2/operaciones/167788363')
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_operacion_failure(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_get.side_effect = requests.RequestException('error')
+
+        result = client.get_operacion(167788363)
+        assert result is None
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_titulo_historicos_success(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
         mock_response = Mock()

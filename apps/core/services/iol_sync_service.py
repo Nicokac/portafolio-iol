@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 
 from apps.core.services.iol_api_client import IOLAPIClient
@@ -127,22 +128,7 @@ class IOLSyncService:
             try:
                 _, created = OperacionIOL.objects.get_or_create(
                     numero=operacion['numero'],
-                    defaults={
-                        'fecha_orden': operacion['fechaOrden'],
-                        'tipo': operacion['tipo'],
-                        'estado': operacion['estado'],
-                        'mercado': operacion['mercado'],
-                        'simbolo': operacion['simbolo'],
-                        'cantidad': operacion['cantidad'],
-                        'monto': operacion['monto'],
-                        'modalidad': operacion['modalidad'],
-                        'precio': operacion.get('precio'),
-                        'fecha_operada': operacion.get('fechaOperada'),
-                        'cantidad_operada': operacion.get('cantidadOperada'),
-                        'precio_operado': operacion.get('precioOperado'),
-                        'monto_operado': operacion.get('montoOperado'),
-                        'plazo': operacion.get('plazo'),
-                    }
+                    defaults=self._build_operacion_defaults(operacion),
                 )
                 if created:
                     synced_count += 1
@@ -160,6 +146,76 @@ class IOLSyncService:
             },
         )
         return True
+
+    def sync_operacion_detalle(self, numero: str | int) -> bool:
+        """Sincroniza el detalle de una operacion puntual."""
+        logger.info(
+            "Starting operacion detail sync",
+            extra={"event": "iol_sync_operacion_detail_start", "extra_data": {"numero": str(numero)}},
+        )
+        with timed("iol.api.operacion_detail.latency_ms"):
+            data = self.client.get_operacion(numero)
+        if not data:
+            self.last_diagnostics["operacion_detalle"] = dict(self.client.last_error)
+            if self.client.last_error:
+                logger.error("Operacion detail sync failed diagnostics: %s", self.client.last_error)
+            return False
+
+        try:
+            OperacionIOL.objects.update_or_create(
+                numero=str(data["numero"]),
+                defaults=self._build_operacion_defaults(data),
+            )
+        except KeyError as e:
+            logger.error("Missing key in operacion detail data: %s, data: %s", e, data)
+            return False
+
+        logger.info(
+            "Operacion detail sync completed",
+            extra={"event": "iol_sync_operacion_detail_end", "extra_data": {"numero": str(numero)}},
+        )
+        return True
+
+    def _build_operacion_defaults(self, operacion: dict) -> dict:
+        return {
+            'fecha_orden': self._normalize_datetime(operacion.get('fechaOrden') or operacion.get('fechaAlta')),
+            'fecha_alta': self._normalize_datetime(operacion.get('fechaAlta') or operacion.get('fechaOrden')),
+            'validez': self._normalize_datetime(operacion.get('validez')),
+            'tipo': operacion['tipo'],
+            'estado': operacion.get('estado') or operacion.get('estadoActual', ''),
+            'estado_actual': operacion.get('estadoActual') or operacion.get('estado', ''),
+            'mercado': operacion['mercado'],
+            'simbolo': operacion['simbolo'],
+            'moneda': operacion.get('moneda', ''),
+            'cantidad': operacion.get('cantidad'),
+            'monto': operacion.get('monto'),
+            'modalidad': operacion.get('modalidad', ''),
+            'precio': operacion.get('precio'),
+            'fecha_operada': self._normalize_datetime(operacion.get('fechaOperada') or operacion.get('fechaOperado')),
+            'cantidad_operada': operacion.get('cantidadOperada'),
+            'precio_operado': operacion.get('precioOperado'),
+            'monto_operado': operacion.get('montoOperado'),
+            'monto_operacion': operacion.get('montoOperacion'),
+            'aranceles_ars': operacion.get('arancelesARS'),
+            'aranceles_usd': operacion.get('arancelesUSD'),
+            'plazo': operacion.get('plazo'),
+            'fondos_para_operacion': operacion.get('fondosParaOperacion'),
+            'estados_detalle': operacion.get('estados', []),
+            'aranceles_detalle': operacion.get('aranceles', []),
+            'operaciones_detalle': operacion.get('operaciones', []),
+        }
+
+    def _normalize_datetime(self, value):
+        if not value:
+            return value
+        if isinstance(value, str):
+            parsed = parse_datetime(value)
+            if parsed is None:
+                return value
+            value = parsed
+        if timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
 
     def sync_all(self) -> dict:
         """Sincroniza todos los datos."""
