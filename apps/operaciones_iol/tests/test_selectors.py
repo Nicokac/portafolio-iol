@@ -4,7 +4,12 @@ import pytest
 from django.utils import timezone
 
 from apps.operaciones_iol.models import OperacionIOL
-from apps.operaciones_iol.selectors import build_operation_list_context
+from apps.operaciones_iol.selectors import (
+    apply_operation_filters,
+    build_operation_filter_context,
+    build_operation_list_context,
+    normalize_operation_filters,
+)
 
 
 @pytest.mark.django_db
@@ -64,3 +69,71 @@ def test_build_operation_list_context_summarizes_detail_fills_and_fees():
     assert context["summary"]["type_breakdown"][0]["count"] == 2
     assert context["rows"][0]["execution_label"] == "Multiples fills"
     assert context["rows"][1]["detail_status_label"] == "Solo local"
+
+
+@pytest.mark.django_db
+def test_normalize_operation_filters_accepts_internal_and_explicit_keys():
+    filters = normalize_operation_filters(
+        {
+            "filtro.numero": "123",
+            "estado": "terminada",
+            "fechaDesde": "2026-03-01",
+            "fecha_hasta": "2026-03-21",
+        }
+    )
+
+    assert filters == {
+        "numero": "123",
+        "estado": "terminada",
+        "fecha_desde": "2026-03-01",
+        "fecha_hasta": "2026-03-21",
+    }
+
+
+@pytest.mark.django_db
+def test_apply_operation_filters_filters_by_number_state_and_dates():
+    OperacionIOL.objects.create(
+        numero="167788363",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        estado_actual="terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+    )
+    OperacionIOL.objects.create(
+        numero="167700000",
+        fecha_orden=timezone.now() - timezone.timedelta(days=10),
+        tipo="Compra",
+        estado="Pendiente",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+    )
+
+    filters = {
+        "numero": "167788",
+        "estado": "terminada",
+        "fecha_desde": (timezone.now() - timezone.timedelta(days=2)).date().isoformat(),
+        "fecha_hasta": timezone.now().date().isoformat(),
+    }
+    filtered = apply_operation_filters(OperacionIOL.objects.all(), filters)
+
+    assert list(filtered.values_list("numero", flat=True)) == ["167788363"]
+
+
+def test_build_operation_filter_context_tracks_active_filters():
+    context = build_operation_filter_context(
+        {
+            "numero": "167788363",
+            "estado": "terminada",
+            "fecha_desde": "",
+            "fecha_hasta": "2026-03-21",
+        }
+    )
+
+    assert context["has_active_filters"] is True
+    assert context["active_count"] == 3
+    assert "numero=167788363" in context["query_string"]
+    assert "estado=terminada" in context["query_string"]

@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import Iterable
+from urllib.parse import urlencode
+
+from django.db.models import Q, QuerySet
+from django.utils.dateparse import parse_date
 
 from apps.operaciones_iol.models import OperacionIOL
 
@@ -13,6 +17,13 @@ _STATUS_TONE_MAP = {
     'pendiente': 'warning',
     'cancelada': 'danger',
     'rechazada': 'danger',
+}
+
+_DEFAULT_FILTERS = {
+    'numero': '',
+    'estado': 'todas',
+    'fecha_desde': '',
+    'fecha_hasta': '',
 }
 
 
@@ -46,6 +57,68 @@ def build_operation_list_context(operaciones: Iterable[OperacionIOL]) -> dict:
             'fees_usd_total': fees_usd_total,
             'type_breakdown': type_breakdown,
         },
+    }
+
+
+def normalize_operation_filters(params) -> dict:
+    params = params or {}
+
+    def pick(*keys):
+        getter = getattr(params, 'get', None)
+        for key in keys:
+            value = getter(key) if callable(getter) else params.get(key)
+            if value not in (None, ''):
+                return str(value).strip()
+        return ''
+
+    normalized = {
+        'numero': pick('numero', 'filtro.numero'),
+        'estado': pick('estado', 'filtro.estado') or 'todas',
+        'fecha_desde': pick('fecha_desde', 'fechaDesde', 'filtro.fechaDesde'),
+        'fecha_hasta': pick('fecha_hasta', 'fechaHasta', 'filtro.fechaHasta'),
+    }
+    if normalized['estado'] not in {'todas', 'terminada', 'iniciada', 'pendiente', 'cancelada', 'rechazada'}:
+        normalized['estado'] = 'todas'
+    return normalized
+
+
+def apply_operation_filters(queryset: QuerySet[OperacionIOL], filters: dict) -> QuerySet[OperacionIOL]:
+    numero = str(filters.get('numero') or '').strip()
+    if numero:
+        queryset = queryset.filter(numero__icontains=numero)
+
+    estado = str(filters.get('estado') or 'todas').strip().lower()
+    if estado and estado != 'todas':
+        queryset = queryset.filter(Q(estado__iexact=estado) | Q(estado_actual__iexact=estado))
+
+    fecha_desde = parse_date(str(filters.get('fecha_desde') or '').strip())
+    if fecha_desde:
+        queryset = queryset.filter(fecha_orden__date__gte=fecha_desde)
+
+    fecha_hasta = parse_date(str(filters.get('fecha_hasta') or '').strip())
+    if fecha_hasta:
+        queryset = queryset.filter(fecha_orden__date__lte=fecha_hasta)
+
+    return queryset.distinct()
+
+
+def build_operation_filter_context(filters: dict) -> dict:
+    clean_filters = {**_DEFAULT_FILTERS, **(filters or {})}
+    query_string = urlencode({key: value for key, value in clean_filters.items() if value})
+    active_count = sum(1 for key, value in clean_filters.items() if key != 'estado' and value) + (0 if clean_filters['estado'] == 'todas' else 1)
+    return {
+        'values': clean_filters,
+        'active_count': active_count,
+        'has_active_filters': active_count > 0,
+        'query_string': query_string,
+        'estado_options': [
+            ('todas', 'Todas'),
+            ('terminada', 'Terminadas'),
+            ('pendiente', 'Pendientes'),
+            ('iniciada', 'Iniciadas'),
+            ('cancelada', 'Canceladas'),
+            ('rechazada', 'Rechazadas'),
+        ],
     }
 
 

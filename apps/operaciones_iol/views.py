@@ -7,7 +7,13 @@ from django.views.generic import DetailView, ListView
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.security_audit import record_sensitive_action
 from apps.operaciones_iol.models import OperacionIOL
-from apps.operaciones_iol.selectors import build_operation_list_context, has_operation_detail
+from apps.operaciones_iol.selectors import (
+    apply_operation_filters,
+    build_operation_filter_context,
+    build_operation_list_context,
+    has_operation_detail,
+    normalize_operation_filters,
+)
 
 
 class OperacionesListView(LoginRequiredMixin, ListView):
@@ -16,11 +22,18 @@ class OperacionesListView(LoginRequiredMixin, ListView):
     context_object_name = 'operaciones'
     paginate_by = 25
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.normalized_filters = normalize_operation_filters(self.request.GET)
+        return apply_operation_filters(queryset, self.normalized_filters)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         list_context = build_operation_list_context(context['operaciones'])
+        filter_context = build_operation_filter_context(getattr(self, 'normalized_filters', {}))
         context['operation_rows'] = list_context['rows']
         context['operations_summary'] = list_context['summary']
+        context['operation_filters'] = filter_context
         return context
 
 

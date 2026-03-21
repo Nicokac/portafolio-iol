@@ -48,12 +48,57 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert reverse("operaciones_iol:operacion_detail", args=["OP-1"]) in response.content.decode()
     body = response.content.decode()
     assert "Hoja de operaciones" in body
+    assert "Filtros analiticos" in body
     assert "Detalle IOL" in body
     assert "Ejecucion" in body
     assert "Enriquecido" in body
     assert "Calidad de ejecucion visible" in body
     assert "1 de 1 operaciones con detalle IOL utilizable." in body
     assert "Compra: 1" in body
+
+
+@pytest.mark.django_db
+def test_operaciones_list_view_applies_filters_from_query_params(client):
+    OperacionIOL.objects.create(
+        numero="167788363",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        estado_actual="terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+    )
+    OperacionIOL.objects.create(
+        numero="167700000",
+        fecha_orden=timezone.now() - timezone.timedelta(days=10),
+        tipo="Compra",
+        estado="Pendiente",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+    )
+    user = User.objects.create_user(username="operaciones-filter-user", password="testpass123")
+    client.force_login(user)
+
+    response = client.get(
+        reverse("operaciones_iol:operaciones_list"),
+        {
+            "numero": "167788",
+            "estado": "terminada",
+            "fecha_desde": (timezone.now() - timezone.timedelta(days=2)).date().isoformat(),
+            "fecha_hasta": timezone.now().date().isoformat(),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.context["operaciones"].count() == 1
+    assert response.context["operaciones"].first().numero == "167788363"
+    assert response.context["operation_filters"]["active_count"] == 4
+    body = response.content.decode()
+    assert "4 filtros activos" in body
+    assert "167788363" in body
+    assert "167700000" not in body
 
 
 @pytest.mark.django_db

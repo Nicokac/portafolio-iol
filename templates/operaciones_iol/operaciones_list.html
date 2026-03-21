@@ -9,6 +9,46 @@
     </div>
 </div>
 
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1">Filtros analiticos</h2>
+                <p class="text-muted small mb-0">Filtros locales alineados con el contrato operativo ya endurecido de IOL: numero, estado y rango de fechas.</p>
+            </div>
+            {% if operation_filters.has_active_filters %}
+            <span class="badge text-bg-primary">{{ operation_filters.active_count }} filtro{{ operation_filters.active_count|pluralize }} activo{{ operation_filters.active_count|pluralize }}</span>
+            {% endif %}
+        </div>
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="id_numero" class="form-label">Numero</label>
+                <input type="text" class="form-control" id="id_numero" name="numero" value="{{ operation_filters.values.numero }}" placeholder="167788363">
+            </div>
+            <div class="col-md-3">
+                <label for="id_estado" class="form-label">Estado</label>
+                <select class="form-select" id="id_estado" name="estado">
+                    {% for value, label in operation_filters.estado_options %}
+                    <option value="{{ value }}"{% if operation_filters.values.estado == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="id_fecha_desde" class="form-label">Fecha desde</label>
+                <input type="date" class="form-control" id="id_fecha_desde" name="fecha_desde" value="{{ operation_filters.values.fecha_desde }}">
+            </div>
+            <div class="col-md-2">
+                <label for="id_fecha_hasta" class="form-label">Fecha hasta</label>
+                <input type="date" class="form-control" id="id_fecha_hasta" name="fecha_hasta" value="{{ operation_filters.values.fecha_hasta }}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Aplicar</button>
+                <a href="{% url 'operaciones_iol:operaciones_list' %}" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card h-100"><div class="card-body">
