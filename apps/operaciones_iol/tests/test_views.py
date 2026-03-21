@@ -45,6 +45,7 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "operation_rows" in response.context
     assert "operations_summary" in response.context
     assert "operations_universe_coverage" in response.context
+    assert "operations_audit_summary" in response.context
     assert response.context["operations_summary"]["enriched_count"] == 1
     assert str(response.context["operations_summary"]["enriched_pct"]) == "100.00"
     assert str(response.context["operations_universe_coverage"]["detail_pct"]) == "100.00"
@@ -60,6 +61,8 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "Cobertura de pais" in body
     assert "Calidad de ejecucion visible" in body
     assert "Cobertura historica del subset filtrado" in body
+    assert "Ultimas acciones operativas" in body
+    assert "Sin registro" in body
     assert "1 de 1 operaciones con detalle IOL utilizable." in body
     assert "1 de 1 operaciones visibles ya tienen `pais_consulta` resuelto." in body
     assert "1 de 1 operaciones filtradas ya tienen detalle utilizable." in body
@@ -114,6 +117,34 @@ def test_operaciones_list_view_applies_filters_from_query_params(client):
     assert "Estados Unidos" in body
     assert "167788363" in body
     assert "167700000" not in body
+
+
+@pytest.mark.django_db
+def test_operaciones_list_view_renders_latest_audit_statuses(client):
+    SensitiveActionAudit.objects.create(
+        user=None,
+        action="sync_operaciones_filtered",
+        status="success",
+        details={"filters": {"pais": "argentina"}},
+    )
+    SensitiveActionAudit.objects.create(
+        user=None,
+        action="backfill_operaciones_filtered_country",
+        status="failed",
+        details={"resolved_count": 0},
+    )
+    user = User.objects.create_user(username="operaciones-audit-user", password="testpass123")
+    client.force_login(user)
+
+    response = client.get(reverse("operaciones_iol:operaciones_list"))
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Ultimas acciones operativas" in body
+    assert "Sync remoto filtrado" in body
+    assert "Backfill de pais" in body
+    assert "OK" in body
+    assert "Fallo" in body
 
 
 @pytest.mark.django_db

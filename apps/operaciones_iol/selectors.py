@@ -6,8 +6,10 @@ from urllib.parse import urlencode
 
 from django.core.paginator import Paginator
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 
+from apps.core.models import SensitiveActionAudit
 from apps.operaciones_iol.models import OperacionIOL
 
 
@@ -90,6 +92,56 @@ def build_operation_universe_coverage_context(queryset: QuerySet[OperacionIOL]) 
         'country_pct': _safe_percentage(country_count, total_count),
         'country_argentina_count': argentina_count,
         'country_estados_unidos_count': us_count,
+    }
+
+
+def build_operation_audit_summary_context(limit: int = 3) -> dict:
+    tracked_actions = [
+        ('sync_operaciones_filtered', 'Sync remoto filtrado'),
+        ('enrich_operaciones_filtered_details', 'Enriquecimiento de detalle'),
+        ('backfill_operaciones_filtered_country', 'Backfill de pais'),
+    ]
+    action_map = dict(tracked_actions)
+    audits = (
+        SensitiveActionAudit.objects.filter(action__in=action_map.keys())
+        .select_related('user')
+        .order_by('-created_at', '-id')
+    )
+
+    latest_by_action: dict[str, SensitiveActionAudit] = {}
+    for audit in audits:
+        if audit.action not in latest_by_action:
+            latest_by_action[audit.action] = audit
+        if len(latest_by_action) == len(tracked_actions):
+            break
+
+    rows = []
+    for action_key, label in tracked_actions[:limit]:
+        audit = latest_by_action.get(action_key)
+        rows.append(
+            {
+                'action': action_key,
+                'label': label,
+                'status': audit.status if audit else 'missing',
+                'status_label': _build_audit_status_label(audit.status if audit else 'missing'),
+                'status_tone': _build_audit_status_tone(audit.status if audit else 'missing'),
+                'user_label': audit.user.username if audit and audit.user else 'system',
+                'created_at_label': _format_audit_datetime(audit.created_at) if audit else 'Sin registros',
+                'details': audit.details if audit else {},
+            }
+        )
+
+    success_count = sum(1 for row in rows if row['status'] == 'success')
+    failed_count = sum(1 for row in rows if row['status'] == 'failed')
+    missing_count = sum(1 for row in rows if row['status'] == 'missing')
+    return {
+        'rows': rows,
+        'summary': {
+            'tracked_count': len(rows),
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'missing_count': missing_count,
+        },
     }
 
 
@@ -296,3 +348,26 @@ def _build_type_breakdown(rows: list[dict], total_count: int) -> list[dict]:
         for tipo, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
     ]
     return breakdown[:4]
+
+
+def _build_audit_status_label(status: str) -> str:
+    if status == 'success':
+        return 'OK'
+    if status == 'failed':
+        return 'Fallo'
+    return 'Sin registro'
+
+
+def _build_audit_status_tone(status: str) -> str:
+    if status == 'success':
+        return 'success'
+    if status == 'failed':
+        return 'danger'
+    return 'secondary'
+
+
+def _format_audit_datetime(value) -> str:
+    if value is None:
+        return 'Sin registros'
+    localized = timezone.localtime(value) if timezone.is_aware(value) else value
+    return localized.strftime('%Y-%m-%d %H:%M')

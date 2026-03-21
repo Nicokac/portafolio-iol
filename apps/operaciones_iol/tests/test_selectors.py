@@ -3,9 +3,11 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
+from apps.core.models import SensitiveActionAudit
 from apps.operaciones_iol.models import OperacionIOL
 from apps.operaciones_iol.selectors import (
     apply_operation_filters,
+    build_operation_audit_summary_context,
     build_operation_filter_context,
     build_operation_list_context,
     build_operation_universe_coverage_context,
@@ -254,3 +256,41 @@ def test_build_operation_universe_coverage_context_summarizes_filtered_universe(
     assert context["country_pct"] == Decimal("66.67")
     assert context["country_argentina_count"] == 1
     assert context["country_estados_unidos_count"] == 1
+
+
+@pytest.mark.django_db
+def test_build_operation_audit_summary_context_returns_latest_rows_per_action(django_user_model):
+    user = django_user_model.objects.create_user(username="audit-ops-user", password="testpass123")
+    SensitiveActionAudit.objects.create(
+        user=user,
+        action="sync_operaciones_filtered",
+        status="failed",
+        details={"page": "1"},
+    )
+    SensitiveActionAudit.objects.create(
+        user=user,
+        action="sync_operaciones_filtered",
+        status="success",
+        details={"page": "2"},
+    )
+    SensitiveActionAudit.objects.create(
+        user=user,
+        action="enrich_operaciones_filtered_details",
+        status="success",
+        details={"selected_count": 3},
+    )
+
+    context = build_operation_audit_summary_context()
+
+    assert context["summary"]["tracked_count"] == 3
+    assert context["summary"]["success_count"] == 2
+    assert context["summary"]["failed_count"] == 0
+    assert context["summary"]["missing_count"] == 1
+    assert context["rows"][0]["action"] == "sync_operaciones_filtered"
+    assert context["rows"][0]["status"] == "success"
+    assert context["rows"][0]["user_label"] == "audit-ops-user"
+    assert context["rows"][1]["action"] == "enrich_operaciones_filtered_details"
+    assert context["rows"][1]["status_label"] == "OK"
+    assert context["rows"][2]["action"] == "backfill_operaciones_filtered_country"
+    assert context["rows"][2]["status"] == "missing"
+    assert context["rows"][2]["created_at_label"] == "Sin registros"
