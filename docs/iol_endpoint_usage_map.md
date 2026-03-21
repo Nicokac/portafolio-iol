@@ -33,7 +33,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | Endpoint IOL | Cliente | Uso real actual | Superficie | Aprovechamiento actual | Brecha principal |
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
-| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, señal visible y compuerta de ejecucion en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni señal persistida en recomendaciones |
+| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, señal visible, compuerta de ejecucion y condicionamiento de prioridad en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni señal persistida en recomendaciones |
 | `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, auditoria operativa visible, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual y analitica operativa historica por subset filtrado | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
 | `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles, batch sobre subset filtrado, drill-down operativo y metricas historicas de ejecucion/costo | Alto | no hay serie persistida propia de ejecucion ni slippage robusto |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
@@ -81,6 +81,7 @@ Se usa para:
 - chequeo tactico de `parking` en `Planeacion`
 - señal tactica de `parking` dentro del bloque `Modo decision` de `Planeacion`
 - compuerta de ejecucion en `Planeacion` cuando hay `parking` visible
+- condicionamiento de prioridad de la recomendacion cuando el bloque sugerido coincide con posiciones en `parking`
 
 Campos hoy bien aprovechados:
 
@@ -95,6 +96,7 @@ Conclusion:
 - `parking` ya dejo de ser dato huérfano en persistencia
 - `parking` ya impacta la lectura de decision tactica en `Planeacion`
 - `parking` ya puede frenar la ejecucion directa y forzar revision tactica antes del despliegue
+- `parking` ya puede condicionar la prioridad visible de la recomendacion cuando hay superposicion con el bloque sugerido
 - la brecha ya no es de ingestion sino de integracion mas profunda en recomendaciones o analitica historica
 
 ### 3. `operaciones`

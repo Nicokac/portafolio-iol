@@ -1064,7 +1064,15 @@ class TestDashboardView:
                     ],
                     'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una señal macro dominante.'},
                     'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
-                    'recommendation': {'block': None, 'amount': None, 'reason': 'Todavía no hay un bloque dominante para este corte.', 'has_recommendation': False},
+                    'recommendation': {
+                        'block': 'Defensive / resiliente',
+                        'amount': 600000,
+                        'reason': 'Se prioriza resiliencia. Hay parking visible dentro de este mismo bloque y conviene revisar la restriccion antes de ejecutar.',
+                        'has_recommendation': True,
+                        'priority_label': 'Condicionada',
+                        'priority_tone': 'warning',
+                        'is_conditioned_by_parking': True,
+                    },
                     'suggested_assets': [],
                     'preferred_proposal': None,
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
@@ -1088,6 +1096,9 @@ class TestDashboardView:
         assert 'Hay 2 posicion(es) con parking visible por 450000.00.' in body
         assert 'Hay posiciones con parking visible en cartera' in body
         assert 'Conviene revisar esas restricciones antes de reforzar la misma zona de exposicion.' in body
+        assert 'Condicionada' in body
+        assert 'Defensive / resiliente' in body
+        assert 'Hay parking visible dentro de este mismo bloque' in body
         assert 'Revisar restricciones antes de ejecutar' in body
         assert 'Revisar antes de ejecutar' in body
 

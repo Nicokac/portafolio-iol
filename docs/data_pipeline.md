@@ -151,6 +151,7 @@ Salidas operativas:
   - chequeo tactico de `parking` antes de decidir despliegue
   - señal tactica de `parking` dentro de `Modo decision`
   - compuerta de ejecucion cuando `parking` sigue visible
+  - recomendacion condicionada cuando el bloque sugerido se superpone con posiciones en `parking`
 - `Portafolio`
   - lectura visible de `parking` por activo
   - valorizado y disponible inmediato sobre la hoja actual

@@ -219,12 +219,24 @@ def get_portfolio_parking_feature_context(*, top_limit: int = 5) -> Dict:
     def build():
         portafolio = get_portafolio_enriquecido_actual()
         relevant_items = portafolio["inversion"] + portafolio["fci_cash_management"]
-        rows = [build_portafolio_row(item["activo"]) for item in relevant_items]
+        rows = []
+        parking_blocks: Dict[str, Decimal] = {}
+        for item in relevant_items:
+            row = build_portafolio_row(item["activo"])
+            row["bloque_estrategico"] = item.get("bloque_estrategico") or "N/A"
+            rows.append(row)
+            if row["has_parking"]:
+                block_label = str(item.get("bloque_estrategico") or "N/A")
+                parking_blocks[block_label] = parking_blocks.get(block_label, Decimal("0")) + row["valorizado"]
         total_positions = len(rows)
         parking_rows = [row for row in rows if row["has_parking"]]
         parking_count = len(parking_rows)
         parking_value_total = sum((row["valorizado"] for row in parking_rows), Decimal("0"))
         top_rows = sorted(parking_rows, key=lambda row: row["valorizado"], reverse=True)[: max(int(top_limit or 0), 1)]
+        parking_block_summary = [
+            {"label": label, "value_total": value_total}
+            for label, value_total in sorted(parking_blocks.items(), key=lambda item: item[1], reverse=True)
+        ]
 
         alerts = []
         if parking_count > 0:
@@ -244,6 +256,7 @@ def get_portfolio_parking_feature_context(*, top_limit: int = 5) -> Dict:
                 "parking_pct": _safe_percentage(parking_count, total_positions),
                 "parking_value_total": parking_value_total,
             },
+            "parking_blocks": parking_block_summary,
             "top_rows": top_rows,
             "alerts": alerts,
         }
@@ -2761,13 +2774,13 @@ def get_decision_engine_summary(
 
         macro_state = _build_decision_macro_state(macro_local)
         portfolio_state = _build_decision_portfolio_state(analytics)
-        recommendation = _build_decision_recommendation(monthly_plan)
+        parking_feature = get_portfolio_parking_feature_context()
+        recommendation = _build_decision_recommendation(monthly_plan, parking_feature=parking_feature)
         suggested_assets = _build_decision_suggested_assets(ranking)
         preferred_proposal = _build_decision_preferred_proposal(preferred_payload)
         expected_impact = _build_decision_expected_impact(simulation)
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
         strategy_bias = _build_decision_strategy_bias(recommendation_context)
-        parking_feature = get_portfolio_parking_feature_context()
         parking_signal = _build_decision_parking_signal(parking_feature)
         execution_gate = _build_decision_execution_gate(
             parking_signal=parking_signal,
@@ -3811,7 +3824,24 @@ def _build_decision_portfolio_state(analytics: Dict | None) -> Dict:
     }
 
 
-def _build_decision_recommendation(monthly_plan: Dict | None) -> Dict:
+def _normalize_decision_block_label(value: str | None) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    ascii_only = "".join(char for char in normalized if not unicodedata.combining(char))
+    return " ".join(ascii_only.replace("/", " ").split())
+
+
+def _is_parking_overlap_with_recommendation(recommendation_block: str | None, parking_blocks: list[Dict] | None) -> bool:
+    target = _normalize_decision_block_label(recommendation_block)
+    if not target:
+        return False
+    for item in parking_blocks or []:
+        candidate = _normalize_decision_block_label(item.get("label"))
+        if candidate and (candidate == target or candidate in target or target in candidate):
+            return True
+    return False
+
+
+def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature: Dict | None = None) -> Dict:
     monthly_plan = monthly_plan or {}
     primary_block = next(iter(monthly_plan.get("recommended_blocks") or []), None)
     if not primary_block:
@@ -3820,12 +3850,26 @@ def _build_decision_recommendation(monthly_plan: Dict | None) -> Dict:
             "amount": None,
             "reason": "Todavia no hay un bloque dominante para este mes.",
             "has_recommendation": False,
+            "priority_label": "Sin prioridad",
+            "priority_tone": "secondary",
+            "is_conditioned_by_parking": False,
         }
+    block_label = primary_block.get("label")
+    reason = str(primary_block.get("reason") or "").strip()
+    parking_overlap = _is_parking_overlap_with_recommendation(
+        block_label,
+        (parking_feature or {}).get("parking_blocks") or [],
+    )
+    if parking_overlap:
+        reason = f"{reason} Hay parking visible dentro de este mismo bloque y conviene revisar la restriccion antes de ejecutar."
     return {
-        "block": primary_block.get("label"),
+        "block": block_label,
         "amount": _coerce_optional_float(primary_block.get("suggested_amount")),
-        "reason": str(primary_block.get("reason") or "").strip(),
+        "reason": reason,
         "has_recommendation": True,
+        "priority_label": "Condicionada" if parking_overlap else "Prioritaria",
+        "priority_tone": "warning" if parking_overlap else "success",
+        "is_conditioned_by_parking": parking_overlap,
     }
 
 
