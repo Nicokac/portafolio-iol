@@ -34,7 +34,7 @@ def test_portafolio_list_view_renders_template_and_context(client):
         mercado="NASDAQ",
         tipo="CEDEAR",
         moneda="peso_Argentino",
-        parking=None,
+        parking={"cantidad": 5, "fecha": "2026-03-25"},
     )
     user = User.objects.create_user(username="portafolio-user", password="testpass123")
     client.force_login(user)
@@ -45,3 +45,12 @@ def test_portafolio_list_view_renders_template_and_context(client):
     assert "portafolio_iol/portafolio_list.html" in [t.name for t in response.templates]
     assert "activos" in response.context
     assert response.context["activos"].count() == 1
+    assert "portafolio_rows" in response.context
+    assert "portafolio_summary" in response.context
+    assert response.context["portafolio_summary"]["parking_count"] == 1
+    body = response.content.decode()
+    assert "Hoja de portafolio" in body
+    assert "Con parking" in body
+    assert "Valorizado con parking" in body
+    assert "Lectura de parking IOL" in body
+    assert "Cantidad 5" in body
