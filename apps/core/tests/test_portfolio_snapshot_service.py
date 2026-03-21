@@ -167,6 +167,10 @@ class TestPortfolioSnapshotService:
         result = service.sync_iol_data()
         assert result["success"] is True
         assert result["snapshot_generated"] is True
+        service.api_client.get_operaciones.assert_called_once()
+        assert service.api_client.get_operaciones.call_args.args[0]["estado"] == "todas"
+        assert service.api_client.get_operaciones.call_args.args[0]["pais"] == "argentina"
+        assert "fecha_desde" in service.api_client.get_operaciones.call_args.args[0]
         assert ResumenCuentaSnapshot.objects.count() == 1
         resumen = ResumenCuentaSnapshot.objects.get()
         assert resumen.moneda == 'peso_Argentino'

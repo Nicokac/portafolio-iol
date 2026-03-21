@@ -270,7 +270,11 @@ class IOLAPIClient:
     def get_operaciones(self, params: Optional[Dict] = None) -> Optional[List[Dict]]:
         """Obtiene las operaciones."""
         url = f"{self.base_url}/api/v2/operaciones"
-        data = self._request_json(operation="get_operaciones", url=url, params=params)
+        data = self._request_json(
+            operation="get_operaciones",
+            url=url,
+            params=self._normalize_operaciones_filters(params),
+        )
         return data if isinstance(data, list) else None
 
     def get_operacion(self, numero: str | int) -> Optional[Dict]:
@@ -279,6 +283,56 @@ class IOLAPIClient:
         url = f"{self.base_url}/api/v2/operaciones/{numero_path}"
         data = self._request_json(operation=f"get_operacion:{numero}", url=url)
         return data if isinstance(data, dict) else None
+
+    def _normalize_operaciones_filters(self, params: Optional[Dict]) -> Optional[Dict]:
+        if not params:
+            return params
+
+        normalized: Dict[str, object] = {}
+
+        def pick(*keys):
+            for key in keys:
+                if key in params and params[key] is not None:
+                    return params[key]
+            return None
+
+        numero = pick("filtro.numero", "numero")
+        estado = pick("filtro.estado", "estado")
+        fecha_desde = pick("filtro.fechaDesde", "fechaDesde", "fecha_desde", "desde")
+        fecha_hasta = pick("filtro.fechaHasta", "fechaHasta", "fecha_hasta", "hasta")
+        pais = pick("filtro.pais", "pais")
+
+        if numero is not None:
+            normalized["filtro.numero"] = numero
+        if estado is not None:
+            normalized["filtro.estado"] = estado
+        if fecha_desde is not None:
+            normalized["filtro.fechaDesde"] = fecha_desde
+        if fecha_hasta is not None:
+            normalized["filtro.fechaHasta"] = fecha_hasta
+        if pais is not None:
+            normalized["filtro.pais"] = pais
+
+        for key, value in params.items():
+            if key not in {
+                "numero",
+                "estado",
+                "fechaDesde",
+                "fecha_desde",
+                "desde",
+                "fechaHasta",
+                "fecha_hasta",
+                "hasta",
+                "pais",
+                "filtro.numero",
+                "filtro.estado",
+                "filtro.fechaDesde",
+                "filtro.fechaHasta",
+                "filtro.pais",
+            }:
+                normalized[key] = value
+
+        return normalized
 
     def get_titulo(self, mercado: str, simbolo: str) -> Optional[Dict]:
         """Obtiene metadata minima de un titulo en un mercado dado."""

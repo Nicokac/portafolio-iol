@@ -164,6 +164,51 @@ class TestIOLAPIClient:
 
         result = client.get_operaciones({'fechaDesde': '2025-01-01'})
         assert result == [{'tipo': 'compra'}]
+        assert mock_get.call_args.kwargs['params'] == {'filtro.fechaDesde': '2025-01-01'}
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_operaciones_normalizes_internal_filters(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'tipo': 'compra'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_operaciones({
+            'numero': 167788363,
+            'estado': 'todas',
+            'fecha_desde': '2026-03-01',
+            'fecha_hasta': '2026-03-21',
+            'pais': 'argentina',
+        })
+
+        assert result == [{'tipo': 'compra'}]
+        assert mock_get.call_args.kwargs['params'] == {
+            'filtro.numero': 167788363,
+            'filtro.estado': 'todas',
+            'filtro.fechaDesde': '2026-03-01',
+            'filtro.fechaHasta': '2026-03-21',
+            'filtro.pais': 'argentina',
+        }
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_operaciones_preserves_explicit_filter_keys(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'tipo': 'compra'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_operaciones({
+            'filtro.estado': 'terminadas',
+            'filtro.pais': 'argentina',
+            'filtro.fechaDesde': '2026-03-01',
+        })
+
+        assert result == [{'tipo': 'compra'}]
+        assert mock_get.call_args.kwargs['params'] == {
+            'filtro.estado': 'terminadas',
+            'filtro.pais': 'argentina',
+            'filtro.fechaDesde': '2026-03-01',
+        }
 
     @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_operaciones_failure(self, mock_get, client):

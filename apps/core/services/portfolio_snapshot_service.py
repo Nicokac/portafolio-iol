@@ -135,7 +135,11 @@ class PortfolioSnapshotService:
             logger.info("Portafolio synchronized")
 
             operaciones = self.api_client.get_operaciones(
-                {"fechaDesde": (timezone.now() - timezone.timedelta(days=30)).strftime("%Y-%m-%d")}
+                {
+                    "fecha_desde": (timezone.now() - timezone.timedelta(days=30)).strftime("%Y-%m-%d"),
+                    "estado": "todas",
+                    "pais": "argentina",
+                }
             )
             if operaciones:
                 self._save_operaciones(operaciones)
