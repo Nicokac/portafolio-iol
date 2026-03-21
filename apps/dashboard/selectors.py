@@ -2777,7 +2777,10 @@ def get_decision_engine_summary(
         parking_feature = get_portfolio_parking_feature_context()
         recommendation = _build_decision_recommendation(monthly_plan, parking_feature=parking_feature)
         suggested_assets = _build_decision_suggested_assets(ranking, parking_feature=parking_feature)
-        preferred_proposal = _build_decision_preferred_proposal(preferred_payload)
+        preferred_proposal = _build_decision_preferred_proposal(
+            preferred_payload,
+            parking_feature=parking_feature,
+        )
         expected_impact = _build_decision_expected_impact(simulation)
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
         strategy_bias = _build_decision_strategy_bias(recommendation_context)
@@ -3901,23 +3904,51 @@ def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: D
     return assets[:3]
 
 
-def _build_decision_preferred_proposal(preferred_payload: Dict | None) -> Dict | None:
+def _build_purchase_plan_blocks(purchase_plan: list[Dict]) -> list[str]:
+    symbols = [str(item.get("symbol") or "").strip().upper() for item in purchase_plan if item.get("symbol")]
+    if not symbols:
+        return []
+    parametros = ParametroActivo.objects.filter(simbolo__in=symbols)
+    labels: list[str] = []
+    for parametro in parametros:
+        label = str(getattr(parametro, "bloque_estrategico", "") or "").strip()
+        if label and label not in labels:
+            labels.append(label)
+    return labels
+
+
+def _build_decision_preferred_proposal(preferred_payload: Dict | None, *, parking_feature: Dict | None = None) -> Dict | None:
     preferred_payload = preferred_payload or {}
     preferred = preferred_payload.get("preferred")
     if not preferred:
         return None
     simulation = preferred.get("simulation") or {}
+    purchase_plan = list(preferred.get("purchase_plan") or [])
+    purchase_plan_blocks = _build_purchase_plan_blocks(purchase_plan)
+    parking_overlap = any(
+        _is_parking_overlap_with_recommendation(block_label, (parking_feature or {}).get("parking_blocks") or [])
+        for block_label in purchase_plan_blocks
+    )
     return {
         "proposal_key": preferred.get("proposal_key"),
         "proposal_label": preferred.get("proposal_label") or preferred.get("label"),
         "source_label": preferred.get("source_label"),
         "comparison_score": _coerce_optional_float(preferred.get("comparison_score")),
-        "purchase_plan": list(preferred.get("purchase_plan") or []),
+        "purchase_plan": purchase_plan,
         "purchase_summary": preferred.get("purchase_summary") or _format_incremental_purchase_plan_summary(
-            list(preferred.get("purchase_plan") or [])
+            purchase_plan
         ),
         "simulation_delta": dict(simulation.get("delta") or preferred.get("simulation_delta") or {}),
         "simulation_interpretation": str(simulation.get("interpretation") or ""),
+        "purchase_plan_blocks": purchase_plan_blocks,
+        "is_conditioned_by_parking": parking_overlap,
+        "priority_label": "Condicionada por parking" if parking_overlap else "Lista",
+        "priority_tone": "warning" if parking_overlap else "success",
+        "parking_note": (
+            "La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa."
+            if parking_overlap
+            else ""
+        ),
     }
 
 
@@ -4073,7 +4104,7 @@ def _build_decision_action_suggestions(strategy_bias: str | None, *, parking_sig
 
 
 def _build_decision_execution_gate(*, parking_signal: Dict | None, preferred_proposal: Dict | None) -> Dict:
-    if (parking_signal or {}).get("has_signal"):
+    if (parking_signal or {}).get("has_signal") or (preferred_proposal or {}).get("is_conditioned_by_parking"):
         return {
             "has_blocker": True,
             "status": "review_parking",

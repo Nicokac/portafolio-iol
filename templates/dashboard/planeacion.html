@@ -344,9 +344,15 @@
                             <div class="border rounded p-3 h-100">
                                 <div class="small text-muted mb-2">5. Propuesta sugerida</div>
                                 {% if decision.preferred_proposal %}
-                                <div class="h5 mb-1">{{ decision.preferred_proposal.proposal_label }}</div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                    <div class="h5 mb-0">{{ decision.preferred_proposal.proposal_label }}</div>
+                                    <span class="badge {% if decision.preferred_proposal.priority_tone == 'warning' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ decision.preferred_proposal.priority_label }}</span>
+                                </div>
                                 <div class="small text-muted mb-2">{{ decision.preferred_proposal.source_label }}</div>
                                 <div class="small">{{ decision.preferred_proposal.purchase_summary }}</div>
+                                {% if decision.preferred_proposal.parking_note %}
+                                <div class="small text-muted mt-2">{{ decision.preferred_proposal.parking_note }}</div>
+                                {% endif %}
                                 {% else %}
                                 <div class="text-muted">No hay propuesta dominante.</div>
                                 {% endif %}

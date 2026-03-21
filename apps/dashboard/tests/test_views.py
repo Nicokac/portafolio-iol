@@ -711,6 +711,11 @@ class TestDashboardView:
                         'purchase_summary': 'KO · 150000, MCD · 150000',
                         'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
                         'simulation_delta': {'expected_return_change': 0.5, 'fragility_change': -2.1, 'scenario_loss_change': 0.7},
+                        'purchase_plan_blocks': [],
+                        'is_conditioned_by_parking': False,
+                        'priority_label': 'Lista',
+                        'priority_tone': 'success',
+                        'parking_note': '',
                     },
                     'expected_impact': {
                         'return': 0.5,
@@ -980,7 +985,7 @@ class TestDashboardView:
                     'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
                     'recommendation': {'block': 'Defensivos USD', 'amount': 600000, 'reason': 'prioridad simple', 'has_recommendation': True, 'priority_label': 'Prioritaria', 'priority_tone': 'success', 'is_conditioned_by_parking': False},
                     'suggested_assets': [{'symbol': 'KO', 'block': 'Defensivos USD', 'score': 8.2, 'reason': 'defensive_sector_match', 'is_conditioned_by_parking': False, 'priority_label': ''}],
-                    'preferred_proposal': {'proposal_label': 'Plan A', 'source_label': 'Comparador automático', 'purchase_summary': 'KO · 600000', 'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'simulation_delta': {}},
+                    'preferred_proposal': {'proposal_label': 'Plan A', 'source_label': 'Comparador automático', 'purchase_summary': 'KO · 600000', 'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'simulation_delta': {}, 'purchase_plan_blocks': [], 'is_conditioned_by_parking': False, 'priority_label': 'Lista', 'priority_tone': 'success', 'parking_note': ''},
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
                     'score': 61,
                     'confidence': 'Media',
@@ -1086,7 +1091,18 @@ class TestDashboardView:
                             'priority_label': 'Condicionado por parking',
                         }
                     ],
-                    'preferred_proposal': None,
+                    'preferred_proposal': {
+                        'proposal_label': 'Plan KO',
+                        'source_label': 'Comparador manual',
+                        'purchase_summary': 'KO · 600000',
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 600000}],
+                        'simulation_delta': {},
+                        'purchase_plan_blocks': ['Defensive / resiliente'],
+                        'is_conditioned_by_parking': True,
+                        'priority_label': 'Condicionada por parking',
+                        'priority_tone': 'warning',
+                        'parking_note': 'La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa.',
+                    },
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
                     'score': 61,
                     'confidence': 'Media',
@@ -1113,6 +1129,8 @@ class TestDashboardView:
         assert 'Hay parking visible dentro de este mismo bloque' in body
         assert 'Condicionado por parking' in body
         assert 'Conviene revisar parking visible en este bloque antes de usarlo como candidato principal.' in body
+        assert 'Condicionada por parking' in body
+        assert 'La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa.' in body
         assert 'Revisar restricciones antes de ejecutar' in body
         assert 'Revisar antes de ejecutar' in body
 
