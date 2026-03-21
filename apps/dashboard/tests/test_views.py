@@ -1266,18 +1266,19 @@ class TestDashboardView:
                         }
                     ],
                     'preferred_proposal': {
-                        'proposal_label': 'Plan MELI',
+                        'proposal_label': 'Plan SPY',
                         'source_label': 'Comparador automático',
-                        'purchase_summary': 'MELI · 600000',
-                        'purchase_plan': [{'symbol': 'MELI', 'amount': 600000}],
+                        'purchase_summary': 'SPY · 600000',
+                        'purchase_plan': [{'symbol': 'SPY', 'amount': 600000}],
                         'simulation_delta': {},
-                        'purchase_plan_blocks': ['Growth USA'],
+                        'purchase_plan_blocks': ['Indice global'],
                         'is_conditioned_by_parking': False,
-                        'is_conditioned_by_market_history': True,
-                        'priority_label': 'Condicionada por liquidez reciente',
-                        'priority_tone': 'warning',
-                        'parking_note': 'La propuesta preferida cae en un bloque con liquidez reciente debil y conviene revisar spread y actividad antes de ejecutarla.',
+                        'is_conditioned_by_market_history': False,
+                        'priority_label': 'Repriorizada por liquidez reciente',
+                        'priority_tone': 'info',
+                        'parking_note': 'Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con liquidez reciente debil.',
                         'was_reprioritized_by_parking': False,
+                        'was_reprioritized_by_market_history': True,
                     },
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
                     'score': 57,
@@ -1301,8 +1302,8 @@ class TestDashboardView:
         assert 'Repriorizada por liquidez reciente' in body
         assert 'Growth USA viene con liquidez reciente debil' in body
         assert 'Condicionado por liquidez reciente' in body
-        assert 'Condicionada por liquidez reciente' in body
-        assert 'Plan MELI' in body
+        assert 'Plan SPY' in body
+        assert 'Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con liquidez reciente debil.' in body
         assert 'Score: 57/100' in body
         assert 'Confianza: Baja' in body
 

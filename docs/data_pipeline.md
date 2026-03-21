@@ -152,6 +152,7 @@ Salidas operativas:
   - recomendacion principal condicionada cuando el bloque sugerido viene con liquidez reciente debil
   - recomendacion principal repriorizada cuando existe un bloque alternativo razonable con ejecucion reciente mas limpia
   - degradacion de shortlist y propuesta sugerida cuando la ejecucion reciente del bloque viene debil
+  - propuesta preferida repriorizada cuando existe una alternativa comparable con ejecucion reciente mas limpia
   - degradacion de `score` y `confidence` cuando esa friccion reciente sigue activa
   - chequeo tactico de `parking` antes de decidir despliegue
   - señal tactica de `parking` dentro de `Modo decision`

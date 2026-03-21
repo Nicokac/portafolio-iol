@@ -216,6 +216,7 @@ Se usa hoy como:
 - recomendacion principal repriorizada hacia un bloque alternativo limpio cuando existe una opcion razonable dentro del mismo plan mensual
 - shortlist sugerida condicionada cuando el bloque candidato viene con liquidez reciente debil
 - propuesta preferida condicionada cuando su `purchase_plan` cae en una zona con liquidez reciente debil
+- propuesta preferida repriorizada hacia una alternativa limpia cuando la original queda condicionada por liquidez reciente y existe una opcion comparable
 - degradacion de `score` y `confidence` del `Modo decision` cuando la liquidez reciente del bloque sugerido sigue siendo debil
 
 Valor diferencial real:
@@ -236,6 +237,7 @@ Conclusion:
 - ya puede degradar la recomendacion principal cuando el bloque sugerido no viene acompanado por una ejecucion reciente limpia
 - ya puede promover un bloque alternativo mas limpio cuando la recomendacion original queda demasiado condicionada
 - ya puede degradar candidatos y propuesta sugerida cuando la calidad reciente de ejecucion no acompaña
+- ya puede promover una propuesta incremental alternativa cuando la preferida original no viene con una ejecucion reciente suficientemente limpia
 - ya puede deteriorar la firmeza cuantitativa final de la decision cuando el contexto de ejecucion reciente no acompaña
 - la brecha actual ya no es si conviene persistirlo, sino cuanta automatizacion y cobertura adicional merece ese historial
 

@@ -4153,6 +4153,7 @@ def _annotate_decision_proposal_with_market_context(
             "priority_tone": priority_tone,
             "parking_note": note,
             "was_reprioritized_by_parking": False,
+            "was_reprioritized_by_market_history": False,
         }
     )
     return annotated
@@ -4219,6 +4220,7 @@ def _build_decision_preferred_proposal(
         clean_candidates = [
             item for item in annotated_candidates
             if not item.get("is_conditioned_by_parking")
+            and not item.get("is_conditioned_by_market_history")
             and _should_promote_clean_alternative(selected, item)
         ]
         if clean_candidates:
@@ -4235,6 +4237,28 @@ def _build_decision_preferred_proposal(
             selected["priority_tone"] = "info"
             selected["parking_note"] = (
                 "Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con parking visible."
+            )
+    elif selected.get("is_conditioned_by_market_history"):
+        clean_candidates = [
+            item for item in annotated_candidates
+            if not item.get("is_conditioned_by_parking")
+            and not item.get("is_conditioned_by_market_history")
+            and _should_promote_clean_alternative(selected, item)
+        ]
+        if clean_candidates:
+            selected = sorted(
+                clean_candidates,
+                key=lambda item: (
+                    float(item.get("comparison_score") if item.get("comparison_score") is not None else float("-inf")),
+                    int(item.get("priority_rank") or 0),
+                ),
+                reverse=True,
+            )[0]
+            selected["was_reprioritized_by_market_history"] = True
+            selected["priority_label"] = "Repriorizada por liquidez reciente"
+            selected["priority_tone"] = "info"
+            selected["parking_note"] = (
+                "Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con liquidez reciente debil."
             )
 
     return selected
