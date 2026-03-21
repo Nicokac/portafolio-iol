@@ -528,10 +528,12 @@ def _classify_operation_type(raw_tipo: str) -> tuple[str, str]:
         .replace('ú', 'u')
         .replace('?', '')
     )
-    if normalized in {'compra', 'venta'}:
-        return 'trade', 'Trades'
+    if normalized == 'compra':
+        return 'buy_trade', 'Compras'
+    if normalized == 'venta':
+        return 'sell_trade', 'Ventas'
     if 'dividendo' in normalized:
         return 'dividend', 'Dividendos'
-    if 'suscripcion fci' in normalized or 'rescata fci' in normalized or 'rescate fci' in normalized:
+    if 'fci' in normalized and any(token in normalized for token in {'suscrip', 'rescat', 'rescata'}):
         return 'fci_flow', 'Flujos FCI'
     return 'other', 'Otros'

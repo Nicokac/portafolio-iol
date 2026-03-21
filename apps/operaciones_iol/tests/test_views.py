@@ -133,6 +133,17 @@ def test_operaciones_list_view_renders_execution_analytics_type_groups(client):
     OperacionIOL.objects.create(
         numero="TYPE-VIEW-2",
         fecha_orden=timezone.now(),
+        tipo="Venta",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+        monto_operacion=50,
+        aranceles_ars=0.50,
+    )
+    OperacionIOL.objects.create(
+        numero="TYPE-VIEW-3",
+        fecha_orden=timezone.now(),
         tipo="Pago de Dividendos",
         estado="Terminada",
         mercado="BCBA",
@@ -142,9 +153,9 @@ def test_operaciones_list_view_renders_execution_analytics_type_groups(client):
         aranceles_usd=0.01,
     )
     OperacionIOL.objects.create(
-        numero="TYPE-VIEW-3",
+        numero="TYPE-VIEW-4",
         fecha_orden=timezone.now(),
-        tipo="Suscripción FCI",
+        tipo="Suscripci??n FCI",
         estado="Terminada",
         mercado="BCBA",
         simbolo="PRPEDOB",
@@ -158,16 +169,16 @@ def test_operaciones_list_view_renders_execution_analytics_type_groups(client):
 
     assert response.status_code == 200
     groups = {item["key"]: item for item in response.context["operations_execution_analytics"]["type_groups"]}
-    assert groups["trade"]["count"] == 1
+    assert groups["buy_trade"]["count"] == 1
+    assert groups["sell_trade"]["count"] == 1
     assert groups["dividend"]["count"] == 1
     assert groups["fci_flow"]["count"] == 1
     body = response.content.decode()
     assert "Desagregado por familia operativa" in body
-    assert "Trades" in body
+    assert "Compras" in body
+    assert "Ventas" in body
     assert "Dividendos" in body
     assert "Flujos FCI" in body
-
-
 @pytest.mark.django_db
 def test_operaciones_list_view_applies_filters_from_query_params(client):
     OperacionIOL.objects.create(

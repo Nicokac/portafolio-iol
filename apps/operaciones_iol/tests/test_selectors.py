@@ -313,7 +313,7 @@ def test_build_operation_execution_analytics_context_summarizes_cost_and_fragmen
     assert context["avg_fills_per_visible"] == Decimal("1.50")
     assert context["executed_amount_total"] == Decimal("78720.15")
     assert context["executed_amount_visible_count"] == 2
-    assert context["type_groups"][0]["label"] in {"Trades", "Dividendos"}
+    assert context["type_groups"][0]["label"] in {"Compras", "Dividendos"}
 
 
 @pytest.mark.django_db
@@ -333,6 +333,17 @@ def test_build_operation_execution_analytics_context_groups_by_operation_family(
     OperacionIOL.objects.create(
         numero="TYPE-2",
         fecha_orden=timezone.now(),
+        tipo="Venta",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+        monto_operacion=Decimal("50"),
+        aranceles_ars=Decimal("0.50"),
+    )
+    OperacionIOL.objects.create(
+        numero="TYPE-3",
+        fecha_orden=timezone.now(),
         tipo="Pago de Dividendos",
         estado="Terminada",
         mercado="BCBA",
@@ -342,9 +353,9 @@ def test_build_operation_execution_analytics_context_groups_by_operation_family(
         aranceles_usd=Decimal("0.01"),
     )
     OperacionIOL.objects.create(
-        numero="TYPE-3",
+        numero="TYPE-4",
         fecha_orden=timezone.now(),
-        tipo="Suscripción FCI",
+        tipo="Suscripci??n FCI",
         estado="Terminada",
         mercado="BCBA",
         simbolo="PRPEDOB",
@@ -355,15 +366,16 @@ def test_build_operation_execution_analytics_context_groups_by_operation_family(
     context = build_operation_execution_analytics_context(OperacionIOL.objects.order_by("numero"))
     groups = {item["key"]: item for item in context["type_groups"]}
 
-    assert groups["trade"]["label"] == "Trades"
-    assert groups["trade"]["count"] == 1
-    assert groups["trade"]["executed_amount_total"] == Decimal("100")
+    assert groups["buy_trade"]["label"] == "Compras"
+    assert groups["buy_trade"]["count"] == 1
+    assert groups["buy_trade"]["executed_amount_total"] == Decimal("100")
+    assert groups["sell_trade"]["label"] == "Ventas"
+    assert groups["sell_trade"]["count"] == 1
+    assert groups["sell_trade"]["executed_amount_total"] == Decimal("50")
     assert groups["dividend"]["label"] == "Dividendos"
     assert groups["dividend"]["fees_usd_total"] == Decimal("0.01")
     assert groups["fci_flow"]["label"] == "Flujos FCI"
     assert groups["fci_flow"]["executed_amount_total"] == Decimal("9.19")
-
-
 @pytest.mark.django_db
 def test_build_operation_audit_summary_context_returns_latest_rows_per_action(django_user_model):
     user = django_user_model.objects.create_user(username="audit-ops-user", password="testpass123")
