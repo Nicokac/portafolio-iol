@@ -2767,7 +2767,16 @@ def get_decision_engine_summary(
         expected_impact = _build_decision_expected_impact(simulation)
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
         strategy_bias = _build_decision_strategy_bias(recommendation_context)
-        action_suggestions = _build_decision_action_suggestions(strategy_bias)
+        parking_feature = get_portfolio_parking_feature_context()
+        parking_signal = _build_decision_parking_signal(parking_feature)
+        execution_gate = _build_decision_execution_gate(
+            parking_signal=parking_signal,
+            preferred_proposal=preferred_proposal,
+        )
+        action_suggestions = _build_decision_action_suggestions(
+            strategy_bias,
+            parking_signal=parking_signal,
+        )
         score = _compute_decision_score(
             macro_state=macro_state,
             portfolio_state=portfolio_state,
@@ -2788,6 +2797,7 @@ def get_decision_engine_summary(
             expected_impact=expected_impact,
             confidence=confidence,
             preferred_proposal=preferred_proposal,
+            parking_signal=parking_signal,
         )
         tracking_payload = _build_decision_tracking_payload(
             preferred_proposal=preferred_proposal,
@@ -2803,6 +2813,8 @@ def get_decision_engine_summary(
             "portfolio_scope": portfolio_scope,
             "recommendation_context": recommendation_context,
             "strategy_bias": strategy_bias,
+            "parking_signal": parking_signal,
+            "execution_gate": execution_gate,
             "action_suggestions": action_suggestions,
             "macro_state": macro_state,
             "portfolio_state": portfolio_state,
@@ -3948,7 +3960,33 @@ def _build_decision_strategy_bias(recommendation_context: str | None) -> str | N
     return None
 
 
-def _build_decision_action_suggestions(strategy_bias: str | None) -> list[Dict]:
+def _build_decision_parking_signal(parking_feature: Dict | None) -> Dict:
+    parking_feature = parking_feature or {}
+    summary = parking_feature.get("summary") or {}
+    parking_count = int(summary.get("parking_count") or 0)
+    parking_value_total = summary.get("parking_value_total") or Decimal("0")
+
+    if not parking_feature.get("has_visible_parking") or parking_count <= 0:
+        return {
+            "has_signal": False,
+            "severity": "info",
+            "title": "",
+            "summary": "",
+            "parking_count": 0,
+            "parking_value_total": Decimal("0"),
+        }
+
+    return {
+        "has_signal": True,
+        "severity": "warning",
+        "title": "Parking visible antes de reforzar",
+        "summary": f"Hay {parking_count} posicion(es) con parking visible por {parking_value_total.quantize(Decimal('0.01'))}.",
+        "parking_count": parking_count,
+        "parking_value_total": parking_value_total,
+    }
+
+
+def _build_decision_action_suggestions(strategy_bias: str | None, *, parking_signal: Dict | None = None) -> list[Dict]:
     suggestions = []
     if strategy_bias == "deploy_cash":
         suggestions.append(
@@ -3966,7 +4004,44 @@ def _build_decision_action_suggestions(strategy_bias: str | None) -> list[Dict]:
                 "suggestion": "Evaluar reducción de concentración en top posiciones.",
             }
         )
+    if (parking_signal or {}).get("has_signal"):
+        suggestions.append(
+            {
+                "type": "parking",
+                "message": "Hay posiciones con parking visible en cartera",
+                "suggestion": "Conviene revisar esas restricciones antes de reforzar la misma zona de exposicion.",
+            }
+        )
     return suggestions
+
+
+def _build_decision_execution_gate(*, parking_signal: Dict | None, preferred_proposal: Dict | None) -> Dict:
+    if (parking_signal or {}).get("has_signal"):
+        return {
+            "has_blocker": True,
+            "status": "review_parking",
+            "title": "Revisar restricciones antes de ejecutar",
+            "summary": "La propuesta puede seguir siendo valida, pero conviene revisar primero el parking visible antes de desplegar mas capital.",
+            "primary_cta_label": "Revisar antes de ejecutar",
+            "primary_cta_tone": "warning",
+        }
+    if preferred_proposal:
+        return {
+            "has_blocker": False,
+            "status": "ready",
+            "title": "",
+            "summary": "",
+            "primary_cta_label": "Ejecutar decisión",
+            "primary_cta_tone": "success",
+        }
+    return {
+        "has_blocker": False,
+        "status": "pending",
+        "title": "",
+        "summary": "",
+        "primary_cta_label": "Ejecutar decisión",
+        "primary_cta_tone": "success",
+    }
 
 
 def _compute_decision_confidence(
@@ -3998,6 +4073,7 @@ def _build_decision_explanation(
     expected_impact: Dict,
     confidence: str,
     preferred_proposal: Dict | None,
+    parking_signal: Dict | None = None,
 ) -> list[str]:
     recommendation_block = recommendation.get("block") or "el bloque sugerido"
     recommendation_reason = recommendation.get("reason") or "es la prioridad mas clara del mes"
@@ -4009,12 +4085,15 @@ def _build_decision_explanation(
     elif expected_impact.get("status") == "mixed":
         risk_line = "El riesgo queda controlado, pero conviene revisar las senales mixtas."
 
-    return [
+    bullets = [
         f"Se refuerza {recommendation_block} porque {recommendation_reason}.",
         f"El contexto macro esta en {str(macro_state.get('label') or 'Indefinido').lower()} y {macro_state.get('summary') or 'no invalida la decision principal'}.",
         f"El impacto esperado de {proposal_label} es {expected_impact.get('status') or 'neutral'} en retorno, fragilidad y peor escenario.",
         risk_line,
-    ][:4]
+    ]
+    if (parking_signal or {}).get("has_signal"):
+        bullets.append("Hay parking visible en cartera y conviene revisar esas restricciones antes de ejecutar la propuesta.")
+    return bullets[:5]
 
 
 def _build_decision_tracking_payload(

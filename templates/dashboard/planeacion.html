@@ -266,6 +266,12 @@
                         Tu foco está en optimizar una cartera ya desplegada.
                     </div>
                     {% endif %}
+                    {% if decision.parking_signal.has_signal %}
+                    <div class="alert alert-warning mb-3">
+                        <strong>{{ decision.parking_signal.title }}</strong><br>
+                        {{ decision.parking_signal.summary }}
+                    </div>
+                    {% endif %}
                     {% for action in decision.action_suggestions %}
                     <div class="alert alert-secondary mb-3">
                         <strong>{{ action.message }}</strong><br>
@@ -382,8 +388,14 @@
                                 </div>
                                 {% endif %}
                                 <div class="col-lg-4 ms-lg-auto">
+                                    {% if decision.execution_gate.has_blocker %}
+                                    <div class="alert alert-warning small mb-3">
+                                        <strong>{{ decision.execution_gate.title }}</strong><br>
+                                        {{ decision.execution_gate.summary }}
+                                    </div>
+                                    {% endif %}
                                     <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                                        <button type="button" class="btn btn-success">Ejecutar decisión</button>
+                                        <button type="button" class="btn {% if decision.execution_gate.primary_cta_tone == 'warning' %}btn-warning text-dark{% else %}btn-success{% endif %}">{{ decision.execution_gate.primary_cta_label|default:"Ejecutar decisión" }}</button>
                                         <a class="btn btn-outline-primary" href="#planeacion-exploracion">Explorar alternativas</a>
                                         <button type="button" class="btn btn-outline-secondary">Postergar</button>
                                     </div>

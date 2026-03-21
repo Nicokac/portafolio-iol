@@ -149,6 +149,8 @@ Salidas operativas:
   - simulacion
   - optimizacion
   - chequeo tactico de `parking` antes de decidir despliegue
+  - señal tactica de `parking` dentro de `Modo decision`
+  - compuerta de ejecucion cuando `parking` sigue visible
 - `Portafolio`
   - lectura visible de `parking` por activo
   - valorizado y disponible inmediato sobre la hoja actual

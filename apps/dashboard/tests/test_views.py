@@ -675,6 +675,14 @@ class TestDashboardView:
                     },
                     'recommendation_context': 'high_cash',
                     'strategy_bias': 'deploy_cash',
+                    'execution_gate': {
+                        'has_blocker': False,
+                        'status': 'ready',
+                        'title': '',
+                        'summary': '',
+                        'primary_cta_label': 'Ejecutar decisión',
+                        'primary_cta_tone': 'success',
+                    },
                     'action_suggestions': [
                         {
                             'type': 'allocation',
@@ -879,6 +887,14 @@ class TestDashboardView:
                     },
                     'recommendation_context': None,
                     'strategy_bias': None,
+                    'execution_gate': {
+                        'has_blocker': False,
+                        'status': 'pending',
+                        'title': '',
+                        'summary': '',
+                        'primary_cta_label': 'Ejecutar decisión',
+                        'primary_cta_tone': 'success',
+                    },
                     'action_suggestions': [],
                     'macro_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto macro suficiente.'},
                     'portfolio_state': {'key': 'indefinido', 'label': 'Indefinido', 'summary': 'Falta contexto suficiente sobre la cartera.'},
@@ -942,6 +958,14 @@ class TestDashboardView:
                     },
                     'recommendation_context': 'high_cash',
                     'strategy_bias': 'deploy_cash',
+                    'execution_gate': {
+                        'has_blocker': False,
+                        'status': 'ready',
+                        'title': '',
+                        'summary': '',
+                        'primary_cta_label': 'Ejecutar decisión',
+                        'primary_cta_tone': 'success',
+                    },
                     'action_suggestions': [
                         {
                             'type': 'allocation',
@@ -979,6 +1003,94 @@ class TestDashboardView:
         assert 'Evaluar asignar entre 20% y 40% del cash.' in body
         assert 'KO · 600000' in body
 
+    def test_planeacion_mode_decision_shows_parking_signal_when_present(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {
+                    'portfolio_total_broker': 15863589,
+                    'invested_portfolio': 13330704,
+                    'cash_management_fci': 2532885,
+                    'cash_available_broker': 11039915.47,
+                    'cash_available_broker_ars': 11039915.47,
+                    'cash_available_broker_usd': 0.56,
+                    'cash_ratio_total': 0.6959,
+                    'invested_ratio_total': 0.8403,
+                    'fci_ratio_total': 0.1597,
+                },
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
+                'incremental_portfolio_simulation_comparison': {'proposals': []},
+                'candidate_incremental_portfolio_comparison': {'comparisons': []},
+                'candidate_split_incremental_portfolio_comparison': {'proposals': []},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
+                'preferred_incremental_portfolio_proposal': {'preferred': None, 'has_manual_override': False, 'explanation': ''},
+                'decision_engine_summary': {
+                    'portfolio_scope': {
+                        'portfolio_total_broker': 15863589,
+                        'invested_portfolio': 13330704,
+                        'cash_management_fci': 2532885,
+                        'cash_available_broker': 11039915.47,
+                        'cash_ratio_total': 0.6959,
+                        'invested_ratio_total': 0.8403,
+                    },
+                    'recommendation_context': 'high_cash',
+                    'strategy_bias': 'deploy_cash',
+                    'parking_signal': {
+                        'has_signal': True,
+                        'title': 'Parking visible antes de reforzar',
+                        'summary': 'Hay 2 posicion(es) con parking visible por 450000.00.',
+                    },
+                    'execution_gate': {
+                        'has_blocker': True,
+                        'status': 'review_parking',
+                        'title': 'Revisar restricciones antes de ejecutar',
+                        'summary': 'La propuesta puede seguir siendo valida, pero conviene revisar primero el parking visible antes de desplegar mas capital.',
+                        'primary_cta_label': 'Revisar antes de ejecutar',
+                        'primary_cta_tone': 'warning',
+                    },
+                    'action_suggestions': [
+                        {
+                            'type': 'allocation',
+                            'message': 'Tenés capital disponible para invertir',
+                            'suggestion': 'Evaluar asignar entre 20% y 40% del cash.',
+                        },
+                        {
+                            'type': 'parking',
+                            'message': 'Hay posiciones con parking visible en cartera',
+                            'suggestion': 'Conviene revisar esas restricciones antes de reforzar la misma zona de exposicion.',
+                        },
+                    ],
+                    'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una señal macro dominante.'},
+                    'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
+                    'recommendation': {'block': None, 'amount': None, 'reason': 'Todavía no hay un bloque dominante para este corte.', 'has_recommendation': False},
+                    'suggested_assets': [],
+                    'preferred_proposal': None,
+                    'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
+                    'score': 61,
+                    'confidence': 'Media',
+                    'explanation': ['Primero revisar restricciones operativas antes de desplegar más capital.'],
+                    'tracking_payload': {'purchase_plan': [], 'score': 61, 'confidence': 'Media'},
+                },
+                'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'headline': ''},
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Parking visible antes de reforzar' in body
+        assert 'Hay 2 posicion(es) con parking visible por 450000.00.' in body
+        assert 'Hay posiciones con parking visible en cartera' in body
+        assert 'Conviene revisar esas restricciones antes de reforzar la misma zona de exposicion.' in body
+        assert 'Revisar restricciones antes de ejecutar' in body
+        assert 'Revisar antes de ejecutar' in body
+
     def test_planeacion_history_supports_old_snapshots_without_decision_fields(self, auth_client, monkeypatch):
         monkeypatch.setattr(
             'apps.dashboard.views.get_planeacion_incremental_context',
@@ -1013,6 +1125,14 @@ class TestDashboardView:
                     },
                     'recommendation_context': 'fully_invested',
                     'strategy_bias': 'rebalance',
+                    'execution_gate': {
+                        'has_blocker': False,
+                        'status': 'pending',
+                        'title': '',
+                        'summary': '',
+                        'primary_cta_label': 'Ejecutar decisión',
+                        'primary_cta_tone': 'success',
+                    },
                     'action_suggestions': [
                         {
                             'type': 'rebalance',

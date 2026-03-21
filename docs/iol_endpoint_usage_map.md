@@ -33,7 +33,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | Endpoint IOL | Cliente | Uso real actual | Superficie | Aprovechamiento actual | Brecha principal |
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
-| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking` | Alto | `parking` ya se expone, pero todavia no entra en recomendaciones ni analytics historico |
+| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, señal visible y compuerta de ejecucion en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni señal persistida en recomendaciones |
 | `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, auditoria operativa visible, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual y analitica operativa historica por subset filtrado | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
 | `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles, batch sobre subset filtrado, drill-down operativo y metricas historicas de ejecucion/costo | Alto | no hay serie persistida propia de ejecucion ni slippage robusto |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
@@ -79,6 +79,8 @@ Se usa para:
 - hoja de portafolio con lectura visible de `parking`
 - chequeo tactico de `parking` en `Resumen`
 - chequeo tactico de `parking` en `Planeacion`
+- señal tactica de `parking` dentro del bloque `Modo decision` de `Planeacion`
+- compuerta de ejecucion en `Planeacion` cuando hay `parking` visible
 
 Campos hoy bien aprovechados:
 
@@ -91,7 +93,9 @@ Conclusion:
 
 - el contrato base ya esta bien endurecido
 - `parking` ya dejo de ser dato huérfano en persistencia
-- la brecha ya no es de ingestion sino de integracion mas profunda en decision/recomendacion
+- `parking` ya impacta la lectura de decision tactica en `Planeacion`
+- `parking` ya puede frenar la ejecucion directa y forzar revision tactica antes del despliegue
+- la brecha ya no es de ingestion sino de integracion mas profunda en recomendaciones o analitica historica
 
 ### 3. `operaciones`
 
@@ -234,7 +238,7 @@ Los endpoints con mayor potencial todavia no exprimido son:
 3. `operaciones`
    - ya se usa bien en hoja, dashboard y analitica operativa; falta backfill historico de `pais_consulta` para cerrar del todo el filtro local
 4. `portafolio/{pais}`
-   - `parking` ya es visible en producto; falta decidir si merece integracion en recomendaciones o señales historicas
+   - `parking` ya es visible, condiciona la decision tactica y puede frenar la ejecucion directa en `Planeacion`; falta decidir si merece integracion en recomendaciones persistidas o señales historicas
 
 ## Recomendacion de lectura
 
@@ -250,3 +254,4 @@ Si la pregunta es:
 ## Estado
 
 Documento vigente para el estado actual de integracion IOL del proyecto.
+

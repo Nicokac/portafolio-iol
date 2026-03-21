@@ -32,6 +32,7 @@ from apps.dashboard.selectors import (
     get_liquidity_contract_summary,
     get_market_snapshot_feature_context,
     get_portfolio_parking_feature_context,
+    get_decision_engine_summary,
     get_candidate_incremental_portfolio_comparison,
     get_preferred_incremental_portfolio_proposal,
     get_incremental_proposal_history,
@@ -128,6 +129,44 @@ class TestDashboardSelectors(TestCase):
         assert len(context["top_rows"]) == 2
         assert context["top_rows"][0]["activo"].simbolo == "ADBAICA"
         assert context["alerts"][0]["tone"] == "warning"
+
+    def test_get_decision_engine_summary_adds_parking_signal_to_mode_decision(self):
+        class DummyUser:
+            pk = 7
+
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch(
+                "apps.dashboard.selectors.get_portfolio_parking_feature_context",
+                return_value={
+                    "has_visible_parking": True,
+                    "summary": {
+                        "parking_count": 2,
+                        "parking_value_total": Decimal("450000"),
+                    },
+                    "top_rows": [],
+                    "alerts": [],
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["parking_signal"]["has_signal"] is True
+        assert detail["execution_gate"]["has_blocker"] is True
+        assert detail["execution_gate"]["status"] == "review_parking"
+        assert detail["execution_gate"]["primary_cta_label"] == "Revisar antes de ejecutar"
+        assert detail["parking_signal"]["parking_count"] == 2
+        assert "parking visible" in detail["parking_signal"]["summary"].lower()
+        assert any(item["type"] == "parking" for item in detail["action_suggestions"])
+        assert any("parking visible" in bullet.lower() for bullet in detail["explanation"])
 
     def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
         fecha = timezone.now()
