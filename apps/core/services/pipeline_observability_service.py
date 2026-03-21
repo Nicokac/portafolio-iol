@@ -51,6 +51,7 @@ class PipelineObservabilityService:
         snapshot_integrity = self.snapshot_integrity_service.run_checks(days=integrity_days)
         benchmark_status_rows = self.benchmark_service.get_status_summary()
         iol_historical_price_rows = self.iol_historical_price_service.get_current_portfolio_coverage_rows()
+        iol_market_snapshot_rows = self.iol_historical_price_service.get_current_portfolio_market_snapshot_rows(limit=8)
         iol_historical_recent_sync_rows = self._build_iol_historical_recent_sync_rows(limit=12)
         iol_historical_recent_sync_by_symbol = self._build_iol_historical_recent_sync_by_symbol(
             iol_historical_recent_sync_rows
@@ -89,6 +90,7 @@ class PipelineObservabilityService:
             "available_price_dates_count": available_price_dates_count,
             "benchmark_status_summary": self._build_benchmark_status_summary(benchmark_status_rows),
             "iol_historical_price_summary": self._build_iol_historical_price_summary(iol_historical_price_rows),
+            "iol_market_snapshot_summary": self._build_iol_market_snapshot_summary(iol_market_snapshot_rows),
             "iol_historical_price_symbol_groups": self._build_iol_historical_symbol_groups(iol_historical_price_rows),
             "iol_historical_exclusion_rows": self._build_iol_historical_exclusion_rows(iol_historical_price_rows),
             "iol_historical_recent_sync_rows": iol_historical_recent_sync_rows,
@@ -104,6 +106,7 @@ class PipelineObservabilityService:
             "required_periodic_tasks": coverage.get("required_periodic_tasks", []),
             "benchmark_status_rows": benchmark_status_rows,
             "iol_historical_price_rows": iol_historical_price_rows,
+            "iol_market_snapshot_rows": iol_market_snapshot_rows,
             "local_macro_status_rows": local_macro_status_rows,
             "critical_local_macro_rows": critical_local_macro_rows,
             "external_source_status_rows": external_source_status_rows,
@@ -191,6 +194,36 @@ class PipelineObservabilityService:
             "unsupported_count": unsupported_count,
             "unsupported_fci_count": unsupported_fci_count,
             "unsupported_other_count": unsupported_other_count,
+            "overall_status": overall_status,
+        }
+
+    @staticmethod
+    def _build_iol_market_snapshot_summary(rows: list[dict]) -> dict:
+        total = len(rows)
+        available_count = sum(1 for row in rows if row.get("snapshot_status") == "available")
+        missing_count = sum(1 for row in rows if row.get("snapshot_status") == "missing")
+        unsupported_count = sum(1 for row in rows if row.get("snapshot_status") == "unsupported")
+        detail_count = sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion_detalle")
+        fallback_count = sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion")
+        order_book_count = sum(1 for row in rows if int(row.get("puntas_count") or 0) > 0)
+
+        if total == 0:
+            overall_status = "missing"
+        elif missing_count == 0 and unsupported_count == 0:
+            overall_status = "ready"
+        elif available_count > 0:
+            overall_status = "partial"
+        else:
+            overall_status = "warning"
+
+        return {
+            "total_symbols": total,
+            "available_count": available_count,
+            "missing_count": missing_count,
+            "unsupported_count": unsupported_count,
+            "detail_count": detail_count,
+            "fallback_count": fallback_count,
+            "order_book_count": order_book_count,
             "overall_status": overall_status,
         }
 

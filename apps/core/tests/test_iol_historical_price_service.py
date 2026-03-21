@@ -427,6 +427,80 @@ def test_iol_historical_price_service_resolves_market_using_known_aliases():
     client.get_titulo_historicos.assert_called_once_with("bCBA", "GGAL", params=None)
 
 
+@pytest.mark.django_db
+def test_iol_historical_price_service_builds_current_portfolio_market_snapshot_rows():
+    _make_asset_snapshot("GGAL", "BCBA")
+    _make_asset_snapshot("AAPL", "NASDAQ")
+    fci = _make_asset_snapshot("ADBAICA", "BCBA")
+    fci.tipo = "FondoComundeInversion"
+    fci.descripcion = "Adcap Cobertura"
+    fci.save(update_fields=["tipo", "descripcion"])
+
+    client = Mock()
+    def _snapshot_side_effect(mercado, simbolo):
+        if simbolo == "GGAL":
+            return {
+                "simbolo": "GGAL",
+                "mercado": "bcba",
+                "tipo": "acciones",
+                "descripcionTitulo": "Grupo Financiero Galicia",
+                "ultimoPrecio": 1000,
+                "variacion": 1.5,
+                "fechaHora": "2026-03-20T16:59:46.4181717-03:00",
+                "cantidadOperaciones": 321,
+                "puntas": [
+                    {
+                        "precioCompra": 995,
+                        "precioVenta": 1000,
+                        "cantidadCompra": 10,
+                        "cantidadVenta": 12,
+                    }
+                ],
+                "plazo": "t1",
+                "cantidadMinima": 1,
+            }
+        return None
+
+    client.get_titulo_market_snapshot.side_effect = _snapshot_side_effect
+
+    rows = IOLHistoricalPriceService(client=client).get_current_portfolio_market_snapshot_rows(limit=10)
+
+    row_by_symbol = {row["simbolo"]: row for row in rows}
+    assert row_by_symbol["GGAL"]["snapshot_status"] == "available"
+    assert row_by_symbol["GGAL"]["snapshot_source_key"] == "cotizacion_detalle"
+    assert row_by_symbol["GGAL"]["puntas_count"] == 1
+    assert row_by_symbol["GGAL"]["spread_abs"] == 5
+    assert row_by_symbol["GGAL"]["cantidad_operaciones"] == 321
+    assert row_by_symbol["AAPL"]["snapshot_status"] == "missing"
+    assert row_by_symbol["AAPL"]["snapshot_reason_key"] == "market_snapshot_unavailable"
+    assert row_by_symbol["ADBAICA"]["snapshot_status"] == "unsupported"
+    assert row_by_symbol["ADBAICA"]["snapshot_source_key"] == "local_classification"
+    called_pairs = {call.args for call in client.get_titulo_market_snapshot.call_args_list}
+    assert ("BCBA", "GGAL") in called_pairs
+    assert any(args[1] == "AAPL" for args in called_pairs)
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_marks_snapshot_fallback_source_when_detail_keys_are_absent():
+    _make_asset_snapshot("GGAL", "BCBA")
+
+    client = Mock()
+    client.get_titulo_market_snapshot.return_value = {
+        "ultimoPrecio": 1000,
+        "variacion": 1.5,
+        "fechaHora": "2026-03-20T16:59:46.4181717-03:00",
+        "descripcionTitulo": "Grupo Financiero Galicia",
+        "puntas": [],
+        "cantidadOperaciones": 0,
+    }
+
+    rows = IOLHistoricalPriceService(client=client).get_current_portfolio_market_snapshot_rows(limit=10)
+
+    assert rows[0]["snapshot_status"] == "available"
+    assert rows[0]["snapshot_source_key"] == "cotizacion"
+    assert rows[0]["snapshot_source_label"] == "Cotizacion fallback"
+
+
 def test_iol_historical_price_service_candidate_markets_dedupes_and_keeps_primary_first():
     candidates = IOLHistoricalPriceService._candidate_markets("BCBA")
 

@@ -139,6 +139,77 @@ def test_pipeline_observability_service_builds_unified_summary():
                 },
             ]
 
+        def get_current_portfolio_market_snapshot_rows(self, limit=8):
+            assert limit == 8
+            return [
+                {
+                    "simbolo": "GGAL",
+                    "mercado": "bcba",
+                    "descripcion": "Grupo Financiero Galicia",
+                    "tipo": "acciones",
+                    "snapshot_status": "available",
+                    "snapshot_source_key": "cotizacion_detalle",
+                    "snapshot_source_label": "CotizacionDetalle",
+                    "snapshot_reason_key": "",
+                    "snapshot_reason": "",
+                    "fecha_hora": "2026-03-20T16:59:46.4181717-03:00",
+                    "fecha_hora_label": "2026-03-20 16:59",
+                    "ultimo_precio": 1000,
+                    "variacion": 1.5,
+                    "cantidad_operaciones": 321,
+                    "puntas_count": 1,
+                    "best_bid": 995,
+                    "best_ask": 1000,
+                    "spread_abs": 5,
+                    "spread_pct": 0.5,
+                    "plazo": "t1",
+                },
+                {
+                    "simbolo": "AAPL",
+                    "mercado": "NASDAQ",
+                    "descripcion": "Apple Inc.",
+                    "tipo": "acciones",
+                    "snapshot_status": "missing",
+                    "snapshot_source_key": "",
+                    "snapshot_source_label": "",
+                    "snapshot_reason_key": "market_snapshot_unavailable",
+                    "snapshot_reason": "IOL no devolvio cotizacion puntual para el instrumento.",
+                    "fecha_hora": None,
+                    "fecha_hora_label": "",
+                    "ultimo_precio": None,
+                    "variacion": None,
+                    "cantidad_operaciones": 0,
+                    "puntas_count": 0,
+                    "best_bid": None,
+                    "best_ask": None,
+                    "spread_abs": None,
+                    "spread_pct": None,
+                    "plazo": "",
+                },
+                {
+                    "simbolo": "ADBAICA",
+                    "mercado": "BCBA",
+                    "descripcion": "Adcap Cobertura",
+                    "tipo": "FondoComundeInversion",
+                    "snapshot_status": "unsupported",
+                    "snapshot_source_key": "local_classification",
+                    "snapshot_source_label": "Clasificacion local",
+                    "snapshot_reason_key": "cash_management_local_classification",
+                    "snapshot_reason": "FCI y cash management usan un pipeline distinto al de titulos",
+                    "fecha_hora": None,
+                    "fecha_hora_label": "",
+                    "ultimo_precio": None,
+                    "variacion": None,
+                    "cantidad_operaciones": 0,
+                    "puntas_count": 0,
+                    "best_bid": None,
+                    "best_ask": None,
+                    "spread_abs": None,
+                    "spread_pct": None,
+                    "plazo": "",
+                },
+            ]
+
     class DummyLocalMacroService:
         def get_status_summary(self):
             return [
@@ -180,7 +251,15 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_price_summary"]["unsupported_fci_count"] == 1
     assert summary["iol_historical_price_summary"]["unsupported_other_count"] == 1
     assert summary["iol_historical_price_summary"]["overall_status"] == "partial"
+    assert summary["iol_market_snapshot_summary"]["total_symbols"] == 3
+    assert summary["iol_market_snapshot_summary"]["available_count"] == 1
+    assert summary["iol_market_snapshot_summary"]["missing_count"] == 1
+    assert summary["iol_market_snapshot_summary"]["unsupported_count"] == 1
+    assert summary["iol_market_snapshot_summary"]["detail_count"] == 1
+    assert summary["iol_market_snapshot_summary"]["fallback_count"] == 0
+    assert summary["iol_market_snapshot_summary"]["order_book_count"] == 1
     assert summary["iol_historical_price_rows"][0]["simbolo"] == "GGAL"
+    assert summary["iol_market_snapshot_rows"][0]["simbolo"] == "GGAL"
     assert summary["iol_historical_price_symbol_groups"]["ready"] == ["GGAL (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["partial"] == ["AAPL (NASDAQ)"]
     assert summary["iol_historical_price_symbol_groups"]["missing"] == ["MSFT (NASDAQ)"]
@@ -269,6 +348,10 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
         def get_current_portfolio_coverage_rows(self):
             return []
 
+        def get_current_portfolio_market_snapshot_rows(self, limit=8):
+            assert limit == 8
+            return []
+
     class DummyLocalMacroService:
         def get_status_summary(self):
             return []
@@ -292,6 +375,7 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
     assert summary["covariance_readiness"]["status"] == "missing"
     assert summary["benchmark_status_summary"]["overall_status"] == "missing"
     assert summary["iol_historical_price_summary"]["overall_status"] == "missing"
+    assert summary["iol_market_snapshot_summary"]["overall_status"] == "missing"
     assert summary["iol_historical_price_symbol_groups"]["ready"] == []
     assert summary["iol_historical_price_symbol_groups"]["partial"] == []
     assert summary["iol_historical_price_symbol_groups"]["missing"] == []

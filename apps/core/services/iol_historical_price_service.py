@@ -8,6 +8,7 @@ import unicodedata
 import pandas as pd
 from django.db import transaction
 from django.db.models import Count, Max
+from django.utils import timezone
 
 from apps.core.models import IOLHistoricalPriceSnapshot
 from apps.core.services.iol_api_client import IOLAPIClient
@@ -250,6 +251,110 @@ class IOLHistoricalPriceService:
             )
         return sorted(rows, key=lambda item: (item["status"], item["simbolo"]))
 
+    def get_current_portfolio_market_snapshot_rows(self, *, limit: int = 10) -> list[dict]:
+        latest_positions = self._get_latest_position_rows()
+        if not latest_positions:
+            return []
+
+        rows = []
+        for row in sorted(latest_positions, key=lambda item: (str(item["mercado"]), str(item["simbolo"]))):
+            local_support = self.classify_position_for_history(row)
+            if not local_support.get("supported"):
+                rows.append(
+                    {
+                        "simbolo": row["simbolo"],
+                        "mercado": row["mercado"],
+                        "descripcion": row.get("descripcion") or "",
+                        "tipo": row.get("tipo") or "",
+                        "snapshot_status": "unsupported",
+                        "snapshot_source_key": local_support.get("support_source") or "local_classification",
+                        "snapshot_source_label": self._build_snapshot_source_label(
+                            local_support.get("support_source") or "local_classification"
+                        ),
+                        "snapshot_reason_key": local_support.get("reason_key") or "",
+                        "snapshot_reason": local_support.get("reason") or "",
+                        "fecha_hora": None,
+                        "fecha_hora_label": "",
+                        "ultimo_precio": None,
+                        "variacion": None,
+                        "cantidad_operaciones": 0,
+                        "puntas_count": 0,
+                        "best_bid": None,
+                        "best_ask": None,
+                        "spread_abs": None,
+                        "spread_pct": None,
+                        "plazo": "",
+                    }
+                )
+                continue
+
+            snapshot = self._resolve_market_snapshot(mercado=row["mercado"], simbolo=row["simbolo"])
+            if not snapshot:
+                rows.append(
+                    {
+                        "simbolo": row["simbolo"],
+                        "mercado": row["mercado"],
+                        "descripcion": row.get("descripcion") or "",
+                        "tipo": row.get("tipo") or "",
+                        "snapshot_status": "missing",
+                        "snapshot_source_key": "",
+                        "snapshot_source_label": "",
+                        "snapshot_reason_key": "market_snapshot_unavailable",
+                        "snapshot_reason": "IOL no devolvio cotizacion puntual para el instrumento.",
+                        "fecha_hora": None,
+                        "fecha_hora_label": "",
+                        "ultimo_precio": None,
+                        "variacion": None,
+                        "cantidad_operaciones": 0,
+                        "puntas_count": 0,
+                        "best_bid": None,
+                        "best_ask": None,
+                        "spread_abs": None,
+                        "spread_pct": None,
+                        "plazo": "",
+                    }
+                )
+                continue
+
+            first_punta = snapshot["puntas"][0] if isinstance(snapshot.get("puntas"), list) and snapshot.get("puntas") else {}
+            best_bid = self._coerce_decimal(first_punta.get("precioCompra"))
+            best_ask = self._coerce_decimal(first_punta.get("precioVenta"))
+            spread_abs = None
+            spread_pct = None
+            if best_bid is not None and best_ask is not None and best_bid > 0 and best_ask >= best_bid:
+                spread_abs = best_ask - best_bid
+                spread_pct = (spread_abs / best_bid) * Decimal("100")
+
+            fecha_hora = snapshot.get("fechaHora")
+            rows.append(
+                {
+                    "simbolo": row["simbolo"],
+                    "mercado": str(snapshot.get("mercado") or row["mercado"]),
+                    "descripcion": snapshot.get("descripcionTitulo") or row.get("descripcion") or "",
+                    "tipo": snapshot.get("tipo") or row.get("tipo") or "",
+                    "snapshot_status": "available",
+                    "snapshot_source_key": self._infer_market_snapshot_source(snapshot),
+                    "snapshot_source_label": self._build_snapshot_source_label(
+                        self._infer_market_snapshot_source(snapshot)
+                    ),
+                    "snapshot_reason_key": "",
+                    "snapshot_reason": "",
+                    "fecha_hora": fecha_hora,
+                    "fecha_hora_label": self._format_snapshot_datetime(fecha_hora),
+                    "ultimo_precio": self._coerce_decimal(snapshot.get("ultimoPrecio")),
+                    "variacion": self._coerce_decimal(snapshot.get("variacion")),
+                    "cantidad_operaciones": self._coerce_int(snapshot.get("cantidadOperaciones")) or 0,
+                    "puntas_count": len(snapshot.get("puntas") or []),
+                    "best_bid": best_bid,
+                    "best_ask": best_ask,
+                    "spread_abs": spread_abs,
+                    "spread_pct": spread_pct,
+                    "plazo": str(snapshot.get("plazo") or ""),
+                }
+            )
+
+        return rows[:limit]
+
     def resolve_symbol_history_support(self, *, mercado: str, simbolo: str, row: dict | None = None) -> dict:
         local_row = row or {"simbolo": simbolo, "mercado": mercado}
         local_support = self.classify_position_for_history(local_row)
@@ -454,6 +559,15 @@ class IOLHistoricalPriceService:
         return labels.get(str(source_key or ""), "")
 
     @staticmethod
+    def _build_snapshot_source_label(source_key: str | None) -> str:
+        labels = {
+            "cotizacion_detalle": "CotizacionDetalle",
+            "cotizacion": "Cotizacion fallback",
+            "local_classification": "Clasificacion local",
+        }
+        return labels.get(str(source_key or ""), "")
+
+    @staticmethod
     def _resolve_support_source_key(eligibility: dict) -> str:
         source_key = str(eligibility.get("support_source") or "").strip()
         if source_key:
@@ -465,6 +579,25 @@ class IOLHistoricalPriceService:
         if reason_key == "title_metadata_unresolved":
             return "unresolved"
         return "local_classification"
+
+    @staticmethod
+    def _infer_market_snapshot_source(snapshot: dict) -> str:
+        detail_keys = {"simbolo", "pais", "mercado", "tipo", "cantidadMinima", "puntosVariacion"}
+        if any(key in snapshot for key in detail_keys):
+            return "cotizacion_detalle"
+        return "cotizacion"
+
+    @staticmethod
+    def _format_snapshot_datetime(value) -> str:
+        if not value:
+            return ""
+        try:
+            parsed = pd.to_datetime(value).to_pydatetime()
+        except Exception:
+            return str(value)
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        return timezone.localtime(parsed).strftime("%Y-%m-%d %H:%M")
 
     @staticmethod
     def _get_latest_position_rows() -> list[dict]:

@@ -1290,6 +1290,66 @@ class TestDashboardView:
                             'eligibility_source_label': 'Clasificación local',
                         },
                     ],
+                    'iol_market_snapshot_summary': {
+                        'total_symbols': 3,
+                        'available_count': 1,
+                        'missing_count': 1,
+                        'unsupported_count': 1,
+                        'detail_count': 1,
+                        'fallback_count': 0,
+                        'order_book_count': 1,
+                        'overall_status': 'partial',
+                    },
+                    'iol_market_snapshot_rows': [
+                        {
+                            'simbolo': 'GGAL',
+                            'mercado': 'bcba',
+                            'descripcion': 'Grupo Financiero Galicia',
+                            'tipo': 'acciones',
+                            'snapshot_status': 'available',
+                            'snapshot_source_key': 'cotizacion_detalle',
+                            'snapshot_source_label': 'CotizacionDetalle',
+                            'snapshot_reason': '',
+                            'fecha_hora_label': '2026-03-20 16:59',
+                            'ultimo_precio': 1000,
+                            'variacion': 1.5,
+                            'cantidad_operaciones': 321,
+                            'puntas_count': 1,
+                            'spread_abs': 5,
+                        },
+                        {
+                            'simbolo': 'AAPL',
+                            'mercado': 'NASDAQ',
+                            'descripcion': 'Apple Inc.',
+                            'tipo': 'acciones',
+                            'snapshot_status': 'missing',
+                            'snapshot_source_key': '',
+                            'snapshot_source_label': '',
+                            'snapshot_reason': 'IOL no devolvio cotizacion puntual para el instrumento.',
+                            'fecha_hora_label': '',
+                            'ultimo_precio': None,
+                            'variacion': None,
+                            'cantidad_operaciones': 0,
+                            'puntas_count': 0,
+                            'spread_abs': None,
+                        },
+                        {
+                            'simbolo': 'ADBAICA',
+                            'mercado': 'BCBA',
+                            'descripcion': 'Adcap Cobertura',
+                            'tipo': 'FondoComundeInversion',
+                            'snapshot_status': 'unsupported',
+                            'snapshot_source_key': 'local_classification',
+                            'snapshot_source_label': 'Clasificacion local',
+                            'snapshot_reason': 'FCI y cash management usan un pipeline distinto al de titulos',
+                            'fecha_hora_label': '',
+                            'ultimo_precio': None,
+                            'variacion': None,
+                            'cantidad_operaciones': 0,
+                            'puntas_count': 0,
+                            'spread_abs': None,
+                        },
+                    ],
                     'local_macro_status_rows': [],
                     'critical_local_macro_rows': [
                         {
@@ -1338,6 +1398,11 @@ class TestDashboardView:
         assert '2/3' in body
         assert 'Históricos IOL por símbolo' in body
         assert '1/5 listos' in body
+        assert 'Market snapshot IOL' in body
+        assert '1/3 disponibles' in body
+        assert 'Market snapshot puntual del portfolio' in body
+        assert 'CotizacionDetalle' in body
+        assert 'IOL no devolvio cotizacion puntual para el instrumento.' in body
         assert 'Símbolos cubiertos y faltantes del proxy IOL' in body or 'Simbolos cubiertos y faltantes del proxy IOL' in body
         assert 'GGAL (BCBA)' in body
         assert 'AAPL (NASDAQ)' in body

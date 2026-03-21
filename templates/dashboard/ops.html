@@ -138,6 +138,14 @@
                             </td>
                         </tr>
                         <tr>
+                            <td><strong>Market snapshot IOL</strong></td>
+                            <td class="text-end">
+                                {{ pipeline_observability.iol_market_snapshot_summary.available_count }}/{{ pipeline_observability.iol_market_snapshot_summary.total_symbols }}
+                                disponibles · missing {{ pipeline_observability.iol_market_snapshot_summary.missing_count }} · no elegibles {{ pipeline_observability.iol_market_snapshot_summary.unsupported_count }} · detalle {{ pipeline_observability.iol_market_snapshot_summary.detail_count }} · fallback {{ pipeline_observability.iol_market_snapshot_summary.fallback_count }}
+                                ({{ pipeline_observability.iol_market_snapshot_summary.overall_status }})
+                            </td>
+                        </tr>
+                        <tr>
                             <td><strong>Resumen macro local</strong></td>
                             <td class="text-end">
                                 {{ pipeline_observability.local_macro_status_summary.ready }}/{{ pipeline_observability.local_macro_status_summary.total_series }}
@@ -452,6 +460,86 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card border-primary-subtle">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
+                <h5 class="mb-0">Market snapshot puntual del portfolio</h5>
+                <span class="badge {% if pipeline_observability.iol_market_snapshot_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.iol_market_snapshot_summary.overall_status == 'partial' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                    {{ pipeline_observability.iol_market_snapshot_summary.available_count }}/{{ pipeline_observability.iol_market_snapshot_summary.total_symbols }} disponibles
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="small text-muted mb-3">
+                    Usa CotizacionDetalle como fuente primaria y Cotizacion como fallback liviano. Sirve para validar precio puntual, horario, libro visible y disponibilidad operativa.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr><th>Símbolo</th><th>Mercado</th><th>Fuente</th><th class="text-end">Último</th><th class="text-end">Var %</th><th>Hora</th><th class="text-end">Ops</th><th class="text-end">Puntas</th><th class="text-end">Spread</th><th>Estado</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for row in pipeline_observability.iol_market_snapshot_rows %}
+                            <tr>
+                                <td>
+                                    {{ row.simbolo }}
+                                    {% if row.descripcion %}
+                                    <div class="small text-muted">{{ row.descripcion }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.mercado }}</td>
+                                <td>
+                                    {% if row.snapshot_source_label %}
+                                    {{ row.snapshot_source_label }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if row.ultimo_precio is not None %}
+                                    {{ row.ultimo_precio|floatformat:2 }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if row.variacion is not None %}
+                                    {{ row.variacion|floatformat:2 }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.fecha_hora_label|default:"-" }}</td>
+                                <td class="text-end">{{ row.cantidad_operaciones|default:0 }}</td>
+                                <td class="text-end">{{ row.puntas_count|default:0 }}</td>
+                                <td class="text-end">
+                                    {% if row.spread_abs is not None %}
+                                    {{ row.spread_abs|floatformat:2 }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if row.snapshot_status == 'available' %}
+                                    <span class="badge text-bg-success">Disponible</span>
+                                    {% elif row.snapshot_status == 'unsupported' %}
+                                    <span class="badge text-bg-secondary">No elegible</span>
+                                    {% else %}
+                                    <span class="badge text-bg-danger">Sin snapshot</span>
+                                    {% endif %}
+                                    {% if row.snapshot_reason %}
+                                    <div class="small text-muted mt-1">{{ row.snapshot_reason }}</div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="10" class="text-muted">Sin market snapshots observados para el portfolio actual.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
