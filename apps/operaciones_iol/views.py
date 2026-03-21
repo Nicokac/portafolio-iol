@@ -15,6 +15,7 @@ from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
+    build_operation_universe_coverage_context,
     get_operation_subset_for_country_backfill,
     get_operation_subset_for_detail_enrichment,
     has_operation_detail,
@@ -31,14 +32,17 @@ class OperacionesListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         self.normalized_filters = normalize_operation_filters(self.request.GET)
-        return apply_operation_filters(queryset, self.normalized_filters)
+        self.filtered_queryset = apply_operation_filters(queryset, self.normalized_filters)
+        return self.filtered_queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         list_context = build_operation_list_context(context['operaciones'])
+        universe_coverage = build_operation_universe_coverage_context(getattr(self, 'filtered_queryset', OperacionIOL.objects.none()))
         filter_context = build_operation_filter_context(getattr(self, 'normalized_filters', {}))
         context['operation_rows'] = list_context['rows']
         context['operations_summary'] = list_context['summary']
+        context['operations_universe_coverage'] = universe_coverage
         context['operation_filters'] = filter_context
         return context
 

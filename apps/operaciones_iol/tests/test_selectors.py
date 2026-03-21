@@ -8,6 +8,7 @@ from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
+    build_operation_universe_coverage_context,
     get_operation_subset_for_country_backfill,
     get_operation_subset_for_detail_enrichment,
     normalize_operation_filters,
@@ -206,3 +207,50 @@ def test_get_operation_subset_for_country_backfill_returns_only_current_page_mis
     assert len(subset_page_1) == 24
     assert all(not operacion.pais_consulta for operacion in subset_page_1)
     assert len(subset_page_2) == 5
+
+
+@pytest.mark.django_db
+def test_build_operation_universe_coverage_context_summarizes_filtered_universe():
+    OperacionIOL.objects.create(
+        numero="HIST-1",
+        pais_consulta="argentina",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        estado_actual="terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        moneda="peso_Argentino",
+    )
+    OperacionIOL.objects.create(
+        numero="HIST-2",
+        pais_consulta="estados_Unidos",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="SPY",
+        modalidad="precio_Mercado",
+    )
+    OperacionIOL.objects.create(
+        numero="HIST-3",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+    )
+
+    context = build_operation_universe_coverage_context(OperacionIOL.objects.order_by("numero"))
+
+    assert context["total_count"] == 3
+    assert context["detail_count"] == 1
+    assert context["detail_missing_count"] == 2
+    assert context["detail_pct"] == Decimal("33.33")
+    assert context["country_count"] == 2
+    assert context["country_missing_count"] == 1
+    assert context["country_pct"] == Decimal("66.67")
+    assert context["country_argentina_count"] == 1
+    assert context["country_estados_unidos_count"] == 1

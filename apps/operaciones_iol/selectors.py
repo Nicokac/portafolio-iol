@@ -72,6 +72,27 @@ def build_operation_list_context(operaciones: Iterable[OperacionIOL]) -> dict:
     }
 
 
+def build_operation_universe_coverage_context(queryset: QuerySet[OperacionIOL]) -> dict:
+    operaciones = list(queryset)
+    total_count = len(operaciones)
+    detail_count = sum(1 for operacion in operaciones if has_operation_detail(operacion))
+    country_count = sum(1 for operacion in operaciones if str(operacion.pais_consulta or '').strip())
+    argentina_count = sum(1 for operacion in operaciones if str(operacion.pais_consulta or '').strip() == 'argentina')
+    us_count = sum(1 for operacion in operaciones if str(operacion.pais_consulta or '').strip() == 'estados_Unidos')
+
+    return {
+        'total_count': total_count,
+        'detail_count': detail_count,
+        'detail_missing_count': max(total_count - detail_count, 0),
+        'detail_pct': _safe_percentage(detail_count, total_count),
+        'country_count': country_count,
+        'country_missing_count': max(total_count - country_count, 0),
+        'country_pct': _safe_percentage(country_count, total_count),
+        'country_argentina_count': argentina_count,
+        'country_estados_unidos_count': us_count,
+    }
+
+
 def normalize_operation_filters(params) -> dict:
     params = params or {}
 

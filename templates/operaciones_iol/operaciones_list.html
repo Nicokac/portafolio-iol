@@ -183,6 +183,37 @@
     </div>
 </div>
 
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+            <div>
+                <h2 class="h5 mb-1">Cobertura historica del subset filtrado</h2>
+                <p class="text-muted small mb-0">Lectura agregada sobre todo el universo actualmente filtrado, no solo sobre la pagina visible.</p>
+            </div>
+            <span class="badge text-bg-light border">{{ operations_universe_coverage.total_count }} operacion{{ operations_universe_coverage.total_count|pluralize:"es" }} en el subset</span>
+        </div>
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Detalle IOL historico</div>
+                    <div class="h4 mb-1">{{ operations_universe_coverage.detail_pct }}%</div>
+                    <div class="small text-muted">{{ operations_universe_coverage.detail_count }} de {{ operations_universe_coverage.total_count }} operaciones filtradas ya tienen detalle utilizable.</div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Pais_consulta historico</div>
+                    <div class="h4 mb-1">{{ operations_universe_coverage.country_pct }}%</div>
+                    <div class="small text-muted">{{ operations_universe_coverage.country_count }} de {{ operations_universe_coverage.total_count }} operaciones filtradas ya tienen pais resuelto.</div>
+                    <div class="small text-muted mt-2">
+                        Argentina: {{ operations_universe_coverage.country_argentina_count }} · Estados Unidos: {{ operations_universe_coverage.country_estados_unidos_count }} · Pendiente: {{ operations_universe_coverage.country_missing_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">

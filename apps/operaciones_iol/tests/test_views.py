@@ -44,8 +44,10 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert response.context["operaciones"].count() == 1
     assert "operation_rows" in response.context
     assert "operations_summary" in response.context
+    assert "operations_universe_coverage" in response.context
     assert response.context["operations_summary"]["enriched_count"] == 1
     assert str(response.context["operations_summary"]["enriched_pct"]) == "100.00"
+    assert str(response.context["operations_universe_coverage"]["detail_pct"]) == "100.00"
     assert reverse("operaciones_iol:operacion_detail", args=["OP-1"]) in response.content.decode()
     body = response.content.decode()
     assert "Hoja de operaciones" in body
@@ -57,8 +59,10 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "Pais resuelto" in body
     assert "Cobertura de pais" in body
     assert "Calidad de ejecucion visible" in body
+    assert "Cobertura historica del subset filtrado" in body
     assert "1 de 1 operaciones con detalle IOL utilizable." in body
     assert "1 de 1 operaciones visibles ya tienen `pais_consulta` resuelto." in body
+    assert "1 de 1 operaciones filtradas ya tienen detalle utilizable." in body
     assert "Compra: 1" in body
 
 
@@ -104,6 +108,7 @@ def test_operaciones_list_view_applies_filters_from_query_params(client):
     assert response.context["operaciones"].first().numero == "167788363"
     assert response.context["operation_filters"]["active_count"] == 5
     assert response.context["operations_summary"]["country_resolved_count"] == 1
+    assert response.context["operations_universe_coverage"]["total_count"] == 1
     body = response.content.decode()
     assert "5 filtros activos" in body
     assert "Estados Unidos" in body
