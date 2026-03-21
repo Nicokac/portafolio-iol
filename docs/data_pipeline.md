@@ -153,6 +153,7 @@ Salidas operativas:
   - compuerta de ejecucion cuando `parking` sigue visible
   - recomendacion condicionada cuando el bloque sugerido se superpone con posiciones en `parking`
   - shortlist sugerida degradada cuando el candidato cae en un bloque con `parking`
+  - shortlist reordenada para priorizar candidatos sin `parking` visible
 - `Portafolio`
   - lectura visible de `parking` por activo
   - valorizado y disponible inmediato sobre la hoja actual

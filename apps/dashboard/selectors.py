@@ -3876,7 +3876,7 @@ def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature
 def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: Dict | None = None) -> list[Dict]:
     ranking = ranking or {}
     assets = []
-    for item in (ranking.get("candidate_assets") or [])[:3]:
+    for item in (ranking.get("candidate_assets") or []):
         block_label = item.get("block_label")
         conditioned_by_parking = _is_parking_overlap_with_recommendation(
             block_label,
@@ -3892,7 +3892,13 @@ def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: D
                 "priority_label": "Condicionado por parking" if conditioned_by_parking else "",
             }
         )
-    return assets
+    assets.sort(
+        key=lambda item: (
+            1 if item["is_conditioned_by_parking"] else 0,
+            -(item["score"] or 0),
+        )
+    )
+    return assets[:3]
 
 
 def _build_decision_preferred_proposal(preferred_payload: Dict | None) -> Dict | None:

@@ -243,11 +243,11 @@ class TestDashboardSelectors(TestCase):
         ):
             detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
 
-        assert detail["suggested_assets"][0]["symbol"] == "KO"
-        assert detail["suggested_assets"][0]["is_conditioned_by_parking"] is True
-        assert detail["suggested_assets"][0]["priority_label"] == "Condicionado por parking"
-        assert detail["suggested_assets"][1]["symbol"] == "SPY"
-        assert detail["suggested_assets"][1]["is_conditioned_by_parking"] is False
+        assert detail["suggested_assets"][0]["symbol"] == "SPY"
+        assert detail["suggested_assets"][0]["is_conditioned_by_parking"] is False
+        assert detail["suggested_assets"][1]["symbol"] == "KO"
+        assert detail["suggested_assets"][1]["is_conditioned_by_parking"] is True
+        assert detail["suggested_assets"][1]["priority_label"] == "Condicionado por parking"
 
     def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
         fecha = timezone.now()
