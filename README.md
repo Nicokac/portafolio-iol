@@ -56,6 +56,10 @@ Drill-downs hoy visibles:
 - simulacion incremental `before/after`
 - comparadores incrementales automaticos, por candidato, por split y manuales
 - propuesta incremental preferida
+- chequeo tactico de `parking` visible antes de desplegar capital
+- `parking` como señal visible dentro de `Modo decision`
+- `parking` como compuerta de ejecucion y degradacion de confianza/score
+- `parking` como condicionador de bloque recomendado, shortlist sugerida y propuesta preferida
 - historial reciente de propuestas guardadas y decision manual
 - exploracion y seguimiento relegados a secciones secundarias dentro de `Planeacion`
 - simulacion, optimizacion y configuracion base presentadas como soporte secundario frente al flujo principal de `Aportes`

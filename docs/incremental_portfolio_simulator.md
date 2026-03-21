@@ -132,6 +132,12 @@ Reglas del MVP:
 - si hay comparacion manual valida, puede prevalecer como override funcional
 - no recalcula simulaciones nuevas fuera de las ya expuestas por cada comparador
 
+Lectura tactica actual:
+
+- si la propuesta preferida cae en un bloque con `parking` visible, queda condicionada
+- si existe una alternativa limpia con score suficientemente cercano, `Modo decision` puede promover esa alternativa
+- esta repriorizacion vive solo en la capa de decision y no reescribe los comparadores base
+
 ## Historial persistente de propuestas
 
 La hoja `Planeacion` permite guardar explicitamente la propuesta incremental preferida actual.
@@ -568,6 +574,7 @@ Jerarquia visible actual dentro de `Aportes`:
   - ranking de candidatos
   - propuesta incremental preferida
   - simulacion incremental default
+  - chequeo tactico de `parking` como regla de gobierno del flujo
 - exploracion secundaria:
   - resumen ejecutivo unificado
   - comparador general de propuestas incrementales
@@ -607,6 +614,17 @@ Criterio:
 - mantener visible el nucleo decisional
 - dejar exploracion y workflow manual disponibles, pero subordinados
 - evitar duplicar varias lecturas derivadas del mismo estado incremental
+
+Regla tactica adicional ya integrada:
+
+- `parking` puede:
+  - frenar ejecucion directa
+  - condicionar la prioridad del bloque recomendado
+  - degradar la shortlist de candidatos
+  - reordenar candidatos visibles
+  - condicionar la propuesta preferida
+  - promover una alternativa limpia si la preferida original queda restringida
+  - degradar `score` y `confidence` del `Modo decision`
 
 ## Deuda tecnica detectada
 
