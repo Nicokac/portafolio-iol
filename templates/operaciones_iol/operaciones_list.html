@@ -264,8 +264,11 @@
                         <div class="h5 mb-1">{{ item.count }}</div>
                         <div class="small text-muted">{{ item.pct }}% del subset filtrado</div>
                         <div class="small mt-2">Monto visible: {{ item.executed_amount_total|currency:2 }}</div>
+                        <div class="small text-muted">Promedio visible: {{ item.avg_visible_amount|currency:2 }}</div>
                         <div class="small">ARS {{ item.fees_ars_total|currency:2 }} · USD {{ item.fees_usd_total|currency:2 }}</div>
-                        <div class="small text-muted mt-1">{{ item.fills_visible_count }} con fills visibles</div>
+                        <div class="small text-muted mt-1">Aranceles visibles: {{ item.fee_visible_pct }}%</div>
+                        <div class="small text-muted">Fills visibles: {{ item.fills_visible_count }} ({{ item.fills_visible_pct }}%)</div>
+                        <div class="small text-muted">Promedio de fills visibles: {{ item.avg_fills_per_visible }}</div>
                     </div>
                 </div>
                 {% endfor %}

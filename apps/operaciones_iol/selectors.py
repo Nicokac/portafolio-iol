@@ -493,25 +493,52 @@ def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
                 'executed_amount_total': Decimal('0'),
                 'fees_ars_total': Decimal('0'),
                 'fees_usd_total': Decimal('0'),
+                'fee_visible_count': 0,
                 'fills_visible_count': 0,
+                'fills_total': 0,
+                'executed_amount_visible_count': 0,
             },
         )
         current['count'] += 1
-        current['fees_ars_total'] += Decimal(str(operacion.aranceles_ars or 0))
-        current['fees_usd_total'] += Decimal(str(operacion.aranceles_usd or 0))
+        fees_ars = Decimal(str(operacion.aranceles_ars or 0))
+        fees_usd = Decimal(str(operacion.aranceles_usd or 0))
+        current['fees_ars_total'] += fees_ars
+        current['fees_usd_total'] += fees_usd
+        if fees_ars > 0 or fees_usd > 0:
+            current['fee_visible_count'] += 1
         amount = _resolve_operation_amount(operacion)
         if amount is not None:
             current['executed_amount_total'] += amount
-        if operacion.operaciones_detalle:
+            current['executed_amount_visible_count'] += 1
+        fills = list(operacion.operaciones_detalle or [])
+        fills_count = len(fills)
+        current['fills_total'] += fills_count
+        if fills_count > 0:
             current['fills_visible_count'] += 1
 
     rows = []
     total_count = len(operaciones)
     for group in sorted(grouped.values(), key=lambda item: (-item['count'], item['label'])):
+        avg_visible_amount = Decimal('0')
+        if group['executed_amount_visible_count'] > 0:
+            avg_visible_amount = (
+                group['executed_amount_total'] / Decimal(group['executed_amount_visible_count'])
+            ).quantize(Decimal('0.01'))
+
+        avg_fills_per_visible = Decimal('0')
+        if group['fills_visible_count'] > 0:
+            avg_fills_per_visible = (
+                Decimal(group['fills_total']) / Decimal(group['fills_visible_count'])
+            ).quantize(Decimal('0.01'))
+
         rows.append(
             {
                 **group,
                 'pct': _safe_percentage(group['count'], total_count),
+                'fee_visible_pct': _safe_percentage(group['fee_visible_count'], group['count']),
+                'fills_visible_pct': _safe_percentage(group['fills_visible_count'], group['count']),
+                'avg_visible_amount': avg_visible_amount,
+                'avg_fills_per_visible': avg_fills_per_visible,
             }
         )
     return rows

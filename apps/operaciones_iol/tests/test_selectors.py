@@ -369,13 +369,26 @@ def test_build_operation_execution_analytics_context_groups_by_operation_family(
     assert groups["buy_trade"]["label"] == "Compras"
     assert groups["buy_trade"]["count"] == 1
     assert groups["buy_trade"]["executed_amount_total"] == Decimal("100")
+    assert groups["buy_trade"]["avg_visible_amount"] == Decimal("100.00")
+    assert groups["buy_trade"]["fee_visible_pct"] == Decimal("100.00")
+    assert groups["buy_trade"]["fills_visible_pct"] == Decimal("100.00")
+    assert groups["buy_trade"]["avg_fills_per_visible"] == Decimal("1.00")
     assert groups["sell_trade"]["label"] == "Ventas"
     assert groups["sell_trade"]["count"] == 1
     assert groups["sell_trade"]["executed_amount_total"] == Decimal("50")
+    assert groups["sell_trade"]["avg_visible_amount"] == Decimal("50.00")
+    assert groups["sell_trade"]["fee_visible_pct"] == Decimal("100.00")
+    assert groups["sell_trade"]["fills_visible_pct"] == Decimal("0.00")
     assert groups["dividend"]["label"] == "Dividendos"
     assert groups["dividend"]["fees_usd_total"] == Decimal("0.01")
+    assert groups["dividend"]["avg_visible_amount"] == Decimal("0.15")
+    assert groups["dividend"]["fee_visible_pct"] == Decimal("100.00")
+    assert groups["dividend"]["fills_visible_pct"] == Decimal("0.00")
     assert groups["fci_flow"]["label"] == "Flujos FCI"
     assert groups["fci_flow"]["executed_amount_total"] == Decimal("9.19")
+    assert groups["fci_flow"]["avg_visible_amount"] == Decimal("9.19")
+    assert groups["fci_flow"]["fee_visible_pct"] == Decimal("0.00")
+    assert groups["fci_flow"]["fills_visible_pct"] == Decimal("0.00")
 @pytest.mark.django_db
 def test_build_operation_audit_summary_context_returns_latest_rows_per_action(django_user_model):
     user = django_user_model.objects.create_user(username="audit-ops-user", password="testpass123")

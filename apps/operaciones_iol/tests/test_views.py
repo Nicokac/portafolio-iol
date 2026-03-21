@@ -173,12 +173,18 @@ def test_operaciones_list_view_renders_execution_analytics_type_groups(client):
     assert groups["sell_trade"]["count"] == 1
     assert groups["dividend"]["count"] == 1
     assert groups["fci_flow"]["count"] == 1
+    assert str(groups["buy_trade"]["fee_visible_pct"]) == "100.00"
+    assert str(groups["sell_trade"]["fills_visible_pct"]) == "0.00"
+    assert str(groups["buy_trade"]["avg_visible_amount"]) == "100.00"
     body = response.content.decode()
     assert "Desagregado por familia operativa" in body
     assert "Compras" in body
     assert "Ventas" in body
     assert "Dividendos" in body
     assert "Flujos FCI" in body
+    assert "Aranceles visibles:" in body
+    assert "Promedio visible:" in body
+    assert "Promedio de fills visibles:" in body
 @pytest.mark.django_db
 def test_operaciones_list_view_applies_filters_from_query_params(client):
     OperacionIOL.objects.create(
