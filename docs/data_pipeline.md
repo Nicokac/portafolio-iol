@@ -155,6 +155,7 @@ Salidas operativas:
   - shortlist sugerida degradada cuando el candidato cae en un bloque con `parking`
   - shortlist reordenada para priorizar candidatos sin `parking` visible
   - propuesta preferida condicionada cuando su plan cae en bloques con `parking`
+  - propuesta preferida sustituida por una alternativa limpia cuando el overlap con `parking` es evitable
 - `Portafolio`
   - lectura visible de `parking` por activo
   - valorizado y disponible inmediato sobre la hoja actual

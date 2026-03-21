@@ -296,6 +296,83 @@ class TestDashboardSelectors(TestCase):
         assert detail["preferred_proposal"]["priority_label"] == "Condicionada por parking"
         assert "conviene revisarla antes" in detail["preferred_proposal"]["parking_note"].lower()
 
+    def test_get_decision_engine_summary_promotes_clean_preferred_alternative_when_conditioned_one_is_close(self):
+        class DummyUser:
+            pk = 11
+
+        cache.clear()
+        ParametroActivo.objects.create(
+            simbolo="KO",
+            sector="Consumo",
+            bloque_estrategico="Defensive / resiliente",
+            pais_exposicion="USA",
+            tipo_patrimonial="Equity",
+        )
+        ParametroActivo.objects.create(
+            simbolo="SPY",
+            sector="Indice",
+            bloque_estrategico="Indice global",
+            pais_exposicion="USA",
+            tipo_patrimonial="ETF",
+        )
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_key": "plan_ko",
+                        "proposal_label": "Plan KO",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 600000}],
+                        "comparison_score": 4.60,
+                        "priority_rank": 4,
+                    },
+                    "candidates": [
+                        {
+                            "proposal_key": "plan_ko",
+                            "proposal_label": "Plan KO",
+                            "source_label": "Comparador manual",
+                            "purchase_plan": [{"symbol": "KO", "amount": 600000}],
+                            "comparison_score": 4.60,
+                            "priority_rank": 4,
+                        },
+                        {
+                            "proposal_key": "plan_spy",
+                            "proposal_label": "Plan SPY",
+                            "source_label": "Comparador por candidato",
+                            "purchase_plan": [{"symbol": "SPY", "amount": 600000}],
+                            "comparison_score": 4.50,
+                            "priority_rank": 2,
+                        },
+                    ],
+                },
+            ),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch(
+                "apps.dashboard.selectors.get_portfolio_parking_feature_context",
+                return_value={
+                    "has_visible_parking": True,
+                    "summary": {"parking_count": 1, "parking_value_total": Decimal("120000")},
+                    "parking_blocks": [{"label": "Defensive / resiliente", "value_total": Decimal("120000")}],
+                    "top_rows": [],
+                    "alerts": [],
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["preferred_proposal"]["proposal_label"] == "Plan SPY"
+        assert detail["preferred_proposal"]["is_conditioned_by_parking"] is False
+        assert detail["preferred_proposal"]["was_reprioritized_by_parking"] is True
+        assert detail["preferred_proposal"]["priority_label"] == "Repriorizada por parking"
+        assert "se promovio esta alternativa" in detail["preferred_proposal"]["parking_note"].lower()
+
     def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
         fecha = timezone.now()
         make_activo(fecha, "MELI", Decimal("900000"), tipo="CEDEARS", mercado="BCBA")

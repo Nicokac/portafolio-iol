@@ -1092,16 +1092,17 @@ class TestDashboardView:
                         }
                     ],
                     'preferred_proposal': {
-                        'proposal_label': 'Plan KO',
-                        'source_label': 'Comparador manual',
-                        'purchase_summary': 'KO · 600000',
-                        'purchase_plan': [{'symbol': 'KO', 'amount': 600000}],
+                        'proposal_label': 'Plan SPY',
+                        'source_label': 'Comparador por candidato',
+                        'purchase_summary': 'SPY · 600000',
+                        'purchase_plan': [{'symbol': 'SPY', 'amount': 600000}],
                         'simulation_delta': {},
-                        'purchase_plan_blocks': ['Defensive / resiliente'],
-                        'is_conditioned_by_parking': True,
-                        'priority_label': 'Condicionada por parking',
-                        'priority_tone': 'warning',
-                        'parking_note': 'La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa.',
+                        'purchase_plan_blocks': ['Indice global'],
+                        'is_conditioned_by_parking': False,
+                        'priority_label': 'Repriorizada por parking',
+                        'priority_tone': 'info',
+                        'parking_note': 'Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con parking visible.',
+                        'was_reprioritized_by_parking': True,
                     },
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
                     'score': 61,
@@ -1129,8 +1130,9 @@ class TestDashboardView:
         assert 'Hay parking visible dentro de este mismo bloque' in body
         assert 'Condicionado por parking' in body
         assert 'Conviene revisar parking visible en este bloque antes de usarlo como candidato principal.' in body
-        assert 'Condicionada por parking' in body
-        assert 'La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa.' in body
+        assert 'Repriorizada por parking' in body
+        assert 'Plan SPY' in body
+        assert 'Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con parking visible.' in body
         assert 'Revisar restricciones antes de ejecutar' in body
         assert 'Revisar antes de ejecutar' in body
 

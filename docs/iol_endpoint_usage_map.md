@@ -33,7 +33,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | Endpoint IOL | Cliente | Uso real actual | Superficie | Aprovechamiento actual | Brecha principal |
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
-| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, señal visible, compuerta de ejecucion, condicionamiento de prioridad, shortlist sugerida reordenada y propuesta preferida condicionada en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni señal persistida en recomendaciones |
+| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, señal visible, compuerta de ejecucion, condicionamiento de prioridad, shortlist sugerida reordenada y promoción de alternativa limpia en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni señal persistida en recomendaciones |
 | `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, auditoria operativa visible, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual y analitica operativa historica por subset filtrado | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
 | `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles, batch sobre subset filtrado, drill-down operativo y metricas historicas de ejecucion/costo | Alto | no hay serie persistida propia de ejecucion ni slippage robusto |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
@@ -85,6 +85,7 @@ Se usa para:
 - shortlist de activos sugeridos condicionada cuando un candidato cae en un bloque con `parking` visible
 - reordenamiento de la shortlist para priorizar candidatos no condicionados por `parking`
 - propuesta preferida condicionada cuando su `purchase_plan` cae en bloques con `parking`
+- promoción de una propuesta alternativa limpia cuando la preferida original queda condicionada y la diferencia de score es acotada
 
 Campos hoy bien aprovechados:
 
@@ -103,6 +104,7 @@ Conclusion:
 - `parking` ya puede degradar la shortlist sugerida cuando el candidato cae en la misma zona restringida
 - `parking` ya puede bajar candidatos dentro del orden visible de la shortlist tactica
 - `parking` ya puede condicionar la propuesta preferida antes de tomarla como ejecucion directa
+- `parking` ya puede promover una alternativa limpia por encima de la preferida original cuando la diferencia de score es razonable
 - la brecha ya no es de ingestion sino de integracion mas profunda en recomendaciones o analitica historica
 
 ### 3. `operaciones`

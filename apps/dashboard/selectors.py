@@ -3917,39 +3917,103 @@ def _build_purchase_plan_blocks(purchase_plan: list[Dict]) -> list[str]:
     return labels
 
 
-def _build_decision_preferred_proposal(preferred_payload: Dict | None, *, parking_feature: Dict | None = None) -> Dict | None:
-    preferred_payload = preferred_payload or {}
-    preferred = preferred_payload.get("preferred")
-    if not preferred:
-        return None
-    simulation = preferred.get("simulation") or {}
-    purchase_plan = list(preferred.get("purchase_plan") or [])
+def _annotate_decision_proposal_with_parking(proposal: Dict, *, parking_feature: Dict | None = None) -> Dict:
+    annotated = dict(proposal or {})
+    purchase_plan = list(annotated.get("purchase_plan") or [])
     purchase_plan_blocks = _build_purchase_plan_blocks(purchase_plan)
     parking_overlap = any(
         _is_parking_overlap_with_recommendation(block_label, (parking_feature or {}).get("parking_blocks") or [])
         for block_label in purchase_plan_blocks
     )
-    return {
-        "proposal_key": preferred.get("proposal_key"),
-        "proposal_label": preferred.get("proposal_label") or preferred.get("label"),
-        "source_label": preferred.get("source_label"),
-        "comparison_score": _coerce_optional_float(preferred.get("comparison_score")),
-        "purchase_plan": purchase_plan,
-        "purchase_summary": preferred.get("purchase_summary") or _format_incremental_purchase_plan_summary(
-            purchase_plan
+    annotated.update(
+        {
+            "purchase_plan": purchase_plan,
+            "purchase_plan_blocks": purchase_plan_blocks,
+            "is_conditioned_by_parking": parking_overlap,
+            "priority_label": "Condicionada por parking" if parking_overlap else "Lista",
+            "priority_tone": "warning" if parking_overlap else "success",
+            "parking_note": (
+                "La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa."
+                if parking_overlap
+                else ""
+            ),
+            "was_reprioritized_by_parking": False,
+        }
+    )
+    return annotated
+
+
+def _should_promote_clean_alternative(conditioned: Dict, clean: Dict) -> bool:
+    conditioned_score = _coerce_optional_float(conditioned.get("comparison_score"))
+    clean_score = _coerce_optional_float(clean.get("comparison_score"))
+    if clean_score is None:
+        return False
+    if conditioned_score is None:
+        return True
+    return clean_score >= (conditioned_score - 0.25)
+
+
+def _build_decision_preferred_proposal(preferred_payload: Dict | None, *, parking_feature: Dict | None = None) -> Dict | None:
+    preferred_payload = preferred_payload or {}
+    preferred = preferred_payload.get("preferred")
+    if not preferred:
+        return None
+    def normalize_candidate(item: Dict) -> Dict:
+        simulation = item.get("simulation") or {}
+        return {
+            "proposal_key": item.get("proposal_key"),
+            "proposal_label": item.get("proposal_label") or item.get("label"),
+            "source_label": item.get("source_label"),
+            "comparison_score": _coerce_optional_float(item.get("comparison_score")),
+            "purchase_plan": list(item.get("purchase_plan") or []),
+            "purchase_summary": item.get("purchase_summary") or _format_incremental_purchase_plan_summary(
+                list(item.get("purchase_plan") or [])
+            ),
+            "simulation_delta": dict(simulation.get("delta") or item.get("simulation_delta") or {}),
+            "simulation_interpretation": str(simulation.get("interpretation") or item.get("simulation_interpretation") or ""),
+            "priority_rank": int(item.get("priority_rank") or 0),
+        }
+
+    raw_candidates = [normalize_candidate(item) for item in (preferred_payload.get("candidates") or [])]
+    if not raw_candidates:
+        raw_candidates = [normalize_candidate(preferred)]
+
+    annotated_candidates = [
+        _annotate_decision_proposal_with_parking(item, parking_feature=parking_feature)
+        for item in raw_candidates
+    ]
+
+    selected = next(
+        (
+            item for item in annotated_candidates
+            if item.get("proposal_key") == preferred.get("proposal_key")
         ),
-        "simulation_delta": dict(simulation.get("delta") or preferred.get("simulation_delta") or {}),
-        "simulation_interpretation": str(simulation.get("interpretation") or ""),
-        "purchase_plan_blocks": purchase_plan_blocks,
-        "is_conditioned_by_parking": parking_overlap,
-        "priority_label": "Condicionada por parking" if parking_overlap else "Lista",
-        "priority_tone": "warning" if parking_overlap else "success",
-        "parking_note": (
-            "La propuesta preferida cae en un bloque con parking visible y conviene revisarla antes de tomarla como ejecucion directa."
-            if parking_overlap
-            else ""
-        ),
-    }
+        annotated_candidates[0],
+    )
+
+    if selected.get("is_conditioned_by_parking"):
+        clean_candidates = [
+            item for item in annotated_candidates
+            if not item.get("is_conditioned_by_parking")
+            and _should_promote_clean_alternative(selected, item)
+        ]
+        if clean_candidates:
+            selected = sorted(
+                clean_candidates,
+                key=lambda item: (
+                    float(item.get("comparison_score") if item.get("comparison_score") is not None else float("-inf")),
+                    int(item.get("priority_rank") or 0),
+                ),
+                reverse=True,
+            )[0]
+            selected["was_reprioritized_by_parking"] = True
+            selected["priority_label"] = "Repriorizada por parking"
+            selected["priority_tone"] = "info"
+            selected["parking_note"] = (
+                "Se promovio esta alternativa porque la propuesta preferida original caia en un bloque con parking visible."
+            )
+
+    return selected
 
 
 def _build_decision_expected_impact(simulation: Dict | None) -> Dict:
