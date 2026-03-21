@@ -219,7 +219,11 @@ class IOLHistoricalPriceService:
         for row in latest_positions:
             coverage = coverage_by_symbol.get((row["simbolo"], row["mercado"]), {})
             rows_count = int(coverage.get("rows_count") or 0)
-            eligibility = self.classify_position_for_history(row)
+            eligibility = self.resolve_symbol_history_support(
+                mercado=row["mercado"],
+                simbolo=row["simbolo"],
+                row=row,
+            )
             if not eligibility.get("supported"):
                 status = "unsupported"
             elif rows_count >= minimum_ready_rows:
@@ -228,6 +232,7 @@ class IOLHistoricalPriceService:
                 status = "partial"
             else:
                 status = "missing"
+            source_key = self._resolve_support_source_key(eligibility)
             rows.append(
                 {
                     "simbolo": row["simbolo"],
@@ -238,6 +243,8 @@ class IOLHistoricalPriceService:
                     "eligibility_status": eligibility.get("eligibility_status") or status,
                     "eligibility_reason_key": eligibility.get("reason_key") or "",
                     "eligibility_reason": eligibility.get("reason") or "",
+                    "eligibility_source_key": source_key,
+                    "eligibility_source_label": self._build_support_source_label(source_key),
                     "minimum_ready_rows": minimum_ready_rows,
                 }
             )
@@ -258,6 +265,7 @@ class IOLHistoricalPriceService:
                         "reason_key": "fci_confirmed_by_iol",
                         "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
                     }
+            local_support["support_source"] = local_support.get("support_source") or "local_classification"
             return local_support
 
         metadata = self._resolve_titulo_metadata(mercado=mercado, simbolo=simbolo)
@@ -271,6 +279,7 @@ class IOLHistoricalPriceService:
                     "eligibility_status": "unsupported_fci",
                     "reason_key": "fci_confirmed_by_iol",
                     "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de t?tulos",
+                    "support_source": "fci_confirmation",
                 }
             market_snapshot = self._resolve_market_snapshot(mercado=mercado, simbolo=simbolo)
             if market_snapshot:
@@ -289,7 +298,9 @@ class IOLHistoricalPriceService:
                         "simbolo": simbolo,
                         "eligibility_status": "supported",
                         "reason": "",
+                        "support_source": "market_snapshot",
                     }
+                snapshot_support["support_source"] = snapshot_support.get("support_source") or "market_snapshot"
                 return snapshot_support
             return {
                 "supported": False,
@@ -298,6 +309,7 @@ class IOLHistoricalPriceService:
                 "eligibility_status": "unsupported",
                 "reason_key": "title_metadata_unresolved",
                 "reason": "IOL no resolvi? metadata del instrumento para hist?ricos",
+                "support_source": "unresolved",
             }
 
         metadata_support = self.classify_position_for_history(
@@ -317,6 +329,7 @@ class IOLHistoricalPriceService:
             "simbolo": simbolo,
             "eligibility_status": "supported",
             "reason": "",
+            "support_source": "title_metadata",
         }
 
     def classify_position_for_history(self, row: dict) -> dict:
@@ -334,6 +347,7 @@ class IOLHistoricalPriceService:
                 "eligibility_status": "unsupported",
                 "reason_key": "missing_symbol_or_market",
                 "reason": "Instrumento sin simbolo o mercado valido",
+                "support_source": "local_classification",
             }
         if simbolo_norm in self.CASH_MANAGEMENT_SYMBOLS or "FCI" in tipo or "FONDO" in descripcion:
             return {
@@ -369,6 +383,7 @@ class IOLHistoricalPriceService:
             "eligibility_status": "supported",
             "reason_key": "",
             "reason": "",
+            "support_source": "local_classification",
         }
 
     def _get_titulo_metadata(self, *, mercado: str, simbolo: str) -> dict | None:
@@ -427,26 +442,29 @@ class IOLHistoricalPriceService:
                 return snapshot
         return None
 
-    def _get_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
-        cache_key = (str(mercado or "").strip(), str(simbolo or "").strip().upper())
-        if cache_key in self._market_snapshot_cache:
-            return self._market_snapshot_cache[cache_key]
+    @staticmethod
+    def _build_support_source_label(source_key: str | None) -> str:
+        labels = {
+            "title_metadata": "Metadata de titulo",
+            "market_snapshot": "Market snapshot",
+            "local_classification": "Clasificacion local",
+            "fci_confirmation": "Confirmacion FCI",
+            "unresolved": "Sin resolucion remota",
+        }
+        return labels.get(str(source_key or ""), "")
 
-        getter = getattr(self.client, "get_titulo_market_snapshot", None)
-        if not callable(getter):
-            self._market_snapshot_cache[cache_key] = None
-            return None
+    @staticmethod
+    def _resolve_support_source_key(eligibility: dict) -> str:
+        source_key = str(eligibility.get("support_source") or "").strip()
+        if source_key:
+            return source_key
 
-        snapshot = getter(mercado, simbolo)
-        self._market_snapshot_cache[cache_key] = snapshot or None
-        return self._market_snapshot_cache[cache_key]
-
-    def _resolve_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
-        for candidate_market in self._candidate_markets(mercado):
-            snapshot = self._get_market_snapshot(mercado=candidate_market, simbolo=simbolo)
-            if snapshot:
-                return snapshot
-        return None
+        reason_key = str(eligibility.get("reason_key") or "").strip()
+        if reason_key == "fci_confirmed_by_iol":
+            return "fci_confirmation"
+        if reason_key == "title_metadata_unresolved":
+            return "unresolved"
+        return "local_classification"
 
     @staticmethod
     def _get_latest_position_rows() -> list[dict]:

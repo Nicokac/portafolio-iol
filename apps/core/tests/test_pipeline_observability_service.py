@@ -110,9 +110,9 @@ def test_pipeline_observability_service_builds_unified_summary():
     class DummyIOLHistoricalPriceService:
         def get_current_portfolio_coverage_rows(self):
             return [
-                {"simbolo": "GGAL", "mercado": "BCBA", "rows_count": 12, "latest_date": "2026-03-17", "status": "ready"},
-                {"simbolo": "AAPL", "mercado": "NASDAQ", "rows_count": 3, "latest_date": "2026-03-17", "status": "partial"},
-                {"simbolo": "MSFT", "mercado": "NASDAQ", "rows_count": 0, "latest_date": None, "status": "missing"},
+                {"simbolo": "GGAL", "mercado": "BCBA", "rows_count": 12, "latest_date": "2026-03-17", "status": "ready", "eligibility_source_key": "title_metadata", "eligibility_source_label": "Metadata de titulo"},
+                {"simbolo": "AAPL", "mercado": "NASDAQ", "rows_count": 3, "latest_date": "2026-03-17", "status": "partial", "eligibility_source_key": "market_snapshot", "eligibility_source_label": "Market snapshot"},
+                {"simbolo": "MSFT", "mercado": "NASDAQ", "rows_count": 0, "latest_date": None, "status": "missing", "eligibility_source_key": "market_snapshot", "eligibility_source_label": "Market snapshot"},
                 {
                     "simbolo": "ADBAICA",
                     "mercado": "BCBA",
@@ -122,6 +122,8 @@ def test_pipeline_observability_service_builds_unified_summary():
                     "eligibility_status": "unsupported_fci",
                     "eligibility_reason_key": "fci_confirmed_by_iol",
                     "eligibility_reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
+                    "eligibility_source_key": "fci_confirmation",
+                    "eligibility_source_label": "Confirmacion FCI",
                 },
                 {
                     "simbolo": "CAUCION",
@@ -132,6 +134,8 @@ def test_pipeline_observability_service_builds_unified_summary():
                     "eligibility_status": "unsupported",
                     "eligibility_reason_key": "caucion_not_title_series",
                     "eligibility_reason": "La caución no expone serie histórica de cotización como un título estándar",
+                    "eligibility_source_key": "local_classification",
+                    "eligibility_source_label": "Clasificacion local",
                 },
             ]
 
@@ -183,6 +187,10 @@ def test_pipeline_observability_service_builds_unified_summary():
     assert summary["iol_historical_price_symbol_groups"]["unsupported"] == ["ADBAICA (BCBA)", "CAUCION (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["unsupported_fci"] == ["ADBAICA (BCBA)"]
     assert summary["iol_historical_price_symbol_groups"]["unsupported_other"] == ["CAUCION (BCBA)"]
+    row_by_symbol = {row["simbolo"]: row for row in summary["iol_historical_price_rows"]}
+    assert row_by_symbol["GGAL"]["eligibility_source_key"] == "title_metadata"
+    assert row_by_symbol["AAPL"]["eligibility_source_label"] == "Market snapshot"
+    assert row_by_symbol["ADBAICA"]["eligibility_source_label"] == "Confirmacion FCI"
     assert summary["iol_historical_exclusion_rows"][0]["reason_key"] == "caucion_not_title_series"
     assert summary["iol_historical_exclusion_rows"][0]["count"] == 1
     assert summary["iol_historical_exclusion_rows"][1]["reason_key"] == "fci_confirmed_by_iol"

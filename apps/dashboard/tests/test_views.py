@@ -1244,6 +1244,8 @@ class TestDashboardView:
                             'rows_count': 12,
                             'latest_date': '2026-03-17',
                             'status': 'ready',
+                            'eligibility_source_key': 'title_metadata',
+                            'eligibility_source_label': 'Metadata de título',
                         },
                         {
                             'simbolo': 'AAPL',
@@ -1251,6 +1253,8 @@ class TestDashboardView:
                             'rows_count': 3,
                             'latest_date': '2026-03-17',
                             'status': 'partial',
+                            'eligibility_source_key': 'market_snapshot',
+                            'eligibility_source_label': 'Market snapshot',
                         },
                         {
                             'simbolo': 'MSFT',
@@ -1258,6 +1262,8 @@ class TestDashboardView:
                             'rows_count': 0,
                             'latest_date': None,
                             'status': 'missing',
+                            'eligibility_source_key': 'market_snapshot',
+                            'eligibility_source_label': 'Market snapshot',
                         },
                         {
                             'simbolo': 'ADBAICA',
@@ -1268,6 +1274,8 @@ class TestDashboardView:
                             'eligibility_status': 'unsupported_fci',
                             'eligibility_reason_key': 'fci_confirmed_by_iol',
                             'eligibility_reason': 'Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos',
+                            'eligibility_source_key': 'fci_confirmation',
+                            'eligibility_source_label': 'Confirmación FCI',
                         },
                         {
                             'simbolo': 'CAUCION',
@@ -1278,6 +1286,8 @@ class TestDashboardView:
                             'eligibility_status': 'unsupported',
                             'eligibility_reason_key': 'caucion_not_title_series',
                             'eligibility_reason': 'La caución no expone serie histórica de cotización como un título estándar',
+                            'eligibility_source_key': 'local_classification',
+                            'eligibility_source_label': 'Clasificación local',
                         },
                     ],
                     'local_macro_status_rows': [],
@@ -1371,6 +1381,10 @@ class TestDashboardView:
         assert 'No elegible' in body
         assert 'Clase: FCI confirmado' in body
         assert 'Clase: no elegible por otros motivos' in body
+        assert 'Origen: Metadata de título' in body or 'Origen: Metadata de titulo' in body
+        assert 'Origen: Market snapshot' in body
+        assert 'Origen: Confirmación FCI' in body or 'Origen: Confirmacion FCI' in body
+        assert 'Origen: Clasificación local' in body or 'Origen: Clasificacion local' in body
         assert 'sin configurar 1' in body
         assert 'Series macro críticas' in body
         assert '4/7' in body

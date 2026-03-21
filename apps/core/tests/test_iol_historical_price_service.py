@@ -340,7 +340,8 @@ def test_iol_historical_price_service_marks_caucion_and_fci_as_unsupported_in_co
     assert row_by_symbol["ADBAICA"]["status"] == "unsupported"
     assert row_by_symbol["PRPEDOB"]["status"] == "unsupported"
     assert row_by_symbol["PRPEDOB"]["eligibility_status"] == "unsupported_fci"
-    assert "pipeline distinto" in row_by_symbol["ADBAICA"]["eligibility_reason"]
+    assert "confirmado por iol como fci" in row_by_symbol["ADBAICA"]["eligibility_reason"].lower()
+    assert row_by_symbol["ADBAICA"]["eligibility_source_key"] == "fci_confirmation"
     assert row_by_symbol["CAUCIÓN COLOCADORA"]["status"] == "unsupported"
     assert "caución" in row_by_symbol["CAUCIÓN COLOCADORA"]["eligibility_reason"].lower()
 

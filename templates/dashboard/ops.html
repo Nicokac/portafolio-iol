@@ -439,6 +439,9 @@
                                 {% elif row.status == 'unsupported' %}
                                 <div class="small text-muted mt-1">Clase: no elegible por otros motivos</div>
                                 {% endif %}
+                                {% if row.eligibility_source_label %}
+                                <div class="small text-muted mt-1">Origen: {{ row.eligibility_source_label }}</div>
+                                {% endif %}
                                 {% if row.eligibility_reason %}
                                 <div class="small text-muted mt-1">{{ row.eligibility_reason }}</div>
                                 {% endif %}
