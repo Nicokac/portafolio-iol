@@ -1,8 +1,8 @@
-# Motor MVP de Asignación Mensual Incremental
+# Motor MVP de Asignacion Mensual Incremental
 
 ## Objetivo
 
-Traducir la analítica actual de la app en una propuesta simple y explicable de uso del capital mensual incremental.
+Traducir la analitica actual de la app en una propuesta simple y explicable de uso del capital mensual incremental.
 
 ## Inputs
 
@@ -17,7 +17,7 @@ Traducir la analítica actual de la app en una propuesta simple y explicable de 
 ## Reglas del MVP
 
 1. Penalizar bloques que hoy agravan:
-   - concentración de riesgo
+   - concentracion de riesgo
    - fragilidad
    - shocks dominantes
    - exceso de liquidez
@@ -27,7 +27,7 @@ Traducir la analítica actual de la app en una propuesta simple y explicable de 
    - reforzar buckets con mejor retorno estructural
    - diversificar fuera de bloques sobrecargados
 3. Resolver conflictos de forma conservadora:
-   - si un bloque tiene señal de retorno positiva pero también una penalización fuerte de riesgo/stress, se excluye en el MVP
+   - si un bloque tiene senal de retorno positiva pero tambien una penalizacion fuerte de riesgo/stress, se excluye en el MVP
 4. Distribuir el capital entre los mejores bloques por score relativo.
 
 ## Output
@@ -35,7 +35,7 @@ Traducir la analítica actual de la app en una propuesta simple y explicable de 
 - resumen general del criterio
 - bloques recomendados con monto sugerido
 - bloques evitados
-- explicación consolidada
+- explicacion consolidada
 
 ## Score explanation
 
@@ -45,9 +45,9 @@ Cada bloque recomendado expone:
 - `negative_signals`
 - `notes`
 
-La idea no es recalcular el score, sino dejar trazabilidad de qué reglas existentes lo empujaron hacia arriba o hacia abajo.
+La idea no es recalcular el score, sino dejar trazabilidad de que reglas existentes lo empujaron hacia arriba o hacia abajo.
 
-Las señales salen solo de:
+Las senales salen solo de:
 
 - factor exposure
 - expected return
@@ -58,15 +58,15 @@ Las señales salen solo de:
 
 ## Candidate Asset Ranking Engine
 
-DespuÃ©s de decidir quÃ© bloques conviene reforzar, el ranking de candidatos baja un nivel y ordena activos ya presentes en cartera que mejor encajan dentro de esos bloques.
+Despues de decidir que bloques conviene reforzar, el ranking de candidatos baja un nivel y ordena activos ya presentes en cartera que mejor encajan dentro de esos bloques.
 
 El motor:
 
-- no cambia la asignaciÃ³n mensual
+- no cambia la asignacion mensual
 - no simula compras
 - no optimiza portafolio
 
-Solo rankea candidatos usando seÃ±ales ya existentes de:
+Solo rankea candidatos usando senales ya existentes de:
 
 - factor exposure
 - risk contribution
@@ -81,21 +81,21 @@ La salida expone:
 - score de idoneidad
 - razones principales del ranking
 
-LimitaciÃ³n deliberada del MVP:
+Limitacion deliberada del MVP:
 
-- usa Ãºnicamente activos ya presentes en cartera
+- usa unicamente activos ya presentes en cartera
 - no abre universo externo de nuevos instrumentos
 
 ## Limitaciones
 
 - no recomienda activos concretos
-- no simula antes/después por activo
-- no optimiza matemáticamente
-- usa reglas explicables y determinísticas
+- no simula antes/despues por activo
+- no optimiza matematicamente
+- usa reglas explicables y deterministicas
 
-## Evolución futura
+## Evolucion futura
 
 - bajar de bloque a activo
-- incorporar simulación incremental antes/después
-- usar scoring más fino por candidato
-- abrir interacción directa con el capital mensual elegido por el usuario
+- incorporar simulacion incremental antes/despues
+- usar scoring mas fino por candidato
+- abrir interaccion directa con el capital mensual elegido por el usuario

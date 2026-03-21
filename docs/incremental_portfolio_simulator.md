@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Evaluar cÃ³mo cambia el portafolio si se aplica una compra incremental propuesta, comparando `before` vs `after` sin modificar datos persistidos.
+Evaluar como cambia el portafolio si se aplica una compra incremental propuesta, comparando `before` vs `after` sin modificar datos persistidos.
 
 ## Inputs
 
@@ -10,9 +10,9 @@ Evaluar cÃ³mo cambia el portafolio si se aplica una compra incremental propues
 - `purchase_plan`
 - posiciones normalizadas actuales
 
-## ReutilizaciÃ³n del MVP
+## Reutilizacion del MVP
 
-El simulador no crea nueva analÃ­tica.
+El simulador no crea nueva analitica.
 
 Reutiliza:
 
@@ -23,18 +23,18 @@ Reutiliza:
 - `StressFragilityService`
 - `ScenarioAnalysisService`
 
-## LÃ³gica del MVP
+## Logica del MVP
 
 1. cargar posiciones actuales
 2. copiar portafolio en memoria
-3. aplicar compras propuestas por sÃ­mbolo
-4. recalcular analÃ­tica sobre `before` y `after`
+3. aplicar compras propuestas por simbolo
+4. recalcular analitica sobre `before` y `after`
 5. construir `delta`
-6. devolver una interpretaciÃ³n simple basada en cambios de:
+6. devolver una interpretacion simple basada en cambios de:
    - retorno esperado
    - fragilidad
    - peor escenario
-   - concentraciÃ³n de riesgo
+   - concentracion de riesgo
    - sesgo defensivo/dividend
 
 ## Output
@@ -45,20 +45,20 @@ Reutiliza:
 - `interpretation`
 - `warnings`
 
-## Integración actual
+## Integracion actual
 
-En `Planeación`, el MVP se usa con una regla simple:
+En `Planeacion`, el MVP se usa con una regla simple:
 
 1. tomar los bloques recomendados por el motor mensual
 2. elegir el top candidato de cada bloque desde `Candidate Asset Ranking Engine`
 3. construir un `purchase_plan` default
-4. mostrar comparaciÃ³n `before/after` server-rendered
+4. mostrar comparacion `before/after` server-rendered
 
 El comparador incremental agrega variantes simples sobre la misma base:
 
 - top candidato por bloque
 - segundo candidato si existe
-- split del bloque mÃ¡s grande entre top 2 candidatos
+- split del bloque mas grande entre top 2 candidatos
 
 Jerarquia actual en `Planeacion`:
 
@@ -70,16 +70,16 @@ Jerarquia actual en `Planeacion`:
 
 ## Limitaciones
 
-- simula un Ãºnico plan de compra por vez
-- no asigna montos Ã³ptimos
+- simula un unico plan de compra por vez
+- no asigna montos optimos
 - no rankea combinaciones
 - no modifica persistencia
 - depende de metadata disponible para activos nuevos al portafolio actual
 
-## EvoluciÃ³n futura
+## Evolucion futura
 
-- integrar comparaciÃ³n directa desde `PlaneaciÃ³n`
-- evaluar mÃºltiples propuestas candidatas
+- integrar comparacion directa desde `Planeacion`
+- evaluar multiples propuestas candidatas
 - comparar simulaciones del top ranking de activos
 
 ## Comparador manual
@@ -498,7 +498,7 @@ La hoja `Planeacion` agrega un semaforo simple para leer rapido el estado operat
 
 Objetivo:
 
-- sintetizar drift, baseline y backlog en una señal unica
+- sintetizar drift, baseline y backlog en una senal unica
 - ayudar a decidir si conviene revisar backlog o sostener baseline
 - mantener una lectura server-rendered y explicable
 
@@ -513,7 +513,7 @@ Reglas del MVP:
 - `verde`:
   - drift favorable/estable y sin backlog urgente
 - `gris`:
-  - señal insuficiente
+  - senal insuficiente
 
 Limitaciones:
 
