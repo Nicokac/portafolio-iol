@@ -1,8 +1,8 @@
 # Pipeline de datos
 
-## Propósito
+## Proposito
 
-Explicar cómo entra la data al sistema, cómo se persiste y qué superficies dependen del pipeline operativo.
+Explicar como entra la data al sistema, como se persiste y que superficies dependen del pipeline operativo.
 
 Complemento recomendado:
 
@@ -23,7 +23,7 @@ Fuentes principales:
   - cotizacion puntual y cotizacion detalle
   - serie historica por simbolo
 - Alpha Vantage
-  - benchmarks históricos
+  - benchmarks historicos
 - BCRA
   - USDARS oficial
   - BADLAR
@@ -31,7 +31,7 @@ Fuentes principales:
   - IPC nacional
 - fuentes JSON opcionales
   - USDARS MEP
-  - riesgo país
+  - riesgo pais
 
 ## Servicios principales
 
@@ -119,7 +119,7 @@ Persistencia principal:
 
 Salidas operativas:
 
-- auditoría de sync IOL
+- auditoria de sync IOL
 - continuidad diaria de snapshots
 - readiness para covarianza
 - estado de benchmarks
@@ -131,34 +131,36 @@ Salidas operativas:
 - `Resumen`
   - KPIs de portafolio y contexto macro
 - `Estrategia`
-  - composición
+  - composicion
   - riesgo
   - Analytics v2
   - calidad de datos
 - `Performance`
-  - evolución histórica
+  - evolucion historica
   - benchmarking
-  - comparación macro
-- `Métricas`
+  - comparacion macro
+- `Metricas`
   - volatility
   - returns
   - benchmarking
-- `Planeación`
+- `Planeacion`
   - recomendaciones
-  - simulación
-  - optimización
+  - simulacion
+  - optimizacion
 - `Operaciones`
   - filtros locales y sync remoto contra IOL
   - enriquecimiento batch de detalle y backfill de `pais_consulta`
   - auditoria operativa visible sobre acciones recientes
+  - metricas historicas de ejecucion y costo sobre el subset filtrado
+  - comparacion operativa entre compras, ventas, dividendos y flujos FCI
 - `Ops`
   - observabilidad del pipeline
   - acciones staff
   - validacion puntual de market snapshot IOL
 
-## Cómo consumen los selectors
+## Como consumen los selectors
 
-Patrón actual:
+Patron actual:
 
 ```text
 models persistidos
@@ -167,7 +169,7 @@ models persistidos
   -> views server-rendered / APIs internas
 ```
 
-Los selectors no deberían sincronizar ni persistir.
+Los selectors no deberian sincronizar ni persistir.
 Su rol es consolidar outputs para UI.
 
 ## Estado actual / brechas
@@ -181,12 +183,12 @@ Estado actual:
 
 Brechas:
 
-- `last_successful_iol_sync` no tiene historial persistido de éxitos
-- la historia útil para covarianza sigue dependiendo de continuidad real de snapshots
-- algunas superficies todavía consumen observabilidad vía AJAX y no todo está unificado server-render
+- `last_successful_iol_sync` no tiene historial persistido de exitos
+- la historia util para covarianza sigue dependiendo de continuidad real de snapshots
+- algunas superficies todavia consumen observabilidad via AJAX y no todo esta unificado server-render
 
 ## Limitaciones actuales
 
 - el pipeline depende de disponibilidad externa de IOL y proveedores de mercado/macro
-- la integridad histórica no implica automáticamente suficiencia para covarianza
+- la integridad historica no implica automaticamente suficiencia para covarianza
 - la observabilidad del pipeline es operativa, no reemplaza monitoreo externo o alertado dedicado
