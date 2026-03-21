@@ -208,6 +208,47 @@ class TestDashboardSelectors(TestCase):
         assert detail["recommendation"]["priority_label"] == "Condicionada"
         assert "parking visible dentro de este mismo bloque" in detail["recommendation"]["reason"]
 
+    def test_get_decision_engine_summary_conditions_suggested_assets_when_parking_overlaps_block(self):
+        class DummyUser:
+            pk = 9
+
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch(
+                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                return_value={
+                    "candidate_assets": [
+                        {"asset": "KO", "block_label": "Defensive / resiliente", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "SPY", "block_label": "Indice global", "score": 7.2, "main_reason": "stable_global_exposure"},
+                    ]
+                },
+            ),
+            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch(
+                "apps.dashboard.selectors.get_portfolio_parking_feature_context",
+                return_value={
+                    "has_visible_parking": True,
+                    "summary": {"parking_count": 1, "parking_value_total": Decimal("120000")},
+                    "parking_blocks": [{"label": "Defensive / resiliente", "value_total": Decimal("120000")}],
+                    "top_rows": [],
+                    "alerts": [],
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["suggested_assets"][0]["symbol"] == "KO"
+        assert detail["suggested_assets"][0]["is_conditioned_by_parking"] is True
+        assert detail["suggested_assets"][0]["priority_label"] == "Condicionado por parking"
+        assert detail["suggested_assets"][1]["symbol"] == "SPY"
+        assert detail["suggested_assets"][1]["is_conditioned_by_parking"] is False
+
     def test_get_market_snapshot_feature_context_uses_cached_payload_for_top_positions(self):
         fecha = timezone.now()
         make_activo(fecha, "MELI", Decimal("900000"), tipo="CEDEARS", mercado="BCBA")

@@ -2776,7 +2776,7 @@ def get_decision_engine_summary(
         portfolio_state = _build_decision_portfolio_state(analytics)
         parking_feature = get_portfolio_parking_feature_context()
         recommendation = _build_decision_recommendation(monthly_plan, parking_feature=parking_feature)
-        suggested_assets = _build_decision_suggested_assets(ranking)
+        suggested_assets = _build_decision_suggested_assets(ranking, parking_feature=parking_feature)
         preferred_proposal = _build_decision_preferred_proposal(preferred_payload)
         expected_impact = _build_decision_expected_impact(simulation)
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
@@ -3873,16 +3873,23 @@ def _build_decision_recommendation(monthly_plan: Dict | None, *, parking_feature
     }
 
 
-def _build_decision_suggested_assets(ranking: Dict | None) -> list[Dict]:
+def _build_decision_suggested_assets(ranking: Dict | None, *, parking_feature: Dict | None = None) -> list[Dict]:
     ranking = ranking or {}
     assets = []
     for item in (ranking.get("candidate_assets") or [])[:3]:
+        block_label = item.get("block_label")
+        conditioned_by_parking = _is_parking_overlap_with_recommendation(
+            block_label,
+            (parking_feature or {}).get("parking_blocks") or [],
+        )
         assets.append(
             {
                 "symbol": item.get("asset"),
-                "block": item.get("block_label"),
+                "block": block_label,
                 "score": _coerce_optional_float(item.get("score")),
                 "reason": item.get("main_reason"),
+                "is_conditioned_by_parking": conditioned_by_parking,
+                "priority_label": "Condicionado por parking" if conditioned_by_parking else "",
             }
         )
     return assets

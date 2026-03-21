@@ -697,9 +697,12 @@ class TestDashboardView:
                         'amount': 600000,
                         'reason': 'Se prioriza retorno esperado estructural.',
                         'has_recommendation': True,
+                        'priority_label': 'Prioritaria',
+                        'priority_tone': 'success',
+                        'is_conditioned_by_parking': False,
                     },
                     'suggested_assets': [
-                        {'symbol': 'KO', 'block': 'Defensive / resiliente', 'score': 8.4, 'reason': 'defensive_sector_match'},
+                        {'symbol': 'KO', 'block': 'Defensive / resiliente', 'score': 8.4, 'reason': 'defensive_sector_match', 'is_conditioned_by_parking': False, 'priority_label': ''},
                     ],
                     'preferred_proposal': {
                         'proposal_key': 'split',
@@ -975,8 +978,8 @@ class TestDashboardView:
                     ],
                     'macro_state': {'key': 'normal', 'label': 'Normal', 'summary': 'No hay una señal macro dominante.'},
                     'portfolio_state': {'key': 'ok', 'label': 'OK', 'summary': 'La cartera admite un aporte incremental.'},
-                    'recommendation': {'block': 'Defensivos USD', 'amount': 600000, 'reason': 'prioridad simple', 'has_recommendation': True},
-                    'suggested_assets': [{'symbol': 'KO', 'block': 'Defensivos USD', 'score': 8.2, 'reason': 'defensive_sector_match'}],
+                    'recommendation': {'block': 'Defensivos USD', 'amount': 600000, 'reason': 'prioridad simple', 'has_recommendation': True, 'priority_label': 'Prioritaria', 'priority_tone': 'success', 'is_conditioned_by_parking': False},
+                    'suggested_assets': [{'symbol': 'KO', 'block': 'Defensivos USD', 'score': 8.2, 'reason': 'defensive_sector_match', 'is_conditioned_by_parking': False, 'priority_label': ''}],
                     'preferred_proposal': {'proposal_label': 'Plan A', 'source_label': 'Comparador automático', 'purchase_summary': 'KO · 600000', 'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'simulation_delta': {}},
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
                     'score': 61,
@@ -1073,7 +1076,16 @@ class TestDashboardView:
                         'priority_tone': 'warning',
                         'is_conditioned_by_parking': True,
                     },
-                    'suggested_assets': [],
+                    'suggested_assets': [
+                        {
+                            'symbol': 'KO',
+                            'block': 'Defensive / resiliente',
+                            'score': 8.2,
+                            'reason': 'defensive_sector_match',
+                            'is_conditioned_by_parking': True,
+                            'priority_label': 'Condicionado por parking',
+                        }
+                    ],
                     'preferred_proposal': None,
                     'expected_impact': {'return': None, 'fragility': None, 'worst_case': None, 'status': 'neutral', 'summary': 'Impacto incremental no disponible.'},
                     'score': 61,
@@ -1099,6 +1111,8 @@ class TestDashboardView:
         assert 'Condicionada' in body
         assert 'Defensive / resiliente' in body
         assert 'Hay parking visible dentro de este mismo bloque' in body
+        assert 'Condicionado por parking' in body
+        assert 'Conviene revisar parking visible en este bloque antes de usarlo como candidato principal.' in body
         assert 'Revisar restricciones antes de ejecutar' in body
         assert 'Revisar antes de ejecutar' in body
 
