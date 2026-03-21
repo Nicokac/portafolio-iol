@@ -22,11 +22,15 @@ def test_operaciones_list_view_renders_template_and_context(client):
         fecha_orden=timezone.now(),
         tipo="Compra",
         estado="Terminada",
+        estado_actual="terminada",
         mercado="BCBA",
         simbolo="GGAL",
         cantidad=10,
         monto=1000,
         modalidad="PRECIO_LIMITE",
+        moneda="peso_Argentino",
+        aranceles_ars=25.50,
+        operaciones_detalle=[{"fecha": "2026-03-18T14:05:57", "cantidad": 10, "precio": 100}],
     )
     user = User.objects.create_user(username="operaciones-user", password="testpass123")
     client.force_login(user)
@@ -37,7 +41,15 @@ def test_operaciones_list_view_renders_template_and_context(client):
     assert "operaciones_iol/operaciones_list.html" in [t.name for t in response.templates]
     assert "operaciones" in response.context
     assert response.context["operaciones"].count() == 1
+    assert "operation_rows" in response.context
+    assert "operations_summary" in response.context
+    assert response.context["operations_summary"]["enriched_count"] == 1
     assert reverse("operaciones_iol:operacion_detail", args=["OP-1"]) in response.content.decode()
+    body = response.content.decode()
+    assert "Hoja de operaciones" in body
+    assert "Detalle IOL" in body
+    assert "Ejecucion" in body
+    assert "Enriquecido" in body
 
 
 @pytest.mark.django_db

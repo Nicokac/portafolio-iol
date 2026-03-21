@@ -7,6 +7,7 @@ from django.views.generic import DetailView, ListView
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.security_audit import record_sensitive_action
 from apps.operaciones_iol.models import OperacionIOL
+from apps.operaciones_iol.selectors import build_operation_list_context, has_operation_detail
 
 
 class OperacionesListView(LoginRequiredMixin, ListView):
@@ -14,6 +15,13 @@ class OperacionesListView(LoginRequiredMixin, ListView):
     template_name = 'operaciones_iol/operaciones_list.html'
     context_object_name = 'operaciones'
     paginate_by = 25
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        list_context = build_operation_list_context(context['operaciones'])
+        context['operation_rows'] = list_context['rows']
+        context['operations_summary'] = list_context['summary']
+        return context
 
 
 class OperacionDetailView(LoginRequiredMixin, DetailView):
@@ -29,7 +37,7 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
         service = IOLSyncService()
         success = service.sync_operacion_detalle(numero)
         if success:
-            messages.success(request, "Detalle de operación re-sincronizado desde IOL.")
+            messages.success(request, 'Detalle de operacion re-sincronizado desde IOL.')
             record_sensitive_action(
                 request,
                 action='operacion_detail_resync',
@@ -37,7 +45,7 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
                 details={'numero': numero},
             )
         else:
-            messages.warning(request, "No fue posible re-sincronizar el detalle desde IOL.")
+            messages.warning(request, 'No fue posible re-sincronizar el detalle desde IOL.')
             record_sensitive_action(
                 request,
                 action='operacion_detail_resync',
@@ -49,26 +57,26 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
     def get_object(self, queryset=None):
         numero = str(self.kwargs.get(self.slug_url_kwarg) or '').strip()
         if not numero:
-            raise Http404("Operacion no encontrada")
+            raise Http404('Operacion no encontrada')
 
         operacion = OperacionIOL.objects.filter(numero=numero).first()
         if operacion is None:
             service = IOLSyncService()
             if not service.sync_operacion_detalle(numero):
-                raise Http404("Operacion no encontrada")
+                raise Http404('Operacion no encontrada')
             operacion = OperacionIOL.objects.filter(numero=numero).first()
             if operacion is None:
-                raise Http404("Operacion no encontrada")
-            messages.info(self.request, "Se sincronizó el detalle de la operación desde IOL.")
+                raise Http404('Operacion no encontrada')
+            messages.info(self.request, 'Se sincronizo el detalle de la operacion desde IOL.')
             return operacion
 
-        if not _has_operation_detail(operacion):
+        if not has_operation_detail(operacion):
             service = IOLSyncService()
             if service.sync_operacion_detalle(numero):
                 operacion = OperacionIOL.objects.filter(numero=numero).first() or operacion
-                messages.info(self.request, "Se actualizó el detalle de la operación desde IOL.")
+                messages.info(self.request, 'Se actualizo el detalle de la operacion desde IOL.')
             else:
-                messages.warning(self.request, "No fue posible actualizar el detalle desde IOL. Se muestra la información local disponible.")
+                messages.warning(self.request, 'No fue posible actualizar el detalle desde IOL. Se muestra la informacion local disponible.')
         return operacion
 
     def get_context_data(self, **kwargs):
@@ -77,25 +85,9 @@ class OperacionDetailView(LoginRequiredMixin, DetailView):
         context['operation_timeline'] = _build_operation_timeline(operacion.estados_detalle)
         context['operation_fills'] = operacion.operaciones_detalle or []
         context['operation_fees'] = operacion.aranceles_detalle or []
-        context['has_operation_detail'] = _has_operation_detail(operacion)
+        context['has_operation_detail'] = has_operation_detail(operacion)
         return context
 
-
-def _has_operation_detail(operacion: OperacionIOL) -> bool:
-    return any(
-        [
-            bool(operacion.moneda),
-            bool(operacion.estado_actual),
-            bool(operacion.fecha_alta),
-            bool(operacion.validez),
-            bool(operacion.estados_detalle),
-            bool(operacion.aranceles_detalle),
-            bool(operacion.operaciones_detalle),
-            operacion.monto_operacion is not None,
-            operacion.aranceles_ars is not None,
-            operacion.aranceles_usd is not None,
-        ]
-    )
 
 
 def _build_operation_timeline(estados_detalle: list[dict] | None) -> list[dict]:

@@ -35,7 +35,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
 | `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, dashboard | Alto | `parking` se persiste pero no se consume |
 | `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, vistas legacy, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | no enriquece automatico con detalle por numero |
-| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria | Medio | no hay consumo fuerte en UI |
+| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills y aranceles | Medio-Alto | no se explota todavia para metricas agregadas de calidad de ejecucion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
@@ -121,11 +121,15 @@ Se usa para:
   - aranceles
   - fills
   - fechas detalladas
+- abrir el detalle desde el numero clickable en la hoja de operaciones
+- mostrar timeline de estados, fills y aranceles on-demand
+- permitir re-sincronizacion manual desde IOL
 
 Conclusion:
 
 - el contrato ya esta endurecido
-- todavia esta subutilizado en producto
+- ya tiene un consumidor visible y correcto en producto
+- el siguiente salto es explotarlo en metricas agregadas de ejecucion y costo
 
 ### 5. `Titulos/{simbolo}` y `Titulos/FCI/{simbolo}`
 
