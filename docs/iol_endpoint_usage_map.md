@@ -34,8 +34,8 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
 | `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, dashboard | Alto | `parking` se persiste pero no se consume |
-| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
-| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles y batch sobre subset filtrado | Alto | no se explota todavia para metricas historicas agregadas de ejecucion |
+| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, auditoria operativa visible, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
+| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles, batch sobre subset filtrado y drill-down operativo | Alto | no se explota todavia para metricas historicas agregadas de ejecucion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
@@ -98,6 +98,8 @@ Se usa para:
 - filtros por numero, estado, fechas y pais
 - sync remoto filtrado desde la hoja de operaciones
 - lectura visible de cobertura de `pais_consulta` y pendientes de backfill sobre la pagina actual
+- lectura historica del subset filtrado completo para cobertura de detalle y `pais_consulta`
+- observabilidad operativa del ultimo sync filtrado, ultimo enriquecimiento y ultimo backfill
 - flujo operativo mensual en `Resumen`, `Estrategia` y `Planeacion`
 - lectura reciente de compras, ventas, dividendos y suscripciones FCI
 - soporte de acciones batch previas al enriquecimiento por numero
@@ -129,6 +131,7 @@ Se usa para:
 - mostrar timeline de estados, fills y aranceles on-demand
 - permitir re-sincronizacion manual desde IOL
 - enriquecer en batch solo las operaciones sin detalle de la pagina filtrada actual
+- alimentar lectura resumida de fallos/resultado via auditoria operativa visible en la hoja
 
 Conclusion:
 

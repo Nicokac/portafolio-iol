@@ -147,6 +147,10 @@ Salidas operativas:
   - recomendaciones
   - simulación
   - optimización
+- `Operaciones`
+  - filtros locales y sync remoto contra IOL
+  - enriquecimiento batch de detalle y backfill de `pais_consulta`
+  - auditoria operativa visible sobre acciones recientes
 - `Ops`
   - observabilidad del pipeline
   - acciones staff
