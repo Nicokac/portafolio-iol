@@ -291,6 +291,134 @@ class TestIOLAPIClient:
         assert mock_get.call_args.args[0].endswith('/api/v2/Titulos/FCI/ADBAICA')
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_cotizacion_returns_dict(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            'ultimoPrecio': 602.9,
+            'moneda': 'peso_Argentino',
+            'descripcionTitulo': 'Petroleo Brasileiro',
+        }
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo_cotizacion('bCBA', 'APBR')
+
+        assert result == {
+            'ultimoPrecio': 602.9,
+            'moneda': 'peso_Argentino',
+            'descripcionTitulo': 'Petroleo Brasileiro',
+        }
+        assert mock_get.call_args.args[0].endswith('/api/v2/bCBA/Titulos/APBR/Cotizacion')
+        assert mock_get.call_args.kwargs['params'] == {
+            'model.simbolo': 'APBR',
+            'model.mercado': 'bCBA',
+            'model.plazo': 't0',
+        }
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_cotizacion_normalizes_alias_params(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {'ultimoPrecio': 602.9}
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo_cotizacion(
+            'BCBA',
+            'APBR',
+            {
+                'mercado': 'bCBA',
+                'simbolo': 'APBR',
+                'plazo': 'T0',
+            },
+        )
+
+        assert result == {'ultimoPrecio': 602.9}
+        assert mock_get.call_args.kwargs['params'] == {
+            'model.simbolo': 'APBR',
+            'model.mercado': 'bCBA',
+            'model.plazo': 'T0',
+        }
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_cotizacion_rejects_non_dict_payload(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'unexpected': 'shape'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo_cotizacion('bCBA', 'APBR')
+
+        assert result is None
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_cotizacion_detalle_returns_dict(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            'simbolo': 'MELI',
+            'mercado': 'bcba',
+            'tipo': 'cedears',
+            'cantidadMinima': 1,
+        }
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo_cotizacion_detalle('bCBA', 'MELI')
+
+        assert result == {
+            'simbolo': 'MELI',
+            'mercado': 'bcba',
+            'tipo': 'cedears',
+            'cantidadMinima': 1,
+        }
+        assert mock_get.call_args.args[0].endswith('/api/v2/bCBA/Titulos/MELI/CotizacionDetalle')
+        assert mock_get.call_args.kwargs['params'] is None
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_cotizacion_detalle_rejects_non_dict_payload(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'unexpected': 'shape'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo_cotizacion_detalle('bCBA', 'MELI')
+
+        assert result is None
+
+    def test_get_titulo_market_snapshot_prefers_cotizacion_detalle(self, client):
+        client.get_titulo_cotizacion_detalle = MagicMock(return_value={
+            'simbolo': 'MELI',
+            'tipo': 'cedears',
+            'puntas': [{'precioCompra': 20040}],
+        })
+        client.get_titulo_cotizacion = MagicMock(return_value={'ultimoPrecio': 20040})
+
+        result = client.get_titulo_market_snapshot('bCBA', 'MELI')
+
+        assert result == {
+            'simbolo': 'MELI',
+            'tipo': 'cedears',
+            'puntas': [{'precioCompra': 20040}],
+        }
+        client.get_titulo_cotizacion_detalle.assert_called_once_with('bCBA', 'MELI')
+        client.get_titulo_cotizacion.assert_not_called()
+
+    def test_get_titulo_market_snapshot_falls_back_to_cotizacion(self, client):
+        client.get_titulo_cotizacion_detalle = MagicMock(return_value=None)
+        client.get_titulo_cotizacion = MagicMock(return_value={
+            'ultimoPrecio': 20040,
+            'descripcionTitulo': 'Cedear Mercadolibre Inc.',
+        })
+
+        result = client.get_titulo_market_snapshot('bCBA', 'MELI', params={'plazo': 't0'})
+
+        assert result == {
+            'ultimoPrecio': 20040,
+            'descripcionTitulo': 'Cedear Mercadolibre Inc.',
+        }
+        client.get_titulo_cotizacion_detalle.assert_called_once_with('bCBA', 'MELI')
+        client.get_titulo_cotizacion.assert_called_once_with('bCBA', 'MELI', params={'plazo': 't0'})
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_request_json_retries_once_on_401_and_then_succeeds(self, mock_get, client):
         client._ensure_valid_token = MagicMock()
         client.token_manager.invalidate_current_token = MagicMock()

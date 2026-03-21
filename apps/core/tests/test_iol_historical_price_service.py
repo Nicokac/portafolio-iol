@@ -350,6 +350,7 @@ def test_iol_historical_price_service_skips_symbols_unresolved_by_iol_metadata()
     client = Mock()
     client.get_titulo.return_value = None
     client.get_fci.return_value = None
+    client.get_titulo_market_snapshot.return_value = None
 
     result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "GGAL")
 
@@ -357,6 +358,50 @@ def test_iol_historical_price_service_skips_symbols_unresolved_by_iol_metadata()
     assert result["skipped"] is True
     assert result["eligibility_status"] == "unsupported"
     assert "metadata" in result["error"].lower()
+    client.get_titulo_historicos.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_uses_market_snapshot_when_title_metadata_is_missing():
+    client = Mock()
+    client.get_titulo.return_value = None
+    client.get_fci.return_value = None
+    client.get_titulo_market_snapshot.return_value = {
+        "simbolo": "GGAL",
+        "mercado": "bCBA",
+        "tipo": "acciones",
+        "descripcionTitulo": "Grupo Financiero Galicia",
+    }
+    client.get_titulo_historicos.return_value = [
+        {"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 108.0},
+    ]
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "GGAL")
+
+    assert result["success"] is True
+    assert result["mercado"] == "bCBA"
+    client.get_titulo_market_snapshot.assert_called()
+    client.get_titulo_historicos.assert_called_once_with("bCBA", "GGAL", params=None)
+
+
+@pytest.mark.django_db
+def test_iol_historical_price_service_market_snapshot_can_confirm_unsupported_symbol():
+    client = Mock()
+    client.get_titulo.return_value = None
+    client.get_fci.return_value = None
+    client.get_titulo_market_snapshot.return_value = {
+        "simbolo": "CAUCIÓN COLOCADORA",
+        "mercado": "bcba",
+        "tipo": "caucionespesos",
+        "descripcionTitulo": "Caución En Pesos",
+    }
+
+    result = IOLHistoricalPriceService(client=client).sync_symbol_history("BCBA", "CAUCIÓN COLOCADORA")
+
+    assert result["success"] is True
+    assert result["skipped"] is True
+    assert result["eligibility_status"] == "unsupported"
+    assert "caución" in result["error"].lower()
     client.get_titulo_historicos.assert_not_called()
 
 

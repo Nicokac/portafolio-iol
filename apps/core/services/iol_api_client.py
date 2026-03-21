@@ -355,6 +355,50 @@ class IOLAPIClient:
         )
         return data if isinstance(data, dict) else None
 
+    def get_titulo_cotizacion(
+        self,
+        mercado: str,
+        simbolo: str,
+        params: Optional[Dict] = None,
+    ) -> Optional[Dict]:
+        """Obtiene la cotizacion puntual de un titulo."""
+        mercado_path = quote(str(mercado or "").strip(), safe="")
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/{mercado_path}/Titulos/{simbolo_path}/Cotizacion"
+        data = self._request_json(
+            operation=f"get_titulo_cotizacion:{mercado}:{simbolo}",
+            url=url,
+            params=self._normalize_titulo_cotizacion_params(mercado, simbolo, params),
+        )
+        return data if isinstance(data, dict) else None
+
+    def get_titulo_cotizacion_detalle(
+        self,
+        mercado: str,
+        simbolo: str,
+    ) -> Optional[Dict]:
+        """Obtiene la cotizacion detallada de un titulo."""
+        mercado_path = quote(str(mercado or "").strip(), safe="")
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/{mercado_path}/Titulos/{simbolo_path}/CotizacionDetalle"
+        data = self._request_json(
+            operation=f"get_titulo_cotizacion_detalle:{mercado}:{simbolo}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
+    def get_titulo_market_snapshot(
+        self,
+        mercado: str,
+        simbolo: str,
+        params: Optional[Dict] = None,
+    ) -> Optional[Dict]:
+        """Obtiene market data puntual priorizando CotizacionDetalle y usando Cotizacion como fallback."""
+        detalle = self.get_titulo_cotizacion_detalle(mercado, simbolo)
+        if isinstance(detalle, dict):
+            return detalle
+        return self.get_titulo_cotizacion(mercado, simbolo, params=params)
+
     def get_titulo_historicos(
         self,
         mercado: str,
@@ -410,3 +454,34 @@ class IOLAPIClient:
         if not end_of_day and dt_value.time() == time.max:
             dt_value = datetime.combine(dt_value.date(), time.min)
         return dt_value.isoformat(timespec="seconds")
+
+    @staticmethod
+    def _normalize_titulo_cotizacion_params(
+        mercado: str,
+        simbolo: str,
+        params: Optional[Dict],
+    ) -> Dict[str, object]:
+        params = params or {}
+        plazo = (
+            params.get("model.plazo")
+            or params.get("plazo")
+            or params.get("plazo_operacion")
+            or "t0"
+        )
+        normalized: Dict[str, object] = {
+            "model.simbolo": params.get("model.simbolo") or params.get("simbolo") or simbolo,
+            "model.mercado": params.get("model.mercado") or params.get("mercado") or mercado,
+            "model.plazo": plazo,
+        }
+        for key, value in params.items():
+            if key not in {
+                "simbolo",
+                "mercado",
+                "plazo",
+                "plazo_operacion",
+                "model.simbolo",
+                "model.mercado",
+                "model.plazo",
+            }:
+                normalized[key] = value
+        return normalized

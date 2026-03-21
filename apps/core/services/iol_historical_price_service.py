@@ -29,6 +29,7 @@ class IOLHistoricalPriceService:
         self.client = client or IOLAPIClient()
         self._title_metadata_cache: dict[tuple[str, str], dict] = {}
         self._fci_metadata_cache: dict[str, dict | None] = {}
+        self._market_snapshot_cache: dict[tuple[str, str], dict | None] = {}
 
     def sync_symbol_history(self, mercado: str, simbolo: str, params: dict | None = None) -> dict:
         support = self.resolve_symbol_history_support(mercado=mercado, simbolo=simbolo)
@@ -269,15 +270,34 @@ class IOLHistoricalPriceService:
                     "simbolo": simbolo,
                     "eligibility_status": "unsupported_fci",
                     "reason_key": "fci_confirmed_by_iol",
-                    "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de títulos",
+                    "reason": "Instrumento confirmado por IOL como FCI; no usa seriehistorica de t?tulos",
                 }
+            market_snapshot = self._resolve_market_snapshot(mercado=mercado, simbolo=simbolo)
+            if market_snapshot:
+                snapshot_support = self.classify_position_for_history(
+                    {
+                        "simbolo": market_snapshot.get("simbolo") or simbolo,
+                        "mercado": market_snapshot.get("mercado") or mercado,
+                        "tipo": market_snapshot.get("tipo"),
+                        "descripcion": market_snapshot.get("descripcionTitulo"),
+                    }
+                )
+                if snapshot_support.get("supported"):
+                    return {
+                        "supported": True,
+                        "mercado": str(market_snapshot.get("mercado") or mercado),
+                        "simbolo": simbolo,
+                        "eligibility_status": "supported",
+                        "reason": "",
+                    }
+                return snapshot_support
             return {
                 "supported": False,
                 "mercado": mercado,
                 "simbolo": simbolo,
                 "eligibility_status": "unsupported",
                 "reason_key": "title_metadata_unresolved",
-                "reason": "IOL no resolvió metadata del instrumento para históricos",
+                "reason": "IOL no resolvi? metadata del instrumento para hist?ricos",
             }
 
         metadata_support = self.classify_position_for_history(
@@ -384,6 +404,48 @@ class IOLHistoricalPriceService:
             metadata = self._get_titulo_metadata(mercado=candidate_market, simbolo=simbolo)
             if metadata:
                 return metadata
+        return None
+
+    def _get_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
+        cache_key = (str(mercado or "").strip(), str(simbolo or "").strip().upper())
+        if cache_key in self._market_snapshot_cache:
+            return self._market_snapshot_cache[cache_key]
+
+        getter = getattr(self.client, "get_titulo_market_snapshot", None)
+        if not callable(getter):
+            self._market_snapshot_cache[cache_key] = None
+            return None
+
+        snapshot = getter(mercado, simbolo)
+        self._market_snapshot_cache[cache_key] = snapshot or None
+        return self._market_snapshot_cache[cache_key]
+
+    def _resolve_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
+        for candidate_market in self._candidate_markets(mercado):
+            snapshot = self._get_market_snapshot(mercado=candidate_market, simbolo=simbolo)
+            if snapshot:
+                return snapshot
+        return None
+
+    def _get_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
+        cache_key = (str(mercado or "").strip(), str(simbolo or "").strip().upper())
+        if cache_key in self._market_snapshot_cache:
+            return self._market_snapshot_cache[cache_key]
+
+        getter = getattr(self.client, "get_titulo_market_snapshot", None)
+        if not callable(getter):
+            self._market_snapshot_cache[cache_key] = None
+            return None
+
+        snapshot = getter(mercado, simbolo)
+        self._market_snapshot_cache[cache_key] = snapshot or None
+        return self._market_snapshot_cache[cache_key]
+
+    def _resolve_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
+        for candidate_market in self._candidate_markets(mercado):
+            snapshot = self._get_market_snapshot(mercado=candidate_market, simbolo=simbolo)
+            if snapshot:
+                return snapshot
         return None
 
     @staticmethod
