@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Iterable
 from urllib.parse import urlencode
 
+from django.core.paginator import Paginator
 from django.db.models import Q, QuerySet
 from django.utils.dateparse import parse_date
 
@@ -136,6 +137,16 @@ def build_operation_filter_context(filters: dict) -> dict:
             ('estados_Unidos', 'Estados Unidos'),
         ],
     }
+
+
+def get_operation_subset_for_detail_enrichment(
+    queryset: QuerySet[OperacionIOL],
+    *,
+    page_number: int | str = 1,
+    page_size: int = 25,
+) -> list[OperacionIOL]:
+    page = Paginator(queryset, page_size).get_page(page_number)
+    return [operacion for operacion in page.object_list if not has_operation_detail(operacion)]
 
 
 

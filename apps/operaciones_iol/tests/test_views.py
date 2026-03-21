@@ -154,6 +154,81 @@ def test_sync_operaciones_filtered_calls_service_and_audits(client, monkeypatch)
 
 
 @pytest.mark.django_db
+def test_enrich_operaciones_filtered_details_requires_staff(client):
+    user = User.objects.create_user(username="operaciones-non-staff-batch", password="testpass123")
+    client.force_login(user)
+    response = client.post(reverse("operaciones_iol:enrich_operaciones_filtered_details"))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_enrich_operaciones_filtered_details_enriches_only_missing_rows_on_current_page(client, monkeypatch):
+    staff = User.objects.create_user(username="staff-operaciones-batch", password="testpass123", is_staff=True)
+    client.force_login(staff)
+
+    OperacionIOL.objects.create(
+        numero="OP-ENRICHED",
+        fecha_orden=timezone.now(),
+        tipo="Compra",
+        estado="Terminada",
+        estado_actual="terminada",
+        mercado="BCBA",
+        simbolo="MELI",
+        modalidad="precio_Mercado",
+        moneda="peso_Argentino",
+    )
+    OperacionIOL.objects.create(
+        numero="OP-MISSING-1",
+        fecha_orden=timezone.now() - timezone.timedelta(minutes=1),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="GGAL",
+        modalidad="precio_Mercado",
+    )
+    OperacionIOL.objects.create(
+        numero="OP-MISSING-2",
+        fecha_orden=timezone.now() - timezone.timedelta(minutes=2),
+        tipo="Compra",
+        estado="Terminada",
+        mercado="BCBA",
+        simbolo="YPFD",
+        modalidad="precio_Mercado",
+    )
+
+    enriched = []
+
+    class DummyService:
+        def sync_operacion_detalle(self, numero):
+            enriched.append(str(numero))
+            operacion = OperacionIOL.objects.get(numero=str(numero))
+            operacion.moneda = "peso_Argentino"
+            operacion.save()
+            return True
+
+    monkeypatch.setattr("apps.operaciones_iol.views.IOLSyncService", lambda: DummyService())
+
+    response = client.post(
+        reverse("operaciones_iol:enrich_operaciones_filtered_details"),
+        {
+            "estado": "terminada",
+            "pais": "argentina",
+            "page": "1",
+        },
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert enriched == ["OP-MISSING-1", "OP-MISSING-2"]
+    messages = list(get_messages(response.wsgi_request))
+    assert any("Detalle IOL enriquecido para 2 operacion(es)" in str(message) for message in messages)
+    audit = SensitiveActionAudit.objects.get(action="enrich_operaciones_filtered_details")
+    assert audit.status == "success"
+    assert audit.details["selected_count"] == 2
+    assert audit.details["success_count"] == 2
+
+
+@pytest.mark.django_db
 def test_operacion_detail_view_renders_existing_detail(client):
     operacion = OperacionIOL.objects.create(
         numero="167788363",

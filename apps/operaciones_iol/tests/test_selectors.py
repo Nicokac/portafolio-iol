@@ -8,6 +8,7 @@ from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
+    get_operation_subset_for_detail_enrichment,
     normalize_operation_filters,
 )
 
@@ -141,3 +142,28 @@ def test_build_operation_filter_context_tracks_active_filters():
     assert "numero=167788363" in context["query_string"]
     assert "estado=terminada" in context["query_string"]
     assert "pais=estados_Unidos" in context["query_string"]
+
+
+@pytest.mark.django_db
+def test_get_operation_subset_for_detail_enrichment_returns_only_current_page_missing_detail():
+    for index in range(30):
+        payload = {
+            "numero": f"OP-{index:02d}",
+            "fecha_orden": timezone.now() - timezone.timedelta(minutes=index),
+            "tipo": "Compra",
+            "estado": "Terminada",
+            "mercado": "BCBA",
+            "simbolo": f"SYM{index:02d}",
+            "modalidad": "precio_Mercado",
+        }
+        if index == 0:
+            payload["moneda"] = "peso_Argentino"
+        OperacionIOL.objects.create(**payload)
+
+    queryset = OperacionIOL.objects.all()
+    subset_page_1 = get_operation_subset_for_detail_enrichment(queryset, page_number=1, page_size=25)
+    subset_page_2 = get_operation_subset_for_detail_enrichment(queryset, page_number=2, page_size=25)
+
+    assert len(subset_page_1) == 24
+    assert all(not operacion.moneda for operacion in subset_page_1)
+    assert len(subset_page_2) == 5

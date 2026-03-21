@@ -15,6 +15,7 @@ from apps.operaciones_iol.selectors import (
     apply_operation_filters,
     build_operation_filter_context,
     build_operation_list_context,
+    get_operation_subset_for_detail_enrichment,
     has_operation_detail,
     normalize_operation_filters,
 )
@@ -77,6 +78,63 @@ class SyncOperacionesFilteredView(StaffRequiredMixin, View):
         filter_context = build_operation_filter_context(normalized_filters)
         if filter_context['query_string']:
             redirect_url = f"{redirect_url}?{filter_context['query_string']}"
+        return redirect(redirect_url)
+
+
+class EnrichOperacionesFilteredDetailsView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request, *args, **kwargs) -> HttpResponse:
+        normalized_filters = normalize_operation_filters(request.POST)
+        page_number = request.POST.get('page') or 1
+        queryset = apply_operation_filters(OperacionIOL.objects.all(), normalized_filters)
+        subset = get_operation_subset_for_detail_enrichment(
+            queryset,
+            page_number=page_number,
+            page_size=OperacionesListView.paginate_by,
+        )
+
+        success_count = 0
+        failed_numbers: list[str] = []
+        service = IOLSyncService()
+        for operacion in subset:
+            if service.sync_operacion_detalle(operacion.numero):
+                success_count += 1
+            else:
+                failed_numbers.append(str(operacion.numero))
+
+        audit_status = 'failed' if failed_numbers else 'success'
+        record_sensitive_action(
+            request,
+            action='enrich_operaciones_filtered_details',
+            status=audit_status,
+            details={
+                'filters': normalized_filters,
+                'page': str(page_number),
+                'selected_count': len(subset),
+                'success_count': success_count,
+                'failed_numbers': failed_numbers,
+            },
+        )
+
+        if not subset:
+            messages.info(request, 'No hay operaciones sin detalle para enriquecer en la pagina filtrada actual.')
+        elif failed_numbers:
+            messages.warning(
+                request,
+                f'Detalle IOL enriquecido parcialmente. OK={success_count}, fallidas={len(failed_numbers)}.',
+            )
+        else:
+            messages.success(request, f'Detalle IOL enriquecido para {success_count} operacion(es) de la pagina actual.')
+
+        redirect_url = reverse('operaciones_iol:operaciones_list')
+        filter_context = build_operation_filter_context(normalized_filters)
+        query_params = filter_context['query_string']
+        if page_number:
+            page_segment = f"page={page_number}"
+            query_params = f"{query_params}&{page_segment}" if query_params else page_segment
+        if query_params:
+            redirect_url = f"{redirect_url}?{query_params}"
         return redirect(redirect_url)
 
 
