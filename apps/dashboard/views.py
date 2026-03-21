@@ -724,3 +724,51 @@ class SyncIOLHistoricalPricesRetryMetadataView(StaffRequiredMixin, View):
             messages.error(request, "No fue posible reintentar exclusiones por metadata IOL.")
         return redirect('dashboard:ops')
 
+
+class RefreshIOLMarketSnapshotView(StaffRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        service = IOLHistoricalPriceService()
+        try:
+            rows = service.get_current_portfolio_market_snapshot_rows(limit=8)
+            summary = service.summarize_market_snapshot_rows(rows)
+            has_available = int(summary.get('available_count') or 0) > 0
+            record_sensitive_action(
+                request,
+                action='refresh_iol_market_snapshot',
+                status='success',
+                details={'summary': summary, 'rows': rows},
+            )
+
+            if int(summary.get('total_symbols') or 0) == 0:
+                messages.info(request, "No hay simbolos del portfolio para validar market snapshot IOL.")
+            elif has_available and int(summary.get('missing_count') or 0) == 0:
+                messages.success(
+                    request,
+                    (
+                        "Market snapshot IOL validado. "
+                        f"{summary['available_count']} simbolo(s) disponibles, "
+                        f"detalle {summary['detail_count']}, fallback {summary['fallback_count']}."
+                    ),
+                )
+            else:
+                messages.warning(
+                    request,
+                    (
+                        "Market snapshot IOL refrescado con cobertura parcial. "
+                        f"Disponibles {summary['available_count']}, "
+                        f"missing {summary['missing_count']}, "
+                        f"no elegibles {summary['unsupported_count']}."
+                    ),
+                )
+        except Exception as exc:
+            record_sensitive_action(
+                request,
+                action='refresh_iol_market_snapshot',
+                status='failed',
+                details={'reason': 'exception', 'message': str(exc)},
+            )
+            messages.error(request, "No fue posible refrescar el market snapshot IOL.")
+        return redirect('dashboard:ops')
+

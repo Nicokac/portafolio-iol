@@ -1571,6 +1571,11 @@ class TestDashboardView:
         assert response.status_code == 403
 
     @pytest.mark.django_db
+    def test_refresh_iol_market_snapshot_forbidden_for_non_staff(self, auth_client):
+        response = auth_client.post(reverse('dashboard:refresh_iol_market_snapshot'))
+        assert response.status_code == 403
+
+    @pytest.mark.django_db
     def test_sync_benchmarks_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_all(self, outputsize='compact'):
@@ -1779,6 +1784,76 @@ class TestDashboardView:
         assert response.status_code == 302
         messages = list(get_messages(response.wsgi_request))
         assert any('No hay exclusiones por metadata para reintentar históricos IOL' in str(message) or 'No hay exclusiones por metadata para reintentar historicos IOL' in str(message) for message in messages)
+
+    @pytest.mark.django_db
+    def test_refresh_iol_market_snapshot_view_success_message(self, staff_client, monkeypatch):
+        class DummyService:
+            def get_current_portfolio_market_snapshot_rows(self, limit=8):
+                assert limit == 8
+                return [
+                    {
+                        'simbolo': 'GGAL',
+                        'mercado': 'bcba',
+                        'snapshot_status': 'available',
+                        'snapshot_source_key': 'cotizacion_detalle',
+                        'puntas_count': 1,
+                    },
+                    {
+                        'simbolo': 'AAPL',
+                        'mercado': 'NASDAQ',
+                        'snapshot_status': 'missing',
+                        'snapshot_source_key': '',
+                        'puntas_count': 0,
+                    },
+                ]
+
+            @staticmethod
+            def summarize_market_snapshot_rows(rows):
+                assert len(rows) == 2
+                return {
+                    'total_symbols': 2,
+                    'available_count': 1,
+                    'missing_count': 1,
+                    'unsupported_count': 0,
+                    'detail_count': 1,
+                    'fallback_count': 0,
+                    'order_book_count': 1,
+                    'overall_status': 'partial',
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:refresh_iol_market_snapshot'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Market snapshot IOL refrescado con cobertura parcial' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='refresh_iol_market_snapshot')
+        assert audit.status == 'success'
+        assert audit.user.username == 'staffuser'
+
+    @pytest.mark.django_db
+    def test_refresh_iol_market_snapshot_view_handles_empty_selection(self, staff_client, monkeypatch):
+        class DummyService:
+            def get_current_portfolio_market_snapshot_rows(self, limit=8):
+                return []
+
+            @staticmethod
+            def summarize_market_snapshot_rows(rows):
+                return {
+                    'total_symbols': 0,
+                    'available_count': 0,
+                    'missing_count': 0,
+                    'unsupported_count': 0,
+                    'detail_count': 0,
+                    'fallback_count': 0,
+                    'order_book_count': 0,
+                    'overall_status': 'missing',
+                }
+
+        monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
+        response = staff_client.post(reverse('dashboard:refresh_iol_market_snapshot'))
+        assert response.status_code == 302
+        messages = list(get_messages(response.wsgi_request))
+        assert any('No hay simbolos del portfolio para validar market snapshot IOL' in str(message) for message in messages)
 
     def test_save_incremental_proposal_passes_decision_payload_to_history_service(self, auth_client, monkeypatch):
         captured = {}

@@ -25,6 +25,10 @@
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-dark">Reintentar metadata IOL no resuelta</button>
             </form>
+            <form method="post" action="{% url 'dashboard:refresh_iol_market_snapshot' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-success">Refrescar market snapshot IOL</button>
+            </form>
             <form method="post" action="{% url 'dashboard:sync_benchmarks' %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-primary">Sincronizar Benchmarks</button>

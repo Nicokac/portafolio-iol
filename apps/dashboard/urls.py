@@ -13,6 +13,7 @@ from apps.dashboard.views import (
     PromoteIncrementalBacklogFrontView,
     PromoteIncrementalProposalBaselineView,
     PerformanceView,
+    RefreshIOLMarketSnapshotView,
     FactorExposureDetailView,
     RiskContributionDetailView,
     ScenarioAnalysisDetailView,
@@ -57,4 +58,5 @@ urlpatterns = [
     path('acciones/iol-historicos/', SyncIOLHistoricalPricesView.as_view(), name='sync_iol_historical_prices'),
     path('acciones/iol-historicos-parciales/', SyncIOLHistoricalPricesPartialView.as_view(), name='sync_iol_historical_prices_partial'),
     path('acciones/iol-historicos-reintentar-metadata/', SyncIOLHistoricalPricesRetryMetadataView.as_view(), name='sync_iol_historical_prices_retry_metadata'),
+    path('acciones/iol-market-snapshot/', RefreshIOLMarketSnapshotView.as_view(), name='refresh_iol_market_snapshot'),
 ]

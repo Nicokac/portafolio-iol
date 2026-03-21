@@ -1,5 +1,6 @@
 from datetime import date
 from unittest.mock import Mock
+import warnings
 
 import pandas as pd
 import pytest
@@ -499,6 +500,39 @@ def test_iol_historical_price_service_marks_snapshot_fallback_source_when_detail
     assert rows[0]["snapshot_status"] == "available"
     assert rows[0]["snapshot_source_key"] == "cotizacion"
     assert rows[0]["snapshot_source_label"] == "Cotizacion fallback"
+
+
+def test_iol_historical_price_service_summarizes_market_snapshot_rows():
+    summary = IOLHistoricalPriceService.summarize_market_snapshot_rows(
+        [
+            {"snapshot_status": "available", "snapshot_source_key": "cotizacion_detalle", "puntas_count": 2},
+            {"snapshot_status": "available", "snapshot_source_key": "cotizacion", "puntas_count": 0},
+            {"snapshot_status": "missing", "snapshot_source_key": "", "puntas_count": 0},
+            {"snapshot_status": "unsupported", "snapshot_source_key": "local_classification", "puntas_count": 0},
+        ]
+    )
+
+    assert summary == {
+        "total_symbols": 4,
+        "available_count": 2,
+        "missing_count": 1,
+        "unsupported_count": 1,
+        "detail_count": 1,
+        "fallback_count": 1,
+        "order_book_count": 1,
+        "overall_status": "partial",
+    }
+
+
+def test_iol_historical_price_service_formats_snapshot_datetime_without_nanosecond_warning():
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        formatted = IOLHistoricalPriceService._format_snapshot_datetime(
+            "2026-03-20T16:59:46.4181717-03:00"
+        )
+
+    assert formatted == "2026-03-20 16:59"
+    assert not any("Discarding nonzero nanoseconds" in str(item.message) for item in caught)
 
 
 def test_iol_historical_price_service_candidate_markets_dedupes_and_keeps_primary_first():

@@ -355,6 +355,36 @@ class IOLHistoricalPriceService:
 
         return rows[:limit]
 
+    @staticmethod
+    def summarize_market_snapshot_rows(rows: list[dict]) -> dict:
+        total = len(rows)
+        available_count = sum(1 for row in rows if row.get("snapshot_status") == "available")
+        missing_count = sum(1 for row in rows if row.get("snapshot_status") == "missing")
+        unsupported_count = sum(1 for row in rows if row.get("snapshot_status") == "unsupported")
+        detail_count = sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion_detalle")
+        fallback_count = sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion")
+        order_book_count = sum(1 for row in rows if int(row.get("puntas_count") or 0) > 0)
+
+        if total == 0:
+            overall_status = "missing"
+        elif missing_count == 0 and unsupported_count == 0:
+            overall_status = "ready"
+        elif available_count > 0:
+            overall_status = "partial"
+        else:
+            overall_status = "warning"
+
+        return {
+            "total_symbols": total,
+            "available_count": available_count,
+            "missing_count": missing_count,
+            "unsupported_count": unsupported_count,
+            "detail_count": detail_count,
+            "fallback_count": fallback_count,
+            "order_book_count": order_book_count,
+            "overall_status": overall_status,
+        }
+
     def resolve_symbol_history_support(self, *, mercado: str, simbolo: str, row: dict | None = None) -> dict:
         local_row = row or {"simbolo": simbolo, "mercado": mercado}
         local_support = self.classify_position_for_history(local_row)
@@ -592,7 +622,7 @@ class IOLHistoricalPriceService:
         if not value:
             return ""
         try:
-            parsed = pd.to_datetime(value).to_pydatetime()
+            parsed = pd.Timestamp(pd.to_datetime(value)).to_pydatetime(warn=False)
         except Exception:
             return str(value)
         if timezone.is_naive(parsed):
