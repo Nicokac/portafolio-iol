@@ -140,13 +140,14 @@ class TestIOLSyncService:
             'monto': 5000.0,
             'modalidad': 'PRECIO_LIMITE',
         }]
-        result = service.sync_operaciones()
+        result = service.sync_operaciones({'pais': 'argentina'})
         assert result is True
         assert OperacionIOL.objects.count() == 1
         operacion = OperacionIOL.objects.get()
         assert operacion.estado == 'Terminada'
         assert operacion.estado_actual == 'Terminada'
         assert operacion.moneda == ''
+        assert operacion.pais_consulta == 'argentina'
 
     def test_sync_operaciones_no_duplicate(self, service):
         service.client.get_operaciones.return_value = [{
@@ -220,6 +221,7 @@ class TestIOLSyncService:
     def test_sync_operacion_detalle_updates_existing_operacion(self, service):
         OperacionIOL.objects.create(
             numero='167788363',
+            pais_consulta='estados_Unidos',
             fecha_orden=timezone.make_aware(timezone.datetime(2026, 3, 18, 14, 5, 53, 323000)),
             tipo='Compra',
             estado='Pendiente',
@@ -258,6 +260,7 @@ class TestIOLSyncService:
         operacion = OperacionIOL.objects.get(numero='167788363')
         assert operacion.estado == 'terminada'
         assert operacion.moneda == 'peso_Argentino'
+        assert operacion.pais_consulta == 'estados_Unidos'
         assert timezone.localtime(operacion.validez).isoformat().startswith('2026-03-18T17:00:00')
 
     def test_sync_operacion_detalle_no_data(self, service):

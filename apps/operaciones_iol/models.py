@@ -3,6 +3,7 @@ from django.db import models
 
 class OperacionIOL(models.Model):
     numero = models.CharField(max_length=50, unique=True)
+    pais_consulta = models.CharField(max_length=50, blank=True)
     fecha_orden = models.DateTimeField()
     fecha_alta = models.DateTimeField(null=True, blank=True)
     validez = models.DateTimeField(null=True, blank=True)
@@ -35,6 +36,7 @@ class OperacionIOL(models.Model):
             models.Index(fields=['fecha_orden']),
             models.Index(fields=['simbolo']),
             models.Index(fields=['estado']),
+            models.Index(fields=['pais_consulta']),
         ]
 
     def __str__(self):

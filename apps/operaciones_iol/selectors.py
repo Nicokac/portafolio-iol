@@ -104,12 +104,26 @@ def apply_operation_filters(queryset: QuerySet[OperacionIOL], filters: dict) -> 
     if fecha_hasta:
         queryset = queryset.filter(fecha_orden__date__lte=fecha_hasta)
 
+    pais = str(filters.get('pais') or '').strip()
+    if pais and pais != 'argentina':
+        queryset = queryset.filter(pais_consulta__iexact=pais)
+
     return queryset.distinct()
 
 
 def build_operation_filter_context(filters: dict) -> dict:
     clean_filters = {**_DEFAULT_FILTERS, **(filters or {})}
-    query_string = urlencode({key: value for key, value in clean_filters.items() if value})
+    query_string = urlencode(
+        {
+            key: value
+            for key, value in clean_filters.items()
+            if (
+                (key == 'estado' and value != 'todas')
+                or (key == 'pais' and value != 'argentina')
+                or (key not in {'estado', 'pais'} and value)
+            )
+        }
+    )
     active_count = sum(
         1
         for key, value in clean_filters.items()

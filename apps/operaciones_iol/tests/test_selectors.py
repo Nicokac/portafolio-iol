@@ -97,6 +97,7 @@ def test_normalize_operation_filters_accepts_internal_and_explicit_keys():
 def test_apply_operation_filters_filters_by_number_state_and_dates():
     OperacionIOL.objects.create(
         numero="167788363",
+        pais_consulta="estados_Unidos",
         fecha_orden=timezone.now(),
         tipo="Compra",
         estado="Terminada",
@@ -107,6 +108,7 @@ def test_apply_operation_filters_filters_by_number_state_and_dates():
     )
     OperacionIOL.objects.create(
         numero="167700000",
+        pais_consulta="argentina",
         fecha_orden=timezone.now() - timezone.timedelta(days=10),
         tipo="Compra",
         estado="Pendiente",
@@ -120,6 +122,7 @@ def test_apply_operation_filters_filters_by_number_state_and_dates():
         "estado": "terminada",
         "fecha_desde": (timezone.now() - timezone.timedelta(days=2)).date().isoformat(),
         "fecha_hasta": timezone.now().date().isoformat(),
+        "pais": "estados_Unidos",
     }
     filtered = apply_operation_filters(OperacionIOL.objects.all(), filters)
 

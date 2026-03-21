@@ -123,13 +123,17 @@ class IOLSyncService:
             return False
 
         synced_count = 0
+        pais_consulta = str((params or {}).get('pais') or (params or {}).get('filtro.pais') or '').strip()
         for operacion in data:
             logger.debug(f"Operacion data: {operacion}")  # Debug: ver estructura
             try:
-                _, created = OperacionIOL.objects.get_or_create(
+                operacion_obj, created = OperacionIOL.objects.get_or_create(
                     numero=operacion['numero'],
-                    defaults=self._build_operacion_defaults(operacion),
+                    defaults=self._build_operacion_defaults(operacion, pais_consulta=pais_consulta),
                 )
+                if not created and pais_consulta and operacion_obj.pais_consulta != pais_consulta:
+                    operacion_obj.pais_consulta = pais_consulta
+                    operacion_obj.save(update_fields=['pais_consulta'])
                 if created:
                     synced_count += 1
             except KeyError as e:
@@ -162,9 +166,13 @@ class IOLSyncService:
             return False
 
         try:
+            existing = OperacionIOL.objects.filter(numero=str(data["numero"])).first()
             OperacionIOL.objects.update_or_create(
                 numero=str(data["numero"]),
-                defaults=self._build_operacion_defaults(data),
+                defaults=self._build_operacion_defaults(
+                    data,
+                    pais_consulta=getattr(existing, 'pais_consulta', '') or '',
+                ),
             )
         except KeyError as e:
             logger.error("Missing key in operacion detail data: %s, data: %s", e, data)
@@ -176,8 +184,9 @@ class IOLSyncService:
         )
         return True
 
-    def _build_operacion_defaults(self, operacion: dict) -> dict:
+    def _build_operacion_defaults(self, operacion: dict, *, pais_consulta: str = '') -> dict:
         return {
+            'pais_consulta': pais_consulta,
             'fecha_orden': self._normalize_datetime(operacion.get('fechaOrden') or operacion.get('fechaAlta')),
             'fecha_alta': self._normalize_datetime(operacion.get('fechaAlta') or operacion.get('fechaOrden')),
             'validez': self._normalize_datetime(operacion.get('validez')),

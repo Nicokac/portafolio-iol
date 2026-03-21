@@ -34,7 +34,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
 | `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, dashboard | Alto | `parking` se persiste pero no se consume |
-| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | la tabla local todavia no puede filtrar por pais porque `OperacionIOL` no lo persiste |
+| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
 | `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles y batch sobre subset filtrado | Alto | no se explota todavia para metricas historicas agregadas de ejecucion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
@@ -113,7 +113,7 @@ Conclusion:
 
 - ya dejo de ser solo trazabilidad base
 - ya tiene uso visible y accionable en producto
-- la brecha principal ya no es filtrado ni sync, sino persistencia adicional para `pais` y mejor analitica historica
+- la brecha principal ya no es filtrado ni sync, sino backfill historico de `pais_consulta` y mejor analitica historica
 
 ### 4. `operaciones/{numero}`
 
@@ -206,7 +206,7 @@ Los endpoints con mayor potencial todavia no exprimido son:
 2. `operaciones/{numero}`
    - ya se explota visualmente; falta convertirlo en series y metricas agregadas de ejecucion
 3. `operaciones`
-   - ya se usa bien en hoja y dashboard; falta persistir `pais` o equivalente para filtros locales mas completos
+   - ya se usa bien en hoja y dashboard; falta backfill historico de `pais_consulta` para cerrar del todo el filtro local
 4. `portafolio/{pais}`
    - `parking` ya entra, pero sigue sin valor de negocio visible
 

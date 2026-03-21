@@ -62,6 +62,7 @@ def test_operaciones_list_view_renders_template_and_context(client):
 def test_operaciones_list_view_applies_filters_from_query_params(client):
     OperacionIOL.objects.create(
         numero="167788363",
+        pais_consulta="estados_Unidos",
         fecha_orden=timezone.now(),
         tipo="Compra",
         estado="Terminada",
@@ -72,6 +73,7 @@ def test_operaciones_list_view_applies_filters_from_query_params(client):
     )
     OperacionIOL.objects.create(
         numero="167700000",
+        pais_consulta="argentina",
         fecha_orden=timezone.now() - timezone.timedelta(days=10),
         tipo="Compra",
         estado="Pendiente",
