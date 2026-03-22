@@ -70,3 +70,30 @@ Ademas, el endpoint de actualizacion de parametros ahora ejecuta `full_clean()` 
 ### Riesgo aceptado
 La restriccion de `risk_free_rate` queda acotada a `-100..100` como rango operativo conservador.
 Si mas adelante aparece un caso real que requiera otro rango, el ajuste debe hacerse de forma explicita con migracion y tests.
+
+
+---
+
+## D-004 - IOLToken guardado de forma atomica
+
+**Issue relacionada:** H09  
+**Fecha:** 2026-03-22  
+**Estado:** Implementado
+
+### Contexto
+`IOLToken.save_token()` eliminaba todos los tokens y luego creaba uno nuevo.
+
+Ese patron introducia una ventana de inconsistencia: si el `create()` fallaba despues del `delete()`, la app podia quedar sin token persistido valido.
+
+### Decision
+Mantener la semantica operativa de un unico token vigente, pero reemplazar `delete() + create()` por actualizacion atomica dentro de transaccion.
+
+Comportamiento final:
+
+- si no existe token, se crea uno nuevo
+- si existe uno, se reutiliza la fila mas reciente
+- cualquier fila extra se purga dentro de la misma transaccion
+
+### Riesgo aceptado
+Se mantiene la decision de negocio de guardar un unico token IOL vigente en base.
+Si en el futuro aparece un caso multi-cuenta o multi-credencial, el modelo debe evolucionar explicitamente en lugar de acumular multiples filas implicitas.

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.utils.token_crypto import decrypt_token, encrypt_token, is_encrypted_token
@@ -61,17 +61,26 @@ class IOLToken(models.Model):
 
     @classmethod
     def save_token(cls, access_token: str, refresh_token: str = None, expires_in: int = 3600):
-        """Guarda un nuevo token, eliminando tokens anteriores."""
-        # Eliminar tokens anteriores
-        cls.objects.all().delete()
-
-        # Crear nuevo token
+        """Guarda un nuevo token de forma atomica, preservando un unico registro vigente."""
         expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
-        return cls.objects.create(
-            access_token=encrypt_token(access_token),
-            refresh_token=encrypt_token(refresh_token),
-            expires_at=expires_at
-        )
+        encrypted_access_token = encrypt_token(access_token)
+        encrypted_refresh_token = encrypt_token(refresh_token)
+
+        with transaction.atomic():
+            latest_token = cls.objects.order_by('-created_at', '-id').first()
+            if latest_token is None:
+                return cls.objects.create(
+                    access_token=encrypted_access_token,
+                    refresh_token=encrypted_refresh_token,
+                    expires_at=expires_at,
+                )
+
+            cls.objects.exclude(pk=latest_token.pk).delete()
+            latest_token.access_token = encrypted_access_token
+            latest_token.refresh_token = encrypted_refresh_token
+            latest_token.expires_at = expires_at
+            latest_token.save(update_fields=['access_token', 'refresh_token', 'expires_at', 'updated_at'])
+            return latest_token
 
 
 class PortfolioParameters(models.Model):

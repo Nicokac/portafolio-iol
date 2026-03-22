@@ -1,6 +1,7 @@
 import pytest
 from django.utils import timezone
 from datetime import timedelta
+from unittest.mock import patch
 from apps.core.services.token_manager import IOLTokenManager
 from apps.core.models import IOLToken
 
@@ -46,6 +47,42 @@ class TestIOLTokenManager:
         assert token.get_refresh_token() == 'new_refresh'
         assert manager._current_token == token
         assert IOLToken.objects.count() == 1
+
+    def test_save_token_reuses_latest_row_atomically(self):
+        IOLToken.objects.create(
+            access_token='legacy_token',
+            refresh_token='legacy_refresh',
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+        latest = IOLToken.objects.create(
+            access_token='older_extra',
+            refresh_token='older_refresh',
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+
+        manager = IOLTokenManager()
+        token = manager.save_token('replacement_token', 'replacement_refresh', expires_in=3600)
+
+        assert token.pk == latest.pk
+        assert token.get_access_token() == 'replacement_token'
+        assert token.get_refresh_token() == 'replacement_refresh'
+        assert IOLToken.objects.count() == 1
+
+    def test_save_token_rolls_back_if_update_fails(self):
+        existing = IOLToken.objects.create(
+            access_token='stable_token',
+            refresh_token='stable_refresh',
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+
+        with patch.object(IOLToken, 'save', side_effect=RuntimeError('boom')):
+            with pytest.raises(RuntimeError):
+                IOLToken.save_token('new_token', 'new_refresh', expires_in=3600)
+
+        existing.refresh_from_db()
+        assert IOLToken.objects.count() == 1
+        assert existing.get_access_token() == 'stable_token'
+        assert existing.get_refresh_token() == 'stable_refresh'
 
     def test_get_valid_token_supports_legacy_plaintext_tokens(self):
         token = IOLToken.objects.create(
