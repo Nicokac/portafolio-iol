@@ -945,12 +945,18 @@
                                         <div>
                                             <strong>{{ item.proposal_label }}</strong>
                                             <span class="badge bg-light text-dark border ms-2">{{ item.source_label }}</span>
+                                            {% if item.is_future_purchase_recommended %}
+                                            <span class="badge bg-primary ms-1">{{ item.future_purchase_recommendation_label }}</span>
+                                            {% endif %}
                                             {% if item.is_backlog_front %}
                                             <span class="badge bg-info text-dark ms-1">Al frente</span>
                                             {% endif %}
                                         </div>
                                         {% if item.selected_context %}
                                         <div class="small text-muted mt-2">{{ item.selected_context }}</div>
+                                        {% endif %}
+                                        {% if item.future_purchase_recommendation_summary %}
+                                        <div class="small text-muted mt-2">{{ item.future_purchase_recommendation_summary }}</div>
                                         {% endif %}
                                         <div class="small text-muted mt-2">{{ item.next_action }}</div>
                                     </div>
@@ -1415,6 +1421,9 @@
                                                 {% if item.future_purchase_context.label %}
                                                 <span class="badge bg-light text-dark border ms-2">{{ item.future_purchase_context.label }}</span>
                                                 {% endif %}
+                                                {% if item.is_future_purchase_recommended %}
+                                                <span class="badge bg-primary ms-2">{{ item.future_purchase_recommendation_label }}</span>
+                                                {% endif %}
                                                 {% if item.selected_context %}
                                                 <div class="small text-muted">{{ item.selected_context }}</div>
                                                 {% endif %}
@@ -1503,6 +1512,9 @@
                                                 {% endif %}
                                                 {% if item.future_purchase_context.summary %}
                                                 <div class="small text-muted mt-2">{{ item.future_purchase_context.summary }}</div>
+                                                {% endif %}
+                                                {% if item.future_purchase_recommendation_summary %}
+                                                <div class="small text-muted mt-2">{{ item.future_purchase_recommendation_summary }}</div>
                                                 {% endif %}
                                                 {% if item.deferred_fit.status %}
                                                 <div class="small text-muted mt-2">

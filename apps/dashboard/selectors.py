@@ -3766,6 +3766,48 @@ def _build_incremental_future_purchase_source_guidance(
     }
 
 
+def _annotate_incremental_future_purchase_recommended_items(
+    shortlist: Dict,
+    history: Dict,
+    guidance: Dict,
+) -> tuple[Dict, Dict]:
+    shortlist = dict(shortlist or {})
+    history = dict(history or {})
+    guidance = dict(guidance or {})
+
+    recommended_label = str(guidance.get("proposal_label") or "").strip()
+    recommended_source = str(guidance.get("source") or "").strip().lower()
+    has_guidance = bool(guidance.get("has_guidance")) and bool(recommended_label) and recommended_source in {
+        "backlog_nuevo",
+        "reactivadas",
+    }
+
+    def _annotate_item(item: Dict, source_key: str) -> Dict:
+        enriched = dict(item or {})
+        is_recommended = has_guidance and str(enriched.get("proposal_label") or "").strip() == recommended_label and source_key == recommended_source
+        enriched["is_future_purchase_recommended"] = is_recommended
+        enriched["future_purchase_recommendation_label"] = "Recomendada ahora" if is_recommended else ""
+        enriched["future_purchase_recommendation_summary"] = (
+            str(guidance.get("next_action") or "").strip() if is_recommended else ""
+        )
+        return enriched
+
+    shortlist["items"] = [
+        _annotate_item(item, str(item.get("source") or "").strip().lower())
+        for item in list(shortlist.get("items") or [])
+    ]
+    history["items"] = [
+        _annotate_item(item, str(((item.get("future_purchase_context") or {}).get("source") or "")).strip().lower())
+        for item in list(history.get("items") or [])
+    ]
+    shortlist["recommended_label"] = recommended_label if has_guidance else ""
+    shortlist["has_recommended_item"] = any(item.get("is_future_purchase_recommended") for item in shortlist["items"])
+    history["has_future_purchase_recommended_item"] = any(
+        item.get("is_future_purchase_recommended") for item in history["items"]
+    )
+    return shortlist, history
+
+
 def get_incremental_baseline_drift(
     query_params,
     *,
@@ -4304,6 +4346,11 @@ def get_planeacion_incremental_context(
         incremental_future_purchase_shortlist,
         incremental_backlog_prioritization,
         incremental_reactivation_summary,
+    )
+    incremental_future_purchase_shortlist, incremental_proposal_history = _annotate_incremental_future_purchase_recommended_items(
+        incremental_future_purchase_shortlist,
+        incremental_proposal_history,
+        incremental_future_purchase_source_guidance,
     )
     incremental_decision_executive_summary = get_incremental_decision_executive_summary(
         query_params,

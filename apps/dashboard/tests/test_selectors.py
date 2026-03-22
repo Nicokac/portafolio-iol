@@ -4304,6 +4304,12 @@ class TestDashboardSelectors(TestCase):
                 return_value={
                     "count": 1,
                     "active_filter": "pending",
+                    "items": [
+                        {
+                            "proposal_label": "Pendiente A",
+                            "future_purchase_context": {"source": "backlog_nuevo", "label": "Backlog nuevo"},
+                        }
+                    ],
                     "future_purchase_source_quality_summary": {
                         "dominant_source": "backlog_nuevo",
                         "dominant_label": "Domina backlog nuevo",
@@ -4399,7 +4405,11 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_future_purchase_source_guidance"]["label"] == "Salir desde backlog nuevo"
         assert detail["incremental_future_purchase_shortlist"]["count"] == 2
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["source_label"] == "Backlog nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["items"][0]["is_future_purchase_recommended"] is True
+        assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_label"] == "Recomendada ahora"
         assert detail["incremental_future_purchase_shortlist"]["items"][1]["source_label"] == "Reactivada"
+        assert detail["incremental_proposal_history"]["items"][0]["is_future_purchase_recommended"] is True
+        assert detail["incremental_proposal_history"]["items"][0]["future_purchase_recommendation_label"] == "Recomendada ahora"
         assert detail["incremental_decision_executive_summary"]["status"] == "review_backlog"
 
         portfolio_scope.assert_called_once_with()

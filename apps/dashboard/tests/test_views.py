@@ -824,7 +824,7 @@ class TestDashboardView:
                     },
                 },
                 'incremental_proposal_history': {
-                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'history_priority': {'has_priority': True, 'priority': 'high', 'priority_label': 'Alta', 'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.'}, 'future_purchase_context': {'source': 'backlog_nuevo', 'label': 'Backlog nuevo', 'summary': 'Sigue pendiente como idea nueva dentro del backlog actual.', 'is_relevant': True}, 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
+                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'history_priority': {'has_priority': True, 'priority': 'high', 'priority_label': 'Alta', 'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.'}, 'future_purchase_context': {'source': 'backlog_nuevo', 'label': 'Backlog nuevo', 'summary': 'Sigue pendiente como idea nueva dentro del backlog actual.', 'is_relevant': True}, 'is_future_purchase_recommended': True, 'future_purchase_recommendation_label': 'Recomendada ahora', 'future_purchase_recommendation_summary': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.', 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
                     'count': 1,
                     'has_history': True,
                     'active_filter': 'all',
@@ -1007,6 +1007,9 @@ class TestDashboardView:
                             'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
                             'priority_label': 'Alta',
                             'followup': {'label': 'Monitorear'},
+                            'is_future_purchase_recommended': True,
+                            'future_purchase_recommendation_label': 'Recomendada ahora',
+                            'future_purchase_recommendation_summary': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
                         },
                         {
                             'rank': 2,
@@ -1017,6 +1020,9 @@ class TestDashboardView:
                             'next_action': 'Revisar reactivada vigente antes de perder contexto operativo.',
                             'priority_label': 'Pendiente',
                             'followup': {'label': 'Revisar ya'},
+                            'is_future_purchase_recommended': False,
+                            'future_purchase_recommendation_label': '',
+                            'future_purchase_recommendation_summary': '',
                         },
                     ],
                     'count': 2,
@@ -1091,6 +1097,7 @@ class TestDashboardView:
         assert 'Calidad promedio reactivadas' in body
         assert 'Fuente más sólida' in body
         assert 'Mejor calidad promedio: Backlog nuevo' in body
+        assert 'Recomendada ahora' in body
         assert 'Diferidas reactivables' in body
         assert 'Diferidas archivables' in body
         assert 'Revisar ya' in body
@@ -2924,6 +2931,9 @@ class TestDashboardView:
                             'next_action': 'Revisar primero Plan backlog.',
                             'priority_label': 'Alta',
                             'followup': {'label': 'Monitorear'},
+                            'is_future_purchase_recommended': True,
+                            'future_purchase_recommendation_label': 'Recomendada ahora',
+                            'future_purchase_recommendation_summary': 'Revisar primero Plan backlog.',
                         },
                         {
                             'rank': 2,
@@ -2934,6 +2944,9 @@ class TestDashboardView:
                             'next_action': 'Revisar reactivada vigente antes de perder contexto operativo.',
                             'priority_label': 'Pendiente',
                             'followup': {'label': 'Revisar ya'},
+                            'is_future_purchase_recommended': False,
+                            'future_purchase_recommendation_label': '',
+                            'future_purchase_recommendation_summary': '',
                         }
                     ],
                     'count': 2,
@@ -2975,9 +2988,12 @@ class TestDashboardView:
         assert 'Comparación contra backlog nuevo' in body
         assert 'Shortlist unificada de futuras compras' in body
         assert 'Mejor calidad promedio: Backlog nuevo' in body
+        assert 'Recomendada ahora' in body
         assert 'Fuente más sólida hoy:' in body
         assert 'Primera acción por fuente sólida' in body
         assert 'Salir desde backlog nuevo' in body
         assert 'Backlog nuevo' in body
         assert 'Reactivada' in body
         assert 'Plan reactivado' in body
+
+
