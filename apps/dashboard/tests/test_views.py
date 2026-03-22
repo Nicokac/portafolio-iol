@@ -1146,7 +1146,7 @@ class TestDashboardView:
         assert 'Plan incremental MVP' in body
         assert 'Alta' in body
         assert 'Revisar primero Plan guardado 1' in body
-        assert 'Shortlist para futuras compras' in body
+        assert 'Shortlist operativa del backlog' in body
         assert 'Futuras compras' in body
         assert 'Líder económico' in body or 'Lider economico' in body
         assert 'Líder táctico' in body or 'Lider tactico' in body

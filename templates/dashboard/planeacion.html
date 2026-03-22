@@ -1195,14 +1195,6 @@
                     <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.explanation }}</div>
                 </div>
                 {% endif %}
-                {% if incremental_future_purchase_source_guidance.has_guidance %}
-                <div class="border rounded p-3 mt-3">
-                    <div class="small text-muted mb-1">Primera acción por fuente sólida</div>
-                    <div><strong>{{ incremental_future_purchase_source_guidance.label }}</strong></div>
-                    <div class="small text-muted mt-2">{{ incremental_future_purchase_source_guidance.headline }}</div>
-                    <div class="small text-muted mt-2">{{ incremental_future_purchase_source_guidance.next_action }}</div>
-                </div>
-                {% endif %}
                 {% if incremental_backlog_prioritization.has_focus_split %}
                 <div class="row g-3 mt-1">
                     {% if incremental_backlog_prioritization.economic_leader %}
@@ -1238,10 +1230,10 @@
                 {% endif %}
                 {% if incremental_backlog_prioritization.has_shortlist %}
                 <div class="mt-3">
-                    <h6 class="mb-2">Shortlist para futuras compras</h6>
+                    <h6 class="mb-2">Shortlist operativa del backlog</h6>
                     {% if incremental_backlog_prioritization.active_followup_filter != 'all' %}
                     <div class="small text-muted mb-2">
-                        Mostrando shortlist filtrada por seguimiento:
+                        Mostrando backlog filtrado por seguimiento:
                         <strong>{{ incremental_backlog_prioritization.active_followup_filter_label }}</strong>
                     </div>
                     {% endif %}
