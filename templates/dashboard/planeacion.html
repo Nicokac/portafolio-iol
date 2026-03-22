@@ -240,6 +240,111 @@
         <section class="mb-4">
             {% include 'dashboard/operations_flow_panel.html' with title='Flujo operativo del mes' subtitle='Contexto corto para no decidir el aporte aislado del cash ya desplegado, dividendos cobrados o suscripciones FCI recientes.' row_limit=':3' panel_mode='compact' %}
         </section>
+        {% with execution=operation_execution_feature %}
+        {% if execution.has_symbols %}
+        <section class="mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom-0">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                        <div>
+                            <h3 class="h5 mb-1">Huella real de ejecución reciente</h3>
+                            <small class="text-muted">Lectura táctica de compras o ventas terminadas para los símbolos sugeridos, usando operaciones reales IOL ya visibles.</small>
+                        </div>
+                        <div class="small text-muted">
+                            {{ execution.matched_symbols_count }}/{{ execution.tracked_symbols_count }} símbolo(s) con referencia reciente
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Cobertura operativa</div>
+                                <div class="h5 mb-0">{{ execution.coverage_pct|floatformat:0 }}%</div>
+                                <div class="small text-muted mt-1">{{ execution.missing_symbols_count }} símbolo(s) sin referencia reciente.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Aranceles visibles</div>
+                                <div class="h5 mb-0">{{ execution.execution_analytics.fee_visible_pct|default:0|floatformat:0 }}%</div>
+                                <div class="small text-muted mt-1">{{ execution.execution_analytics.fee_visible_count|default:0 }} operación(es) comparables con costo visible.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted">Fragmentación reciente</div>
+                                <div class="h5 mb-0">{{ execution.execution_analytics.fragmented_pct|default:0|floatformat:0 }}%</div>
+                                <div class="small text-muted mt-1">{{ execution.execution_analytics.fragmented_count|default:0 }} operación(es) comparables con múltiples fills.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-secondary mb-3">
+                        <strong>{{ execution.headline }}</strong><br>
+                        {{ execution.summary }}
+                    </div>
+                    {% for alert in execution.alerts %}
+                    <div class="alert alert-{{ alert.tone }} mb-3">
+                        <strong>{{ alert.title }}</strong><br>
+                        {{ alert.message }}
+                    </div>
+                    {% endfor %}
+                    {% if execution.rows %}
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Símbolo</th>
+                                    <th>Ejecución reciente</th>
+                                    <th class="text-end">Monto</th>
+                                    <th class="text-end">Costo visible</th>
+                                    <th class="text-end">Fills</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in execution.rows %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ row.simbolo }}</strong>
+                                        <div class="small text-muted">{{ row.tipo }} · {{ row.estado }}</div>
+                                    </td>
+                                    <td>{{ row.fecha_label|default:"-" }}</td>
+                                    <td class="text-end">{{ row.executed_amount|currency:0 }}</td>
+                                    <td class="text-end">
+                                        {% if row.fees_ars or row.fees_usd %}
+                                        <div>ARS {{ row.fees_ars|currency:2 }}</div>
+                                        {% if row.fees_usd %}
+                                        <div class="small text-muted">USD {{ row.fees_usd|currency:2 }}</div>
+                                        {% endif %}
+                                        {% if row.fee_over_amount_pct %}
+                                        <div class="small text-muted">{{ row.fee_over_amount_pct|floatformat:2 }}% sobre monto visible</div>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {{ row.fills_count }}
+                                        {% if row.is_fragmented %}
+                                        <div class="small text-warning">Múltiples fills</div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state py-3">
+                        <div class="empty-state-title">Sin referencias recientes por símbolo</div>
+                        <div class="empty-state-description mb-0">Todavía no hay compras o ventas terminadas recientes para los símbolos sugeridos dentro de la ventana operativa considerada.</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+        {% endwith %}
         <section class="mb-4">
             {% include 'dashboard/parking_panel.html' with title='Parking visible antes de decidir' subtitle='Si parte del portafolio invertido sigue con parking visible, conviene leerlo antes de reforzar esa misma zona de exposición.' row_limit=':3' panel_mode='compact' %}
         </section>

@@ -34,6 +34,7 @@ from apps.dashboard.selectors import (
     get_liquidity_contract_summary,
     get_market_snapshot_feature_context,
     get_market_snapshot_history_feature_context,
+    get_operation_execution_feature_context,
     get_portfolio_parking_feature_context,
     get_decision_engine_summary,
     get_candidate_incremental_portfolio_comparison,
@@ -118,6 +119,69 @@ def make_resumen(fecha, moneda='ARS', disponible=1000.00, **kwargs):
 
 
 class TestDashboardSelectors(TestCase):
+    def test_get_operation_execution_feature_context_summarizes_recent_real_execution_for_purchase_plan(self):
+        now = timezone.now()
+        OperacionIOL.objects.create(
+            numero="EXEC-KO-1",
+            fecha_orden=now - timedelta(days=2),
+            fecha_operada=now - timedelta(days=2),
+            tipo="Compra",
+            estado="Terminada",
+            estado_actual="Terminada",
+            mercado="BCBA",
+            simbolo="KO",
+            modalidad="precio_Mercado",
+            monto_operacion=Decimal("150000"),
+            aranceles_ars=Decimal("750"),
+            operaciones_detalle=[
+                {"fecha": "2026-03-20T11:00:00", "cantidad": 1, "precio": 75000},
+                {"fecha": "2026-03-20T11:00:01", "cantidad": 1, "precio": 75000},
+            ],
+        )
+        OperacionIOL.objects.create(
+            numero="EXEC-MCD-1",
+            fecha_orden=now - timedelta(days=4),
+            fecha_operada=now - timedelta(days=4),
+            tipo="Compra",
+            estado="Terminada",
+            estado_actual="Terminada",
+            mercado="BCBA",
+            simbolo="MCD",
+            modalidad="precio_Mercado",
+            monto_operado=Decimal("120000"),
+            operaciones_detalle=[{"fecha": "2026-03-18T11:00:00", "cantidad": 1, "precio": 120000}],
+        )
+
+        context = get_operation_execution_feature_context(
+            purchase_plan=[
+                {"symbol": "KO", "amount": 150000},
+                {"symbol": "MCD", "amount": 120000},
+                {"symbol": "PEP", "amount": 90000},
+            ],
+            lookback_days=180,
+            symbol_limit=3,
+        )
+
+        assert context["has_context"] is True
+        assert context["has_symbols"] is True
+        assert context["tracked_symbols_count"] == 3
+        assert context["matched_symbols_count"] == 2
+        assert context["missing_symbols_count"] == 1
+        assert context["coverage_pct"] == Decimal("66.67")
+        assert context["execution_analytics"]["fee_visible_count"] == 1
+        assert context["execution_analytics"]["fragmented_count"] == 1
+        assert context["rows"][0]["simbolo"] == "KO"
+        assert context["rows"][0]["is_fragmented"] is True
+        assert "sin huella reciente" in context["summary"].lower() or "sin una ejecucion comparable visible" in context["summary"].lower()
+
+    def test_get_operation_execution_feature_context_returns_empty_contract_without_symbols(self):
+        context = get_operation_execution_feature_context(purchase_plan=[])
+
+        assert context["has_context"] is False
+        assert context["has_symbols"] is False
+        assert context["tracked_symbols_count"] == 0
+        assert context["rows"] == []
+
     def test_get_portfolio_parking_feature_context_summarizes_visible_parking(self):
         fecha = timezone.now()
         make_activo(fecha, "AL30", Decimal("1000"), tipo="TitulosPublicos", parking={"cantidad": 5, "fecha": "2026-03-25"})

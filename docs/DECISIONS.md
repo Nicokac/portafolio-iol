@@ -152,3 +152,26 @@ Agregar indices operativos acotados a los filtros y ordenes que hoy usa el produ
 
 ### Riesgo aceptado
 Se agrega costo marginal de escritura por mantenimiento de indices, aceptado porque el producto prioriza lectura operativa rapida y los volumnes de escritura siguen siendo moderados.
+# Decisions
+
+## 2026-03-22 - Planeacion reutiliza metricas reales de operaciones para futuras compras
+
+Se agrego una lectura compacta de `Huella real de ejecucion reciente` en `Planeacion`.
+
+Decision:
+
+- reutilizar `OperacionIOL` ya persistido
+- reutilizar `build_operation_execution_analytics_context()` de `apps/operaciones_iol/selectors.py`
+- no abrir una tabla nueva ni un servicio paralelo de slippage
+
+Motivo:
+
+- el repo ya tenia datos reales de fills, aranceles y monto ejecutado
+- faltaba exponerlos en la decision de compra futura dentro de `Planeacion`
+- el ROI inmediato es mayor que inventar una capa cuantitativa nueva
+
+Limite deliberado:
+
+- la lectura sigue siendo tactica y reciente
+- no se modela slippage robusto
+- no se persiste una serie propia de calidad de ejecucion por simbolo

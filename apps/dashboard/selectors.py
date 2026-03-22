@@ -43,6 +43,7 @@ from apps.core.services.analytics_v2 import (
     StressCatalogService,
     StressFragilityService,
 )
+from apps.operaciones_iol.selectors import build_operation_execution_analytics_context
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -56,6 +57,8 @@ def _safe_percentage(numerator: int, denominator: int) -> Decimal:
 
 
 def _get_data_stamp() -> str:
+    from apps.operaciones_iol.models import OperacionIOL
+
     cached = cache.get(DATA_STAMP_CACHE_KEY)
     if cached is not None:
         return cached
@@ -63,7 +66,8 @@ def _get_data_stamp() -> str:
     latest_portafolio = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
     latest_resumen = ResumenCuentaSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
     latest_parametro_id = ParametroActivo.objects.aggregate(latest=Max("id"))["latest"] or 0
-    stamp = f"{latest_portafolio}|{latest_resumen}|{latest_parametro_id}"
+    latest_operacion = OperacionIOL.objects.aggregate(latest=Max("fecha_orden"))["latest"]
+    stamp = f"{latest_portafolio}|{latest_resumen}|{latest_parametro_id}|{latest_operacion}"
     cache.set(DATA_STAMP_CACHE_KEY, stamp, timeout=SELECTOR_CACHE_TTL_SECONDS)
     return stamp
 
@@ -2033,6 +2037,167 @@ def get_monthly_allocation_plan(capital_amount: int | float = 600000) -> Dict:
     def build():
         service = MonthlyAllocationService()
         return service.build_plan(capital_amount)
+
+    return _get_cached_selector_result(cache_key, build)
+
+
+def get_operation_execution_feature_context(
+    *,
+    purchase_plan: list[dict] | None = None,
+    lookback_days: int = 180,
+    symbol_limit: int = 3,
+) -> Dict:
+    from django.db.models import Q
+
+    from apps.operaciones_iol.models import OperacionIOL
+
+    plan = list(purchase_plan or [])
+    tracked_symbols = []
+    for item in plan:
+        symbol = str((item or {}).get("symbol") or "").strip().upper()
+        if symbol and symbol not in tracked_symbols:
+            tracked_symbols.append(symbol)
+
+    if not tracked_symbols:
+        return {
+            "has_context": False,
+            "has_symbols": False,
+            "tracked_symbols": [],
+            "tracked_symbols_count": 0,
+            "rows": [],
+            "matched_symbols_count": 0,
+            "missing_symbols_count": 0,
+            "coverage_pct": Decimal("0"),
+            "headline": "",
+            "summary": "",
+            "alerts": [],
+            "execution_analytics": {},
+        }
+
+    cache_key = f"operation_execution_feature:{','.join(tracked_symbols)}:{int(lookback_days)}:{int(symbol_limit)}"
+
+    def build():
+        window_start = timezone.now() - timedelta(days=max(int(lookback_days), 1))
+        status_filter = Q(estado__iexact="terminada") | Q(estado_actual__iexact="terminada")
+        date_filter = Q(fecha_operada__gte=window_start) | Q(fecha_operada__isnull=True, fecha_orden__gte=window_start)
+        queryset = (
+            OperacionIOL.objects.filter(status_filter, date_filter)
+            .order_by("-fecha_operada", "-fecha_orden", "-id")
+        )
+        operations = [
+            operacion
+            for operacion in queryset
+            if _classify_operation_type(getattr(operacion, "tipo", None)) in {"buy", "sell"}
+        ]
+        execution_analytics = build_operation_execution_analytics_context(operations)
+
+        latest_by_symbol = {}
+        for operacion in operations:
+            symbol = str(getattr(operacion, "simbolo", "") or "").strip().upper()
+            if symbol in tracked_symbols and symbol not in latest_by_symbol:
+                latest_by_symbol[symbol] = operacion
+            if len(latest_by_symbol) == len(tracked_symbols):
+                break
+
+        rows = []
+        for symbol in tracked_symbols[: max(int(symbol_limit), 1)]:
+            operacion = latest_by_symbol.get(symbol)
+            if operacion is None:
+                continue
+
+            executed_amount = _get_effective_operation_amount(operacion)
+            fees_ars = Decimal(str(getattr(operacion, "aranceles_ars", None) or 0))
+            fees_usd = Decimal(str(getattr(operacion, "aranceles_usd", None) or 0))
+            fills = list(getattr(operacion, "operaciones_detalle", None) or [])
+            fills_count = len(fills)
+            executed_at = getattr(operacion, "fecha_operada", None) or getattr(operacion, "fecha_orden", None)
+            fee_over_amount_pct = Decimal("0")
+            if executed_amount > 0 and (fees_ars > 0 or fees_usd > 0):
+                fee_over_amount_pct = (
+                    (fees_ars + fees_usd) / executed_amount * Decimal("100")
+                ).quantize(Decimal("0.01"))
+
+            rows.append(
+                {
+                    "simbolo": symbol,
+                    "tipo": operacion.tipo,
+                    "estado": operacion.estado_actual or operacion.estado,
+                    "fecha_label": timezone.localtime(executed_at).strftime("%Y-%m-%d %H:%M") if executed_at else "",
+                    "executed_amount": executed_amount,
+                    "fees_ars": fees_ars,
+                    "fees_usd": fees_usd,
+                    "fills_count": fills_count,
+                    "is_fragmented": fills_count > 1,
+                    "has_detail": fills_count > 0 or fees_ars > 0 or fees_usd > 0,
+                    "fee_over_amount_pct": fee_over_amount_pct,
+                }
+            )
+
+        matched_symbols_count = len(latest_by_symbol)
+        missing_symbols_count = max(len(tracked_symbols) - matched_symbols_count, 0)
+        coverage_pct = _safe_percentage(matched_symbols_count, len(tracked_symbols))
+        alerts = []
+
+        if matched_symbols_count == 0:
+            headline = "La propuesta sugerida no tiene huella reciente de ejecucion en IOL."
+            summary = "Conviene tratar la compra como una idea nueva y validar precio, aranceles y fragmentacion con mayor cautela."
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Sin ejecucion comparable reciente",
+                    "message": "No hay compras o ventas terminadas recientes para los simbolos sugeridos dentro de la ventana observada.",
+                }
+            )
+        elif missing_symbols_count > 0:
+            headline = "La propuesta mezcla simbolos con y sin huella reciente de ejecucion."
+            summary = (
+                f"{matched_symbols_count} simbolo(s) tienen referencia reciente y {missing_symbols_count} "
+                "siguen sin una ejecucion comparable visible."
+            )
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Cobertura operativa parcial",
+                    "message": f"{missing_symbols_count} simbolo(s) de la propuesta no tienen ejecucion terminada reciente visible.",
+                }
+            )
+        elif Decimal(str(execution_analytics.get("fragmented_pct") or 0)) >= Decimal("50"):
+            headline = "La propuesta tiene huella reciente, pero con fragmentacion operativa relevante."
+            summary = "Hay referencias utiles de ejecucion, aunque parte del historial reciente muestra multiples fills."
+            alerts.append(
+                {
+                    "tone": "info",
+                    "title": "Fragmentacion visible",
+                    "message": f"{execution_analytics.get('fragmented_count', 0)} operacion(es) comparables tuvieron multiples fills.",
+                }
+            )
+        else:
+            headline = "La propuesta ya tiene huella reciente de ejecucion utilizable."
+            summary = "Hay referencias recientes para validar monto ejecutado, aranceles visibles y nivel de fragmentacion antes de comprar."
+
+        if Decimal(str(execution_analytics.get("fee_visible_pct") or 0)) == Decimal("0") and matched_symbols_count > 0:
+            alerts.append(
+                {
+                    "tone": "secondary",
+                    "title": "Aranceles poco visibles",
+                    "message": "Hay ejecuciones comparables, pero sin aranceles visibles suficientes como para leer costo observado con firmeza.",
+                }
+            )
+
+        return {
+            "has_context": True,
+            "has_symbols": True,
+            "tracked_symbols": tracked_symbols,
+            "tracked_symbols_count": len(tracked_symbols),
+            "rows": rows,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+            "coverage_pct": coverage_pct,
+            "headline": headline,
+            "summary": summary,
+            "alerts": alerts[:2],
+            "execution_analytics": execution_analytics,
+        }
 
     return _get_cached_selector_result(cache_key, build)
 
@@ -4374,6 +4539,11 @@ def get_planeacion_incremental_context(
         query_params,
         capital_amount=capital_amount,
     )
+    operation_execution_feature = get_operation_execution_feature_context(
+        purchase_plan=((preferred_incremental_portfolio_proposal.get("preferred") or {}).get("purchase_plan") or []),
+        lookback_days=180,
+        symbol_limit=3,
+    )
     decision_engine_summary = get_decision_engine_summary(
         user,
         query_params=query_params,
@@ -4448,6 +4618,7 @@ def get_planeacion_incremental_context(
         "candidate_split_incremental_portfolio_comparison": candidate_split_incremental_portfolio_comparison,
         "manual_incremental_portfolio_simulation_comparison": manual_incremental_portfolio_simulation_comparison,
         "preferred_incremental_portfolio_proposal": preferred_incremental_portfolio_proposal,
+        "operation_execution_feature": operation_execution_feature,
         "decision_engine_summary": decision_engine_summary,
         "incremental_proposal_history": incremental_proposal_history,
         "incremental_proposal_tracking_baseline": incremental_proposal_tracking_baseline,
