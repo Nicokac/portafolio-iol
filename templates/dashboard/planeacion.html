@@ -956,6 +956,11 @@
                                             <td>{{ item.created_at|date:"d M Y H:i" }}</td>
                                             <td>
                                                 <strong>{{ item.proposal_label }}</strong>
+                                                {% if item.history_priority.has_priority %}
+                                                <span class="badge {% if item.history_priority.priority == 'high' %}bg-success{% elif item.history_priority.priority == 'medium' %}bg-warning text-dark{% elif item.history_priority.priority == 'watch' %}bg-secondary{% else %}bg-danger{% endif %} ms-2">
+                                                    {{ item.history_priority.priority_label }}
+                                                </span>
+                                                {% endif %}
                                                 {% if item.selected_context %}
                                                 <div class="small text-muted">{{ item.selected_context }}</div>
                                                 {% endif %}
@@ -1001,6 +1006,9 @@
                                                 </div>
                                                 {% if item.reapply_truncated %}
                                                 <div class="small text-warning mt-2">Se cargan solo las primeras 3 líneas del snapshot.</div>
+                                                {% endif %}
+                                                {% if item.history_priority.next_action %}
+                                                <div class="small text-muted mt-2">{{ item.history_priority.next_action }}</div>
                                                 {% endif %}
                                                 {% if item.tactical_trace.has_trace %}
                                                 <div class="mt-2">

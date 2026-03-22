@@ -783,7 +783,7 @@ class TestDashboardView:
                     },
                 },
                 'incremental_proposal_history': {
-                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
+                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'history_priority': {'has_priority': True, 'priority': 'high', 'priority_label': 'Alta', 'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.'}, 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
                     'count': 1,
                     'has_history': True,
                     'active_filter': 'all',
@@ -859,6 +859,8 @@ class TestDashboardView:
         assert 'Primera acción sugerida:' in body
         assert 'Propuesta de compra mensual' in body
         assert 'Plan incremental MVP' in body
+        assert 'Alta' in body
+        assert 'Revisar primero Plan guardado 1' in body
         assert 'Tecnología / growth' in body
         assert 'Por qué este bloque recibió este score' in body
         assert 'Señales positivas' in body

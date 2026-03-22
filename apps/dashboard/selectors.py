@@ -2548,6 +2548,11 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
             item,
             tactical_trace=enriched["tactical_trace"],
         )
+        enriched["history_priority"] = _build_incremental_history_priority(
+            baseline_item,
+            item,
+            tactical_trace=enriched["tactical_trace"],
+        )
         enriched.update(reapply)
         items.append(enriched)
     return {
@@ -2690,6 +2695,45 @@ def _build_incremental_history_baseline_trace(
         "headline": headline,
         "badges": badges[:4],
         "metrics": metrics[:4],
+    }
+
+
+def _build_incremental_history_priority(
+    baseline_item: Dict | None,
+    current_item: Dict | None,
+    *,
+    tactical_trace: Dict | None = None,
+) -> Dict:
+    current_item = current_item or {}
+    if not baseline_item:
+        return {
+            "has_priority": False,
+            "priority": "",
+            "priority_label": "",
+            "next_action": "",
+        }
+
+    comparison = _build_incremental_snapshot_comparison(baseline_item, current_item)
+    comparison_metrics = {metric.get("key"): metric for metric in (comparison or {}).get("metrics", [])}
+    candidate = {
+        "snapshot": current_item,
+        "score_difference": None if comparison is None else comparison.get("score_difference"),
+        "beats_baseline": bool(comparison and comparison.get("winner") == "current"),
+        "loses_vs_baseline": bool(comparison and comparison.get("winner") == "saved"),
+        "ties_baseline": bool(comparison and comparison.get("winner") == "tie"),
+        "improves_profitability": str((comparison_metrics.get("expected_return_change") or {}).get("direction") or "neutral") == "favorable",
+        "protects_fragility": str((comparison_metrics.get("fragility_change") or {}).get("direction") or "neutral") != "unfavorable",
+        "tactical_clean": bool(
+            not (tactical_trace or {}).get("has_trace")
+            or any(str(badge.get("label") or "").strip() == "Alternativa promovida" for badge in (tactical_trace or {}).get("badges", []))
+        ),
+    }
+    priority = _classify_incremental_backlog_priority(candidate)
+    return {
+        "has_priority": True,
+        "priority": priority,
+        "priority_label": _format_incremental_backlog_priority(priority),
+        "next_action": _build_incremental_backlog_next_action(priority, candidate),
     }
 
 
