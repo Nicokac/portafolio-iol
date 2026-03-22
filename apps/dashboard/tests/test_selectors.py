@@ -2874,6 +2874,87 @@ class TestDashboardSelectors(TestCase):
         assert detail["proposals"][0]["execution_order_label"] == "Ejecutar primero"
         assert "Arrancar por KO" in detail["proposals"][0]["execution_order_summary"]
 
+    def test_get_manual_incremental_portfolio_simulation_comparison_builds_best_execution_readiness_summary(self):
+        cache.clear()
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.8,
+                        "real_expected_return_change": 0.1,
+                        "fragility_change": -2.0,
+                        "scenario_loss_change": 0.4,
+                        "risk_concentration_change": -0.5,
+                    },
+                    "interpretation": "Plan manual A mejora el balance total.",
+                    "warnings": [],
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbols = {item["symbol"] for item in purchase_plan}
+            if symbols == {"KO", "MCD"}:
+                return {
+                    "tracked_symbols": ["KO", "MCD"],
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 1,
+                    "coverage_pct": Decimal("50"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [
+                        {
+                            "simbolo": "KO",
+                            "fills_count": 1,
+                            "fee_over_amount_pct": Decimal("0.50"),
+                            "executed_amount": Decimal("150000"),
+                            "fecha_label": "2026-03-20 11:00",
+                            "is_fragmented": False,
+                            "fees_ars": Decimal("750"),
+                            "fees_usd": Decimal("0"),
+                        }
+                    ],
+                }
+            return {
+                "tracked_symbols": ["SPY"],
+                "matched_symbols_count": 1,
+                "missing_symbols_count": 0,
+                "coverage_pct": Decimal("100"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [
+                    {
+                        "simbolo": "SPY",
+                        "fills_count": 1,
+                        "fee_over_amount_pct": Decimal("0.10"),
+                        "executed_amount": Decimal("300000"),
+                        "fecha_label": "2026-03-20 11:00",
+                        "is_fragmented": False,
+                        "fees_ars": Decimal("300"),
+                        "fees_usd": Decimal("0"),
+                    }
+                ],
+            }
+
+        query_params = {
+            "manual_compare": "1",
+            "plan_a_capital": "600000",
+            "plan_a_symbol_1": "KO",
+            "plan_a_amount_1": "300000",
+            "plan_a_symbol_2": "MCD",
+            "plan_a_amount_2": "300000",
+        }
+
+        with (
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
+
+        assert detail["best_execution_readiness"]["has_summary"] is True
+        assert detail["best_execution_readiness"]["status"] == "review_execution"
+        assert detail["best_execution_readiness"]["label"] == "Validar ejecucion"
+        assert "lidera el comparador manual" in detail["best_execution_readiness"]["headline"]
+
     def test_get_manual_incremental_portfolio_simulation_comparison_handles_empty_input(self):
         cache.clear()
 

@@ -2141,6 +2141,18 @@
                 {% if manual_incremental_portfolio_simulation_comparison.best_label %}
                 <p class="text-muted mb-3">Mejor balance manual: <strong>{{ manual_incremental_portfolio_simulation_comparison.best_label }}</strong></p>
                 {% endif %}
+                {% if manual_incremental_portfolio_simulation_comparison.best_execution_readiness.has_summary %}
+                <div class="alert alert-light border mb-3">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <strong>Lectura operativa del mejor plan manual</strong>
+                        <span class="badge text-bg-{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.tone }}">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.label }}</span>
+                    </div>
+                    <div class="small text-muted">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.headline }}</div>
+                    {% if manual_incremental_portfolio_simulation_comparison.best_execution_readiness.summary %}
+                    <div class="small text-muted mt-1">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.summary }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>

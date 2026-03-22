@@ -220,3 +220,5 @@ Efecto actual:
 - solo ordena mejor la lectura operativa dentro de la propuesta ya elegida
 
 - La reaplicacion de propuestas al comparador manual tambien preserva el orden de ejecucion sugerido por simbolo cuando esa metadata ya existe en la propuesta preferida.
+
+- El comparador manual ahora resume la readiness operativa del mejor plan usando la misma senal de ejecucion real que la propuesta sugerida principal.

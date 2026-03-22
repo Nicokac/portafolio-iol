@@ -2387,7 +2387,12 @@ def get_manual_incremental_portfolio_simulation_comparison(
                     "purchase_plan": plan["purchase_plan"],
                 }
             )
-            proposals.append(
+            operation_execution_feature = get_operation_execution_feature_context(
+                purchase_plan=plan["purchase_plan"],
+                lookback_days=180,
+                symbol_limit=3,
+            )
+            proposal = _annotate_preferred_proposal_with_execution_quality(
                 _normalize_incremental_proposal_item(
                     {
                         "proposal_key": plan["proposal_key"],
@@ -2406,8 +2411,19 @@ def get_manual_incremental_portfolio_simulation_comparison(
                         },
                         "comparison_score": _score_incremental_simulation(simulation),
                     }
-                )
+                ),
+                operation_execution_feature=operation_execution_feature,
             )
+            operation_execution_signal = _build_decision_operation_execution_signal(
+                operation_execution_feature=operation_execution_feature,
+                preferred_proposal=proposal,
+            )
+            proposal["operation_execution_signal"] = operation_execution_signal
+            proposal["execution_readiness"] = _build_manual_incremental_execution_readiness(
+                proposal=proposal,
+                operation_execution_signal=operation_execution_signal,
+            )
+            proposals.append(proposal)
 
         ranked = sorted(
             proposals,
@@ -2421,6 +2437,7 @@ def get_manual_incremental_portfolio_simulation_comparison(
             "proposals": ranked,
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
+            "best_execution_readiness": _build_manual_incremental_execution_readiness_summary(best),
         }
 
     return _get_cached_selector_result(cache_key, build)
@@ -6212,6 +6229,78 @@ def _build_decision_operation_execution_signal(
         "tracked_symbols": tracked_symbols,
         "matched_symbols_count": matched_symbols_count,
         "missing_symbols_count": missing_symbols_count,
+    }
+
+
+def _build_manual_incremental_execution_readiness(
+    *,
+    proposal: Dict | None,
+    operation_execution_signal: Dict | None = None,
+) -> Dict:
+    proposal = proposal or {}
+    operation_execution_signal = operation_execution_signal or {}
+    proposal_label = str(proposal.get("proposal_label") or proposal.get("label") or "este plan").strip()
+    execution_quality = proposal.get("execution_quality") or {}
+    execution_order_summary = str(execution_quality.get("execution_order_summary") or "").strip()
+    signal_status = str(operation_execution_signal.get("status") or "none").strip()
+
+    if signal_status in {"missing", "partial"}:
+        return {
+            "status": "review_execution",
+            "label": "Validar ejecucion",
+            "tone": "warning",
+            "summary": execution_order_summary or f"{proposal_label} necesita validar mejor su ejecucion real antes de pasar a compra.",
+        }
+    if signal_status == "fragmented":
+        return {
+            "status": "monitor",
+            "label": "Seguir observando",
+            "tone": "secondary",
+            "summary": execution_order_summary or f"{proposal_label} tiene referencia operativa, pero conviene cuidar la forma de entrada.",
+        }
+    if proposal:
+        return {
+            "status": "ready",
+            "label": "Listo para ejecutar",
+            "tone": "success",
+            "summary": execution_order_summary or f"{proposal_label} ya tiene fit operativo suficiente para ejecutarse como mejor plan manual.",
+        }
+    return {
+        "status": "pending",
+        "label": "Sin lectura",
+        "tone": "secondary",
+        "summary": "",
+    }
+
+
+
+def _build_manual_incremental_execution_readiness_summary(best_proposal: Dict | None) -> Dict:
+    best_proposal = best_proposal or {}
+    readiness = dict(best_proposal.get("execution_readiness") or {})
+    if not best_proposal or not readiness:
+        return {
+            "has_summary": False,
+            "status": "pending",
+            "label": "",
+            "tone": "secondary",
+            "headline": "",
+            "summary": "",
+        }
+    proposal_label = str(best_proposal.get("proposal_label") or best_proposal.get("label") or "este plan").strip()
+    status = str(readiness.get("status") or "pending")
+    if status == "ready":
+        headline = f"{proposal_label} es el mejor plan manual y hoy queda listo para ejecutar."
+    elif status == "review_execution":
+        headline = f"{proposal_label} lidera el comparador manual, pero pide validar ejecucion antes de comprar."
+    else:
+        headline = f"{proposal_label} lidera el comparador manual, pero por ahora conviene seguir observando su forma de entrada."
+    return {
+        "has_summary": True,
+        "status": status,
+        "label": readiness.get("label") or "",
+        "tone": readiness.get("tone") or "secondary",
+        "headline": headline,
+        "summary": readiness.get("summary") or "",
     }
 
 

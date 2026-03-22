@@ -294,3 +294,5 @@ Si la pregunta es:
 Documento vigente para el estado actual de integracion IOL del proyecto.
 
 - El reapply hacia `Planeacion` puede arrastrar metadata opcional de orden de ejecucion (`plan_a_execution_order_label`, `plan_a_execution_order_summary`) para conservar la recomendacion operativa del plan reaplicado sin alterar la simulacion.
+
+- La lectura de `Planeacion` sobre el comparador manual ahora reutiliza la huella real de `OperacionIOL` para clasificar el mejor plan como listo, a validar o a observar antes de ejecutar.
