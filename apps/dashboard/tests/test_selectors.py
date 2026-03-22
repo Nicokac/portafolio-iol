@@ -2860,6 +2860,88 @@ class TestDashboardSelectors(TestCase):
         assert detail["display_summary"]["best_label"] == detail["best_label"]
         assert detail["display_summary"]["has_execution_summary"] is True
 
+    def test_get_incremental_portfolio_simulation_comparison_filters_by_execution_readiness(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 400000},
+                {"bucket": "global_index", "label": "Indice global", "suggested_amount": 200000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "PEP", "score": 8.0, "main_reason": "dividend_profile"},
+                    ],
+                },
+                {
+                    "block": "global_index",
+                    "candidates": [
+                        {"asset": "SPY", "score": 6.8, "main_reason": "stable_global_exposure"},
+                    ],
+                },
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.4,
+                        "real_expected_return_change": 0.1,
+                        "fragility_change": -2.0,
+                        "scenario_loss_change": 0.5,
+                        "risk_concentration_change": -0.8,
+                    },
+                    "interpretation": "Variante automatica.",
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbols = {item["symbol"] for item in purchase_plan}
+            if symbols == {"KO", "SPY"}:
+                return {
+                    "tracked_symbols": ["KO", "SPY"],
+                    "matched_symbols_count": 2,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [
+                        {"simbolo": "KO", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("400000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("400"), "fees_usd": Decimal("0")},
+                        {"simbolo": "SPY", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("200000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("200"), "fees_usd": Decimal("0")},
+                    ],
+                }
+            return {
+                "tracked_symbols": [item["symbol"] for item in purchase_plan],
+                "matched_symbols_count": 0,
+                "missing_symbols_count": len(purchase_plan),
+                "coverage_pct": Decimal("0"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [],
+            }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_incremental_portfolio_simulation_comparison(
+                {"comparison_readiness_filter": "ready"}
+            )
+
+        assert detail["active_readiness_filter"] == "ready"
+        assert detail["visible_count"] == 1
+        assert detail["total_count"] == 3
+        assert detail["proposals"][0]["proposal_key"] == "top_candidate_per_block"
+        assert detail["best_label"] == "Top candidato por bloque"
+
     def test_get_manual_incremental_portfolio_simulation_comparison_ranks_manual_plans(self):
         cache.clear()
 
@@ -3038,6 +3120,74 @@ class TestDashboardSelectors(TestCase):
         assert "lidera el comparador manual" in detail["best_execution_readiness"]["headline"]
         assert detail["display_summary"]["headline"] == "Mejor balance manual: Plan manual A"
         assert detail["display_summary"]["has_execution_summary"] is True
+
+    def test_get_manual_incremental_portfolio_simulation_comparison_filters_by_execution_readiness(self):
+        cache.clear()
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.8,
+                        "real_expected_return_change": 0.1,
+                        "fragility_change": -2.0,
+                        "scenario_loss_change": 0.4,
+                        "risk_concentration_change": -0.5,
+                    },
+                    "interpretation": "Plan manual.",
+                    "warnings": [],
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbols = {item["symbol"] for item in purchase_plan}
+            if symbols == {"SPY"}:
+                return {
+                    "tracked_symbols": ["SPY"],
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [
+                        {"simbolo": "SPY", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("600000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("600"), "fees_usd": Decimal("0")},
+                    ],
+                }
+            return {
+                "tracked_symbols": ["KO", "MCD"],
+                "matched_symbols_count": 1,
+                "missing_symbols_count": 1,
+                "coverage_pct": Decimal("50"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [
+                    {"simbolo": "KO", "fills_count": 1, "fee_over_amount_pct": Decimal("0.50"), "executed_amount": Decimal("300000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("750"), "fees_usd": Decimal("0")},
+                ],
+            }
+
+        query_params = {
+            "manual_compare": "1",
+            "manual_compare_readiness_filter": "review_execution",
+            "plan_a_capital": "600000",
+            "plan_a_symbol_1": "KO",
+            "plan_a_amount_1": "300000",
+            "plan_a_symbol_2": "MCD",
+            "plan_a_amount_2": "300000",
+            "plan_b_capital": "600000",
+            "plan_b_symbol_1": "SPY",
+            "plan_b_amount_1": "600000",
+        }
+
+        with (
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
+
+        assert detail["active_readiness_filter"] == "review_execution"
+        assert detail["visible_count"] == 1
+        assert detail["total_count"] == 2
+        assert detail["proposals"][0]["proposal_key"] == "plan_a"
+        assert detail["best_label"] == "Plan manual A"
 
     def test_get_manual_incremental_portfolio_simulation_comparison_uses_operational_tiebreak_when_scores_are_close(self):
         cache.clear()
@@ -3338,6 +3488,80 @@ class TestDashboardSelectors(TestCase):
         assert detail["operational_tiebreak"]["used_operational_tiebreak"] is True
         assert detail["best_execution_readiness"]["status"] == "ready"
 
+    def test_get_candidate_incremental_portfolio_comparison_filters_by_execution_readiness(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 300000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "MCD", "score": 8.1, "main_reason": "dividend_profile"},
+                        {"asset": "KO", "score": 8.0, "main_reason": "defensive_sector_match"},
+                    ],
+                }
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.5,
+                        "real_expected_return_change": 0.0,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                        "risk_concentration_change": -0.1,
+                    },
+                    "interpretation": "Comparacion por candidato.",
+                    "warnings": [],
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbol = purchase_plan[0]["symbol"]
+            if symbol == "MCD":
+                return {
+                    "tracked_symbols": ["MCD"],
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [
+                        {"simbolo": "MCD", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("300000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("300"), "fees_usd": Decimal("0")},
+                    ],
+                }
+            return {
+                "tracked_symbols": ["KO"],
+                "matched_symbols_count": 0,
+                "missing_symbols_count": 1,
+                "coverage_pct": Decimal("0"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [],
+            }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_candidate_incremental_portfolio_comparison(
+                {"candidate_compare": "1", "candidate_compare_block": "defensive", "candidate_compare_readiness_filter": "ready"}
+            )
+
+        assert detail["active_readiness_filter"] == "ready"
+        assert detail["visible_count"] == 1
+        assert detail["total_count"] == 2
+        assert detail["proposals"][0]["proposal_key"] == "MCD"
+
     def test_get_candidate_incremental_portfolio_comparison_handles_no_candidates(self):
         cache.clear()
 
@@ -3527,6 +3751,82 @@ class TestDashboardSelectors(TestCase):
         assert detail["operational_tiebreak"]["has_tiebreak"] is True
         assert detail["operational_tiebreak"]["used_operational_tiebreak"] is True
         assert detail["best_execution_readiness"]["status"] == "ready"
+
+    def test_get_candidate_split_incremental_portfolio_comparison_filters_by_execution_readiness(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 300000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.2, "main_reason": "defensive_sector_match"},
+                        {"asset": "MCD", "score": 8.0, "main_reason": "dividend_profile"},
+                    ],
+                }
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.5,
+                        "real_expected_return_change": 0.0,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                        "risk_concentration_change": -0.1,
+                    },
+                    "interpretation": "Comparacion por split.",
+                    "warnings": [],
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbols = {item["symbol"] for item in purchase_plan}
+            if symbols == {"KO"}:
+                return {
+                    "tracked_symbols": ["KO"],
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [
+                        {"simbolo": "KO", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("300000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("300"), "fees_usd": Decimal("0")},
+                    ],
+                }
+            return {
+                "tracked_symbols": ["KO", "MCD"],
+                "matched_symbols_count": 1,
+                "missing_symbols_count": 1,
+                "coverage_pct": Decimal("50"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [
+                    {"simbolo": "KO", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("150000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("150"), "fees_usd": Decimal("0")},
+                ],
+            }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_candidate_split_incremental_portfolio_comparison(
+                {"candidate_split_compare": "1", "candidate_split_block": "defensive", "candidate_split_readiness_filter": "ready"}
+            )
+
+        assert detail["active_readiness_filter"] == "ready"
+        assert detail["visible_count"] == 1
+        assert detail["total_count"] == 2
+        assert detail["proposals"][0]["proposal_key"] == "single_top_candidate"
 
     def test_get_candidate_split_incremental_portfolio_comparison_handles_missing_top_two(self):
         cache.clear()
@@ -5234,7 +5534,7 @@ class TestDashboardSelectors(TestCase):
         monthly_plan.assert_called_once_with(capital_amount=700000)
         candidate_ranking.assert_called_once_with(capital_amount=700000)
         simulation.assert_called_once_with(capital_amount=700000)
-        simulation_comparison.assert_called_once_with(capital_amount=700000)
+        simulation_comparison.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
         candidate_comparison.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
         split_comparison.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
         manual_comparison.assert_called_once_with({"decision_status_filter": "pending"}, default_capital_amount=700000)

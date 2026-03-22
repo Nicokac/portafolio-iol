@@ -1817,9 +1817,33 @@
                 <small class="text-muted">Contraste simple entre variantes del mismo aporte mensual usando el simulador incremental.</small>
             </div>
             <div class="card-body">
+                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-6">
+                            <label class="form-label" for="comparison_readiness_filter">Filtrar por readiness operativa</label>
+                            <select class="form-select" id="comparison_readiness_filter" name="comparison_readiness_filter">
+                                {% for option in incremental_portfolio_simulation_comparison.available_readiness_filters %}
+                                <option value="{{ option.value }}" {% if option.is_selected %}selected{% endif %}>{{ option.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
+                            <button type="submit" class="btn btn-outline-primary w-100">Filtrar comparador</button>
+                        </div>
+                        <div class="col-lg-3">
+                            <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
+                        </div>
+                    </div>
+                </form>
                 {% with summary=incremental_portfolio_simulation_comparison.display_summary fallback_summary=incremental_portfolio_simulation_comparison execution_title="Lectura operativa del mejor balance actual" %}
                 {% include "dashboard/partials/incremental_comparator_summary.html" %}
                 {% endwith %}
+                {% if incremental_portfolio_simulation_comparison.has_active_readiness_filter %}
+                <div class="small text-muted mb-3">
+                    Mostrando {{ incremental_portfolio_simulation_comparison.visible_count }} de {{ incremental_portfolio_simulation_comparison.total_count }} propuestas con estado
+                    <strong>{{ incremental_portfolio_simulation_comparison.active_readiness_filter_label }}</strong>.
+                </div>
+                {% endif %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -1901,6 +1925,14 @@
                             <button type="submit" class="btn btn-outline-info w-100">Comparar candidatos</button>
                         </div>
                         <div class="col-lg-3">
+                            <label class="form-label" for="candidate_compare_readiness_filter">Readiness</label>
+                            <select class="form-select" id="candidate_compare_readiness_filter" name="candidate_compare_readiness_filter">
+                                {% for option in candidate_incremental_portfolio_comparison.available_readiness_filters %}
+                                <option value="{{ option.value }}" {% if option.is_selected %}selected{% endif %}>{{ option.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
                             <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
                         </div>
                     </div>
@@ -1908,6 +1940,12 @@
                 {% with summary=candidate_incremental_portfolio_comparison.display_summary fallback_summary=candidate_incremental_portfolio_comparison execution_title="Lectura operativa del mejor candidato" %}
                 {% include "dashboard/partials/incremental_comparator_summary.html" %}
                 {% endwith %}
+                {% if candidate_incremental_portfolio_comparison.has_active_readiness_filter %}
+                <div class="small text-muted mb-3">
+                    Mostrando {{ candidate_incremental_portfolio_comparison.visible_count }} de {{ candidate_incremental_portfolio_comparison.total_count }} candidatos con estado
+                    <strong>{{ candidate_incremental_portfolio_comparison.active_readiness_filter_label }}</strong>.
+                </div>
+                {% endif %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -1988,6 +2026,14 @@
                             <button type="submit" class="btn btn-outline-secondary w-100">Comparar split</button>
                         </div>
                         <div class="col-lg-3">
+                            <label class="form-label" for="candidate_split_readiness_filter">Readiness</label>
+                            <select class="form-select" id="candidate_split_readiness_filter" name="candidate_split_readiness_filter">
+                                {% for option in candidate_split_incremental_portfolio_comparison.available_readiness_filters %}
+                                <option value="{{ option.value }}" {% if option.is_selected %}selected{% endif %}>{{ option.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-3">
                             <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
                         </div>
                     </div>
@@ -1995,6 +2041,12 @@
                 {% with summary=candidate_split_incremental_portfolio_comparison.display_summary fallback_summary=candidate_split_incremental_portfolio_comparison execution_title="Lectura operativa de la mejor construcción" %}
                 {% include "dashboard/partials/incremental_comparator_summary.html" %}
                 {% endwith %}
+                {% if candidate_split_incremental_portfolio_comparison.has_active_readiness_filter %}
+                <div class="small text-muted mb-3">
+                    Mostrando {{ candidate_split_incremental_portfolio_comparison.visible_count }} de {{ candidate_split_incremental_portfolio_comparison.total_count }} construcciones con estado
+                    <strong>{{ candidate_split_incremental_portfolio_comparison.active_readiness_filter_label }}</strong>.
+                </div>
+                {% endif %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -2061,6 +2113,16 @@
             <div class="card-body">
                 <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes">
                     <input type="hidden" name="manual_compare" value="1">
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-lg-4">
+                            <label class="form-label" for="manual_compare_readiness_filter">Filtrar planes por readiness operativa</label>
+                            <select class="form-select" id="manual_compare_readiness_filter" name="manual_compare_readiness_filter">
+                                {% for option in manual_incremental_portfolio_simulation_comparison.available_readiness_filters %}
+                                <option value="{{ option.value }}" {% if option.is_selected %}selected{% endif %}>{{ option.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
                     <div class="row g-4">
                         {% for plan in manual_incremental_portfolio_simulation_comparison.form_state.plans %}
                         <div class="col-lg-6">
@@ -2138,6 +2200,12 @@
                 {% with summary=manual_incremental_portfolio_simulation_comparison.display_summary fallback_summary=manual_incremental_portfolio_simulation_comparison execution_title="Lectura operativa del mejor plan manual" %}
                 {% include "dashboard/partials/incremental_comparator_summary.html" %}
                 {% endwith %}
+                {% if manual_incremental_portfolio_simulation_comparison.has_active_readiness_filter %}
+                <div class="small text-muted mb-3">
+                    Mostrando {{ manual_incremental_portfolio_simulation_comparison.visible_count }} de {{ manual_incremental_portfolio_simulation_comparison.total_count }} planes con estado
+                    <strong>{{ manual_incremental_portfolio_simulation_comparison.active_readiness_filter_label }}</strong>.
+                </div>
+                {% endif %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>

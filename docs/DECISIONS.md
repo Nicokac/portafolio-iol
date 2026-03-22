@@ -235,3 +235,4 @@ Efecto actual:
 
 - Los cuatro comparadores incrementales ahora comparten un mismo payload de summary y partials de template para reducir duplicacion de labels, badges y bloques de readiness.
 - La unificacion mantiene fallback sobre los contratos previos del contexto para no romper tests de vista ni ramas con payload minimo.
+- Los comparadores incremental general, por candidato, por split y manual ahora aceptan filtro por readiness operativa (`all`, `ready`, `review_execution`, `monitor`) sobre el set visible, sin alterar el score base ni la heuristica de ranking.

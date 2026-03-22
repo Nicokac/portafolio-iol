@@ -2300,10 +2300,76 @@ def _ensure_incremental_comparator_display_summary(
     return comparator_detail
 
 
-def get_incremental_portfolio_simulation_comparison(capital_amount: int | float = 600000) -> Dict:
+def _normalize_incremental_readiness_filter(value) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"ready", "review_execution", "monitor"}:
+        return normalized
+    return "all"
+
+
+def _format_incremental_readiness_filter_label(value: str) -> str:
+    labels = {
+        "all": "Todas",
+        "ready": "Listo para ejecutar",
+        "review_execution": "Validar ejecucion",
+        "monitor": "Seguir observando",
+    }
+    return labels.get(value or "all", "Todas")
+
+
+def _build_incremental_readiness_filter_options(active_filter: str) -> List[Dict]:
+    options = []
+    for value in ("all", "ready", "review_execution", "monitor"):
+        options.append(
+            {
+                "value": value,
+                "label": _format_incremental_readiness_filter_label(value),
+                "is_selected": value == active_filter,
+            }
+        )
+    return options
+
+
+def _apply_incremental_readiness_filter(proposals: List[Dict], readiness_filter: str) -> List[Dict]:
+    normalized_filter = _normalize_incremental_readiness_filter(readiness_filter)
+    if normalized_filter == "all":
+        return list(proposals)
+    return [
+        item
+        for item in proposals
+        if str((item.get("execution_readiness") or {}).get("status") or "pending") == normalized_filter
+    ]
+
+
+def _build_incremental_readiness_filter_metadata(
+    *,
+    proposals: List[Dict],
+    readiness_filter: str,
+) -> Dict:
+    normalized_filter = _normalize_incremental_readiness_filter(readiness_filter)
+    filtered = _apply_incremental_readiness_filter(proposals, normalized_filter)
+    return {
+        "active_readiness_filter": normalized_filter,
+        "active_readiness_filter_label": _format_incremental_readiness_filter_label(normalized_filter),
+        "available_readiness_filters": _build_incremental_readiness_filter_options(normalized_filter),
+        "filtered_proposals": filtered,
+        "visible_count": len(filtered),
+        "total_count": len(proposals),
+        "has_active_readiness_filter": normalized_filter != "all",
+    }
+
+
+def get_incremental_portfolio_simulation_comparison(
+    query_params=None,
+    *,
+    capital_amount: int | float = 600000,
+) -> Dict:
     """Compara variantes simples de propuestas incrementales sobre el mismo capital mensual."""
 
     cache_key = f"incremental_portfolio_simulation_comparison:{int(capital_amount)}"
+    readiness_filter = _normalize_incremental_readiness_filter(
+        _query_param_value(query_params, "comparison_readiness_filter")
+    )
 
     def build():
         monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
@@ -2390,16 +2456,27 @@ def get_incremental_portfolio_simulation_comparison(capital_amount: int | float 
             key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
             reverse=True,
         )
-        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        filter_metadata = _build_incremental_readiness_filter_metadata(
+            proposals=ranked,
+            readiness_filter=readiness_filter,
+        )
+        visible_ranked = filter_metadata["filtered_proposals"]
+        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
         best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
         operational_tiebreak = {"has_tiebreak": False, "used_operational_tiebreak": False, "headline": "", "summary": ""}
         return {
             "capital_amount": float(capital_amount),
-            "proposals": ranked,
+            "proposals": visible_ranked,
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
             "best_execution_readiness": best_execution_readiness,
             "operational_tiebreak": operational_tiebreak,
+            "active_readiness_filter": filter_metadata["active_readiness_filter"],
+            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
+            "available_readiness_filters": filter_metadata["available_readiness_filters"],
+            "visible_count": filter_metadata["visible_count"],
+            "total_count": filter_metadata["total_count"],
+            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor balance actual",
                 best_label=best["label"] if best else None,
@@ -2422,6 +2499,9 @@ def get_manual_incremental_portfolio_simulation_comparison(
         query_params,
         default_capital_amount=default_capital_amount,
     )
+    readiness_filter = _normalize_incremental_readiness_filter(
+        _query_param_value(query_params, "manual_compare_readiness_filter")
+    )
     normalized_plans = form_state["normalized_plans"]
     if not normalized_plans:
         empty_readiness = _build_manual_incremental_execution_readiness_summary(None)
@@ -2439,6 +2519,12 @@ def get_manual_incremental_portfolio_simulation_comparison(
             "best_label": None,
             "best_execution_readiness": empty_readiness,
             "operational_tiebreak": empty_tiebreak,
+            "active_readiness_filter": readiness_filter,
+            "active_readiness_filter_label": _format_incremental_readiness_filter_label(readiness_filter),
+            "available_readiness_filters": _build_incremental_readiness_filter_options(readiness_filter),
+            "visible_count": 0,
+            "total_count": 0,
+            "has_active_readiness_filter": readiness_filter != "all",
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor balance manual",
                 best_label=None,
@@ -2511,15 +2597,34 @@ def get_manual_incremental_portfolio_simulation_comparison(
             proposals.append(proposal)
 
         ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
+        filter_metadata = _build_incremental_readiness_filter_metadata(
+            proposals=ranked,
+            readiness_filter=readiness_filter,
+        )
+        visible_ranked = filter_metadata["filtered_proposals"]
+        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
+        if filter_metadata["has_active_readiness_filter"]:
+            operational_tiebreak = {
+                "has_tiebreak": False,
+                "used_operational_tiebreak": False,
+                "headline": "",
+                "summary": "",
+            }
         best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
         return {
             "submitted": form_state["submitted"],
             "form_state": form_state,
-            "proposals": ranked,
+            "proposals": visible_ranked,
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
             "best_execution_readiness": best_execution_readiness,
             "operational_tiebreak": operational_tiebreak,
+            "active_readiness_filter": filter_metadata["active_readiness_filter"],
+            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
+            "available_readiness_filters": filter_metadata["available_readiness_filters"],
+            "visible_count": filter_metadata["visible_count"],
+            "total_count": filter_metadata["total_count"],
+            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor balance manual",
                 best_label=best["label"] if best else None,
@@ -2543,6 +2648,9 @@ def get_candidate_incremental_portfolio_comparison(
     comparable_blocks = _build_comparable_candidate_blocks(monthly_plan, candidate_ranking)
     requested_block = str(_query_param_value(query_params, "candidate_compare_block", "")).strip()
     submitted = str(_query_param_value(query_params, "candidate_compare", "")).strip() == "1"
+    readiness_filter = _normalize_incremental_readiness_filter(
+        _query_param_value(query_params, "candidate_compare_readiness_filter")
+    )
 
     selected_block = requested_block if requested_block in {item["bucket"] for item in comparable_blocks} else None
     if selected_block is None and comparable_blocks:
@@ -2567,6 +2675,12 @@ def get_candidate_incremental_portfolio_comparison(
             "best_label": None,
             "best_execution_readiness": empty_readiness,
             "operational_tiebreak": empty_tiebreak,
+            "active_readiness_filter": readiness_filter,
+            "active_readiness_filter_label": _format_incremental_readiness_filter_label(readiness_filter),
+            "available_readiness_filters": _build_incremental_readiness_filter_options(readiness_filter),
+            "visible_count": 0,
+            "total_count": 0,
+            "has_active_readiness_filter": readiness_filter != "all",
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor candidato actual",
                 best_label=None,
@@ -2640,6 +2754,19 @@ def get_candidate_incremental_portfolio_comparison(
             proposals.append(proposal)
 
         ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
+        filter_metadata = _build_incremental_readiness_filter_metadata(
+            proposals=ranked,
+            readiness_filter=readiness_filter,
+        )
+        visible_ranked = filter_metadata["filtered_proposals"]
+        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
+        if filter_metadata["has_active_readiness_filter"]:
+            operational_tiebreak = {
+                "has_tiebreak": False,
+                "used_operational_tiebreak": False,
+                "headline": "",
+                "summary": "",
+            }
         best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
         return {
             "submitted": submitted,
@@ -2647,11 +2774,17 @@ def get_candidate_incremental_portfolio_comparison(
             "selected_block": selected_block,
             "selected_label": selected_block_data["label"],
             "block_amount": selected_block_data["suggested_amount"],
-            "proposals": ranked,
+            "proposals": visible_ranked,
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
             "best_execution_readiness": best_execution_readiness,
             "operational_tiebreak": operational_tiebreak,
+            "active_readiness_filter": filter_metadata["active_readiness_filter"],
+            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
+            "available_readiness_filters": filter_metadata["available_readiness_filters"],
+            "visible_count": filter_metadata["visible_count"],
+            "total_count": filter_metadata["total_count"],
+            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor candidato actual",
                 best_label=best["label"] if best else None,
@@ -2677,6 +2810,9 @@ def get_candidate_split_incremental_portfolio_comparison(
     split_blocks = [block for block in comparable_blocks if len(block["candidates"]) >= 2]
     requested_block = str(_query_param_value(query_params, "candidate_split_block", "")).strip()
     submitted = str(_query_param_value(query_params, "candidate_split_compare", "")).strip() == "1"
+    readiness_filter = _normalize_incremental_readiness_filter(
+        _query_param_value(query_params, "candidate_split_readiness_filter")
+    )
 
     selected_block = requested_block if requested_block in {item["bucket"] for item in split_blocks} else None
     if selected_block is None and split_blocks:
@@ -2701,6 +2837,12 @@ def get_candidate_split_incremental_portfolio_comparison(
             "best_label": None,
             "best_execution_readiness": empty_readiness,
             "operational_tiebreak": empty_tiebreak,
+            "active_readiness_filter": readiness_filter,
+            "active_readiness_filter_label": _format_incremental_readiness_filter_label(readiness_filter),
+            "available_readiness_filters": _build_incremental_readiness_filter_options(readiness_filter),
+            "visible_count": 0,
+            "total_count": 0,
+            "has_active_readiness_filter": readiness_filter != "all",
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor construccion actual",
                 best_label=None,
@@ -2792,6 +2934,19 @@ def get_candidate_split_incremental_portfolio_comparison(
             proposals.append(proposal)
 
         ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
+        filter_metadata = _build_incremental_readiness_filter_metadata(
+            proposals=ranked,
+            readiness_filter=readiness_filter,
+        )
+        visible_ranked = filter_metadata["filtered_proposals"]
+        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
+        if filter_metadata["has_active_readiness_filter"]:
+            operational_tiebreak = {
+                "has_tiebreak": False,
+                "used_operational_tiebreak": False,
+                "headline": "",
+                "summary": "",
+            }
         best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
         return {
             "submitted": submitted,
@@ -2799,11 +2954,17 @@ def get_candidate_split_incremental_portfolio_comparison(
             "selected_block": selected_block,
             "selected_label": selected_block_data["label"],
             "block_amount": total_amount,
-            "proposals": ranked,
+            "proposals": visible_ranked,
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
             "best_execution_readiness": best_execution_readiness,
             "operational_tiebreak": operational_tiebreak,
+            "active_readiness_filter": filter_metadata["active_readiness_filter"],
+            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
+            "available_readiness_filters": filter_metadata["available_readiness_filters"],
+            "visible_count": filter_metadata["visible_count"],
+            "total_count": filter_metadata["total_count"],
+            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
             "display_summary": _build_incremental_comparator_summary(
                 lead_label="Mejor construcci?n actual",
                 best_label=best["label"] if best else None,
@@ -4721,7 +4882,7 @@ def get_planeacion_incremental_context(
     candidate_asset_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
     incremental_portfolio_simulation = get_incremental_portfolio_simulation(capital_amount=capital_amount)
     incremental_portfolio_simulation_comparison = _ensure_incremental_comparator_display_summary(
-        get_incremental_portfolio_simulation_comparison(capital_amount=capital_amount),
+        get_incremental_portfolio_simulation_comparison(query_params, capital_amount=capital_amount),
         lead_label="Mejor balance actual",
     )
     candidate_incremental_portfolio_comparison = _ensure_incremental_comparator_display_summary(
