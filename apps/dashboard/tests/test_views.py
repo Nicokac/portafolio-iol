@@ -1022,8 +1022,12 @@ class TestDashboardView:
                     'count': 2,
                     'has_items': True,
                     'preferred_source': 'backlog_nuevo',
-                    'preferred_label': 'Priorizar backlog nuevo',
-                    'headline': 'El backlog nuevo hoy parece más prometedor que reactivar diferidas.',
+                    'comparison_preferred_source': 'backlog_nuevo',
+                    'quality_preferred_source': 'backlog_nuevo',
+                    'preferred_label': 'Mejor calidad promedio: Backlog nuevo',
+                    'headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
+                    'quality_label': 'Mejor calidad promedio: Backlog nuevo',
+                    'quality_headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
                 },
                 'incremental_manual_decision_summary': {
                     'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
@@ -2927,8 +2931,12 @@ class TestDashboardView:
                     'count': 2,
                     'has_items': True,
                     'preferred_source': 'backlog_nuevo',
-                    'preferred_label': 'Priorizar backlog nuevo',
-                    'headline': 'El backlog nuevo hoy parece más prometedor que reactivar diferidas.',
+                    'comparison_preferred_source': 'backlog_nuevo',
+                    'quality_preferred_source': 'backlog_nuevo',
+                    'preferred_label': 'Mejor calidad promedio: Backlog nuevo',
+                    'headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
+                    'quality_label': 'Mejor calidad promedio: Backlog nuevo',
+                    'quality_headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
                 },
                 'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
                 'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
@@ -2950,7 +2958,8 @@ class TestDashboardView:
         assert 'Tasa de descarte' in body
         assert 'Comparación contra backlog nuevo' in body
         assert 'Shortlist unificada de futuras compras' in body
-        assert 'Priorizar backlog nuevo' in body
+        assert 'Mejor calidad promedio: Backlog nuevo' in body
+        assert 'Fuente más sólida hoy:' in body
         assert 'Backlog nuevo' in body
         assert 'Reactivada' in body
         assert 'Plan reactivado' in body

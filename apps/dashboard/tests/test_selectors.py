@@ -4301,7 +4301,15 @@ class TestDashboardSelectors(TestCase):
             ) as decision_engine,
             patch(
                 "apps.dashboard.selectors.get_incremental_proposal_history",
-                return_value={"count": 1, "active_filter": "pending"},
+                return_value={
+                    "count": 1,
+                    "active_filter": "pending",
+                    "future_purchase_source_quality_summary": {
+                        "dominant_source": "backlog_nuevo",
+                        "dominant_label": "Domina backlog nuevo",
+                        "headline": "Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.",
+                    },
+                },
             ) as history,
             patch(
                 "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
@@ -4383,6 +4391,10 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_reactivation_summary"]["has_reactivations"] is True
         assert detail["incremental_reactivation_vs_backlog_summary"]["preferred_source"] == "backlog_nuevo"
         assert detail["incremental_future_purchase_shortlist"]["preferred_source"] == "backlog_nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["preferred_label"] == "Domina backlog nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["headline"] == "Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa."
+        assert detail["incremental_future_purchase_shortlist"]["quality_preferred_source"] == "backlog_nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["quality_label"] == "Domina backlog nuevo"
         assert detail["incremental_future_purchase_shortlist"]["count"] == 2
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["source_label"] == "Backlog nuevo"
         assert detail["incremental_future_purchase_shortlist"]["items"][1]["source_label"] == "Reactivada"

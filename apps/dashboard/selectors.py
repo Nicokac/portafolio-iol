@@ -3610,6 +3610,7 @@ def _build_incremental_future_purchase_shortlist(
     reactivation_summary: Dict,
     backlog_prioritization: Dict,
     comparison_summary: Dict,
+    quality_summary: Dict,
     *,
     limit: int = 3,
 ) -> Dict:
@@ -3654,13 +3655,19 @@ def _build_incremental_future_purchase_shortlist(
             }
         )
 
-    preferred_source = str(comparison_summary.get("preferred_source") or "mixto")
-    if preferred_source == "reactivadas":
+    comparison_preferred_source = str(comparison_summary.get("preferred_source") or "mixto")
+    quality_preferred_source = str(quality_summary.get("dominant_source") or "none")
+    effective_preferred_source = (
+        quality_preferred_source
+        if quality_preferred_source in {"backlog_nuevo", "reactivadas"}
+        else comparison_preferred_source
+    )
+    if effective_preferred_source == "reactivadas":
         for item in reactivated_items:
             item["source_priority"] = 0
         for item in backlog_items:
             item["source_priority"] = 1
-    elif preferred_source == "backlog_nuevo":
+    elif effective_preferred_source == "backlog_nuevo":
         for item in backlog_items:
             item["source_priority"] = 0
         for item in reactivated_items:
@@ -3690,9 +3697,21 @@ def _build_incremental_future_purchase_shortlist(
         "items": shortlist,
         "count": len(shortlist),
         "has_items": bool(shortlist),
-        "preferred_source": preferred_source,
-        "preferred_label": comparison_summary.get("label") or "Priorizar mixto",
-        "headline": comparison_summary.get("headline") or "Conviene revisar una shortlist mixta de futuras compras.",
+        "preferred_source": effective_preferred_source,
+        "comparison_preferred_source": comparison_preferred_source,
+        "quality_preferred_source": quality_preferred_source,
+        "preferred_label": (
+            quality_summary.get("dominant_label")
+            if quality_preferred_source in {"backlog_nuevo", "reactivadas"}
+            else comparison_summary.get("label") or "Priorizar mixto"
+        ),
+        "headline": (
+            quality_summary.get("headline")
+            if quality_preferred_source in {"backlog_nuevo", "reactivadas"}
+            else comparison_summary.get("headline") or "Conviene revisar una shortlist mixta de futuras compras."
+        ),
+        "quality_label": quality_summary.get("dominant_label") or "",
+        "quality_headline": quality_summary.get("headline") or "",
     }
 
 
@@ -4226,6 +4245,7 @@ def get_planeacion_incremental_context(
         incremental_reactivation_summary,
         incremental_backlog_prioritization,
         incremental_reactivation_vs_backlog_summary,
+        incremental_proposal_history.get("future_purchase_source_quality_summary") or {},
         limit=3,
     )
     incremental_decision_executive_summary = get_incremental_decision_executive_summary(

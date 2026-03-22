@@ -922,6 +922,12 @@
                             {{ incremental_future_purchase_shortlist.headline }}
                             <strong>{{ incremental_future_purchase_shortlist.preferred_label }}</strong>
                         </div>
+                        {% if incremental_future_purchase_shortlist.quality_label %}
+                        <div class="small text-muted mb-2">
+                            Fuente más sólida hoy:
+                            <strong>{{ incremental_future_purchase_shortlist.quality_label }}</strong>
+                        </div>
+                        {% endif %}
                         <div class="d-flex flex-column gap-2">
                             {% for item in incremental_future_purchase_shortlist.items %}
                             <div class="border rounded p-3">
