@@ -228,6 +228,9 @@ class Alert(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=["is_active", "severidad", "created_at"], name="alert_active_sev_created_idx"),
+        ]
         verbose_name = "Alerta"
         verbose_name_plural = "Alertas"
 
@@ -326,6 +329,9 @@ class IncrementalProposalSnapshot(models.Model):
         indexes = [
             models.Index(fields=["user", "created_at"]),
             models.Index(fields=["source_key", "created_at"]),
+            models.Index(fields=["user", "manual_decision_status", "created_at"], name="inc_user_status_created_idx"),
+            models.Index(fields=["user", "is_backlog_front", "manual_decision_status", "created_at"], name="inc_user_front_status_created"),
+            models.Index(fields=["user", "is_tracking_baseline", "created_at"], name="inc_user_base_created_idx"),
         ]
         verbose_name = "Incremental proposal snapshot"
         verbose_name_plural = "Incremental proposal snapshots"

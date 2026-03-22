@@ -653,3 +653,11 @@ def test_decide_many_snapshots_rejects_empty_selection():
 
     with pytest.raises(ValueError):
         service.decide_many_snapshots(user=user, snapshot_ids=[], decision_status="accepted")
+
+
+@pytest.mark.django_db
+def test_incremental_snapshot_model_declares_operational_indexes():
+    index_names = {index.name for index in IncrementalProposalSnapshot._meta.indexes}
+    assert 'inc_user_status_created_idx' in index_names
+    assert 'inc_user_front_status_created' in index_names
+    assert 'inc_user_base_created_idx' in index_names

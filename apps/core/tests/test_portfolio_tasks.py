@@ -317,3 +317,8 @@ class TestPortfolioTasks:
         mock_snapshot.assert_not_called()
         assert result["snapshot_launched"] is False
         assert "snapshot" not in result["task_ids"]
+
+
+    def test_alert_model_declares_operational_index(self):
+        index_names = {index.name for index in Alert._meta.indexes}
+        assert 'alert_active_sev_created_idx' in index_names

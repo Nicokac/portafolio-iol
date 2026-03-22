@@ -124,3 +124,31 @@ Con esto:
 ### Riesgo aceptado
 Se acepta una ventana corta de consistencia igual al TTL ya existente de los selectors.
 No se introdujo una estrategia mas compleja de invalidacion inmediata para mantener el cambio acotado y de bajo riesgo.
+
+
+---
+
+## D-006 - Indices operativos para alertas e historial incremental
+
+**Issue relacionada:** B2  
+**Fecha:** 2026-03-22  
+**Estado:** Implementado
+
+### Contexto
+El producto consulta con frecuencia:
+
+- alertas activas por severidad y fecha
+- snapshots incrementales por usuario, estado manual, backlog front y baseline
+
+Los modelos ya estaban funcionales, pero no reflejaban esas rutas de acceso en indices especificos.
+
+### Decision
+Agregar indices operativos acotados a los filtros y ordenes que hoy usa el producto:
+
+- `Alert(is_active, severidad, created_at)`
+- `IncrementalProposalSnapshot(user, manual_decision_status, created_at)`
+- `IncrementalProposalSnapshot(user, is_backlog_front, manual_decision_status, created_at)`
+- `IncrementalProposalSnapshot(user, is_tracking_baseline, created_at)`
+
+### Riesgo aceptado
+Se agrega costo marginal de escritura por mantenimiento de indices, aceptado porque el producto prioriza lectura operativa rapida y los volumnes de escritura siguen siendo moderados.
