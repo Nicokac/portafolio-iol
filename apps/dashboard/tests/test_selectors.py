@@ -310,6 +310,19 @@ class TestDashboardSelectors(TestCase):
                     "lookback_days": 7,
                 },
             ),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": False,
+                    "has_symbols": False,
+                    "tracked_symbols": [],
+                    "tracked_symbols_count": 0,
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                },
+            ),
         ):
             detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
 
@@ -351,6 +364,19 @@ class TestDashboardSelectors(TestCase):
                     "alerts": [],
                     "has_history": True,
                     "lookback_days": 7,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": False,
+                    "has_symbols": False,
+                    "tracked_symbols": [],
+                    "tracked_symbols_count": 0,
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
                 },
             ),
         ):
@@ -449,6 +475,102 @@ class TestDashboardSelectors(TestCase):
         assert detail["preferred_proposal"]["is_conditioned_by_parking"] is True
         assert detail["preferred_proposal"]["priority_label"] == "Condicionada por parking"
         assert "conviene revisarla antes" in detail["preferred_proposal"]["parking_note"].lower()
+
+    def test_get_decision_engine_summary_blocks_when_operation_execution_is_missing(self):
+        class DummyUser:
+            pk = 10_1
+
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Plan KO",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 600000}],
+                    }
+                },
+            ),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": True,
+                    "has_symbols": True,
+                    "tracked_symbols": ["KO"],
+                    "tracked_symbols_count": 1,
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 1,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["operation_execution_signal"]["has_signal"] is True
+        assert detail["operation_execution_signal"]["status"] == "missing"
+        assert detail["execution_gate"]["has_blocker"] is True
+        assert detail["execution_gate"]["status"] == "review_execution"
+        assert detail["execution_gate"]["primary_cta_label"] == "Validar ejecucion antes de comprar"
+        assert any(item["type"] == "operation_execution" for item in detail["action_suggestions"])
+        assert any("huella operativa comparable" in bullet.lower() for bullet in detail["explanation"])
+        assert detail["tracking_payload"]["governance"]["operation_execution_signal_status"] == "missing"
+
+    def test_get_decision_engine_summary_degrades_confidence_when_operation_execution_is_fragmented(self):
+        class DummyUser:
+            pk = 10_2
+
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Plan KO",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 600000}],
+                    }
+                },
+            ),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": True,
+                    "has_symbols": True,
+                    "tracked_symbols": ["KO"],
+                    "tracked_symbols_count": 1,
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {"fragmented_pct": Decimal("50.00")},
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["operation_execution_signal"]["status"] == "fragmented"
+        assert detail["execution_gate"]["status"] == "ready"
+        assert detail["confidence"] == "Baja"
+        assert any("fragmentacion" in bullet.lower() for bullet in detail["explanation"])
 
     def test_get_decision_engine_summary_promotes_clean_preferred_alternative_when_conditioned_one_is_close(self):
         class DummyUser:
@@ -607,6 +729,19 @@ class TestDashboardSelectors(TestCase):
                     "parking_blocks": [{"label": "Defensive / resiliente", "value_total": Decimal("100000")}],
                     "top_rows": [],
                     "alerts": [],
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": False,
+                    "has_symbols": False,
+                    "tracked_symbols": [],
+                    "tracked_symbols_count": 0,
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
                 },
             ),
         ):
@@ -955,6 +1090,19 @@ class TestDashboardSelectors(TestCase):
                     "lookback_days": 7,
                 },
             ),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": False,
+                    "has_symbols": False,
+                    "tracked_symbols": [],
+                    "tracked_symbols_count": 0,
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                },
+            ),
         ):
             detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
 
@@ -1040,6 +1188,19 @@ class TestDashboardSelectors(TestCase):
                     "alerts": [],
                     "has_history": True,
                     "lookback_days": 7,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": False,
+                    "has_symbols": False,
+                    "tracked_symbols": [],
+                    "tracked_symbols_count": 0,
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
                 },
             ),
         ):
@@ -1286,7 +1447,7 @@ class TestDashboardSelectors(TestCase):
             detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
 
         assert detail["market_history_signal"]["has_signal"] is True
-        assert detail["score"] == 80
+        assert detail["score"] == 76
         assert detail["confidence"] == "Baja"
 
     def test_get_liquidity_contract_summary_uses_explicit_layers(self):

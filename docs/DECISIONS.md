@@ -175,3 +175,25 @@ Limite deliberado:
 - la lectura sigue siendo tactica y reciente
 - no se modela slippage robusto
 - no se persiste una serie propia de calidad de ejecucion por simbolo
+
+## 2026-03-22 - El motor de decision usa huella operativa real como compuerta aparte
+
+Se agrego `operation_execution_signal` al `decision_engine_summary`.
+
+Decision:
+
+- separar la huella operativa real de la senal de liquidez reciente
+- bloquear o degradar la recomendacion cuando falte evidencia operativa comparable
+- no mezclar esta capa con `parking`
+
+Motivo:
+
+- `parking`, liquidez reciente de mercado y ejecucion real no son el mismo problema
+- una propuesta puede tener mercado razonable pero no tener referencia operativa propia suficiente
+- la decision mensual necesitaba distinguir esa falta de evidencia antes de ejecutar
+
+Efecto actual:
+
+- `execution_gate` puede pasar a `review_execution`
+- la confianza baja si la huella operativa es parcial, ausente o muy fragmentada
+- el tracking payload ya persiste esta senal de governance

@@ -4436,14 +4436,25 @@ def get_decision_engine_summary(
             recommendation=recommendation,
             preferred_proposal=preferred_proposal,
         )
+        operation_execution_feature = get_operation_execution_feature_context(
+            purchase_plan=(preferred_proposal or {}).get("purchase_plan") or [],
+            lookback_days=180,
+            symbol_limit=3,
+        )
+        operation_execution_signal = _build_decision_operation_execution_signal(
+            operation_execution_feature=operation_execution_feature,
+            preferred_proposal=preferred_proposal,
+        )
         execution_gate = _build_decision_execution_gate(
             parking_signal=parking_signal,
+            operation_execution_signal=operation_execution_signal,
             preferred_proposal=preferred_proposal,
         )
         action_suggestions = _build_decision_action_suggestions(
             strategy_bias,
             parking_signal=parking_signal,
             market_history_signal=market_history_signal,
+            operation_execution_signal=operation_execution_signal,
         )
         score = _compute_decision_score(
             macro_state=macro_state,
@@ -4454,6 +4465,7 @@ def get_decision_engine_summary(
             expected_impact=expected_impact,
             parking_signal=parking_signal,
             market_history_signal=market_history_signal,
+            operation_execution_signal=operation_execution_signal,
         )
         confidence = _compute_decision_confidence(
             macro_state=macro_state,
@@ -4462,6 +4474,7 @@ def get_decision_engine_summary(
             expected_impact=expected_impact,
             parking_signal=parking_signal,
             market_history_signal=market_history_signal,
+            operation_execution_signal=operation_execution_signal,
         )
         explanation = _build_decision_explanation(
             macro_state=macro_state,
@@ -4471,6 +4484,7 @@ def get_decision_engine_summary(
             preferred_proposal=preferred_proposal,
             parking_signal=parking_signal,
             market_history_signal=market_history_signal,
+            operation_execution_signal=operation_execution_signal,
         )
         tracking_payload = _build_decision_tracking_payload(
             preferred_proposal=preferred_proposal,
@@ -4482,6 +4496,7 @@ def get_decision_engine_summary(
             portfolio_state=portfolio_state,
             parking_signal=parking_signal,
             market_history_signal=market_history_signal,
+            operation_execution_signal=operation_execution_signal,
             execution_gate=execution_gate,
         )
 
@@ -4491,6 +4506,7 @@ def get_decision_engine_summary(
             "strategy_bias": strategy_bias,
             "parking_signal": parking_signal,
             "market_history_signal": market_history_signal,
+            "operation_execution_signal": operation_execution_signal,
             "execution_gate": execution_gate,
             "action_suggestions": action_suggestions,
             "macro_state": macro_state,
@@ -5975,6 +5991,7 @@ def _compute_decision_score(
     expected_impact: Dict,
     parking_signal: Dict | None = None,
     market_history_signal: Dict | None = None,
+    operation_execution_signal: Dict | None = None,
 ) -> int:
     recommendation_score = 0
     if recommendation.get("has_recommendation"):
@@ -5997,6 +6014,10 @@ def _compute_decision_score(
         total -= 5
     if (market_history_signal or {}).get("has_signal"):
         total -= 4
+    if (operation_execution_signal or {}).get("status") in {"missing", "partial"}:
+        total -= 4
+    elif (operation_execution_signal or {}).get("status") == "fragmented":
+        total -= 2
     return max(0, min(100, total))
 
 
@@ -6106,11 +6127,86 @@ def _build_decision_market_history_signal(
     }
 
 
+def _build_decision_operation_execution_signal(
+    *,
+    operation_execution_feature: Dict | None,
+    preferred_proposal: Dict | None,
+) -> Dict:
+    operation_execution_feature = operation_execution_feature or {}
+    preferred_proposal = preferred_proposal or {}
+    tracked_symbols = list(operation_execution_feature.get("tracked_symbols") or [])
+    matched_symbols_count = int(operation_execution_feature.get("matched_symbols_count") or 0)
+    missing_symbols_count = int(operation_execution_feature.get("missing_symbols_count") or 0)
+    execution_analytics = operation_execution_feature.get("execution_analytics") or {}
+    fragmented_pct = Decimal(str(execution_analytics.get("fragmented_pct") or 0))
+    coverage_pct = Decimal(str(operation_execution_feature.get("coverage_pct") or 0))
+
+    if not preferred_proposal or not tracked_symbols:
+        return {
+            "has_signal": False,
+            "severity": "info",
+            "title": "",
+            "summary": "",
+            "status": "none",
+            "tracked_symbols": tracked_symbols,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+        }
+
+    if matched_symbols_count == 0:
+        return {
+            "has_signal": True,
+            "severity": "warning",
+            "title": "Sin huella operativa comparable",
+            "summary": "La propuesta no tiene compras o ventas terminadas recientes para validar costo o forma real de ejecucion.",
+            "status": "missing",
+            "tracked_symbols": tracked_symbols,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+        }
+
+    if missing_symbols_count > 0 or coverage_pct < Decimal("100"):
+        return {
+            "has_signal": True,
+            "severity": "warning",
+            "title": "Cobertura operativa parcial",
+            "summary": f"Solo {matched_symbols_count} de {len(tracked_symbols)} simbolo(s) sugeridos tienen ejecucion terminada reciente visible.",
+            "status": "partial",
+            "tracked_symbols": tracked_symbols,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+        }
+
+    if fragmented_pct >= Decimal("50"):
+        return {
+            "has_signal": True,
+            "severity": "info",
+            "title": "Ejecucion reciente fragmentada",
+            "summary": "La propuesta tiene referencia operativa reciente, pero con multiples fills en una parte relevante de las operaciones comparables.",
+            "status": "fragmented",
+            "tracked_symbols": tracked_symbols,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+        }
+
+    return {
+        "has_signal": False,
+        "severity": "success",
+        "title": "",
+        "summary": "",
+        "status": "clean",
+        "tracked_symbols": tracked_symbols,
+        "matched_symbols_count": matched_symbols_count,
+        "missing_symbols_count": missing_symbols_count,
+    }
+
+
 def _build_decision_action_suggestions(
     strategy_bias: str | None,
     *,
     parking_signal: Dict | None = None,
     market_history_signal: Dict | None = None,
+    operation_execution_signal: Dict | None = None,
 ) -> list[Dict]:
     suggestions = []
     if strategy_bias == "deploy_cash":
@@ -6145,22 +6241,47 @@ def _build_decision_action_suggestions(
                 "suggestion": "Conviene priorizar compras en zonas con mejor spread y actividad reciente o esperar un punto de entrada mas limpio.",
             }
         )
+    if (operation_execution_signal or {}).get("status") in {"missing", "partial"}:
+        suggestions.append(
+            {
+                "type": "operation_execution",
+                "message": "La propuesta todavia tiene poca evidencia operativa comparable",
+                "suggestion": "Conviene validar costo observado y forma real de ejecucion antes de tomarla como compra prioritaria.",
+            }
+        )
     return suggestions
 
 
-def _build_decision_execution_gate(*, parking_signal: Dict | None, preferred_proposal: Dict | None) -> Dict:
+def _build_decision_execution_gate(
+    *,
+    parking_signal: Dict | None,
+    operation_execution_signal: Dict | None = None,
+    preferred_proposal: Dict | None,
+) -> Dict:
     if (parking_signal or {}).get("has_signal") or (preferred_proposal or {}).get("is_conditioned_by_parking"):
         return {
             "has_blocker": True,
+            "key": "review_parking",
             "status": "review_parking",
             "title": "Revisar restricciones antes de ejecutar",
             "summary": "La propuesta puede seguir siendo valida, pero conviene revisar primero el parking visible antes de desplegar mas capital.",
             "primary_cta_label": "Revisar antes de ejecutar",
             "primary_cta_tone": "warning",
         }
+    if (operation_execution_signal or {}).get("status") in {"missing", "partial"}:
+        return {
+            "has_blocker": True,
+            "key": "review_execution",
+            "status": "review_execution",
+            "title": "Validar ejecucion real antes de comprar",
+            "summary": (operation_execution_signal or {}).get("summary") or "La propuesta no tiene evidencia operativa comparable suficiente todavia.",
+            "primary_cta_label": "Validar ejecucion antes de comprar",
+            "primary_cta_tone": "warning",
+        }
     if preferred_proposal:
         return {
             "has_blocker": False,
+            "key": "ready",
             "status": "ready",
             "title": "",
             "summary": "",
@@ -6185,6 +6306,7 @@ def _compute_decision_confidence(
     expected_impact: Dict,
     parking_signal: Dict | None = None,
     market_history_signal: Dict | None = None,
+    operation_execution_signal: Dict | None = None,
 ) -> str:
     if preferred_proposal is None:
         return "Baja"
@@ -6207,6 +6329,7 @@ def _compute_decision_confidence(
         or (preferred_proposal or {}).get("is_conditioned_by_parking")
         or (market_history_signal or {}).get("has_signal")
         or (preferred_proposal or {}).get("is_conditioned_by_market_history")
+        or (operation_execution_signal or {}).get("status") in {"missing", "partial", "fragmented"}
     ):
         if confidence == "Alta":
             return "Media"
@@ -6223,6 +6346,7 @@ def _build_decision_explanation(
     preferred_proposal: Dict | None,
     parking_signal: Dict | None = None,
     market_history_signal: Dict | None = None,
+    operation_execution_signal: Dict | None = None,
 ) -> list[str]:
     recommendation_block = recommendation.get("block") or "el bloque sugerido"
     recommendation_reason = recommendation.get("reason") or "es la prioridad mas clara del mes"
@@ -6250,6 +6374,12 @@ def _build_decision_explanation(
         bullets.append("La recomendacion principal fue repriorizada porque el bloque original mostraba liquidez reciente debil.")
     elif recommendation.get("is_conditioned_by_market_history") or (market_history_signal or {}).get("has_signal"):
         bullets.append("La liquidez reciente del bloque sugerido pide validar mejor la ejecucion antes de comprar.")
+    if (operation_execution_signal or {}).get("status") == "missing":
+        bullets.append("La propuesta no tiene huella operativa comparable reciente y conviene validar costo real de ejecucion antes de comprar.")
+    elif (operation_execution_signal or {}).get("status") == "partial":
+        bullets.append("La propuesta solo tiene cobertura operativa parcial y pide confirmar la ejecucion real de todos los simbolos sugeridos.")
+    elif (operation_execution_signal or {}).get("status") == "fragmented":
+        bullets.append("La referencia operativa reciente existe, pero muestra fragmentacion y conviene cuidar la forma de entrada.")
     if (preferred_proposal or {}).get("was_reprioritized_by_parking"):
         bullets.append("La propuesta preferida guardable fue reemplazada por una alternativa mas limpia frente a parking visible.")
     elif (preferred_proposal or {}).get("was_reprioritized_by_market_history"):
@@ -6268,11 +6398,13 @@ def _build_decision_tracking_payload(
     portfolio_state: Dict,
     parking_signal: Dict | None = None,
     market_history_signal: Dict | None = None,
+    operation_execution_signal: Dict | None = None,
     execution_gate: Dict | None = None,
 ) -> Dict:
     preferred_proposal = preferred_proposal or {}
     parking_signal = parking_signal or {}
     market_history_signal = market_history_signal or {}
+    operation_execution_signal = operation_execution_signal or {}
     execution_gate = execution_gate or {}
     return {
         "recommended_block": recommendation.get("block"),
@@ -6305,6 +6437,9 @@ def _build_decision_tracking_payload(
                 )
                 if str(item.get("label") or "").strip()
             ],
+            "operation_execution_signal_active": bool(operation_execution_signal.get("has_signal")),
+            "operation_execution_signal_status": operation_execution_signal.get("status"),
+            "operation_execution_tracked_symbols": list(operation_execution_signal.get("tracked_symbols") or []),
             "recommendation": {
                 "block": recommendation.get("block"),
                 "priority_label": recommendation.get("priority_label"),

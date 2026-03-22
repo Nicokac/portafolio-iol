@@ -3131,6 +3131,68 @@ class TestDashboardView:
         assert 'Múltiples fills' in body or 'Multiples fills' in body
         assert 'KO' in body
 
+    def test_planeacion_renders_execution_gate_for_missing_operation_execution(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
+                'incremental_portfolio_simulation_comparison': {'proposals': []},
+                'candidate_incremental_portfolio_comparison': {'comparisons': []},
+                'candidate_split_incremental_portfolio_comparison': {'proposals': []},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {}},
+                'preferred_incremental_portfolio_proposal': {'preferred': {'proposal_label': 'Plan A'}, 'has_manual_override': False, 'explanation': ''},
+                'operation_execution_feature': {'has_context': True, 'has_symbols': True, 'tracked_symbols_count': 1, 'matched_symbols_count': 0, 'missing_symbols_count': 1, 'coverage_pct': 0, 'headline': '', 'summary': '', 'alerts': [], 'execution_analytics': {'fee_visible_pct': 0, 'fee_visible_count': 0, 'fragmented_pct': 0, 'fragmented_count': 0}, 'rows': []},
+                'decision_engine_summary': {
+                    'score': 48,
+                    'confidence': 'Baja',
+                    'explanation': ['La propuesta no tiene huella operativa comparable reciente y conviene validar costo real de ejecucion antes de comprar.'],
+                    'action_suggestions': [{'type': 'operation_execution', 'message': 'La propuesta todavia tiene poca evidencia operativa comparable', 'suggestion': 'Conviene validar costo observado y forma real de ejecucion antes de tomarla como compra prioritaria.'}],
+                    'portfolio_scope': {},
+                    'macro_state': {'label': 'Normal', 'summary': ''},
+                    'portfolio_state': {'label': 'OK', 'summary': ''},
+                    'recommendation': {'has_recommendation': True, 'block': 'Defensivos USD', 'amount': 600000, 'reason': 'prioridad simple', 'priority_label': 'Prioritaria', 'priority_tone': 'success'},
+                    'suggested_assets': [],
+                    'preferred_proposal': {'proposal_label': 'Plan KO', 'source_label': 'Comparador manual', 'purchase_summary': 'KO · 600000', 'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'simulation_delta': {}, 'purchase_plan_blocks': [], 'is_conditioned_by_parking': False, 'priority_label': 'Lista', 'priority_tone': 'success', 'parking_note': ''},
+                    'expected_impact': {'summary': 'Impacto incremental no disponible.'},
+                    'operation_execution_signal': {
+                        'has_signal': True,
+                        'status': 'missing',
+                        'title': 'Sin huella operativa comparable',
+                        'summary': 'La propuesta no tiene compras o ventas terminadas recientes para validar costo o forma real de ejecucion.',
+                    },
+                    'execution_gate': {
+                        'has_blocker': True,
+                        'status': 'review_execution',
+                        'title': 'Validar ejecucion real antes de comprar',
+                        'summary': 'La propuesta no tiene compras o ventas terminadas recientes para validar costo o forma real de ejecucion.',
+                        'primary_cta_label': 'Validar ejecucion antes de comprar',
+                        'primary_cta_tone': 'warning',
+                    },
+                    'tracking_payload': {'purchase_plan': [{'symbol': 'KO', 'amount': 600000}], 'score': 48, 'confidence': 'Baja'},
+                },
+                'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'headline': ''},
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_backlog_prioritization': {'count': 0, 'has_priorities': False, 'has_shortlist': False, 'has_focus_split': False, 'counts': {'high': 0, 'medium': 0, 'watch': 0, 'low': 0}, 'followup_counts': {'review_now': 0, 'monitor': 0, 'hold': 0}, 'active_followup_filter': 'all', 'active_followup_filter_label': 'Todas', 'available_followup_filters': [], 'manual_review_summary': {'pending_count': 0, 'deferred_count': 0, 'accepted_count': 0, 'rejected_count': 0, 'closed_count': 0, 'reviewed_count': 0, 'headline': '', 'has_manual_reviews': False}, 'deferred_review_summary': {'deferred_count': 0, 'reactivable_count': 0, 'archivable_count': 0, 'top_reactivable_label': '', 'top_reactivable_priority_label': '', 'has_reactivable': False, 'headline': ''}, 'headline': '', 'explanation': '', 'top_item': None, 'economic_leader': None, 'tactical_leader': None},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_reactivation_summary': {'count': 0, 'has_items': False, 'items': [], 'headline': '', 'current_count': 0, 'accepted_count': 0, 'deferred_count': 0, 'rejected_count': 0, 'front_count': 0, 'effectiveness_label': 'Sin datos', 'acceptance_rate': 0, 'redeferral_rate': 0, 'rejection_rate': 0},
+                'incremental_reactivation_vs_backlog_summary': {'preferred_source': 'backlog_nuevo', 'headline': '', 'label': '', 'summary': ''},
+                'incremental_future_purchase_shortlist': {'items': [], 'count': 0, 'has_items': False, 'preferred_source': 'backlog_nuevo', 'preferred_label': '', 'headline': '', 'quality_label': ''},
+                'incremental_future_purchase_source_guidance': {'source': 'backlog_nuevo', 'label': '', 'headline': '', 'next_action': ''},
+                'incremental_future_purchase_workflow_summary': {'status': 'monitor', 'label': '', 'headline': '', 'next_step': '', 'has_summary': False},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Validar ejecucion real antes de comprar' in body or 'Validar ejecución real antes de comprar' in body
+        assert 'Validar ejecucion antes de comprar' in body or 'Validar ejecución antes de comprar' in body
+
 
 
 
