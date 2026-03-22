@@ -2306,7 +2306,12 @@ def get_incremental_portfolio_simulation_comparison(capital_amount: int | float 
                     "purchase_plan": proposal["purchase_plan"],
                 }
             )
-            proposals.append(
+            operation_execution_feature = get_operation_execution_feature_context(
+                purchase_plan=proposal["purchase_plan"],
+                lookback_days=180,
+                symbol_limit=3,
+            )
+            enriched = _annotate_preferred_proposal_with_execution_quality(
                 _normalize_incremental_proposal_item(
                     {
                         "proposal_key": proposal_key,
@@ -2322,8 +2327,19 @@ def get_incremental_portfolio_simulation_comparison(capital_amount: int | float 
                         },
                         "comparison_score": _score_incremental_simulation(simulation),
                     }
-                )
+                ),
+                operation_execution_feature=operation_execution_feature,
             )
+            operation_execution_signal = _build_decision_operation_execution_signal(
+                operation_execution_feature=operation_execution_feature,
+                preferred_proposal=enriched,
+            )
+            enriched["operation_execution_signal"] = operation_execution_signal
+            enriched["execution_readiness"] = _build_manual_incremental_execution_readiness(
+                proposal=enriched,
+                operation_execution_signal=operation_execution_signal,
+            )
+            proposals.append(enriched)
 
         ranked = sorted(
             proposals,

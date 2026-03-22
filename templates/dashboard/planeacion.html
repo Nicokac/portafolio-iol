@@ -1840,6 +1840,14 @@
                                     {% if proposal.proposal_key == incremental_portfolio_simulation_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
                                     {% endif %}
+                                    {% if proposal.execution_readiness.label %}
+                                    <div class="small mt-2">
+                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if proposal.execution_readiness.summary %}
+                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if proposal.selected_candidates %}

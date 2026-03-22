@@ -304,3 +304,5 @@ Documento vigente para el estado actual de integracion IOL del proyecto.
 - La capa de `OperacionIOL` ahora tambien informa el comparador por split para leer si conviene concentrar o dividir con mejor ejecutabilidad real.
 
 - La huella de `OperacionIOL` ya no solo decide el lider de cada comparador: tambien se expone por fila en candidato, split y manual dentro de `Planeacion`.
+
+- La huella de `OperacionIOL` ya tambien informa el comparador incremental general, no solo los comparadores por candidato, split y manual.

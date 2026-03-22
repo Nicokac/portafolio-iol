@@ -230,3 +230,5 @@ Efecto actual:
 - El comparador por split tambien reutiliza la huella real de ejecucion para resumir readiness y desempatar entre concentrar o dividir cuando el score queda muy cerca.
 
 - Los comparadores por candidato, split y manual ahora muestran la readiness operativa por fila para no depender solo del resumen superior.
+
+- El comparador incremental general tambien expone readiness operativa por fila para las variantes automaticas del aporte mensual.

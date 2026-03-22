@@ -2778,6 +2778,85 @@ class TestDashboardSelectors(TestCase):
         assert "expected_return_change" in detail["proposals"][0]["simulation_delta"]
         assert detail["proposals"][0]["purchase_summary"]
 
+    def test_get_incremental_portfolio_simulation_comparison_adds_execution_readiness_per_variant(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 400000},
+                {"bucket": "global_index", "label": "Indice global", "suggested_amount": 200000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "PEP", "score": 8.0, "main_reason": "dividend_profile"},
+                    ],
+                },
+                {
+                    "block": "global_index",
+                    "candidates": [
+                        {"asset": "SPY", "score": 6.8, "main_reason": "stable_global_exposure"},
+                    ],
+                },
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.4,
+                        "real_expected_return_change": 0.1,
+                        "fragility_change": -2.0,
+                        "scenario_loss_change": 0.5,
+                        "risk_concentration_change": -0.8,
+                    },
+                    "interpretation": "Variante automatica.",
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbols = {item["symbol"] for item in purchase_plan}
+            if symbols == {"KO", "SPY"}:
+                return {
+                    "tracked_symbols": ["KO", "SPY"],
+                    "matched_symbols_count": 2,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [
+                        {"simbolo": "KO", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("400000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("400"), "fees_usd": Decimal("0")},
+                        {"simbolo": "SPY", "fills_count": 1, "fee_over_amount_pct": Decimal("0.10"), "executed_amount": Decimal("200000"), "fecha_label": "2026-03-20 11:00", "is_fragmented": False, "fees_ars": Decimal("200"), "fees_usd": Decimal("0")},
+                    ],
+                }
+            return {
+                "tracked_symbols": [item["symbol"] for item in purchase_plan],
+                "matched_symbols_count": 0,
+                "missing_symbols_count": len(purchase_plan),
+                "coverage_pct": Decimal("0"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [],
+            }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_incremental_portfolio_simulation_comparison()
+
+        ready_item = next(item for item in detail["proposals"] if item["proposal_key"] == "top_candidate_per_block")
+        warning_item = next(item for item in detail["proposals"] if item["proposal_key"] == "runner_up_when_available")
+        assert ready_item["execution_readiness"]["label"] == "Listo para ejecutar"
+        assert warning_item["execution_readiness"]["label"] == "Validar ejecucion"
+
     def test_get_manual_incremental_portfolio_simulation_comparison_ranks_manual_plans(self):
         cache.clear()
 
