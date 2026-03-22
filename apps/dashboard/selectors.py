@@ -2584,6 +2584,13 @@ def get_candidate_split_incremental_portfolio_comparison(
             "proposals": [],
             "best_proposal_key": None,
             "best_label": None,
+            "best_execution_readiness": _build_manual_incremental_execution_readiness_summary(None),
+            "operational_tiebreak": {
+                "has_tiebreak": False,
+                "used_operational_tiebreak": False,
+                "headline": "",
+                "summary": "",
+            },
         }
 
     selected_block_data = next(item for item in split_blocks if item["bucket"] == selected_block)
@@ -2633,7 +2640,12 @@ def get_candidate_split_incremental_portfolio_comparison(
                     "purchase_plan": variant["purchase_plan"],
                 }
             )
-            proposals.append(
+            operation_execution_feature = get_operation_execution_feature_context(
+                purchase_plan=variant["purchase_plan"],
+                lookback_days=180,
+                symbol_limit=3,
+            )
+            proposal = _annotate_preferred_proposal_with_execution_quality(
                 _normalize_incremental_proposal_item(
                     {
                         "proposal_key": variant["proposal_key"],
@@ -2649,15 +2661,21 @@ def get_candidate_split_incremental_portfolio_comparison(
                         },
                         "comparison_score": _score_incremental_simulation(simulation),
                     }
-                )
+                ),
+                operation_execution_feature=operation_execution_feature,
             )
+            operation_execution_signal = _build_decision_operation_execution_signal(
+                operation_execution_feature=operation_execution_feature,
+                preferred_proposal=proposal,
+            )
+            proposal["operation_execution_signal"] = operation_execution_signal
+            proposal["execution_readiness"] = _build_manual_incremental_execution_readiness(
+                proposal=proposal,
+                operation_execution_signal=operation_execution_signal,
+            )
+            proposals.append(proposal)
 
-        ranked = sorted(
-            proposals,
-            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
-            reverse=True,
-        )
-        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
         return {
             "submitted": submitted,
             "available_blocks": split_blocks,
@@ -2667,6 +2685,8 @@ def get_candidate_split_incremental_portfolio_comparison(
             "proposals": ranked,
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
+            "best_execution_readiness": _build_manual_incremental_execution_readiness_summary(best),
+            "operational_tiebreak": operational_tiebreak,
         }
 
     return _get_cached_selector_result(cache_key, build)
