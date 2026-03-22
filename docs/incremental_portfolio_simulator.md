@@ -781,3 +781,12 @@ Helpers compartidos actuales:
 
 - `build_incremental_purchase_plan_summary(...)`
 - `normalize_incremental_proposal_payload(...)`
+
+
+## Proximos frentes guardados
+
+Se dejan guardados como backlog explicito para retomar fuera del cierre actual de `Planeacion`:
+
+1. retomar senales/datos nuevos para mejorar futuras compras
+2. volver a operaciones y profundizar ejecucion/costos
+3. explotar otro endpoint IOL subaprovechado con impacto real en decision
