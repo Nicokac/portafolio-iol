@@ -69,6 +69,14 @@ Jerarquia actual en `Planeacion`:
 - el seguimiento y governance permanece en la misma hoja, pero el historial accionable queda subordinado como trazabilidad operativa
 - los snapshots incrementales guardados preservan tambien la causa tactica de gobierno visible en `Modo decision`, incluyendo reglas de `parking` y liquidez reciente observada desde `CotizacionDetalle`
 - el backlog incremental ya no se prioriza solo por score: una propuesta pendiente sube primero cuando mejora baseline en retorno esperado, no deteriora fragilidad materialmente y mantiene mejor ejecutabilidad tactica
+- la capa superior de futuras compras ya sintetiza:
+  - fuente mas solida entre backlog nuevo y reactivadas
+  - propuesta `Recomendada ahora`
+  - acciones directas para reaplicar, poner al frente o promover a baseline
+  - estado superior del workflow:
+    - `Lista para promover`
+    - `Lista para revisar`
+    - `Lista para monitorear`
 
 ## Limitaciones
 
@@ -139,6 +147,40 @@ Lectura tactica actual:
 - si la propuesta preferida cae en un bloque con `parking` visible, queda condicionada
 - si existe una alternativa limpia con score suficientemente cercano, `Modo decision` puede promover esa alternativa
 - esta repriorizacion vive solo en la capa de decision y no reescribe los comparadores base
+
+## Workflow superior de futuras compras
+
+La hoja `Planeacion` agrega una lectura superior corta sobre la propuesta incremental que hoy conviene reconsiderar primero como futura compra.
+
+Objetivo:
+
+- no obligar al usuario a reconstruir mentalmente la decision desde backlog, reactivaciones, historial y baseline
+- dejar claro si la propuesta marcada como `Recomendada ahora` esta lista para:
+  - revisar
+  - promover
+  - o solo monitorear
+
+Reglas del modulo:
+
+- reutiliza la shortlist unificada de futuras compras ya construida
+- reutiliza la guia por fuente mas solida
+- no crea una persistencia ni un workflow paralelo
+- el estado superior se deriva de las mismas acciones disponibles sobre la propuesta recomendada
+
+Estados actuales:
+
+- `Lista para promover`
+  - cuando la propuesta recomendada ya puede promoted a baseline
+- `Lista para revisar`
+  - cuando la propuesta recomendada puede reaplicarse o ponerse al frente
+- `Lista para monitorear`
+  - cuando sigue siendo la mejor referencia visible, pero todavia no conviene promoverla
+
+Limitaciones:
+
+- sigue siendo una lectura derivada por request
+- no persiste snapshots del estado del workflow
+- no agrega automatizacion adicional fuera de las acciones manuales ya presentes en `Planeacion`
 
 ## Historial persistente de propuestas
 

@@ -61,6 +61,8 @@ Drill-downs hoy visibles:
 - `parking` como compuerta de ejecucion y degradacion de confianza/score
 - `parking` como condicionador de bloque recomendado, shortlist sugerida y propuesta preferida
 - historial reciente de propuestas guardadas y decision manual
+- shortlist unificada de futuras compras con comparacion entre backlog nuevo y reactivadas
+- fuente mas solida, propuesta `Recomendada ahora`, acciones directas y estado superior del workflow de futuras compras
 - exploracion y seguimiento relegados a secciones secundarias dentro de `Planeacion`
 - simulacion, optimizacion y configuracion base presentadas como soporte secundario frente al flujo principal de `Aportes`
 - plan mensual custom legacy relegado a herramienta secundaria de contraste dentro de `Aportes`
