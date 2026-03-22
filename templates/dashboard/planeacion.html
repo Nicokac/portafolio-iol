@@ -470,6 +470,29 @@
                                 {% if decision.preferred_proposal.parking_note %}
                                 <div class="small text-muted mt-2">{{ decision.preferred_proposal.parking_note }}</div>
                                 {% endif %}
+                                {% if decision.preferred_proposal.execution_quality.has_rows %}
+                                <div class="small text-muted mt-2">{{ decision.preferred_proposal.execution_quality.summary }}</div>
+                                <div class="d-flex flex-column gap-2 mt-2">
+                                    {% for item in decision.preferred_proposal.execution_quality.rows %}
+                                    <div class="border rounded p-2">
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <div class="fw-semibold">{{ item.symbol }}</div>
+                                            <span class="badge {% if item.execution_tone == 'warning' %}bg-warning text-dark{% elif item.execution_tone == 'success' %}bg-success{% else %}bg-secondary{% endif %}">{{ item.execution_label }}</span>
+                                            <span class="badge {% if item.coverage_status == 'missing' %}bg-warning text-dark{% else %}bg-light text-dark border{% endif %}">{{ item.coverage_label }}</span>
+                                        </div>
+                                        <div class="small text-muted">
+                                            {% if item.fecha_label %}{{ item.fecha_label }}{% else %}Sin fecha comparable{% endif %}
+                                            {% if item.fills_count %}
+                                            · {{ item.fills_count }} fill(s)
+                                            {% endif %}
+                                            {% if item.fee_over_amount_pct %}
+                                            · {{ item.fee_over_amount_pct|floatformat:2 }}% costo visible
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                                 {% else %}
                                 <div class="text-muted">No hay propuesta dominante.</div>
                                 {% endif %}

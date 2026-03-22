@@ -197,3 +197,18 @@ Efecto actual:
 - `execution_gate` puede pasar a `review_execution`
 - la confianza baja si la huella operativa es parcial, ausente o muy fragmentada
 - el tracking payload ya persiste esta senal de governance
+
+## 2026-03-22 - La propuesta sugerida expone calidad operativa por simbolo
+
+Se agrego una lectura comparativa por simbolo dentro de la propuesta preferida.
+
+Decision:
+
+- no cambiar el ranking base de propuestas
+- agregar una capa de lectura operativa por tramo de compra
+- marcar cual simbolo tiene mejor huella operativa visible y cual pide mas validacion
+
+Motivo:
+
+- una propuesta multi-activo puede ser buena en agregado pero muy desigual en ejecutabilidad
+- el usuario necesitaba ver rapido que tramo parece mas limpio y cual conviene tratar con mas cautela

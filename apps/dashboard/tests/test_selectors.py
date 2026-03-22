@@ -182,6 +182,68 @@ class TestDashboardSelectors(TestCase):
         assert context["tracked_symbols_count"] == 0
         assert context["rows"] == []
 
+    def test_annotates_preferred_proposal_with_execution_quality_summary(self):
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_key": "plan_ko_mcd",
+                        "proposal_label": "Plan KO + MCD",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 300000}, {"symbol": "MCD", "amount": 300000}],
+                    }
+                },
+            ),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": True,
+                    "has_symbols": True,
+                    "tracked_symbols": ["KO", "MCD"],
+                    "tracked_symbols_count": 2,
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 1,
+                    "coverage_pct": Decimal("50"),
+                    "rows": [
+                        {
+                            "simbolo": "KO",
+                            "fills_count": 1,
+                            "fee_over_amount_pct": Decimal("0.50"),
+                            "executed_amount": Decimal("150000"),
+                            "fecha_label": "2026-03-20 11:00",
+                            "is_fragmented": False,
+                            "fees_ars": Decimal("750"),
+                            "fees_usd": Decimal("0"),
+                        }
+                    ],
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(
+                type("DummyUser", (), {"pk": 10_3})(),
+                query_params={},
+                capital_amount=600000,
+            )
+
+        preferred = detail["preferred_proposal"]
+        assert preferred is not None
+        assert preferred["execution_quality"]["has_rows"] is True
+        assert preferred["execution_quality"]["best_symbol"] == "KO"
+        assert preferred["execution_quality"]["weakest_symbol"] == "MCD"
+        assert "KO hoy tiene la mejor huella operativa visible" in preferred["execution_quality"]["summary"]
+
     def test_get_portfolio_parking_feature_context_summarizes_visible_parking(self):
         fecha = timezone.now()
         make_activo(fecha, "AL30", Decimal("1000"), tipo="TitulosPublicos", parking={"cantidad": 5, "fecha": "2026-03-25"})

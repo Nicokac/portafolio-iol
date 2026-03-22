@@ -81,6 +81,7 @@ Tambien alimenta una lectura tactica en `Planeacion`:
 - aranceles visibles
 - fragmentacion por multiples fills
 - compuerta de ejecucion cuando la propuesta no tiene huella operativa comparable suficiente
+- lectura comparativa por simbolo dentro de la propuesta sugerida para distinguir el tramo mas limpio y el mas fragil
 
 Esto permite que una propuesta futura no se evalue solo por:
 

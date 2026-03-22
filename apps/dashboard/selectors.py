@@ -4427,6 +4427,15 @@ def get_decision_engine_summary(
             parking_feature=parking_feature,
             market_history_feature=market_history_feature,
         )
+        operation_execution_feature = get_operation_execution_feature_context(
+            purchase_plan=(preferred_proposal or {}).get("purchase_plan") or [],
+            lookback_days=180,
+            symbol_limit=3,
+        )
+        preferred_proposal = _annotate_preferred_proposal_with_execution_quality(
+            preferred_proposal,
+            operation_execution_feature=operation_execution_feature,
+        )
         expected_impact = _build_decision_expected_impact(simulation)
         recommendation_context = _build_decision_recommendation_context(portfolio_scope)
         strategy_bias = _build_decision_strategy_bias(recommendation_context)
@@ -4435,11 +4444,6 @@ def get_decision_engine_summary(
             market_history_feature=market_history_feature,
             recommendation=recommendation,
             preferred_proposal=preferred_proposal,
-        )
-        operation_execution_feature = get_operation_execution_feature_context(
-            purchase_plan=(preferred_proposal or {}).get("purchase_plan") or [],
-            lookback_days=180,
-            symbol_limit=3,
         )
         operation_execution_signal = _build_decision_operation_execution_signal(
             operation_execution_feature=operation_execution_feature,
@@ -6199,6 +6203,96 @@ def _build_decision_operation_execution_signal(
         "matched_symbols_count": matched_symbols_count,
         "missing_symbols_count": missing_symbols_count,
     }
+
+
+def _annotate_preferred_proposal_with_execution_quality(
+    preferred_proposal: Dict | None,
+    *,
+    operation_execution_feature: Dict | None = None,
+) -> Dict | None:
+    if not preferred_proposal:
+        return None
+
+    enriched = dict(preferred_proposal)
+    operation_execution_feature = operation_execution_feature or {}
+    rows = list(operation_execution_feature.get("rows") or [])
+    rows_by_symbol = {
+        str(row.get("simbolo") or "").strip().upper(): row
+        for row in rows
+        if str(row.get("simbolo") or "").strip()
+    }
+
+    purchase_rows = []
+    for purchase in list(enriched.get("purchase_plan") or []):
+        symbol = str((purchase or {}).get("symbol") or "").strip().upper()
+        operation_row = rows_by_symbol.get(symbol)
+        if operation_row:
+            coverage_status = "covered"
+            coverage_label = "Con huella real"
+            if operation_row.get("is_fragmented"):
+                execution_label = "Fragmentada"
+                execution_tone = "warning"
+            elif (operation_row.get("fees_ars") or 0) or (operation_row.get("fees_usd") or 0):
+                execution_label = "Costo visible"
+                execution_tone = "success"
+            else:
+                execution_label = "Parcial"
+                execution_tone = "secondary"
+        else:
+            coverage_status = "missing"
+            coverage_label = "Sin huella real"
+            execution_label = "Sin referencia"
+            execution_tone = "warning"
+
+        purchase_rows.append(
+            {
+                "symbol": symbol,
+                "amount": (purchase or {}).get("amount"),
+                "has_execution_row": bool(operation_row),
+                "coverage_status": coverage_status,
+                "coverage_label": coverage_label,
+                "execution_label": execution_label,
+                "execution_tone": execution_tone,
+                "fills_count": int((operation_row or {}).get("fills_count") or 0),
+                "fee_over_amount_pct": (operation_row or {}).get("fee_over_amount_pct"),
+                "executed_amount": (operation_row or {}).get("executed_amount"),
+                "fecha_label": (operation_row or {}).get("fecha_label") or "",
+            }
+        )
+
+    best_row = next(
+        (
+            row for row in purchase_rows
+            if row["coverage_status"] == "covered" and row["execution_tone"] == "success"
+        ),
+        None,
+    )
+    if best_row is None:
+        best_row = next((row for row in purchase_rows if row["coverage_status"] == "covered"), None)
+    weakest_row = next((row for row in purchase_rows if row["coverage_status"] == "missing"), None)
+    if weakest_row is None:
+        weakest_row = next((row for row in purchase_rows if row["execution_tone"] == "warning"), None)
+
+    if best_row and weakest_row and best_row["symbol"] != weakest_row["symbol"]:
+        execution_summary = (
+            f"{best_row['symbol']} hoy tiene la mejor huella operativa visible; "
+            f"{weakest_row['symbol']} pide mas validacion antes de ejecutarlo."
+        )
+    elif best_row:
+        execution_summary = f"{best_row['symbol']} es el tramo con mejor referencia operativa visible dentro de la propuesta."
+    elif weakest_row:
+        execution_summary = f"{weakest_row['symbol']} sigue sin una referencia operativa comparable suficiente."
+    else:
+        execution_summary = ""
+
+    enriched["execution_quality"] = {
+        "has_rows": bool(purchase_rows),
+        "rows": purchase_rows,
+        "best_symbol": (best_row or {}).get("symbol") or "",
+        "weakest_symbol": (weakest_row or {}).get("symbol") or "",
+        "summary": execution_summary,
+    }
+    return enriched
 
 
 def _build_decision_action_suggestions(
