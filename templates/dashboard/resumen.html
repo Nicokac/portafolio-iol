@@ -31,7 +31,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
                     <h2 class="h5 mb-1">Mapa de lectura</h2>
-                    <p class="text-muted mb-0">Primero estado general y contexto macro. Después evolución y alertas activas.</p>
+                    <p class="text-muted mb-0">Primero estado general. Después pulso táctico, contexto macro, evolución y alertas activas.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <a class="btn btn-sm btn-outline-primary" href="#resumen-kpis">KPIs</a>
@@ -149,15 +149,15 @@
 </section>
 
 <section class="mb-4">
-    {% include 'dashboard/market_snapshot_panel.html' with title='Pulso de mercado puntual' subtitle='Señal táctica de IOL sobre las posiciones más relevantes. Complementa la valuación persistida; no la reemplaza.' row_limit=':3' panel_mode='compact' %}
+    {% include 'dashboard/market_snapshot_panel.html' with title='Pulso de mercado puntual' subtitle='Señal táctica puntual de IOL sobre posiciones relevantes. Complementa la valuación persistida; no la reemplaza.' row_limit=':3' panel_mode='compact' %}
 </section>
 
 <section class="mb-4">
-    {% include 'dashboard/operations_flow_panel.html' with title='Actividad operativa reciente' subtitle='Flujos ejecutados que ya impactan lectura de aportes, dividendos y movimiento real del mes.' row_limit=':3' panel_mode='compact' %}
+    {% include 'dashboard/operations_flow_panel.html' with title='Actividad operativa reciente' subtitle='Flujos recientes que ya impactan aportes, dividendos y movimiento real del mes.' row_limit=':3' panel_mode='compact' %}
 </section>
 
 <section class="mb-4">
-    {% include 'dashboard/parking_panel.html' with title='Parking visible en cartera' subtitle='Chequeo rapido de posiciones que hoy siguen mostrando restriccion visible de parking en IOL.' row_limit=':3' panel_mode='compact' %}
+    {% include 'dashboard/parking_panel.html' with title='Parking visible en cartera' subtitle='Chequeo táctico de posiciones que hoy siguen mostrando restricción visible de parking en IOL.' row_limit=':3' panel_mode='compact' %}
 </section>
 
 <section id="resumen-macro" class="mb-3">
