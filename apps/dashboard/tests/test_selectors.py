@@ -3022,6 +3022,62 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][1]["future_purchase_context"]["label"] == "Reactivada"
         assert "ordenados para futuras compras" in detail["headline"].lower()
 
+    def test_get_incremental_proposal_history_supports_future_purchase_source_filter(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "id": 1,
+                    "proposal_label": "Reactivada vigente",
+                    "comparison_score": 4.2,
+                    "purchase_plan": [{"symbol": "KO", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.5,
+                        "fragility_change": -1.1,
+                        "scenario_loss_change": 0.2,
+                    },
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 2,
+                    "proposal_label": "Backlog nuevo fuerte",
+                    "comparison_score": 4.6,
+                    "purchase_plan": [{"symbol": "MCD", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.7,
+                        "fragility_change": -1.5,
+                        "scenario_loss_change": 0.4,
+                    },
+                    "manual_decision_status": "pending",
+                },
+            ],
+        ), patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 2, "pending": 2, "accepted": 0, "deferred": 0, "rejected": 0},
+        ), patch(
+            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            return_value={"item": None, "has_baseline": False},
+        ):
+            detail = get_incremental_proposal_history(
+                user=user,
+                limit=5,
+                future_purchase_source_filter="reactivadas",
+                reactivated_snapshot_ids=[1],
+            )
+
+        assert detail["active_future_purchase_source_filter"] == "reactivadas"
+        assert detail["active_future_purchase_source_filter_label"] == "Reactivadas"
+        assert detail["future_purchase_source_counts"]["backlog_nuevo"] == 1
+        assert detail["future_purchase_source_counts"]["reactivadas"] == 1
+        assert detail["count"] == 1
+        assert detail["items"][0]["proposal_label"] == "Reactivada vigente"
+        assert "fuente: reactivadas" in detail["headline"].lower()
+
     def test_get_incremental_proposal_history_supports_deferred_fit_filter(self):
         class DummyUser:
             is_authenticated = True
@@ -4200,6 +4256,7 @@ class TestDashboardSelectors(TestCase):
             decision_status="pending",
             priority_filter="",
             deferred_fit_filter="",
+            future_purchase_source_filter="",
             sort_mode="",
             preferred_source="backlog_nuevo",
             reactivated_snapshot_ids=[],

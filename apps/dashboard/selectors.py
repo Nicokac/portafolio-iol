@@ -2532,6 +2532,7 @@ def get_incremental_proposal_history(
     decision_status: str | None = None,
     priority_filter: str | None = None,
     deferred_fit_filter: str | None = None,
+    future_purchase_source_filter: str | None = None,
     sort_mode: str | None = None,
     preferred_source: str | None = None,
     reactivated_snapshot_ids: list[int] | set[int] | tuple[int, ...] | None = None,
@@ -2542,6 +2543,9 @@ def get_incremental_proposal_history(
     normalized_filter = _normalize_incremental_history_decision_filter(decision_status)
     normalized_priority_filter = _normalize_incremental_history_priority_filter(priority_filter)
     normalized_deferred_fit_filter = _normalize_incremental_history_deferred_fit_filter(deferred_fit_filter)
+    normalized_future_purchase_source_filter = _normalize_incremental_future_purchase_source_filter(
+        future_purchase_source_filter
+    )
     normalized_sort_mode = _normalize_incremental_history_sort_mode(sort_mode)
     fetch_limit = max(int(limit), getattr(service, "MAX_SNAPSHOTS_PER_USER", 10))
     raw_items = service.list_recent(user=user, limit=fetch_limit, decision_status=normalized_filter)
@@ -2582,6 +2586,7 @@ def get_incremental_proposal_history(
 
     priority_counts = _build_incremental_history_priority_counts(items)
     deferred_fit_counts = _build_incremental_history_deferred_fit_counts(items)
+    future_purchase_source_counts = _build_incremental_future_purchase_source_counts(items)
     if normalized_priority_filter:
         items = [
             item for item in items
@@ -2591,6 +2596,11 @@ def get_incremental_proposal_history(
         items = [
             item for item in items
             if str((item.get("deferred_fit") or {}).get("status") or "") == normalized_deferred_fit_filter
+        ]
+    if normalized_future_purchase_source_filter:
+        items = [
+            item for item in items
+            if str((item.get("future_purchase_context") or {}).get("source") or "") == normalized_future_purchase_source_filter
         ]
 
     items = _sort_incremental_history_items(
@@ -2612,6 +2622,10 @@ def get_incremental_proposal_history(
         "active_deferred_fit_filter_label": _format_incremental_history_deferred_fit_filter_label(
             normalized_deferred_fit_filter
         ),
+        "active_future_purchase_source_filter": normalized_future_purchase_source_filter or "all",
+        "active_future_purchase_source_filter_label": _format_incremental_future_purchase_source_filter_label(
+            normalized_future_purchase_source_filter
+        ),
         "active_sort_mode": normalized_sort_mode,
         "active_sort_mode_label": _format_incremental_history_sort_mode_label(normalized_sort_mode),
         "decision_counts": counts,
@@ -2624,15 +2638,21 @@ def get_incremental_proposal_history(
             normalized_deferred_fit_filter,
             deferred_fit_counts,
         ),
+        "available_future_purchase_source_filters": _build_incremental_future_purchase_source_filter_options(
+            normalized_future_purchase_source_filter,
+            future_purchase_source_counts,
+        ),
         "available_sort_modes": _build_incremental_history_sort_options(normalized_sort_mode),
         "priority_counts": priority_counts,
         "deferred_fit_counts": deferred_fit_counts,
+        "future_purchase_source_counts": future_purchase_source_counts,
         "headline": _build_incremental_history_headline(
             normalized_filter,
             counts,
             len(items),
             priority_filter=normalized_priority_filter,
             deferred_fit_filter=normalized_deferred_fit_filter,
+            future_purchase_source_filter=normalized_future_purchase_source_filter,
             sort_mode=normalized_sort_mode,
         ),
     }
@@ -2818,6 +2838,11 @@ def _normalize_incremental_history_deferred_fit_filter(deferred_fit_filter: str 
     return normalized if normalized in {"reactivable", "archivable"} else None
 
 
+def _normalize_incremental_future_purchase_source_filter(source_filter: str | None) -> str | None:
+    normalized = str(source_filter or "").strip().lower()
+    return normalized if normalized in {"backlog_nuevo", "reactivadas"} else None
+
+
 def _normalize_incremental_history_sort_mode(sort_mode: str | None) -> str:
     normalized = str(sort_mode or "").strip().lower()
     if normalized in {"priority", "future_purchase"}:
@@ -2837,6 +2862,14 @@ def _format_incremental_history_deferred_fit_filter_label(deferred_fit_filter: s
     if deferred_fit_filter == "reactivable":
         return "Diferidas reactivables"
     return "Diferidas archivables"
+
+
+def _format_incremental_future_purchase_source_filter_label(source_filter: str | None) -> str:
+    if not source_filter:
+        return "Todas las fuentes"
+    if source_filter == "backlog_nuevo":
+        return "Backlog nuevo"
+    return "Reactivadas"
 
 
 def _format_incremental_history_sort_mode_label(sort_mode: str | None) -> str:
@@ -2888,6 +2921,17 @@ def _build_incremental_history_deferred_fit_counts(items: list[Dict]) -> Dict[st
     }
 
 
+def _build_incremental_future_purchase_source_counts(items: list[Dict]) -> Dict[str, int]:
+    return {
+        "backlog_nuevo": sum(
+            1 for item in items if str((item.get("future_purchase_context") or {}).get("source") or "") == "backlog_nuevo"
+        ),
+        "reactivadas": sum(
+            1 for item in items if str((item.get("future_purchase_context") or {}).get("source") or "") == "reactivadas"
+        ),
+    }
+
+
 def _build_incremental_history_priority_filter_options(active_priority_filter: str | None, counts: Dict[str, int]) -> list[Dict]:
     options = [{"key": "all", "label": "Todas las prioridades", "count": sum(int(value or 0) for value in counts.values())}]
     for key, label in (
@@ -2907,6 +2951,17 @@ def _build_incremental_history_deferred_fit_filter_options(active_filter: str | 
         {"key": "all", "label": "Todas las diferidas", "count": sum(int(value or 0) for value in counts.values())},
         {"key": "reactivable", "label": "Diferidas reactivables", "count": int(counts.get("reactivable", 0))},
         {"key": "archivable", "label": "Diferidas archivables", "count": int(counts.get("archivable", 0))},
+    ]
+    for option in options:
+        option["selected"] = (active_filter or "all") == option["key"]
+    return options
+
+
+def _build_incremental_future_purchase_source_filter_options(active_filter: str | None, counts: Dict[str, int]) -> list[Dict]:
+    options = [
+        {"key": "all", "label": "Todas las fuentes", "count": sum(int(value or 0) for value in counts.values())},
+        {"key": "backlog_nuevo", "label": "Backlog nuevo", "count": int(counts.get("backlog_nuevo", 0))},
+        {"key": "reactivadas", "label": "Reactivadas", "count": int(counts.get("reactivadas", 0))},
     ]
     for option in options:
         option["selected"] = (active_filter or "all") == option["key"]
@@ -3979,6 +4034,7 @@ def get_planeacion_incremental_context(
         decision_status=_query_param_value(query_params, "decision_status_filter"),
         priority_filter=_query_param_value(query_params, "history_priority_filter"),
         deferred_fit_filter=_query_param_value(query_params, "history_deferred_fit_filter"),
+        future_purchase_source_filter=_query_param_value(query_params, "history_future_purchase_source_filter"),
         sort_mode=_query_param_value(query_params, "history_sort"),
         preferred_source=incremental_reactivation_vs_backlog_summary.get("preferred_source"),
         reactivated_snapshot_ids=[
@@ -4489,6 +4545,7 @@ def _build_incremental_history_headline(
     *,
     priority_filter: str | None = None,
     deferred_fit_filter: str | None = None,
+    future_purchase_source_filter: str | None = None,
     sort_mode: str | None = None,
 ) -> str:
     total = int(counts.get("total", 0))
@@ -4505,6 +4562,8 @@ def _build_incremental_history_headline(
         suffix.append(f"Prioridad: {_format_incremental_history_priority_filter_label(priority_filter)}")
     if deferred_fit_filter:
         suffix.append(f"Diferidas: {_format_incremental_history_deferred_fit_filter_label(deferred_fit_filter)}")
+    if future_purchase_source_filter:
+        suffix.append(f"Fuente: {_format_incremental_future_purchase_source_filter_label(future_purchase_source_filter)}")
     if str(sort_mode or "").strip().lower() == "priority":
         suffix.append("Ordenados por prioridad operativa")
     if str(sort_mode or "").strip().lower() == "future_purchase":

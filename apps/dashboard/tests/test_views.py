@@ -500,6 +500,7 @@ class TestDashboardView:
             captured["decision_status_filter"] = query_params.get("decision_status_filter")
             captured["history_priority_filter"] = query_params.get("history_priority_filter")
             captured["history_deferred_fit_filter"] = query_params.get("history_deferred_fit_filter")
+            captured["history_future_purchase_source_filter"] = query_params.get("history_future_purchase_source_filter")
             captured["history_sort"] = query_params.get("history_sort")
             captured["backlog_followup_filter"] = query_params.get("backlog_followup_filter")
             captured["user_id"] = user.id
@@ -524,12 +525,15 @@ class TestDashboardView:
                     "active_priority_filter_label": "Todas las prioridades",
                     "active_deferred_fit_filter": "all",
                     "active_deferred_fit_filter_label": "Todas las diferidas",
+                    "active_future_purchase_source_filter": "all",
+                    "active_future_purchase_source_filter_label": "Todas las fuentes",
                     "active_sort_mode": "newest",
                     "active_sort_mode_label": "Más recientes",
                     "decision_counts": {"total": 0, "pending": 0, "accepted": 0, "deferred": 0, "rejected": 0},
                     "available_filters": [],
                     "available_priority_filters": [],
                     "available_deferred_fit_filters": [],
+                    "available_future_purchase_source_filters": [],
                     "available_sort_modes": [],
                     "headline": "",
                 },
@@ -546,6 +550,7 @@ class TestDashboardView:
                 "decision_status_filter": "pending",
                 "history_priority_filter": "high",
                 "history_deferred_fit_filter": "reactivable",
+                "history_future_purchase_source_filter": "backlog_nuevo",
                 "history_sort": "priority",
                 "backlog_followup_filter": "monitor",
             },
@@ -556,6 +561,7 @@ class TestDashboardView:
             "decision_status_filter": "pending",
             "history_priority_filter": "high",
             "history_deferred_fit_filter": "reactivable",
+            "history_future_purchase_source_filter": "backlog_nuevo",
             "history_sort": "priority",
             "backlog_followup_filter": "monitor",
             "user_id": int(auth_client.session["_auth_user_id"]),
@@ -827,12 +833,15 @@ class TestDashboardView:
                     'active_priority_filter_label': 'Todas las prioridades',
                     'active_deferred_fit_filter': 'all',
                     'active_deferred_fit_filter_label': 'Todas las diferidas',
+                    'active_future_purchase_source_filter': 'all',
+                    'active_future_purchase_source_filter_label': 'Todas las fuentes',
                     'active_sort_mode': 'future_purchase',
                     'active_sort_mode_label': 'Futuras compras',
                     'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
                     'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
                     'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
                     'available_deferred_fit_filters': [{'key': 'all', 'label': 'Todas las diferidas', 'count': 2, 'selected': True}, {'key': 'reactivable', 'label': 'Diferidas reactivables', 'count': 1, 'selected': False}, {'key': 'archivable', 'label': 'Diferidas archivables', 'count': 1, 'selected': False}],
+                    'available_future_purchase_source_filters': [{'key': 'all', 'label': 'Todas las fuentes', 'count': 1, 'selected': True}, {'key': 'backlog_nuevo', 'label': 'Backlog nuevo', 'count': 1, 'selected': False}, {'key': 'reactivadas', 'label': 'Reactivadas', 'count': 0, 'selected': False}],
                     'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': False}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}, {'key': 'future_purchase', 'label': 'Futuras compras', 'selected': True}],
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
@@ -1023,6 +1032,7 @@ class TestDashboardView:
         assert 'En observación' in body or 'En observaci?n' in body
         assert 'Filtrar shortlist por seguimiento' in body
         assert 'Filtrar diferidas' in body
+        assert 'Filtrar por fuente futura' in body
         assert 'Diferidas reactivables' in body
         assert 'Diferidas archivables' in body
         assert 'Revisar ya' in body
@@ -2681,17 +2691,19 @@ class TestDashboardView:
                 'decision_status_filter': 'pending',
                 'history_priority_filter': 'high',
                 'history_deferred_fit_filter': 'reactivable',
+                'history_future_purchase_source_filter': 'backlog_nuevo',
                 'history_sort': 'priority',
             },
         )
 
         assert response.status_code == 302
         assert response.url.endswith(
-            '?decision_status_filter=pending&history_priority_filter=high&history_deferred_fit_filter=reactivable&history_sort=priority#planeacion-aportes'
+            '?decision_status_filter=pending&history_priority_filter=high&history_deferred_fit_filter=reactivable&history_future_purchase_source_filter=backlog_nuevo&history_sort=priority#planeacion-aportes'
         )
         assert captured['history_kwargs']['decision_status'] == 'pending'
         assert captured['history_kwargs']['priority_filter'] == 'high'
         assert captured['history_kwargs']['deferred_fit_filter'] == 'reactivable'
+        assert captured['history_kwargs']['future_purchase_source_filter'] == 'backlog_nuevo'
         assert captured['history_kwargs']['sort_mode'] == 'priority'
         assert captured['service_kwargs']['snapshot_ids'] == [10]
 
@@ -2713,13 +2725,14 @@ class TestDashboardView:
                 'decision_status_filter': 'deferred',
                 'history_priority_filter': 'medium',
                 'history_deferred_fit_filter': 'reactivable',
+                'history_future_purchase_source_filter': 'reactivadas',
                 'history_sort': 'priority',
             },
         )
 
         assert response.status_code == 302
         assert response.url.endswith(
-            '?decision_status_filter=deferred&history_priority_filter=medium&history_deferred_fit_filter=reactivable&history_sort=priority#planeacion-aportes'
+            '?decision_status_filter=deferred&history_priority_filter=medium&history_deferred_fit_filter=reactivable&history_future_purchase_source_filter=reactivadas&history_sort=priority#planeacion-aportes'
         )
         assert captured['service_kwargs']['snapshot_id'] == '10'
         assert captured['service_kwargs']['user'].is_authenticated is True

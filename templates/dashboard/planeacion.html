@@ -1269,6 +1269,16 @@
                                             {% endfor %}
                                         </select>
                                     </div>
+                                    <div class="col-lg-4">
+                                        <label class="form-label" for="history_future_purchase_source_filter">Filtrar por fuente futura</label>
+                                        <select class="form-select" id="history_future_purchase_source_filter" name="history_future_purchase_source_filter">
+                                            {% for option in incremental_proposal_history.available_future_purchase_source_filters %}
+                                            <option value="{% if option.key != 'all' %}{{ option.key }}{% endif %}" {% if option.selected %}selected{% endif %}>
+                                                {{ option.label }} · {{ option.count }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                     <div class="col-lg-2">
                                         <label class="form-label" for="history_sort">Orden</label>
                                         <select class="form-select" id="history_sort" name="history_sort">
@@ -1291,6 +1301,7 @@
                                 <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                 <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                 <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                 <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="submit" name="decision_status" value="accepted" class="btn btn-outline-success btn-sm">
@@ -1353,6 +1364,7 @@
                                                         <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                                         <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                                         <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                        <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                                         <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                                         <button type="submit" class="btn btn-outline-warning btn-sm">Reactivar al backlog</button>
                                                     </form>
@@ -1364,6 +1376,7 @@
                                                             <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                                             <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                                             <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                            <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                                             <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                                         <button type="submit" class="btn btn-outline-info btn-sm">Poner al frente</button>
                                                     </form>
@@ -1374,6 +1387,7 @@
                                                         <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                                         <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                                         <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                        <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                                         <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                                         <button type="submit" class="btn btn-outline-primary btn-sm">
                                                             {% if item.is_tracking_baseline %}Baseline activo{% else %}Promover a baseline{% endif %}
@@ -1385,6 +1399,7 @@
                                                         <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                                         <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                                         <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                        <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                                         <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                                         <input type="hidden" name="decision_status" value="accepted">
                                                         <button type="submit" class="btn btn-outline-success btn-sm">Aceptar</button>
@@ -1395,6 +1410,7 @@
                                                         <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                                         <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                                         <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                        <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                                         <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                                         <input type="hidden" name="decision_status" value="deferred">
                                                         <button type="submit" class="btn btn-outline-warning btn-sm">Diferir</button>
@@ -1405,6 +1421,7 @@
                                                         <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
                                                         <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
                                                         <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                        <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
                                                         <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
                                                         <input type="hidden" name="decision_status" value="rejected">
                                                         <button type="submit" class="btn btn-outline-danger btn-sm">Rechazar</button>
