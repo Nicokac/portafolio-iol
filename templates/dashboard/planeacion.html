@@ -1811,6 +1811,21 @@
             <strong>Orden sugerido:</strong>
             <span class="text-muted">primero mirá el comparador general. Si todavía tenés dudas, abrí después el comparador por candidato, el comparador por split o el comparador manual según el caso.</span>
         </div>
+        {% if incremental_comparator_activity_summary.has_active_context %}
+        <div class="alert alert-info border mb-4">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <strong>Estado activo de comparadores</strong>
+                <span class="badge text-bg-info">{{ incremental_comparator_activity_summary.active_count }}</span>
+            </div>
+            <div class="small text-muted mb-2">{{ incremental_comparator_activity_summary.headline }}</div>
+            {% for item in incremental_comparator_activity_summary.items %}
+            <div class="small text-muted">
+                <strong>{{ item.label }}:</strong>
+                {{ item.summary }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         <div class="card border-primary-subtle shadow-sm mb-4">
             <div class="card-header bg-light">
                 <h5 class="mb-0">Comparador de propuestas incrementales</h5>

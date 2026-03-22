@@ -5505,6 +5505,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_comparator_form_state"]["general_hidden_inputs"] == []
         assert detail["incremental_comparator_form_state"]["candidate_hidden_inputs"] == []
         assert detail["incremental_comparator_form_state"]["manual_reset_url"].endswith("#planeacion-aportes")
+        assert detail["incremental_comparator_activity_summary"]["has_active_context"] is True
+        assert detail["incremental_comparator_activity_summary"]["active_count"] == 2
         assert detail["preferred_incremental_portfolio_proposal"]["preferred"]["proposal_label"] == "Split KO + MCD"
         assert detail["decision_engine_summary"]["score"] == 78
         assert detail["incremental_proposal_history"]["active_filter"] == "pending"

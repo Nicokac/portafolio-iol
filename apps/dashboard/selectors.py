@@ -2409,6 +2409,77 @@ def _build_planeacion_aportes_reset_url(query_params, *, exclude_keys: set[str] 
     return f"{base_url}#planeacion-aportes"
 
 
+def _build_incremental_comparator_activity_summary(
+    *,
+    auto: Dict,
+    candidate: Dict,
+    split: Dict,
+    manual: Dict,
+) -> Dict:
+    items = []
+
+    if auto.get("has_active_readiness_filter"):
+        items.append(
+            {
+                "key": "general",
+                "label": "Comparador general",
+                "summary": f"Filtro activo: {auto.get('active_readiness_filter_label') or 'Todas'}.",
+            }
+        )
+
+    if candidate.get("submitted") or candidate.get("has_active_readiness_filter") or candidate.get("selected_block"):
+        candidate_label = candidate.get("selected_label") or candidate.get("selected_block") or "bloque actual"
+        summary = f"Bloque: {candidate_label}."
+        if candidate.get("has_active_readiness_filter"):
+            summary = f"{summary} Filtro: {candidate.get('active_readiness_filter_label') or 'Todas'}."
+        items.append(
+            {
+                "key": "candidate",
+                "label": "Comparador por candidato",
+                "summary": summary,
+            }
+        )
+
+    if split.get("submitted") or split.get("has_active_readiness_filter") or split.get("selected_block"):
+        split_label = split.get("selected_label") or split.get("selected_block") or "bloque actual"
+        summary = f"Bloque: {split_label}."
+        if split.get("has_active_readiness_filter"):
+            summary = f"{summary} Filtro: {split.get('active_readiness_filter_label') or 'Todas'}."
+        items.append(
+            {
+                "key": "split",
+                "label": "Comparador por split",
+                "summary": summary,
+            }
+        )
+
+    if manual.get("submitted") or manual.get("has_active_readiness_filter"):
+        summary = "Planes manuales cargados."
+        if manual.get("has_active_readiness_filter"):
+            summary = f"{summary} Filtro: {manual.get('active_readiness_filter_label') or 'Todas'}."
+        items.append(
+            {
+                "key": "manual",
+                "label": "Comparador manual",
+                "summary": summary,
+            }
+        )
+
+    if not items:
+        headline = "Sin comparadores activos."
+    elif len(items) == 1:
+        headline = "1 comparador activo."
+    else:
+        headline = f"{len(items)} comparadores activos."
+
+    return {
+        "has_active_context": bool(items),
+        "active_count": len(items),
+        "headline": headline,
+        "items": items,
+    }
+
+
 def get_incremental_portfolio_simulation_comparison(
     query_params=None,
     *,
@@ -5032,6 +5103,12 @@ def get_planeacion_incremental_context(
             },
         ),
     }
+    incremental_comparator_activity_summary = _build_incremental_comparator_activity_summary(
+        auto=incremental_portfolio_simulation_comparison,
+        candidate=candidate_incremental_portfolio_comparison,
+        split=candidate_split_incremental_portfolio_comparison,
+        manual=manual_incremental_portfolio_simulation_comparison,
+    )
     preferred_incremental_portfolio_proposal = get_preferred_incremental_portfolio_proposal(
         query_params,
         capital_amount=capital_amount,
@@ -5115,6 +5192,7 @@ def get_planeacion_incremental_context(
         "candidate_split_incremental_portfolio_comparison": candidate_split_incremental_portfolio_comparison,
         "manual_incremental_portfolio_simulation_comparison": manual_incremental_portfolio_simulation_comparison,
         "incremental_comparator_form_state": comparator_form_state,
+        "incremental_comparator_activity_summary": incremental_comparator_activity_summary,
         "preferred_incremental_portfolio_proposal": preferred_incremental_portfolio_proposal,
         "operation_execution_feature": operation_execution_feature,
         "decision_engine_summary": decision_engine_summary,
