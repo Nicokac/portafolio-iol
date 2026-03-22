@@ -3296,6 +3296,96 @@ def _build_incremental_reactivation_vs_backlog_summary(
     }
 
 
+def _build_incremental_future_purchase_shortlist(
+    reactivation_summary: Dict,
+    backlog_prioritization: Dict,
+    comparison_summary: Dict,
+    *,
+    limit: int = 3,
+) -> Dict:
+    backlog_items = []
+    for item in list(backlog_prioritization.get("shortlist") or []):
+        enriched = dict(item)
+        enriched["source"] = "backlog_nuevo"
+        enriched["source_label"] = "Backlog nuevo"
+        enriched["source_priority"] = 0
+        backlog_items.append(enriched)
+
+    reactivated_items = []
+    for index, item in enumerate(list(reactivation_summary.get("items") or []), start=1):
+        if not item.get("is_active"):
+            continue
+        reactivated_items.append(
+            {
+                "rank": index,
+                "proposal_label": item.get("proposal_label") or "-",
+                "priority_label": item.get("current_status_label") or "Pendiente",
+                "next_action": "Revisar reactivada vigente antes de perder contexto operativo.",
+                "selected_context": "Reactivada desde diferidas",
+                "expected_return_change": None,
+                "fragility_change": None,
+                "scenario_loss_change": None,
+                "is_backlog_front": bool(item.get("is_backlog_front")),
+                "economic_edge": bool(item.get("is_accepted")),
+                "tactical_edge": bool(item.get("is_active")),
+                "conviction": {
+                    "level": "medium" if item.get("is_backlog_front") else "low",
+                    "label": "Conviccion reactivada",
+                    "summary": item.get("current_summary") or "",
+                },
+                "followup": {
+                    "status": "review_now" if item.get("is_backlog_front") else "monitor",
+                    "label": "Revisar ya" if item.get("is_backlog_front") else "Monitorear",
+                    "summary": item.get("current_summary") or "",
+                },
+                "source": "reactivadas",
+                "source_label": "Reactivada",
+                "source_priority": 0,
+            }
+        )
+
+    preferred_source = str(comparison_summary.get("preferred_source") or "mixto")
+    if preferred_source == "reactivadas":
+        for item in reactivated_items:
+            item["source_priority"] = 0
+        for item in backlog_items:
+            item["source_priority"] = 1
+    elif preferred_source == "backlog_nuevo":
+        for item in backlog_items:
+            item["source_priority"] = 0
+        for item in reactivated_items:
+            item["source_priority"] = 1
+    else:
+        for item in backlog_items:
+            item["source_priority"] = 0 if item.get("economic_edge") else 1
+        for item in reactivated_items:
+            item["source_priority"] = 0 if item.get("is_backlog_front") else 1
+
+    combined_items = sorted(
+        backlog_items + reactivated_items,
+        key=lambda item: (
+            int(item.get("source_priority", 1)),
+            0 if item.get("is_backlog_front") else 1,
+            0 if str((item.get("followup") or {}).get("status") or "") == "review_now" else 1,
+            str(item.get("proposal_label") or ""),
+        ),
+    )
+    shortlist = []
+    for index, item in enumerate(combined_items[: max(int(limit), 0)], start=1):
+        enriched = dict(item)
+        enriched["rank"] = index
+        shortlist.append(enriched)
+
+    return {
+        "items": shortlist,
+        "count": len(shortlist),
+        "has_items": bool(shortlist),
+        "preferred_source": preferred_source,
+        "preferred_label": comparison_summary.get("label") or "Priorizar mixto",
+        "headline": comparison_summary.get("headline") or "Conviene revisar una shortlist mixta de futuras compras.",
+    }
+
+
 def get_incremental_baseline_drift(
     query_params,
     *,
@@ -3815,6 +3905,12 @@ def get_planeacion_incremental_context(
         incremental_reactivation_summary,
         incremental_backlog_prioritization,
     )
+    incremental_future_purchase_shortlist = _build_incremental_future_purchase_shortlist(
+        incremental_reactivation_summary,
+        incremental_backlog_prioritization,
+        incremental_reactivation_vs_backlog_summary,
+        limit=3,
+    )
     incremental_decision_executive_summary = get_incremental_decision_executive_summary(
         query_params,
         user=user,
@@ -3839,6 +3935,7 @@ def get_planeacion_incremental_context(
         "incremental_manual_decision_summary": incremental_manual_decision_summary,
         "incremental_reactivation_summary": incremental_reactivation_summary,
         "incremental_reactivation_vs_backlog_summary": incremental_reactivation_vs_backlog_summary,
+        "incremental_future_purchase_shortlist": incremental_future_purchase_shortlist,
         "incremental_decision_executive_summary": incremental_decision_executive_summary,
     }
 

@@ -949,6 +949,35 @@ class TestDashboardView:
                         },
                     ],
                 },
+                'incremental_future_purchase_shortlist': {
+                    'items': [
+                        {
+                            'rank': 1,
+                            'proposal_label': 'Plan guardado 1',
+                            'source_label': 'Backlog nuevo',
+                            'is_backlog_front': False,
+                            'selected_context': 'Plan manual enviado por el usuario',
+                            'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
+                            'priority_label': 'Alta',
+                            'followup': {'label': 'Monitorear'},
+                        },
+                        {
+                            'rank': 2,
+                            'proposal_label': 'Plan reactivado',
+                            'source_label': 'Reactivada',
+                            'is_backlog_front': True,
+                            'selected_context': 'Reactivada desde diferidas',
+                            'next_action': 'Revisar reactivada vigente antes de perder contexto operativo.',
+                            'priority_label': 'Pendiente',
+                            'followup': {'label': 'Revisar ya'},
+                        },
+                    ],
+                    'count': 2,
+                    'has_items': True,
+                    'preferred_source': 'backlog_nuevo',
+                    'preferred_label': 'Priorizar backlog nuevo',
+                    'headline': 'El backlog nuevo hoy parece más prometedor que reactivar diferidas.',
+                },
                 'incremental_manual_decision_summary': {
                     'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
                     'has_decision': True,
@@ -2811,6 +2840,35 @@ class TestDashboardView:
                     'headline': 'El backlog nuevo hoy parece más prometedor que reactivar diferidas.',
                     'summary': 'Hay 1 propuesta de alta prioridad, con Plan guardado 1 al frente.',
                 },
+                'incremental_future_purchase_shortlist': {
+                    'items': [
+                        {
+                            'rank': 1,
+                            'proposal_label': 'Plan backlog',
+                            'source_label': 'Backlog nuevo',
+                            'is_backlog_front': False,
+                            'selected_context': 'Plan manual enviado por el usuario',
+                            'next_action': 'Revisar primero Plan backlog.',
+                            'priority_label': 'Alta',
+                            'followup': {'label': 'Monitorear'},
+                        },
+                        {
+                            'rank': 2,
+                            'proposal_label': 'Plan reactivado',
+                            'source_label': 'Reactivada',
+                            'is_backlog_front': True,
+                            'selected_context': 'Reactivada desde diferidas',
+                            'next_action': 'Revisar reactivada vigente antes de perder contexto operativo.',
+                            'priority_label': 'Pendiente',
+                            'followup': {'label': 'Revisar ya'},
+                        }
+                    ],
+                    'count': 2,
+                    'has_items': True,
+                    'preferred_source': 'backlog_nuevo',
+                    'preferred_label': 'Priorizar backlog nuevo',
+                    'headline': 'El backlog nuevo hoy parece más prometedor que reactivar diferidas.',
+                },
                 'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
                 'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
             },
@@ -2830,5 +2888,8 @@ class TestDashboardView:
         assert 'Tasa de re-diferimiento' in body
         assert 'Tasa de descarte' in body
         assert 'Comparación contra backlog nuevo' in body
+        assert 'Shortlist unificada de futuras compras' in body
         assert 'Priorizar backlog nuevo' in body
+        assert 'Backlog nuevo' in body
+        assert 'Reactivada' in body
         assert 'Plan reactivado' in body

@@ -915,6 +915,43 @@
                         <div class="small text-muted mt-2">{{ incremental_reactivation_vs_backlog_summary.headline }}</div>
                         <div class="small text-muted mt-2">{{ incremental_reactivation_vs_backlog_summary.summary }}</div>
                     </div>
+                    {% if incremental_future_purchase_shortlist.has_items %}
+                    <div class="mt-3">
+                        <h6 class="mb-2">Shortlist unificada de futuras compras</h6>
+                        <div class="small text-muted mb-2">
+                            {{ incremental_future_purchase_shortlist.headline }}
+                            <strong>{{ incremental_future_purchase_shortlist.preferred_label }}</strong>
+                        </div>
+                        <div class="d-flex flex-column gap-2">
+                            {% for item in incremental_future_purchase_shortlist.items %}
+                            <div class="border rounded p-3">
+                                <div class="d-flex justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <div class="small text-muted">#{{ item.rank }}</div>
+                                        <div>
+                                            <strong>{{ item.proposal_label }}</strong>
+                                            <span class="badge bg-light text-dark border ms-2">{{ item.source_label }}</span>
+                                            {% if item.is_backlog_front %}
+                                            <span class="badge bg-info text-dark ms-1">Al frente</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if item.selected_context %}
+                                        <div class="small text-muted mt-2">{{ item.selected_context }}</div>
+                                        {% endif %}
+                                        <div class="small text-muted mt-2">{{ item.next_action }}</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div><strong>{{ item.priority_label }}</strong></div>
+                                        {% if item.followup.label %}
+                                        <div class="small text-muted mt-2">{{ item.followup.label }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="d-flex flex-column gap-2 mt-3">
                         {% for item in incremental_reactivation_summary.items %}
                         <div class="border rounded p-3">

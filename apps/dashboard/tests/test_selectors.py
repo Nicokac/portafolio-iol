@@ -4035,7 +4035,30 @@ class TestDashboardSelectors(TestCase):
             ) as baseline,
             patch(
                 "apps.dashboard.selectors.get_incremental_backlog_prioritization",
-                return_value={"count": 1, "has_priorities": True, "counts": {"high": 1, "medium": 0, "watch": 0, "low": 0}, "top_item": {"snapshot": {"proposal_label": "Pendiente A"}}},
+                return_value={
+                    "count": 1,
+                    "has_priorities": True,
+                    "counts": {"high": 1, "medium": 0, "watch": 0, "low": 0},
+                    "top_item": {"snapshot": {"proposal_label": "Pendiente A"}},
+                    "shortlist": [
+                        {
+                            "rank": 1,
+                            "proposal_label": "Pendiente A",
+                            "priority": "high",
+                            "priority_label": "Alta",
+                            "next_action": "Revisar primero Pendiente A.",
+                            "selected_context": "Backlog nuevo",
+                            "expected_return_change": 0.4,
+                            "fragility_change": -1.2,
+                            "scenario_loss_change": 0.2,
+                            "is_backlog_front": False,
+                            "economic_edge": True,
+                            "tactical_edge": True,
+                            "conviction": {"level": "high", "label": "Conviccion alta", "summary": "Mejora clara."},
+                            "followup": {"status": "review_now", "label": "Revisar ya", "summary": "Mover primero."},
+                        }
+                    ],
+                },
             ) as backlog_prioritization,
             patch(
                 "apps.dashboard.selectors.get_incremental_manual_decision_summary",
@@ -4043,7 +4066,20 @@ class TestDashboardSelectors(TestCase):
             ) as decision_summary,
             patch(
                 "apps.dashboard.selectors.get_incremental_reactivation_summary",
-                return_value={"count": 1, "has_reactivations": True},
+                return_value={
+                    "count": 1,
+                    "has_reactivations": True,
+                    "items": [
+                        {
+                            "proposal_label": "Reactivada A",
+                            "current_status_label": "Pendiente",
+                            "is_backlog_front": True,
+                            "is_active": True,
+                            "is_accepted": False,
+                            "current_summary": "Sigue vigente.",
+                        }
+                    ],
+                },
             ) as reactivation_summary,
             patch(
                 "apps.dashboard.selectors.get_incremental_decision_executive_summary",
@@ -4072,6 +4108,10 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_manual_decision_summary"]["has_decision"] is True
         assert detail["incremental_reactivation_summary"]["has_reactivations"] is True
         assert detail["incremental_reactivation_vs_backlog_summary"]["preferred_source"] == "backlog_nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["preferred_source"] == "backlog_nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["count"] == 2
+        assert detail["incremental_future_purchase_shortlist"]["items"][0]["source_label"] == "Backlog nuevo"
+        assert detail["incremental_future_purchase_shortlist"]["items"][1]["source_label"] == "Reactivada"
         assert detail["incremental_decision_executive_summary"]["status"] == "review_backlog"
 
         portfolio_scope.assert_called_once_with()
