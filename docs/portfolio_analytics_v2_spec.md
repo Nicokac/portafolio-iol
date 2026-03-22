@@ -101,7 +101,7 @@ Esto implica que Analytics v2 debe integrarse sobre una base analítica viva, no
 
 Pregunta que responde:
 
-> ¿Qué posiciones explican la mayor parte del riesgo del portafolio?
+> Que posiciones explican la mayor parte del riesgo del portafolio?
 
 Versión inicial esperada:
 
@@ -114,7 +114,7 @@ Versión inicial esperada:
 
 Pregunta que responde:
 
-> ¿Qué pasa con el portafolio si ocurre un shock específico?
+> Que pasa con el portafolio si ocurre un shock especifico?
 
 Versión inicial esperada:
 
@@ -127,7 +127,7 @@ Versión inicial esperada:
 
 Pregunta que responde:
 
-> ¿A qué factores o estilos está expuesto el portafolio?
+> A que factores o estilos esta expuesto el portafolio?
 
 Versión inicial esperada:
 
@@ -140,7 +140,7 @@ Versión inicial esperada:
 
 Pregunta que responde:
 
-> ¿Qué tan frágil es el portafolio ante escenarios extremos?
+> Que tan fragil es el portafolio ante escenarios extremos?
 
 Versión inicial esperada:
 
@@ -152,7 +152,7 @@ Versión inicial esperada:
 
 Pregunta que responde:
 
-> ¿Qué retorno esperado simple y explicable sugiere la estructura actual?
+> Que retorno esperado simple y explicable sugiere la estructura actual?
 
 Versión inicial esperada:
 

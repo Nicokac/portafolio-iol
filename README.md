@@ -109,11 +109,15 @@ Frentes guardados para retomar despues del cierre actual de documentacion:
 
 Ver tambien:
 
+- `docs/README.md`
 - `docs/architecture_diagram.md`
 - `docs/data_pipeline.md`
 - `docs/iol_endpoint_usage_map.md`
 - `docs/portfolio_analytics_v2_spec.md`
 - `docs/analytics_v2_feature_exposure_checklist.md`
+- `docs/analytics_v2_covariance_risk_contribution.md`
+- `docs/analytics_v2_local_macro_operating_model.md`
+- `docs/analytics_v2_usdars_mep_operating_model.md`
 
 ## Macro local
 
