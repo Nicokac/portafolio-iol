@@ -1,29 +1,29 @@
-# Portfolio Analytics v2 - Especificación Funcional
+# Portfolio Analytics v2 - Especificacion Funcional
 
-## Propósito
+## Proposito
 
-Portfolio Analytics v2 agrega una segunda capa analítica sobre la plataforma actual de Portafolio IOL.
+Portfolio Analytics v2 agrega una segunda capa analitica sobre la plataforma actual de Portafolio IOL.
 
-No reemplaza la analítica existente ni redefine la metodología financiera base ya documentada en `docs/financial_methodology.md`.
-Su objetivo es extender la capacidad actual desde métricas descriptivas hacia explicaciones de riesgo, sensibilidad y soporte más profundo para decisiones de inversión.
+No reemplaza la analitica existente ni redefine la metodologia financiera base ya documentada en `docs/financial_methodology.md`.
+Su objetivo es extender la capacidad actual desde metricas descriptivas hacia explicaciones de riesgo, sensibilidad y soporte mas profundo para decisiones de inversion.
 
 ## Problema que resuelve
 
 La plataforma actual ya responde correctamente preguntas como:
 
-- cuánto vale el portafolio
-- cómo está distribuido
-- qué retorno tuvo
-- qué volatilidad, tracking error o drawdown presenta
-- cómo se compara contra un benchmark compuesto
+- cuanto vale el portafolio
+- como esta distribuido
+- que retorno tuvo
+- que volatilidad, tracking error o drawdown presenta
+- como se compara contra un benchmark compuesto
 
-Pero todavía no responde con suficiente profundidad preguntas como:
+Pero todavia no responde con suficiente profundidad preguntas como:
 
-- qué activos explican la mayor parte del riesgo
-- qué tan sensible es la cartera a shocks específicos
-- a qué estilos o factores está expuesta
-- dónde hay fragilidad estructural más allá del peso patrimonial
-- cómo mejorar recomendaciones y rebalanceos con señales más explicativas
+- que activos explican la mayor parte del riesgo
+- que tan sensible es la cartera a shocks especificos
+- a que estilos o factores esta expuesta
+- donde hay fragilidad estructural mas alla del peso patrimonial
+- como mejorar recomendaciones y rebalanceos con senales mas explicativas
 
 Analytics v2 cubre ese gap.
 
@@ -31,15 +31,15 @@ Analytics v2 cubre ese gap.
 
 Analytics v2 debe permitir:
 
-1. explicar mejor de dónde viene el riesgo del portafolio
+1. explicar mejor de donde viene el riesgo del portafolio
 2. estimar sensibilidad ante escenarios y shocks
-3. medir exposición a factores o estilos de inversión
-4. fortalecer recomendaciones y rebalanceos con señales más profundas
-5. preparar el terreno para simulación avanzada futura
+3. medir exposicion a factores o estilos de inversion
+4. fortalecer recomendaciones y rebalanceos con senales mas profundas
+5. preparar el terreno para simulacion avanzada futura
 
 ## Alcance funcional inicial
 
-El alcance inicial de Analytics v2 incluye cinco líneas de trabajo priorizadas:
+El alcance inicial de Analytics v2 incluye cinco lineas de trabajo priorizadas:
 
 1. risk contribution
 2. scenario analysis
@@ -49,34 +49,34 @@ El alcance inicial de Analytics v2 incluye cinco líneas de trabajo priorizadas:
 
 Estas capacidades deben consumir los datos y servicios existentes siempre que sea posible.
 
-## Qué es Analytics v2
+## Que es Analytics v2
 
-Analytics v2 es una capa adicional de análisis explicativo y de sensibilidad que:
+Analytics v2 es una capa adicional de analisis explicativo y de sensibilidad que:
 
 - reutiliza snapshots y metadata ya disponibles
 - produce resultados serializables para consumo por dashboard y recomendaciones
-- expone señales interpretables y auditables
-- usa proxies controlados cuando no existe información más sofisticada
-- prioriza MVPs metodológicamente defendibles antes que modelos avanzados
+- expone senales interpretables y auditables
+- usa proxies controlados cuando no existe informacion mas sofisticada
+- prioriza MVPs metodologicamente defendibles antes que modelos avanzados
 
-## Qué no es Analytics v2
+## Que no es Analytics v2
 
 En su alcance inicial, Analytics v2 no es:
 
-- un motor de optimización avanzada
+- un motor de optimizacion avanzada
 - un framework de Monte Carlo
-- un modelo multifactor estadístico completo
-- un covariance engine de producción institucional
-- una frontera eficiente operativa para ejecución real
+- un modelo multifactor estadistico completo
+- un covariance engine de produccion institucional
+- una frontera eficiente operativa para ejecucion real
 - un sistema de pricing avanzado por activo
 
-## Dependencias funcionales y técnicas existentes
+## Dependencias funcionales y tecnicas existentes
 
 Analytics v2 parte sobre estas piezas ya disponibles en el proyecto:
 
 - `PortfolioSnapshot` y `PositionSnapshot`
 - `ActivoPortafolioSnapshot` y `ResumenCuentaSnapshot`
-- `ParametroActivo` como taxonomía analítica principal
+- `ParametroActivo` como taxonomia analitica principal
 - `VolatilityService`
 - `TWRService`
 - `TrackingErrorService`
@@ -93,9 +93,9 @@ Benchmark compuesto actual:
 - Bonos argentinos -> EMB
 - Liquidez ARS -> BADLAR
 
-Esto implica que Analytics v2 debe integrarse sobre una base analítica viva, no sobre un sistema vacío.
+Esto implica que Analytics v2 debe integrarse sobre una base analitica viva, no sobre un sistema vacio.
 
-## Módulos funcionales previstos
+## Modulos funcionales previstos
 
 ### 1. Risk Contribution
 
@@ -103,11 +103,11 @@ Pregunta que responde:
 
 > Que posiciones explican la mayor parte del riesgo del portafolio?
 
-Versión inicial esperada:
+Version inicial esperada:
 
 - score de riesgo por activo basado en `peso * volatilidad_proxy`
-- contribución porcentual al riesgo por activo
-- agregación por sector, país y tipo de activo
+- contribucion porcentual al riesgo por activo
+- agregacion por sector, pais y tipo de activo
 - flags para recomendaciones
 
 ### 2. Scenario Analysis
@@ -116,12 +116,12 @@ Pregunta que responde:
 
 > Que pasa con el portafolio si ocurre un shock especifico?
 
-Versión inicial esperada:
+Version inicial esperada:
 
-- catálogo de escenarios cerrados
-- sensibilidad heurística por activo/sector/país/moneda
-- impacto estimado total y por agrupación
-- señales reutilizables para planeación y alertas
+- catalogo de escenarios cerrados
+- sensibilidad heuristica por activo, sector, pais y moneda
+- impacto estimado total y por agrupacion
+- senales reutilizables para planeacion y alertas
 
 ### 3. Factor Exposure Proxy
 
@@ -129,11 +129,11 @@ Pregunta que responde:
 
 > A que factores o estilos esta expuesto el portafolio?
 
-Versión inicial esperada:
+Version inicial esperada:
 
-- clasificación proxy por activo
-- agregación por factor
-- dominante, faltantes y concentración factorial
+- clasificacion proxy por activo
+- agregacion por factor
+- dominante, faltantes y concentracion factorial
 - soporte para recomendaciones
 
 ### 4. Stress Testing ampliado
@@ -142,11 +142,11 @@ Pregunta que responde:
 
 > Que tan fragil es el portafolio ante escenarios extremos?
 
-Versión inicial esperada:
+Version inicial esperada:
 
 - escenarios extremos adicionales a los ya disponibles
 - score o lectura de fragilidad
-- ranking de vulnerabilidad por activo, sector y país
+- ranking de vulnerabilidad por activo, sector y pais
 
 ### 5. Expected Return Simple
 
@@ -154,91 +154,91 @@ Pregunta que responde:
 
 > Que retorno esperado simple y explicable sugiere la estructura actual?
 
-Versión inicial esperada:
+Version inicial esperada:
 
 - baseline por benchmark, asset class o referencia local
-- sin pretensión de forecasting sofisticado
-- foco en interpretabilidad, no en pseudo precisión
+- sin pretension de forecasting sofisticado
+- foco en interpretabilidad, no en pseudo precision
 
 ## Fuera de alcance inicial
 
-Quedan explícitamente fuera del alcance del MVP inicial:
+Quedan explicitamente fuera del alcance del MVP inicial:
 
 - Monte Carlo avanzado
-- optimización de frontera eficiente
+- optimizacion de frontera eficiente
 - motores complejos de covarianza
 - betas sofisticadas
-- modelos de factores estadísticos completos
+- modelos de factores estadisticos completos
 - calibraciones macro avanzadas
-- optimización de rebalanceo con restricciones complejas
+- optimizacion de rebalanceo con restricciones complejas
 
-## Principios metodológicos
+## Principios metodologicos
 
 Analytics v2 debe seguir estas reglas:
 
 - priorizar explicabilidad sobre complejidad
 - preferir resultados auditables a estimaciones opacas
-- usar metadata existente como primera fuente de clasificación
-- declarar bases de cálculo y limitaciones de cada output
-- marcar explícitamente cuando se use un proxy o fallback
+- usar metadata existente como primera fuente de clasificacion
+- declarar bases de calculo y limitaciones de cada output
+- marcar explicitamente cuando se use un proxy o fallback
 - no publicar una cifra como robusta si la historia no lo soporta
 
 ## Contratos esperados de salida
 
-Sin definir todavía la arquitectura final, los outputs de Analytics v2 deben tender a:
+Los outputs de Analytics v2 deben tender a:
 
 - ser serializables
-- tener metadata de metodología
-- tener metadata de base de cálculo
+- tener metadata de metodologia
+- tener metadata de base de calculo
 - tener flags de calidad o confianza cuando aplique
-- ser consumibles por dashboard y motores de recomendaciones sin lógica adicional en templates
+- ser consumibles por dashboard y motores de recomendaciones sin logica adicional en templates
 
-## Integración esperada con producto
+## Integracion esperada con producto
 
 Analytics v2 debe integrarse de forma gradual con:
 
-- dashboard analítico
-- centro de métricas
+- dashboard analitico
+- centro de metricas
 - centro de performance
-- planeación
+- planeacion
 - motor de recomendaciones
 - motor de rebalanceo
 
-La integración funcional no se implementa en esta especificación, pero queda definida como destino natural del roadmap.
+La integracion funcional no se implementa en esta especificacion, pero queda definida como destino natural del roadmap.
 
 ## Supuestos permitidos en MVP
 
 Se permiten proxies controlados cuando no exista mejor fuente disponible, siempre que:
 
-- estén documentados
-- no oculten incertidumbre metodológica
-- no dupliquen lógica si ya existe una implementación reutilizable
+- esten documentados
+- no oculten incertidumbre metodologica
+- no dupliquen logica si ya existe una implementacion reutilizable
 - puedan reemplazarse luego sin romper contratos principales
 
-## Criterios de éxito de Analytics v2
+## Criterios de exito de Analytics v2
 
-Se considerará que Analytics v2 agrega valor si logra:
+Se considera que Analytics v2 agrega valor si logra:
 
 - explicar riesgo mejor que una simple lectura patrimonial
 - detectar concentraciones de fragilidad no visibles por peso
-- enriquecer recomendaciones con señales más inteligentes
-- soportar escenarios simples pero útiles para decisiones reales
+- enriquecer recomendaciones con senales mas inteligentes
+- soportar escenarios simples pero utiles para decisiones reales
 - mantenerse compatible con la arquitectura actual y con v1
 
-## Relación con documentación existente
+## Relacion con documentacion existente
 
-Esta especificación no reemplaza:
+Esta especificacion no reemplaza:
 
 - `docs/financial_methodology.md`
 - `docs/DECISIONS.md`
 
 Las complementa.
 
-- `financial_methodology.md` sigue definiendo las métricas ya operativas del sistema
-- `DECISIONS.md` sigue registrando decisiones de diseño y restricciones operativas
-- este documento define el alcance funcional específico de Analytics v2
+- `financial_methodology.md` sigue definiendo las metricas ya operativas del sistema
+- `DECISIONS.md` sigue registrando decisiones de diseno y restricciones operativas
+- este documento define el alcance funcional especifico de Analytics v2
 
 ## Estado
 
-Documento inicial de alcance funcional.
-Listo para servir como base del siguiente módulo: arquitectura técnica v2 y contratos de datos.
+Documento base de alcance funcional.
+Listo para convivir con la arquitectura tecnica, los contratos de datos y el checklist de exposicion de features.

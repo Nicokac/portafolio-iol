@@ -1,12 +1,12 @@
-# Analytics v2 - Arquitectura técnica
+# Analytics v2 - Arquitectura tecnica
 
 ## Objetivo
 
-Definir cómo se integra `Analytics v2` al proyecto actual sin romper `v1` y sin duplicar la capa de servicios ya existente.
+Definir como se integra `Analytics v2` al proyecto actual sin romper `v1` y sin duplicar la capa de servicios ya existente.
 
 ## Problema arquitectonico
 
-La aplicación ya tiene:
+La aplicacion ya tiene:
 
 - servicios de riesgo
 - servicios de performance
@@ -15,10 +15,10 @@ La aplicación ya tiene:
 - metadata por activo
 - motor de recomendaciones
 - dashboard server-rendered
-- API interna para métricas
+- API interna para metricas
 
 `Analytics v2` no debe crear otra arquitectura paralela.
-Debe ubicarse como una extensión modular dentro de `apps/core/services`, con contratos serializables y consumo limpio desde dashboard y API.
+Debe ubicarse como una extension modular dentro de `apps/core/services`, con contratos serializables y consumo limpio desde dashboard y API.
 
 ## Arquitectura actual reutilizable
 
@@ -96,7 +96,7 @@ Define estructuras de salida serializables y estables para v2.
 Contenido esperado:
 
 - payloads por activo
-- payloads agregados por sector/pais/tipo
+- payloads agregados por sector, pais y tipo
 - metadata metodologica
 - flags de calidad de datos
 - resultados por escenario
@@ -115,86 +115,47 @@ Contenido esperado:
 - banderas de confianza
 
 No existe un `adapters.py` dedicado.
-La adaptación hoy vive en servicios y helpers existentes, por ejemplo:
+La adaptacion hoy vive en servicios y helpers existentes, por ejemplo:
 
 - `ScenarioAnalysisService._load_current_positions()`
 - `RiskContributionService._load_current_invested_positions()`
 - helpers de `analytics_v2/helpers.py`
 
-### `risk_contribution_service.py`
+### Servicios principales
 
-Responsable del modulo MVP 1.
+- `risk_contribution_service.py`
+  - calculo MVP por activo
+  - agregacion por sector, pais y tipo
+  - senales base de riesgo y divergencia
+- `covariance_risk_contribution_service.py`
+  - activa covarianza cuando la historia lo permite
+  - cae a `mvp_proxy` cuando no hay historia o cobertura suficiente
+  - reutiliza el builder de senales del servicio base
+- `scenario_analysis_service.py`
+  - aplica shocks heuristicos cerrados
+  - produce impacto por activo, sector y pais
+  - genera senales de vulnerabilidad
+- `factor_exposure_service.py`
+  - clasifica posiciones por factor proxy
+  - agrega exposicion clasificada
+  - genera senales factoriales
+- `stress_fragility_service.py`
+  - combina escenarios extremos
+  - resume perdida, sectores y activos vulnerables
+  - genera senales de fragilidad
+- `expected_return_service.py`
+  - calcula baseline estructural por buckets
+  - usa benchmarks y macro local
+  - genera senales de retorno esperado
+- `analytics_explanation_service.py`
+  - transforma resultados ya calculados en interpretacion textual
+  - no recalcula modelos
 
-### `scenario_analysis_service.py`
-
-Responsable del modulo MVP 2.
-
-### `factor_exposure_service.py`
-
-Responsable del modulo MVP 3.
-
-### `stress_fragility_service.py`
-
-Responsable del modulo MVP 4.
-
-### `expected_return_service.py`
-
-Responsable del modulo MVP 5.
-
-## Servicios principales y responsabilidades
-
-### `risk_contribution_service.py`
-
-- cálculo MVP por activo
-- agregación por sector, país y tipo
-- señales base de riesgo y divergencia
-
-### `covariance_risk_contribution_service.py`
-
-- activa covarianza cuando la historia lo permite
-- cae a `mvp_proxy` cuando no hay historia/cobertura suficiente
-- reutiliza el builder de señales del servicio base
-
-### `scenario_analysis_service.py`
-
-- aplica shocks heurísticos cerrados
-- produce impacto por activo, sector y país
-- genera señales de vulnerabilidad
-
-### `factor_exposure_service.py`
-
-- clasifica posiciones por factor proxy
-- agrega exposición clasificada
-- genera señales factoriales
-
-### `stress_fragility_service.py`
-
-- combina escenarios extremos
-- resume pérdida, sectores y activos vulnerables
-- genera señales de fragilidad
-
-### `expected_return_service.py`
-
-- calcula baseline estructural por buckets
-- usa benchmarks y macro local
-- genera señales de retorno esperado
-
-### `analytics_explanation_service.py`
-
-- transforma resultados ya calculados en interpretación textual
-- no recalcula modelos
-- hoy cubre:
-  - risk contribution
-  - scenario analysis
-  - factor exposure
-  - stress fragility
-  - expected return
-
-## Contratos de integración
+## Contratos de integracion
 
 ### Dashboard server-rendered
 
-Patrón actual:
+Patron actual:
 
 ```text
 services analytics_v2
@@ -213,46 +174,38 @@ Ejemplo concreto:
 
 ### Drill-downs
 
+Ya existen drill-downs visibles para los cinco modulos principales:
+
 - `get_risk_contribution_detail()`
-  - reutiliza el mismo resultado activo que alimenta el resumen
-  - agrega métricas derivadas de lectura, no del modelo
 - `get_scenario_analysis_detail()`
-  - reutiliza `ScenarioAnalysisService` y el catálogo de escenarios MVP
-  - consolida tabla de escenarios, peor escenario y breakdown por activo/sector/país
-  - alimenta `/estrategia/scenario-analysis/` sin recalcular lógica en la vista
 - `get_factor_exposure_detail()`
-  - reutiliza `FactorExposureService` y `AnalyticsExplanationService`
-  - expone ranking por factor, factores subrepresentados y bloque de unknown assets
-  - alimenta `/estrategia/factor-exposure/` sin recalcular exposiciones en la vista
 - `get_stress_fragility_detail()`
-  - reutiliza `StressFragilityService`, `StressCatalogService` y `AnalyticsExplanationService`
-  - compara stresses cerrados del catálogo y expone el breakdown del stress más severo
-  - alimenta `/estrategia/stress-fragility/` sin recalcular fragilidad en la vista
 - `get_expected_return_detail()`
-  - reutiliza `ExpectedReturnService` y `AnalyticsExplanationService`
-  - expone resumen estructural, ranking por bucket, warnings y supuestos ya disponibles
-  - alimenta `/estrategia/expected-return/` sin recalcular expected return en la vista
+
+Regla comun:
+
+- reutilizan servicios y summaries ya calculados
+- agregan lectura y breakdown para UI
+- no mueven logica analitica a la vista
 
 ### RecommendationEngine
 
-Patrón actual:
+Patron actual:
 
 ```text
 services analytics_v2
   -> build_recommendation_signals()
   -> RecommendationEngine._analyze_analytics_v2()
-  -> priorización / deduplicación
-  -> Planeación
+  -> priorizacion / deduplicacion
+  -> Planeacion
 ```
 
 Regla:
 
-- el cálculo vive en cada servicio
-- el engine solo consume señales y decide priorización relativa
+- el calculo vive en cada servicio
+- el engine solo consume senales y decide prioridad relativa
 
-## Inputs
-
-Principales insumos:
+## Inputs principales
 
 - `ActivoPortafolioSnapshot`
 - `PortfolioSnapshot`
@@ -260,47 +213,47 @@ Principales insumos:
 - `BenchmarkSnapshot`
 - `MacroSeriesSnapshot`
 
-## Outputs
+## Outputs principales
 
-Outputs principales:
-
-- payloads serializables por módulo
-- señales analíticas para recomendaciones
-- interpretaciones automáticas para UI
+- payloads serializables por modulo
+- senales analiticas para recomendaciones
+- interpretaciones automaticas para UI
 - summaries server-rendered para `Estrategia`
 
 ## Superficies donde impacta
 
 - `Estrategia`
   - tarjetas resumen
-  - señales analytics v2
-  - drill-down de risk contribution
-- `Planeación`
+  - senales Analytics v2
+  - cinco drill-downs analiticos
+- `Planeacion`
   - recomendaciones combinadas
+  - diagnostico previo y workflow incremental de futuras compras
 - `Ops`
-  - activación del modelo de riesgo
-  - readiness histórica
+  - activacion del modelo de riesgo
+  - readiness historica
+  - observabilidad de insumos macro y pipeline
 - APIs internas existentes
-  - algunas métricas siguen expuestas por endpoints legacy, no por endpoints dedicados `analytics-v2/*`
+  - algunas metricas siguen expuestas por endpoints legacy, no por endpoints dedicados `analytics-v2/*`
 
-## Estado actual / brechas
+## Estado actual y brechas
 
 Estado actual:
 
-- la carpeta `analytics_v2/` ya concentra los módulos principales del sistema
+- la carpeta `analytics_v2/` ya concentra los modulos principales del sistema
 - `Estrategia` ya consume un summary integrado con interpretaciones
-- `RecommendationEngine` ya consume señales de `Analytics v2`
-- existe drill-down de `Risk Contribution`
+- `RecommendationEngine` ya consume senales de `Analytics v2`
+- los cinco modulos principales ya tienen drill-down propio en UI
 
 Brechas:
 
 - no hay endpoints dedicados `analytics-v2/*`
-- solo `Risk Contribution` tiene drill-down propio en UI
-- algunos adapters siguen implícitos dentro de servicios y no en una capa separada
-- la integración con `Planeación` ocurre por recomendaciones, no por vistas analíticas detalladas
+- algunos adapters siguen implicitos dentro de servicios y no en una capa separada
+- la integracion con `Planeacion` ocurre sobre todo por recomendaciones y decision incremental, no por vistas analiticas dedicadas
+- la documentacion operativa de rollout conviene mantenerse consolidada y no volver a fragmentarse en micro-notas
 
 ## Limitaciones actuales
 
-- parte de la arquitectura fue diseñada como MVP y todavía mezcla adaptación de datos dentro de algunos servicios
-- no toda la analítica avanzada tiene superficie propia de exploración
-- la trazabilidad de outputs en UI depende de selectors server-rendered más que de contratos API dedicados
+- parte de la arquitectura fue pensada como MVP y todavia mezcla adaptacion de datos dentro de algunos servicios
+- no toda la analitica avanzada tiene superficie API propia
+- la trazabilidad de outputs en UI depende mas de selectors server-rendered que de contratos API dedicados
