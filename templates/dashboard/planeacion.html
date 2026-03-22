@@ -909,6 +909,12 @@
                             </div>
                         </div>
                     </div>
+                    <div class="border rounded p-3 mt-3">
+                        <div class="small text-muted mb-1">Comparación contra backlog nuevo</div>
+                        <div><strong>{{ incremental_reactivation_vs_backlog_summary.label }}</strong></div>
+                        <div class="small text-muted mt-2">{{ incremental_reactivation_vs_backlog_summary.headline }}</div>
+                        <div class="small text-muted mt-2">{{ incremental_reactivation_vs_backlog_summary.summary }}</div>
+                    </div>
                     <div class="d-flex flex-column gap-2 mt-3">
                         {% for item in incremental_reactivation_summary.items %}
                         <div class="border rounded p-3">

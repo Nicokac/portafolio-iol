@@ -3241,6 +3241,61 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
     }
 
 
+def _build_incremental_reactivation_vs_backlog_summary(
+    reactivation_summary: Dict,
+    backlog_prioritization: Dict,
+) -> Dict:
+    reactivation_count = int(reactivation_summary.get("count", 0) or 0)
+    accepted_count = int(reactivation_summary.get("accepted_count", 0) or 0)
+    active_count = int(reactivation_summary.get("active_count", 0) or 0)
+    acceptance_rate = float(reactivation_summary.get("acceptance_rate", 0.0) or 0.0)
+    backlog_high = int((backlog_prioritization.get("counts") or {}).get("high", 0) or 0)
+    backlog_medium = int((backlog_prioritization.get("counts") or {}).get("medium", 0) or 0)
+    backlog_top_label = str((((backlog_prioritization.get("top_item") or {}).get("snapshot") or {}).get("proposal_label")) or "")
+    has_backlog = bool(backlog_prioritization.get("has_priorities"))
+
+    if reactivation_count == 0 and has_backlog:
+        return {
+            "preferred_source": "backlog_nuevo",
+            "label": "Priorizar backlog nuevo",
+            "headline": "Hoy conviene priorizar ideas nuevas del backlog antes que rescatar diferidas.",
+            "summary": "No hay evidencia reciente de reactivaciones como para desplazar el backlog pendiente actual.",
+        }
+    if has_backlog is False and reactivation_count > 0:
+        return {
+            "preferred_source": "reactivadas",
+            "label": "Priorizar reactivadas",
+            "headline": "Hoy conviene volver primero sobre propuestas ya reactivadas.",
+            "summary": "No hay backlog nuevo priorizable por delante y las reactivaciones siguen siendo la mejor fuente de revisión.",
+        }
+    if acceptance_rate >= 50.0 and accepted_count >= max(backlog_high, 1):
+        return {
+            "preferred_source": "reactivadas",
+            "label": "Priorizar reactivadas",
+            "headline": "Las reactivaciones recientes están cerrando mejor que el backlog nuevo.",
+            "summary": "La tasa de aceptación post-reactivación ya justifica revisar primero propuestas rescatadas.",
+        }
+    if backlog_high > 0 and (acceptance_rate < 25.0 or accepted_count == 0):
+        return {
+            "preferred_source": "backlog_nuevo",
+            "label": "Priorizar backlog nuevo",
+            "headline": "El backlog nuevo hoy parece más prometedor que reactivar diferidas.",
+            "summary": (
+                f"Hay {backlog_high} propuesta(s) de alta prioridad"
+                + (f", con {backlog_top_label} al frente." if backlog_top_label else ".")
+            ),
+        }
+    return {
+        "preferred_source": "mixto",
+        "label": "Priorizar mixto",
+        "headline": "Conviene combinar backlog nuevo y reactivadas según el caso.",
+        "summary": (
+            f"Las reactivaciones muestran {accepted_count} cierre(s) positivo(s) y {active_count} siguen vigentes; "
+            f"el backlog nuevo aporta {backlog_high} alta(s) y {backlog_medium} recuperable(s)."
+        ),
+    }
+
+
 def get_incremental_baseline_drift(
     query_params,
     *,
@@ -3709,65 +3764,82 @@ def get_planeacion_incremental_context(
     history_limit: int = 5,
 ) -> Dict:
     """Concentra el contrato incremental consumido por Planeacion en una sola fachada."""
+    portfolio_scope_summary = _build_portfolio_scope_summary()
+    monthly_allocation_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
+    candidate_asset_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+    incremental_portfolio_simulation = get_incremental_portfolio_simulation(capital_amount=capital_amount)
+    incremental_portfolio_simulation_comparison = get_incremental_portfolio_simulation_comparison(
+        capital_amount=capital_amount
+    )
+    candidate_incremental_portfolio_comparison = get_candidate_incremental_portfolio_comparison(
+        query_params,
+        capital_amount=capital_amount,
+    )
+    candidate_split_incremental_portfolio_comparison = get_candidate_split_incremental_portfolio_comparison(
+        query_params,
+        capital_amount=capital_amount,
+    )
+    manual_incremental_portfolio_simulation_comparison = get_manual_incremental_portfolio_simulation_comparison(
+        query_params,
+        default_capital_amount=capital_amount,
+    )
+    preferred_incremental_portfolio_proposal = get_preferred_incremental_portfolio_proposal(
+        query_params,
+        capital_amount=capital_amount,
+    )
+    decision_engine_summary = get_decision_engine_summary(
+        user,
+        query_params=query_params,
+        capital_amount=capital_amount,
+    )
+    incremental_proposal_history = get_incremental_proposal_history(
+        user=user,
+        limit=history_limit,
+        decision_status=_query_param_value(query_params, "decision_status_filter"),
+        priority_filter=_query_param_value(query_params, "history_priority_filter"),
+        deferred_fit_filter=_query_param_value(query_params, "history_deferred_fit_filter"),
+        sort_mode=_query_param_value(query_params, "history_sort"),
+    )
+    incremental_proposal_tracking_baseline = get_incremental_proposal_tracking_baseline(user=user)
+    incremental_backlog_prioritization = get_incremental_backlog_prioritization(
+        user=user,
+        limit=history_limit,
+        followup_filter=_query_param_value(query_params, "backlog_followup_filter"),
+    )
+    incremental_manual_decision_summary = get_incremental_manual_decision_summary(user=user)
+    incremental_reactivation_summary = get_incremental_reactivation_summary(
+        user=user,
+        limit=min(history_limit, 3),
+    )
+    incremental_reactivation_vs_backlog_summary = _build_incremental_reactivation_vs_backlog_summary(
+        incremental_reactivation_summary,
+        incremental_backlog_prioritization,
+    )
+    incremental_decision_executive_summary = get_incremental_decision_executive_summary(
+        query_params,
+        user=user,
+        capital_amount=capital_amount,
+        limit=history_limit,
+    )
 
     return {
-        "portfolio_scope_summary": _build_portfolio_scope_summary(),
-        "monthly_allocation_plan": get_monthly_allocation_plan(capital_amount=capital_amount),
-        "candidate_asset_ranking": get_candidate_asset_ranking(capital_amount=capital_amount),
-        "incremental_portfolio_simulation": get_incremental_portfolio_simulation(capital_amount=capital_amount),
-        "incremental_portfolio_simulation_comparison": get_incremental_portfolio_simulation_comparison(
-            capital_amount=capital_amount
-        ),
-        "candidate_incremental_portfolio_comparison": get_candidate_incremental_portfolio_comparison(
-            query_params,
-            capital_amount=capital_amount,
-        ),
-        "candidate_split_incremental_portfolio_comparison": get_candidate_split_incremental_portfolio_comparison(
-            query_params,
-            capital_amount=capital_amount,
-        ),
-        "manual_incremental_portfolio_simulation_comparison": get_manual_incremental_portfolio_simulation_comparison(
-            query_params,
-            default_capital_amount=capital_amount,
-        ),
-        "preferred_incremental_portfolio_proposal": get_preferred_incremental_portfolio_proposal(
-            query_params,
-            capital_amount=capital_amount,
-        ),
-        "decision_engine_summary": get_decision_engine_summary(
-            user,
-            query_params=query_params,
-            capital_amount=capital_amount,
-        ),
-        "incremental_proposal_history": get_incremental_proposal_history(
-            user=user,
-            limit=history_limit,
-            decision_status=_query_param_value(query_params, "decision_status_filter"),
-            priority_filter=_query_param_value(query_params, "history_priority_filter"),
-            deferred_fit_filter=_query_param_value(query_params, "history_deferred_fit_filter"),
-            sort_mode=_query_param_value(query_params, "history_sort"),
-        ),
-        "incremental_proposal_tracking_baseline": get_incremental_proposal_tracking_baseline(
-            user=user,
-        ),
-        "incremental_backlog_prioritization": get_incremental_backlog_prioritization(
-            user=user,
-            limit=history_limit,
-            followup_filter=_query_param_value(query_params, "backlog_followup_filter"),
-        ),
-        "incremental_manual_decision_summary": get_incremental_manual_decision_summary(
-            user=user,
-        ),
-        "incremental_reactivation_summary": get_incremental_reactivation_summary(
-            user=user,
-            limit=min(history_limit, 3),
-        ),
-        "incremental_decision_executive_summary": get_incremental_decision_executive_summary(
-            query_params,
-            user=user,
-            capital_amount=capital_amount,
-            limit=history_limit,
-        ),
+        "portfolio_scope_summary": portfolio_scope_summary,
+        "monthly_allocation_plan": monthly_allocation_plan,
+        "candidate_asset_ranking": candidate_asset_ranking,
+        "incremental_portfolio_simulation": incremental_portfolio_simulation,
+        "incremental_portfolio_simulation_comparison": incremental_portfolio_simulation_comparison,
+        "candidate_incremental_portfolio_comparison": candidate_incremental_portfolio_comparison,
+        "candidate_split_incremental_portfolio_comparison": candidate_split_incremental_portfolio_comparison,
+        "manual_incremental_portfolio_simulation_comparison": manual_incremental_portfolio_simulation_comparison,
+        "preferred_incremental_portfolio_proposal": preferred_incremental_portfolio_proposal,
+        "decision_engine_summary": decision_engine_summary,
+        "incremental_proposal_history": incremental_proposal_history,
+        "incremental_proposal_tracking_baseline": incremental_proposal_tracking_baseline,
+        "incremental_backlog_prioritization": incremental_backlog_prioritization,
+        "incremental_manual_decision_summary": incremental_manual_decision_summary,
+        "incremental_reactivation_summary": incremental_reactivation_summary,
+        "incremental_reactivation_vs_backlog_summary": incremental_reactivation_vs_backlog_summary,
+        "incremental_decision_executive_summary": incremental_decision_executive_summary,
     }
 
 

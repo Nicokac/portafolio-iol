@@ -2805,6 +2805,12 @@ class TestDashboardView:
                     'headline': 'Se registraron 1 reactivaciones recientes; 1 siguen vigentes, 0 terminaron aceptadas y 1 quedaron al frente del backlog.',
                     'items': [{'proposal_label': 'Plan reactivado', 'reactivated_at': '2026-03-17 11:00', 'user_label': 'testuser', 'current_status_label': 'Pendiente', 'is_backlog_front': True, 'is_active': True, 'current_summary': 'Sigue al frente del backlog incremental.'}],
                 },
+                'incremental_reactivation_vs_backlog_summary': {
+                    'preferred_source': 'backlog_nuevo',
+                    'label': 'Priorizar backlog nuevo',
+                    'headline': 'El backlog nuevo hoy parece más prometedor que reactivar diferidas.',
+                    'summary': 'Hay 1 propuesta de alta prioridad, con Plan guardado 1 al frente.',
+                },
                 'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
                 'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
             },
@@ -2823,4 +2829,6 @@ class TestDashboardView:
         assert 'Tasa de aceptación' in body
         assert 'Tasa de re-diferimiento' in body
         assert 'Tasa de descarte' in body
+        assert 'Comparación contra backlog nuevo' in body
+        assert 'Priorizar backlog nuevo' in body
         assert 'Plan reactivado' in body

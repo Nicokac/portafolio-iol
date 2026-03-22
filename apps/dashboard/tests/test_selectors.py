@@ -4035,7 +4035,7 @@ class TestDashboardSelectors(TestCase):
             ) as baseline,
             patch(
                 "apps.dashboard.selectors.get_incremental_backlog_prioritization",
-                return_value={"count": 1},
+                return_value={"count": 1, "has_priorities": True, "counts": {"high": 1, "medium": 0, "watch": 0, "low": 0}, "top_item": {"snapshot": {"proposal_label": "Pendiente A"}}},
             ) as backlog_prioritization,
             patch(
                 "apps.dashboard.selectors.get_incremental_manual_decision_summary",
@@ -4071,6 +4071,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_proposal_tracking_baseline"]["has_baseline"] is True
         assert detail["incremental_manual_decision_summary"]["has_decision"] is True
         assert detail["incremental_reactivation_summary"]["has_reactivations"] is True
+        assert detail["incremental_reactivation_vs_backlog_summary"]["preferred_source"] == "backlog_nuevo"
         assert detail["incremental_decision_executive_summary"]["status"] == "review_backlog"
 
         portfolio_scope.assert_called_once_with()
