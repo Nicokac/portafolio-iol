@@ -4,6 +4,7 @@
 
 ### Core product
 
+- `repo_hardening_and_decision_roadmap.md`
 - `data_pipeline.md`
 - `iol_endpoint_usage_map.md`
 - `signals_and_recommendations.md`

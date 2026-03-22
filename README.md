@@ -1,4 +1,4 @@
-# Portafolio IOL - Plataforma de gestion patrimonial cuantitativa
+﻿# Portafolio IOL - Plataforma de gestion patrimonial cuantitativa
 
 Aplicacion Django para sincronizar datos de InvertirOnline, construir snapshots historicos, calcular metricas de riesgo y performance, y exponer una capa operativa de analitica patrimonial desde UI y API interna.
 
@@ -109,6 +109,7 @@ Frentes guardados para retomar despues del cierre actual de documentacion:
 
 Ver tambien:
 
+- `docs/repo_hardening_and_decision_roadmap.md`
 - `docs/README.md`
 - `docs/architecture_diagram.md`
 - `docs/data_pipeline.md`
@@ -249,10 +250,10 @@ Defaults relevantes:
 - `UVA_API_VALUE_PATH=valor`
 - `UVA_API_DATE_PATH=fecha`
 
-Si querés sobrescribir las fuentes por entorno:
+Si querÃ©s sobrescribir las fuentes por entorno:
 
-- podés redefinir `USDARS_MEP_API_URL` y `USDARS_CCL_API_URL`
-- el sync macro local seguirá usando los `VALUE_PATH` y `DATE_PATH` configurados
+- podÃ©s redefinir `USDARS_MEP_API_URL` y `USDARS_CCL_API_URL`
+- el sync macro local seguirÃ¡ usando los `VALUE_PATH` y `DATE_PATH` configurados
 
 ## Ejecucion local
 
@@ -308,3 +309,4 @@ Siguiente trabajo recomendado:
 ## Disclaimer
 
 Herramienta de analisis y soporte de decision. No constituye asesoramiento financiero.
+
