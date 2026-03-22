@@ -3383,6 +3383,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["shortlist"][0]["tactical_edge"] is True
         assert detail["shortlist"][0]["conviction"]["level"] == "high"
         assert detail["shortlist"][0]["conviction"]["label"] in {"Convicción alta", "Convicci?n alta"}
+        assert detail["shortlist"][0]["followup"]["status"] == "review_now"
+        assert detail["shortlist"][0]["followup"]["label"] == "Revisar ya"
         assert detail["economic_leader"]["proposal_label"] == "Pendiente alta"
         assert detail["economic_leader"]["focus_label"] in {"Líder económico", "L?der econ?mico"}
         assert detail["tactical_leader"]["proposal_label"] == "Pendiente alta"
@@ -3418,6 +3420,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["priority"] == "medium"
         assert detail["shortlist"][0]["conviction"]["level"] == "medium"
         assert detail["shortlist"][0]["conviction"]["label"] in {"Convicción media", "Convicci?n media"}
+        assert detail["shortlist"][0]["followup"]["status"] == "monitor"
+        assert detail["shortlist"][0]["followup"]["label"] == "Monitorear"
         assert detail["items"][0]["priority_label"] == "Recuperable"
         assert "recuperable" in detail["items"][0]["next_action"].lower()
         assert "alternativas recuperables" in detail["explanation"].lower()

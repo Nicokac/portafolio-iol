@@ -872,6 +872,11 @@ class TestDashboardView:
                                 'label': 'Convicción media',
                                 'summary': 'Tiene mérito para reabrir la compra, pero no domina ambos frentes al mismo tiempo.',
                             },
+                            'followup': {
+                                'status': 'monitor',
+                                'label': 'Monitorear',
+                                'summary': 'Conviene seguirla de cerca y revalidarla antes de mover el próximo aporte.',
+                            },
                         },
                         {
                             'rank': 2,
@@ -890,6 +895,11 @@ class TestDashboardView:
                                 'level': 'medium',
                                 'label': 'Convicción media',
                                 'summary': 'Tiene mérito para reabrir la compra, pero no domina ambos frentes al mismo tiempo.',
+                            },
+                            'followup': {
+                                'status': 'monitor',
+                                'label': 'Monitorear',
+                                'summary': 'Conviene seguirla de cerca y revalidarla antes de mover el próximo aporte.',
                             },
                         },
                     ],
@@ -952,6 +962,7 @@ class TestDashboardView:
         assert 'Gana por retorno' in body
         assert 'Gana por ejecutabilidad' in body
         assert 'Convicción media' in body or 'Conviccion media' in body
+        assert 'Monitorear' in body
         assert 'Plan guardado 2' in body
         assert 'Tecnología / growth' in body
         assert 'Por qué este bloque recibió este score' in body

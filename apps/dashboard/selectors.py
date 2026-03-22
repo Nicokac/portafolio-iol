@@ -2851,6 +2851,7 @@ def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict
     economic_edge = bool(item.get("improves_profitability") and item.get("protects_fragility"))
     tactical_edge = bool(item.get("tactical_clean"))
     conviction = _build_incremental_backlog_conviction(item, economic_edge=economic_edge, tactical_edge=tactical_edge)
+    followup = _build_incremental_backlog_followup(conviction_level=str(conviction.get("level") or "low"))
     return {
         "rank": index,
         "proposal_label": snapshot.get("proposal_label") or "-",
@@ -2866,6 +2867,7 @@ def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict
         "economic_edge": economic_edge,
         "tactical_edge": tactical_edge,
         "conviction": conviction,
+        "followup": followup,
     }
 
 
@@ -2900,6 +2902,26 @@ def _build_incremental_backlog_conviction(item: Dict, *, economic_edge: bool, ta
         "level": "low",
         "label": "Convicci?n baja",
         "summary": "Conviene mantenerla en observaci?n hasta que mejore retorno, fragilidad o ejecutabilidad.",
+    }
+
+
+def _build_incremental_backlog_followup(*, conviction_level: str) -> Dict:
+    if conviction_level == "high":
+        return {
+            "status": "review_now",
+            "label": "Revisar ya",
+            "summary": "Vale la pena reabrir esta propuesta como candidata inmediata de compra futura.",
+        }
+    if conviction_level == "medium":
+        return {
+            "status": "monitor",
+            "label": "Monitorear",
+            "summary": "Conviene seguirla de cerca y revalidarla antes de mover el proximo aporte.",
+        }
+    return {
+        "status": "hold",
+        "label": "En espera",
+        "summary": "No conviene priorizarla ahora; queda como referencia secundaria del backlog.",
     }
 
 
