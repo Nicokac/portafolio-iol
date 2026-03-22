@@ -1,6 +1,8 @@
 import logging
+from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -124,6 +126,35 @@ class PortfolioParameters(models.Model):
 
     def __str__(self):
         return f"{self.name} ({'Activo' if self.is_active else 'Inactivo'})"
+
+    def clean(self):
+        errors = {}
+
+        percentage_fields = (
+            "liquidez_target",
+            "usa_target",
+            "argentina_target",
+            "emerging_target",
+            "max_single_position",
+            "rebalance_threshold",
+        )
+        for field_name in percentage_fields:
+            value = getattr(self, field_name)
+            if value is None:
+                continue
+            if value < 0 or value > 100:
+                errors[field_name] = "Debe estar entre 0 y 100."
+
+        if self.risk_free_rate is not None and (
+            self.risk_free_rate < Decimal("-100") or self.risk_free_rate > Decimal("100")
+        ):
+            errors["risk_free_rate"] = "Debe estar entre -100 y 100."
+
+        if self.total_target_allocation != Decimal("100"):
+            errors["__all__"] = "La asignacion objetivo debe sumar 100%."
+
+        if errors:
+            raise ValidationError(errors)
 
     @property
     def total_target_allocation(self):

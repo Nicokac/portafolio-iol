@@ -682,6 +682,27 @@ class TestAPIPostEndpointsHappyPath:
         assert audit.status == 'success'
         assert audit.user.username == 'staffuser'
 
+    def test_portfolio_parameters_update_invalid_range_returns_400(self, staff_auth_client):
+        url = reverse('portfolio-parameters-update')
+        response = staff_auth_client.post(
+            url,
+            {
+                'liquidez_target': 20,
+                'usa_target': 40,
+                'argentina_target': 30,
+                'emerging_target': 10,
+                'max_single_position': 150,
+            },
+            format='json',
+        )
+
+        assert response.status_code == 400
+        body = response.json()
+        assert body['error'] == 'Debe estar entre 0 y 100.'
+        assert 'max_single_position' in body['details']
+        audit = SensitiveActionAudit.objects.get(action='portfolio_parameters_update')
+        assert audit.status == 'failed'
+
 @pytest.mark.django_db
 class TestHistoricalEvolutionFallback:
     @patch("apps.api.views.get_evolucion_historica")

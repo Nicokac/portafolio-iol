@@ -2,6 +2,7 @@ import logging
 import math
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError
 from django.db.models import Avg
 from django.utils import timezone
 from rest_framework import status
@@ -1167,6 +1168,31 @@ def portfolio_parameters_update(request):
                         f'Actualmente suma {params.total_target_allocation}%.'
                     ),
                     'total_allocation': float(params.total_target_allocation),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            params.full_clean()
+        except ValidationError as exc:
+            error_details = exc.message_dict
+            error_message = (
+                error_details.get('__all__', [None])[0]
+                or next(iter(error_details.values()))[0]
+            )
+            record_sensitive_action(
+                request,
+                action='portfolio_parameters_update',
+                status='failed',
+                details={
+                    'reason': 'validation_error',
+                    'errors': error_details,
+                },
+            )
+            return Response(
+                {
+                    'error': error_message,
+                    'details': error_details,
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

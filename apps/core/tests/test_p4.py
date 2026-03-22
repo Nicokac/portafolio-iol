@@ -1,6 +1,8 @@
 import pytest
 from decimal import Decimal
 from unittest.mock import patch
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -157,6 +159,45 @@ class P4ServicesTestCase(TestCase):
 
         # Test total
         self.assertEqual(float(params.total_target_allocation), 100.0)
+
+    def test_portfolio_parameters_rejects_invalid_total_on_clean(self):
+        params = PortfolioParameters(
+            name="Invalid Total",
+            liquidez_target=Decimal('30.00'),
+            usa_target=Decimal('40.00'),
+            argentina_target=Decimal('20.00'),
+            emerging_target=Decimal('20.00'),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            params.full_clean()
+
+        self.assertIn('__all__', exc.exception.message_dict)
+
+    def test_portfolio_parameters_rejects_invalid_range_on_clean(self):
+        params = PortfolioParameters(
+            name="Invalid Range",
+            liquidez_target=Decimal('20.00'),
+            usa_target=Decimal('40.00'),
+            argentina_target=Decimal('30.00'),
+            emerging_target=Decimal('10.00'),
+            max_single_position=Decimal('120.00'),
+        )
+
+        with self.assertRaises(ValidationError) as exc:
+            params.full_clean()
+
+        self.assertIn('max_single_position', exc.exception.message_dict)
+
+    def test_portfolio_parameters_enforces_total_allocation_constraint_in_db(self):
+        with self.assertRaises(IntegrityError):
+            PortfolioParameters.objects.create(
+                name="Invalid DB Total",
+                liquidez_target=Decimal('30.00'),
+                usa_target=Decimal('40.00'),
+                argentina_target=Decimal('20.00'),
+                emerging_target=Decimal('20.00'),
+            )
 
 
 class P4APITestCase(TestCase):
