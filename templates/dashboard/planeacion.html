@@ -1818,6 +1818,9 @@
             </div>
             <div class="card-body">
                 <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
+                    {% with hidden_inputs=incremental_comparator_form_state.general_hidden_inputs %}
+                    {% include "dashboard/partials/incremental_comparator_hidden_inputs.html" %}
+                    {% endwith %}
                     <div class="row g-3 align-items-end">
                         <div class="col-lg-6">
                             <label class="form-label" for="comparison_readiness_filter">Filtrar por readiness operativa</label>
@@ -1831,7 +1834,7 @@
                             <button type="submit" class="btn btn-outline-primary w-100">Filtrar comparador</button>
                         </div>
                         <div class="col-lg-3">
-                            <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
+                            <a href="{{ incremental_comparator_form_state.general_reset_url }}" class="btn btn-outline-secondary w-100">Reset</a>
                         </div>
                     </div>
                 </form>
@@ -1910,6 +1913,9 @@
                 {% if candidate_incremental_portfolio_comparison.available_blocks %}
                 <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
                     <input type="hidden" name="candidate_compare" value="1">
+                    {% with hidden_inputs=incremental_comparator_form_state.candidate_hidden_inputs %}
+                    {% include "dashboard/partials/incremental_comparator_hidden_inputs.html" %}
+                    {% endwith %}
                     <div class="row g-3 align-items-end">
                         <div class="col-lg-6">
                             <label class="form-label" for="candidate_compare_block">Bloque a comparar</label>
@@ -1933,7 +1939,7 @@
                             </select>
                         </div>
                         <div class="col-lg-3">
-                            <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
+                            <a href="{{ incremental_comparator_form_state.candidate_reset_url }}" class="btn btn-outline-secondary w-100">Reset</a>
                         </div>
                     </div>
                 </form>
@@ -2011,6 +2017,9 @@
                 {% if candidate_split_incremental_portfolio_comparison.available_blocks %}
                 <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">
                     <input type="hidden" name="candidate_split_compare" value="1">
+                    {% with hidden_inputs=incremental_comparator_form_state.split_hidden_inputs %}
+                    {% include "dashboard/partials/incremental_comparator_hidden_inputs.html" %}
+                    {% endwith %}
                     <div class="row g-3 align-items-end">
                         <div class="col-lg-6">
                             <label class="form-label" for="candidate_split_block">Bloque a dividir</label>
@@ -2034,7 +2043,7 @@
                             </select>
                         </div>
                         <div class="col-lg-3">
-                            <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary w-100">Reset</a>
+                            <a href="{{ incremental_comparator_form_state.split_reset_url }}" class="btn btn-outline-secondary w-100">Reset</a>
                         </div>
                     </div>
                 </form>
@@ -2113,6 +2122,9 @@
             <div class="card-body">
                 <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes">
                     <input type="hidden" name="manual_compare" value="1">
+                    {% with hidden_inputs=incremental_comparator_form_state.manual_hidden_inputs %}
+                    {% include "dashboard/partials/incremental_comparator_hidden_inputs.html" %}
+                    {% endwith %}
                     <div class="row g-3 align-items-end mb-3">
                         <div class="col-lg-4">
                             <label class="form-label" for="manual_compare_readiness_filter">Filtrar planes por readiness operativa</label>
@@ -2191,7 +2203,7 @@
                     </div>
                     <div class="d-flex flex-wrap gap-2 mt-3">
                         <button type="submit" class="btn btn-dark">Comparar planes manuales</button>
-                        <a href="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="btn btn-outline-secondary">Limpiar</a>
+                        <a href="{{ incremental_comparator_form_state.manual_reset_url }}" class="btn btn-outline-secondary">Limpiar</a>
                     </div>
                 </form>
 

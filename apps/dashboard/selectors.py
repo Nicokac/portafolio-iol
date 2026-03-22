@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 import unicodedata
 from django.core.cache import cache
 from django.db.models import Max, Sum
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.parametros.models import ParametroActivo
@@ -2357,6 +2358,55 @@ def _build_incremental_readiness_filter_metadata(
         "total_count": len(proposals),
         "has_active_readiness_filter": normalized_filter != "all",
     }
+
+
+def _build_incremental_comparator_hidden_inputs(query_params, *, exclude_keys: set[str] | None = None) -> List[Dict]:
+    exclude_keys = set(exclude_keys or set())
+    preserved_keys = [
+        "comparison_readiness_filter",
+        "candidate_compare",
+        "candidate_compare_block",
+        "candidate_compare_readiness_filter",
+        "candidate_split_compare",
+        "candidate_split_block",
+        "candidate_split_readiness_filter",
+        "manual_compare",
+        "manual_compare_readiness_filter",
+    ]
+    for plan_key in ("plan_a", "plan_b"):
+        preserved_keys.extend(
+            [
+                f"{plan_key}_capital",
+                f"{plan_key}_execution_order_label",
+                f"{plan_key}_execution_order_summary",
+            ]
+        )
+        for index in range(1, 4):
+            preserved_keys.extend(
+                [
+                    f"{plan_key}_symbol_{index}",
+                    f"{plan_key}_amount_{index}",
+                ]
+            )
+
+    hidden_inputs = []
+    for key in preserved_keys:
+        if key in exclude_keys:
+            continue
+        value = _query_param_value(query_params, key, "")
+        if value in ("", None):
+            continue
+        hidden_inputs.append({"name": key, "value": value})
+    return hidden_inputs
+
+
+def _build_planeacion_aportes_reset_url(query_params, *, exclude_keys: set[str] | None = None) -> str:
+    exclude_keys = set(exclude_keys or set())
+    hidden_inputs = _build_incremental_comparator_hidden_inputs(query_params, exclude_keys=exclude_keys)
+    base_url = reverse("dashboard:planeacion")
+    if hidden_inputs:
+        return f"{base_url}?{urlencode([(item['name'], item['value']) for item in hidden_inputs])}#planeacion-aportes"
+    return f"{base_url}#planeacion-aportes"
 
 
 def get_incremental_portfolio_simulation_comparison(
@@ -4906,6 +4956,82 @@ def get_planeacion_incremental_context(
         ),
         lead_label="Mejor balance manual",
     )
+    comparator_form_state = {
+        "general_hidden_inputs": _build_incremental_comparator_hidden_inputs(
+            query_params,
+            exclude_keys={"comparison_readiness_filter"},
+        ),
+        "general_reset_url": _build_planeacion_aportes_reset_url(
+            query_params,
+            exclude_keys={"comparison_readiness_filter"},
+        ),
+        "candidate_hidden_inputs": _build_incremental_comparator_hidden_inputs(
+            query_params,
+            exclude_keys={"candidate_compare", "candidate_compare_block", "candidate_compare_readiness_filter"},
+        ),
+        "candidate_reset_url": _build_planeacion_aportes_reset_url(
+            query_params,
+            exclude_keys={"candidate_compare", "candidate_compare_block", "candidate_compare_readiness_filter"},
+        ),
+        "split_hidden_inputs": _build_incremental_comparator_hidden_inputs(
+            query_params,
+            exclude_keys={"candidate_split_compare", "candidate_split_block", "candidate_split_readiness_filter"},
+        ),
+        "split_reset_url": _build_planeacion_aportes_reset_url(
+            query_params,
+            exclude_keys={"candidate_split_compare", "candidate_split_block", "candidate_split_readiness_filter"},
+        ),
+        "manual_hidden_inputs": _build_incremental_comparator_hidden_inputs(
+            query_params,
+            exclude_keys={
+                "manual_compare",
+                "manual_compare_readiness_filter",
+                "plan_a_capital",
+                "plan_a_execution_order_label",
+                "plan_a_execution_order_summary",
+                "plan_b_capital",
+                "plan_b_execution_order_label",
+                "plan_b_execution_order_summary",
+                "plan_a_symbol_1",
+                "plan_a_amount_1",
+                "plan_a_symbol_2",
+                "plan_a_amount_2",
+                "plan_a_symbol_3",
+                "plan_a_amount_3",
+                "plan_b_symbol_1",
+                "plan_b_amount_1",
+                "plan_b_symbol_2",
+                "plan_b_amount_2",
+                "plan_b_symbol_3",
+                "plan_b_amount_3",
+            },
+        ),
+        "manual_reset_url": _build_planeacion_aportes_reset_url(
+            query_params,
+            exclude_keys={
+                "manual_compare",
+                "manual_compare_readiness_filter",
+                "plan_a_capital",
+                "plan_a_execution_order_label",
+                "plan_a_execution_order_summary",
+                "plan_b_capital",
+                "plan_b_execution_order_label",
+                "plan_b_execution_order_summary",
+                "plan_a_symbol_1",
+                "plan_a_amount_1",
+                "plan_a_symbol_2",
+                "plan_a_amount_2",
+                "plan_a_symbol_3",
+                "plan_a_amount_3",
+                "plan_b_symbol_1",
+                "plan_b_amount_1",
+                "plan_b_symbol_2",
+                "plan_b_amount_2",
+                "plan_b_symbol_3",
+                "plan_b_amount_3",
+            },
+        ),
+    }
     preferred_incremental_portfolio_proposal = get_preferred_incremental_portfolio_proposal(
         query_params,
         capital_amount=capital_amount,
@@ -4988,6 +5114,7 @@ def get_planeacion_incremental_context(
         "candidate_incremental_portfolio_comparison": candidate_incremental_portfolio_comparison,
         "candidate_split_incremental_portfolio_comparison": candidate_split_incremental_portfolio_comparison,
         "manual_incremental_portfolio_simulation_comparison": manual_incremental_portfolio_simulation_comparison,
+        "incremental_comparator_form_state": comparator_form_state,
         "preferred_incremental_portfolio_proposal": preferred_incremental_portfolio_proposal,
         "operation_execution_feature": operation_execution_feature,
         "decision_engine_summary": decision_engine_summary,

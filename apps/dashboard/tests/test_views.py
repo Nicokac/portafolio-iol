@@ -2312,6 +2312,16 @@ class TestDashboardView:
                     'visible_count': 1,
                     'total_count': 2,
                 },
+                'incremental_comparator_form_state': {
+                    'general_hidden_inputs': [{'name': 'manual_compare', 'value': '1'}, {'name': 'plan_a_symbol_1', 'value': 'KO'}],
+                    'general_reset_url': '/planeacion/?manual_compare=1#planeacion-aportes',
+                    'candidate_hidden_inputs': [{'name': 'comparison_readiness_filter', 'value': 'ready'}, {'name': 'plan_a_symbol_1', 'value': 'KO'}],
+                    'candidate_reset_url': '/planeacion/?comparison_readiness_filter=ready&manual_compare=1#planeacion-aportes',
+                    'split_hidden_inputs': [{'name': 'candidate_compare', 'value': '1'}],
+                    'split_reset_url': '/planeacion/?candidate_compare=1#planeacion-aportes',
+                    'manual_hidden_inputs': [{'name': 'candidate_compare', 'value': '1'}, {'name': 'candidate_split_compare', 'value': '1'}],
+                    'manual_reset_url': '/planeacion/?candidate_compare=1&candidate_split_compare=1#planeacion-aportes',
+                },
                 'preferred_incremental_portfolio_proposal': {'preferred': {'proposal_label': 'Plan A'}, 'has_manual_override': False, 'explanation': ''},
                 'operation_execution_feature': {'has_context': False, 'has_symbols': False, 'tracked_symbols_count': 0, 'matched_symbols_count': 0, 'missing_symbols_count': 0, 'coverage_pct': 0, 'headline': '', 'summary': '', 'alerts': [], 'execution_analytics': {}, 'rows': []},
                 'decision_engine_summary': {'score': 0, 'confidence': 'Media', 'explanation': [], 'action_suggestions': [], 'portfolio_scope': {}, 'macro_state': {'label': ''}, 'portfolio_state': {'label': ''}, 'recommendation': {'has_recommendation': False, 'reason': ''}, 'suggested_assets': [], 'preferred_proposal': None, 'expected_impact': {'summary': ''}, 'operation_execution_signal': {'has_signal': False, 'status': 'none', 'title': '', 'summary': ''}, 'execution_gate': {'has_blocker': False, 'primary_cta_label': 'Ejecutar decision', 'primary_cta_tone': 'success'}, 'tracking_payload': {}},
@@ -2335,6 +2345,9 @@ class TestDashboardView:
         assert 'Mostrando 1 de 2 candidatos con estado' in body
         assert 'Mostrando 1 de 2 construcciones con estado' in body
         assert 'Mostrando 1 de 2 planes con estado' in body
+        assert 'name="manual_compare" value="1"' in body
+        assert 'name="plan_a_symbol_1" value="KO"' in body
+        assert '/planeacion/?candidate_compare=1&amp;candidate_split_compare=1#planeacion-aportes' in body
 
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')

@@ -310,3 +310,4 @@ Documento vigente para el estado actual de integracion IOL del proyecto.
 - La lectura operativa de comparadores incrementales en `Planeacion` ahora se renderiza bajo partials comunes y un payload `display_summary` consistente entre comparadores.
 - Esa unificacion de render mantiene compatibilidad hacia atras con contextos minimos del dashboard para no acoplar la vista a una sola forma de payload.
 - `Planeacion` ahora permite filtrar los comparadores incrementales por readiness operativa visible (`Listo`, `Validar ejecucion`, `Seguir observando`) usando la misma huella derivada desde `OperacionIOL`.
+- Ese flujo de comparadores ahora tambien preserva sus query params utiles entre submits y resets para no perder el contexto operativo mientras se alterna entre general, candidato, split y manual.

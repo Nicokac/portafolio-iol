@@ -5502,6 +5502,9 @@ class TestDashboardSelectors(TestCase):
         assert detail["candidate_incremental_portfolio_comparison"]["selected_block"] == "defensive"
         assert detail["candidate_split_incremental_portfolio_comparison"]["selected_block"] == "defensive"
         assert detail["manual_incremental_portfolio_simulation_comparison"]["submitted"] is False
+        assert detail["incremental_comparator_form_state"]["general_hidden_inputs"] == []
+        assert detail["incremental_comparator_form_state"]["candidate_hidden_inputs"] == []
+        assert detail["incremental_comparator_form_state"]["manual_reset_url"].endswith("#planeacion-aportes")
         assert detail["preferred_incremental_portfolio_proposal"]["preferred"]["proposal_label"] == "Split KO + MCD"
         assert detail["decision_engine_summary"]["score"] == 78
         assert detail["incremental_proposal_history"]["active_filter"] == "pending"
