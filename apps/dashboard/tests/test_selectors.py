@@ -2874,11 +2874,81 @@ class TestDashboardSelectors(TestCase):
         ):
             detail = get_incremental_proposal_history(user=user, limit=5, decision_status="accepted")
 
-        mocked.assert_called_once_with(user=user, limit=5, decision_status="accepted")
+        mocked.assert_called_once_with(user=user, limit=10, decision_status="accepted")
         assert detail["active_filter"] == "accepted"
         assert detail["active_filter_label"] == "Aceptada"
         assert detail["decision_counts"]["accepted"] == 1
         assert "decision aceptada" in detail["headline"].lower()
+
+    def test_get_incremental_proposal_history_supports_priority_filter_and_sort(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "id": 1,
+                    "proposal_label": "Observacion",
+                    "comparison_score": 3.9,
+                    "purchase_plan": [{"symbol": "KO", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.3,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                    },
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 2,
+                    "proposal_label": "Alta prioridad",
+                    "comparison_score": 4.8,
+                    "purchase_plan": [{"symbol": "MCD", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.7,
+                        "fragility_change": -1.5,
+                        "scenario_loss_change": 0.4,
+                    },
+                    "manual_decision_status": "pending",
+                },
+            ],
+        ) as mocked, patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 2, "pending": 2, "accepted": 0, "deferred": 0, "rejected": 0},
+        ), patch(
+            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            return_value={
+                "item": {
+                    "id": 10,
+                    "proposal_label": "Baseline activo",
+                    "comparison_score": 4.0,
+                    "purchase_plan": [{"symbol": "SPY", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.4,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                    },
+                },
+                "has_baseline": True,
+            },
+        ):
+            detail = get_incremental_proposal_history(
+                user=user,
+                limit=5,
+                priority_filter="high",
+                sort_mode="priority",
+            )
+
+        mocked.assert_called_once_with(user=user, limit=10, decision_status=None)
+        assert detail["active_priority_filter"] == "high"
+        assert detail["active_sort_mode"] == "priority"
+        assert detail["count"] == 1
+        assert detail["items"][0]["proposal_label"] == "Alta prioridad"
+        assert detail["items"][0]["history_priority"]["priority"] == "high"
+        assert "prioridad: alta" in detail["headline"].lower()
+        assert "ordenados por prioridad operativa" in detail["headline"].lower()
 
     def test_get_incremental_proposal_tracking_baseline_wraps_single_item(self):
         class DummyUser:

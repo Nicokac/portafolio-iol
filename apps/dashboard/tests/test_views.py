@@ -498,6 +498,8 @@ class TestDashboardView:
 
         def fake_planeacion_context(query_params, user, capital_amount=600000, history_limit=5):
             captured["decision_status_filter"] = query_params.get("decision_status_filter")
+            captured["history_priority_filter"] = query_params.get("history_priority_filter")
+            captured["history_sort"] = query_params.get("history_sort")
             captured["user_id"] = user.id
             captured["capital_amount"] = capital_amount
             captured["history_limit"] = history_limit
@@ -510,7 +512,22 @@ class TestDashboardView:
                 "candidate_split_incremental_portfolio_comparison": {"available_blocks": [], "proposals": [], "best_label": None},
                 "manual_incremental_portfolio_simulation_comparison": {"submitted": False, "proposals": [], "form_state": {"capital_amount": 600000}},
                 "preferred_incremental_portfolio_proposal": {"preferred": None, "explanation": "", "has_manual_override": False},
-                "incremental_proposal_history": {"items": [], "count": 0, "has_history": False, "active_filter": "pending", "active_filter_label": "Pendientes", "decision_counts": {"total": 0, "pending": 0, "accepted": 0, "deferred": 0, "rejected": 0}, "available_filters": [], "headline": ""},
+                "incremental_proposal_history": {
+                    "items": [],
+                    "count": 0,
+                    "has_history": False,
+                    "active_filter": "pending",
+                    "active_filter_label": "Pendientes",
+                    "active_priority_filter": "all",
+                    "active_priority_filter_label": "Todas las prioridades",
+                    "active_sort_mode": "newest",
+                    "active_sort_mode_label": "Más recientes",
+                    "decision_counts": {"total": 0, "pending": 0, "accepted": 0, "deferred": 0, "rejected": 0},
+                    "available_filters": [],
+                    "available_priority_filters": [],
+                    "available_sort_modes": [],
+                    "headline": "",
+                },
                 "incremental_proposal_tracking_baseline": {"item": None, "has_baseline": False},
                 "incremental_manual_decision_summary": {"item": None, "has_decision": False, "status": "pending", "status_label": "Pendiente", "headline": ""},
                 "incremental_decision_executive_summary": {"status": "pending", "headline": "", "items": [], "has_summary": False},
@@ -518,11 +535,16 @@ class TestDashboardView:
 
         monkeypatch.setattr("apps.dashboard.views.get_planeacion_incremental_context", fake_planeacion_context)
 
-        response = auth_client.get(reverse("dashboard:planeacion"), {"decision_status_filter": "pending"})
+        response = auth_client.get(
+            reverse("dashboard:planeacion"),
+            {"decision_status_filter": "pending", "history_priority_filter": "high", "history_sort": "priority"},
+        )
 
         assert response.status_code == 200
         assert captured == {
             "decision_status_filter": "pending",
+            "history_priority_filter": "high",
+            "history_sort": "priority",
             "user_id": int(auth_client.session["_auth_user_id"]),
             "capital_amount": 600000,
             "history_limit": 5,
@@ -788,8 +810,14 @@ class TestDashboardView:
                     'has_history': True,
                     'active_filter': 'all',
                     'active_filter_label': 'Todos',
+                    'active_priority_filter': 'all',
+                    'active_priority_filter_label': 'Todas las prioridades',
+                    'active_sort_mode': 'newest',
+                    'active_sort_mode_label': 'Más recientes',
                     'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
                     'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
+                    'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
+                    'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': True}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}],
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
                 'incremental_proposal_tracking_baseline': {
@@ -1433,8 +1461,14 @@ class TestDashboardView:
                     'has_history': True,
                     'active_filter': 'all',
                     'active_filter_label': 'Todos',
+                    'active_priority_filter': 'all',
+                    'active_priority_filter_label': 'Todas las prioridades',
+                    'active_sort_mode': 'newest',
+                    'active_sort_mode_label': 'Más recientes',
                     'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
                     'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
+                    'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
+                    'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': True}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}],
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
                 'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
@@ -2456,6 +2490,41 @@ class TestDashboardView:
         assert captured['preferred_payload']['proposal_label'] == 'Split KO + MCD'
         assert captured['capital_amount'] == 600000
         assert captured['user'].is_authenticated is True
+
+    def test_bulk_decide_incremental_proposal_preserves_priority_filter_and_sort(self, auth_client, monkeypatch):
+        captured = {}
+
+        def fake_history(**kwargs):
+            captured['history_kwargs'] = kwargs
+            return {'items': [{'id': 10}], 'count': 1}
+
+        monkeypatch.setattr('apps.dashboard.views.get_incremental_proposal_history', fake_history)
+
+        class DummyHistoryService:
+            def decide_many_snapshots(self, **kwargs):
+                captured['service_kwargs'] = kwargs
+                return {'decision_status': kwargs['decision_status'], 'updated_count': len(kwargs['snapshot_ids'])}
+
+        monkeypatch.setattr('apps.dashboard.views.IncrementalProposalHistoryService', lambda: DummyHistoryService())
+
+        response = auth_client.post(
+            reverse('dashboard:bulk_decide_incremental_proposal'),
+            {
+                'decision_status': 'accepted',
+                'decision_status_filter': 'pending',
+                'history_priority_filter': 'high',
+                'history_sort': 'priority',
+            },
+        )
+
+        assert response.status_code == 302
+        assert response.url.endswith(
+            '?decision_status_filter=pending&history_priority_filter=high&history_sort=priority#planeacion-aportes'
+        )
+        assert captured['history_kwargs']['decision_status'] == 'pending'
+        assert captured['history_kwargs']['priority_filter'] == 'high'
+        assert captured['history_kwargs']['sort_mode'] == 'priority'
+        assert captured['service_kwargs']['snapshot_ids'] == [10]
 
 
 

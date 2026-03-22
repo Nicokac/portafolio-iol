@@ -65,6 +65,27 @@ ALLOWED_UI_MODES = {'compacto', 'denso'}
 ALLOWED_RISK_PROFILES = {'conservador', 'moderado', 'agresivo'}
 
 
+def _build_planeacion_history_redirect_url(post_data) -> str:
+    redirect_url = reverse('dashboard:planeacion')
+    query = QueryDict(mutable=True)
+
+    decision_status_filter = str(post_data.get('decision_status_filter', '') or '').strip()
+    history_priority_filter = str(post_data.get('history_priority_filter', '') or '').strip()
+    history_sort = str(post_data.get('history_sort', '') or '').strip()
+
+    if decision_status_filter:
+        query['decision_status_filter'] = decision_status_filter
+    if history_priority_filter:
+        query['history_priority_filter'] = history_priority_filter
+    if history_sort:
+        query['history_sort'] = history_sort
+
+    encoded = query.urlencode()
+    if encoded:
+        return f"{redirect_url}?{encoded}#planeacion-aportes"
+    return f"{redirect_url}#planeacion-aportes"
+
+
 class DashboardContextMixin:
     active_section = 'estrategia'
 
@@ -320,7 +341,7 @@ class PromoteIncrementalProposalBaselineView(LoginRequiredMixin, View):
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         snapshot_id = request.POST.get('snapshot_id')
-        redirect_url = f"{reverse('dashboard:planeacion')}#planeacion-aportes"
+        redirect_url = _build_planeacion_history_redirect_url(request.POST)
 
         try:
             saved = IncrementalProposalHistoryService().promote_to_tracking_baseline(
@@ -352,7 +373,7 @@ class PromoteIncrementalBacklogFrontView(LoginRequiredMixin, View):
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         snapshot_id = request.POST.get('snapshot_id')
-        redirect_url = f"{reverse('dashboard:planeacion')}#planeacion-aportes"
+        redirect_url = _build_planeacion_history_redirect_url(request.POST)
 
         try:
             promoted = IncrementalProposalHistoryService().promote_to_backlog_front(
@@ -386,7 +407,7 @@ class DecideIncrementalProposalView(LoginRequiredMixin, View):
         snapshot_id = request.POST.get('snapshot_id')
         decision_status = request.POST.get('decision_status')
         decision_note = request.POST.get('decision_note', '')
-        redirect_url = f"{reverse('dashboard:planeacion')}#planeacion-aportes"
+        redirect_url = _build_planeacion_history_redirect_url(request.POST)
 
         try:
             decided = IncrementalProposalHistoryService().decide_snapshot(
@@ -428,17 +449,17 @@ class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         decision_status = request.POST.get('decision_status')
         decision_status_filter = request.POST.get('decision_status_filter', '')
+        priority_filter = request.POST.get('history_priority_filter', '')
+        sort_mode = request.POST.get('history_sort', '')
         history = get_incremental_proposal_history(
             user=request.user,
             limit=5,
             decision_status=decision_status_filter or None,
+            priority_filter=priority_filter or None,
+            sort_mode=sort_mode or None,
         )
         snapshot_ids = [item.get('id') for item in history.get('items', []) if item.get('id') is not None]
-        redirect_url = reverse('dashboard:planeacion')
-        if decision_status_filter:
-            redirect_url = f"{redirect_url}?decision_status_filter={decision_status_filter}#planeacion-aportes"
-        else:
-            redirect_url = f"{redirect_url}#planeacion-aportes"
+        redirect_url = _build_planeacion_history_redirect_url(request.POST)
 
         try:
             result = IncrementalProposalHistoryService().decide_many_snapshots(
@@ -451,7 +472,13 @@ class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
                 request,
                 action='bulk_decide_incremental_proposal',
                 status='failed',
-                details={'reason': str(exc), 'decision_status': decision_status, 'filter': decision_status_filter},
+                details={
+                    'reason': str(exc),
+                    'decision_status': decision_status,
+                    'filter': decision_status_filter,
+                    'priority_filter': priority_filter or 'all',
+                    'sort_mode': sort_mode or 'newest',
+                },
             )
             messages.error(request, "No fue posible registrar la decisión masiva sobre el historial incremental visible.")
             return redirect(redirect_url)
@@ -464,6 +491,8 @@ class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
                 'decision_status': result['decision_status'],
                 'updated_count': result['updated_count'],
                 'filter': decision_status_filter or 'all',
+                'priority_filter': priority_filter or 'all',
+                'sort_mode': sort_mode or 'newest',
             },
         )
         messages.success(

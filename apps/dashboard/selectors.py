@@ -2525,12 +2525,22 @@ def get_preferred_incremental_portfolio_proposal(
     }
 
 
-def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: str | None = None) -> Dict:
+def get_incremental_proposal_history(
+    *,
+    user,
+    limit: int = 5,
+    decision_status: str | None = None,
+    priority_filter: str | None = None,
+    sort_mode: str | None = None,
+) -> Dict:
     """Retorna historial reciente de propuestas incrementales guardadas por el usuario."""
 
     service = IncrementalProposalHistoryService()
     normalized_filter = _normalize_incremental_history_decision_filter(decision_status)
-    raw_items = service.list_recent(user=user, limit=limit, decision_status=normalized_filter)
+    normalized_priority_filter = _normalize_incremental_history_priority_filter(priority_filter)
+    normalized_sort_mode = _normalize_incremental_history_sort_mode(sort_mode)
+    fetch_limit = max(int(limit), getattr(service, "MAX_SNAPSHOTS_PER_USER", 10))
+    raw_items = service.list_recent(user=user, limit=fetch_limit, decision_status=normalized_filter)
     counts = service.get_decision_counts(user=user)
     baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
     baseline_item = baseline_payload.get("item")
@@ -2555,15 +2565,42 @@ def get_incremental_proposal_history(*, user, limit: int = 5, decision_status: s
         )
         enriched.update(reapply)
         items.append(enriched)
+
+    priority_counts = _build_incremental_history_priority_counts(items)
+    if normalized_priority_filter:
+        items = [
+            item for item in items
+            if str((item.get("history_priority") or {}).get("priority") or "") == normalized_priority_filter
+        ]
+
+    items = _sort_incremental_history_items(items, sort_mode=normalized_sort_mode)
+    items = items[: max(int(limit), 0)]
+
     return {
         "items": items,
         "count": len(items),
         "has_history": bool(items),
         "active_filter": normalized_filter or "all",
         "active_filter_label": _format_incremental_history_decision_filter_label(normalized_filter),
+        "active_priority_filter": normalized_priority_filter or "all",
+        "active_priority_filter_label": _format_incremental_history_priority_filter_label(normalized_priority_filter),
+        "active_sort_mode": normalized_sort_mode,
+        "active_sort_mode_label": _format_incremental_history_sort_mode_label(normalized_sort_mode),
         "decision_counts": counts,
         "available_filters": _build_incremental_history_available_filters(normalized_filter, counts),
-        "headline": _build_incremental_history_headline(normalized_filter, counts, len(items)),
+        "available_priority_filters": _build_incremental_history_priority_filter_options(
+            normalized_priority_filter,
+            priority_counts,
+        ),
+        "available_sort_modes": _build_incremental_history_sort_options(normalized_sort_mode),
+        "priority_counts": priority_counts,
+        "headline": _build_incremental_history_headline(
+            normalized_filter,
+            counts,
+            len(items),
+            priority_filter=normalized_priority_filter,
+            sort_mode=normalized_sort_mode,
+        ),
     }
 
 
@@ -2735,6 +2772,77 @@ def _build_incremental_history_priority(
         "priority_label": _format_incremental_backlog_priority(priority),
         "next_action": _build_incremental_backlog_next_action(priority, candidate),
     }
+
+
+def _normalize_incremental_history_priority_filter(priority_filter: str | None) -> str | None:
+    normalized = str(priority_filter or "").strip().lower()
+    return normalized if normalized in {"high", "medium", "watch", "low"} else None
+
+
+def _normalize_incremental_history_sort_mode(sort_mode: str | None) -> str:
+    normalized = str(sort_mode or "").strip().lower()
+    if normalized == "priority":
+        return "priority"
+    return "newest"
+
+
+def _format_incremental_history_priority_filter_label(priority_filter: str | None) -> str:
+    if not priority_filter:
+        return "Todas las prioridades"
+    return _format_incremental_backlog_priority(priority_filter)
+
+
+def _format_incremental_history_sort_mode_label(sort_mode: str | None) -> str:
+    if str(sort_mode or "").strip().lower() == "priority":
+        return "Prioridad operativa"
+    return "Más recientes"
+
+
+def _build_incremental_history_priority_counts(items: list[Dict]) -> Dict[str, int]:
+    return {
+        "high": sum(1 for item in items if str((item.get("history_priority") or {}).get("priority") or "") == "high"),
+        "medium": sum(1 for item in items if str((item.get("history_priority") or {}).get("priority") or "") == "medium"),
+        "watch": sum(1 for item in items if str((item.get("history_priority") or {}).get("priority") or "") == "watch"),
+        "low": sum(1 for item in items if str((item.get("history_priority") or {}).get("priority") or "") == "low"),
+    }
+
+
+def _build_incremental_history_priority_filter_options(active_priority_filter: str | None, counts: Dict[str, int]) -> list[Dict]:
+    options = [{"key": "all", "label": "Todas las prioridades", "count": sum(int(value or 0) for value in counts.values())}]
+    for key, label in (
+        ("high", "Alta"),
+        ("medium", "Recuperable"),
+        ("watch", "Observación"),
+        ("low", "Baja"),
+    ):
+        options.append({"key": key, "label": label, "count": int(counts.get(key, 0))})
+    for option in options:
+        option["selected"] = (active_priority_filter or "all") == option["key"]
+    return options
+
+
+def _build_incremental_history_sort_options(active_sort_mode: str) -> list[Dict]:
+    options = [
+        {"key": "newest", "label": "Más recientes"},
+        {"key": "priority", "label": "Prioridad operativa"},
+    ]
+    for option in options:
+        option["selected"] = active_sort_mode == option["key"]
+    return options
+
+
+def _sort_incremental_history_items(items: list[Dict], *, sort_mode: str) -> list[Dict]:
+    if sort_mode != "priority":
+        return items
+    return sorted(
+        items,
+        key=lambda item: (
+            0 if item.get("is_backlog_front") else 1,
+            _incremental_backlog_priority_order(str((item.get("history_priority") or {}).get("priority") or "low")),
+            -(float(item.get("comparison_score")) if item.get("comparison_score") is not None else float("-inf")),
+            str(item.get("proposal_label") or ""),
+        ),
+    )
 
 
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
@@ -3217,6 +3325,8 @@ def get_planeacion_incremental_context(
             user=user,
             limit=history_limit,
             decision_status=_query_param_value(query_params, "decision_status_filter"),
+            priority_filter=_query_param_value(query_params, "history_priority_filter"),
+            sort_mode=_query_param_value(query_params, "history_sort"),
         ),
         "incremental_proposal_tracking_baseline": get_incremental_proposal_tracking_baseline(
             user=user,
@@ -3695,14 +3805,31 @@ def _build_incremental_history_available_filters(active_filter: str | None, coun
     return items
 
 
-def _build_incremental_history_headline(decision_status: str | None, counts: Dict, visible_count: int) -> str:
+def _build_incremental_history_headline(
+    decision_status: str | None,
+    counts: Dict,
+    visible_count: int,
+    *,
+    priority_filter: str | None = None,
+    sort_mode: str | None = None,
+) -> str:
     total = int(counts.get("total", 0))
     if total == 0:
         return "Todavia no guardaste propuestas incrementales para seguimiento manual."
     if decision_status is None:
-        return f"Se muestran {visible_count} snapshots recientes sobre un total de {total} propuestas guardadas."
-    label = _format_incremental_history_decision_filter_label(decision_status).lower()
-    return f"Se muestran {visible_count} snapshots con decision {label}."
+        base = f"Se muestran {visible_count} snapshots recientes sobre un total de {total} propuestas guardadas."
+    else:
+        label = _format_incremental_history_decision_filter_label(decision_status).lower()
+        base = f"Se muestran {visible_count} snapshots con decision {label}."
+
+    suffix = []
+    if priority_filter:
+        suffix.append(f"Prioridad: {_format_incremental_history_priority_filter_label(priority_filter)}")
+    if str(sort_mode or "").strip().lower() == "priority":
+        suffix.append("Ordenados por prioridad operativa")
+    if suffix:
+        return f"{base} {' · '.join(suffix)}."
+    return base
 
 
 def _build_incremental_pending_backlog_headline(
