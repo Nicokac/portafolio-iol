@@ -302,3 +302,5 @@ Documento vigente para el estado actual de integracion IOL del proyecto.
 - La huella de `OperacionIOL` ahora tambien alimenta el comparador por candidato para resumir readiness y desempates operativos dentro del mismo bloque.
 
 - La capa de `OperacionIOL` ahora tambien informa el comparador por split para leer si conviene concentrar o dividir con mejor ejecutabilidad real.
+
+- La huella de `OperacionIOL` ya no solo decide el lider de cada comparador: tambien se expone por fila en candidato, split y manual dentro de `Planeacion`.

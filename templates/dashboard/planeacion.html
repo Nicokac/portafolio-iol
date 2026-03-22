@@ -1949,6 +1949,14 @@
                                     {% if proposal.proposal_key == candidate_incremental_portfolio_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
                                     {% endif %}
+                                    {% if proposal.execution_readiness.label %}
+                                    <div class="small mt-2">
+                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if proposal.execution_readiness.summary %}
+                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
+                                    {% endif %}
                                 </td>
                                 <td>{{ proposal.candidate.main_reason|default:"-" }}</td>
                                 <td class="text-end">{{ proposal.candidate.score|default:"-" }}</td>
@@ -2054,6 +2062,14 @@
                                     <strong>{{ proposal.label }}</strong>
                                     {% if proposal.proposal_key == candidate_split_incremental_portfolio_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
+                                    {% endif %}
+                                    {% if proposal.execution_readiness.label %}
+                                    <div class="small mt-2">
+                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if proposal.execution_readiness.summary %}
+                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -2214,6 +2230,14 @@
                                     <strong>{{ proposal.label }}</strong>
                                     {% if proposal.proposal_key == manual_incremental_portfolio_simulation_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
+                                    {% endif %}
+                                    {% if proposal.execution_readiness.label %}
+                                    <div class="small mt-2">
+                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if proposal.execution_readiness.summary %}
+                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
                                     {% endif %}
                                     {% if proposal.execution_order_summary %}
                                     <div class="small text-muted mt-2">

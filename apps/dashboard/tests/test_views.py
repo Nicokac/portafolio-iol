@@ -2098,6 +2098,101 @@ class TestDashboardView:
         assert 'Desempate operativo aplicado' in body
         assert 'Split KO + MCD queda primero porque su ejecucion real reciente se ve mas limpia dentro de una brecha corta de score.' in body
 
+    def test_planeacion_renders_execution_readiness_per_row_in_candidate_split_and_manual_comparators(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'delta': {}, 'interpretation': ''},
+                'incremental_portfolio_simulation_comparison': {'proposals': []},
+                'candidate_incremental_portfolio_comparison': {
+                    'submitted': True,
+                    'selected_block': 'defensive',
+                    'selected_label': 'Defensive / resiliente',
+                    'available_blocks': [{'bucket': 'defensive', 'label': 'Defensive / resiliente', 'suggested_amount': 300000}],
+                    'best_label': 'MCD',
+                    'best_proposal_key': 'MCD',
+                    'best_execution_readiness': {'has_summary': False},
+                    'operational_tiebreak': {'has_tiebreak': False},
+                    'proposals': [
+                        {
+                            'proposal_key': 'MCD',
+                            'label': 'MCD',
+                            'candidate': {'main_reason': 'dividend_profile', 'score': 8.1},
+                            'simulation': {'delta': {'expected_return_change': 0.5, 'fragility_change': -1.4, 'scenario_loss_change': 0.2}, 'interpretation': 'MCD queda muy cerca.'},
+                            'comparison_score': 4.9,
+                            'execution_readiness': {'label': 'Listo para ejecutar', 'tone': 'success', 'summary': 'Si avanzas con esta propuesta, conviene empezar por MCD.'},
+                        }
+                    ],
+                },
+                'candidate_split_incremental_portfolio_comparison': {
+                    'submitted': True,
+                    'selected_block': 'defensive',
+                    'selected_label': 'Defensive / resiliente',
+                    'available_blocks': [{'bucket': 'defensive', 'label': 'Defensive / resiliente', 'suggested_amount': 300000}],
+                    'best_label': 'Split KO + MCD',
+                    'best_proposal_key': 'split_top_two',
+                    'best_execution_readiness': {'has_summary': False},
+                    'operational_tiebreak': {'has_tiebreak': False},
+                    'proposals': [
+                        {
+                            'proposal_key': 'split_top_two',
+                            'label': 'Split KO + MCD',
+                            'purchase_plan': [{'symbol': 'KO', 'amount': 150000}, {'symbol': 'MCD', 'amount': 150000}],
+                            'simulation': {'delta': {'expected_return_change': 0.5, 'fragility_change': -1.4, 'scenario_loss_change': 0.2}, 'interpretation': 'El split queda muy cerca.'},
+                            'comparison_score': 4.9,
+                            'execution_readiness': {'label': 'Seguir observando', 'tone': 'secondary', 'summary': 'La referencia operativa existe, pero conviene cuidar la forma de entrada.'},
+                        }
+                    ],
+                },
+                'manual_incremental_portfolio_simulation_comparison': {
+                    'submitted': True,
+                    'best_label': 'Plan manual A',
+                    'best_proposal_key': 'plan_a',
+                    'best_execution_readiness': {'has_summary': False},
+                    'operational_tiebreak': {'has_tiebreak': False},
+                    'proposals': [
+                        {
+                            'proposal_key': 'plan_a',
+                            'label': 'Plan manual A',
+                            'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
+                            'simulation': {'delta': {'expected_return_change': 0.8, 'fragility_change': -2.0, 'scenario_loss_change': 0.4}, 'interpretation': 'Plan manual A mejora el balance.'},
+                            'comparison_score': 8.4,
+                            'execution_order_label': 'Ejecutar primero',
+                            'execution_order_summary': 'Arrancar por KO y dejar MCD para una validacion adicional.',
+                            'execution_readiness': {'label': 'Validar ejecucion', 'tone': 'warning', 'summary': 'Plan manual A necesita validar mejor su ejecucion real antes de pasar a compra.'},
+                        }
+                    ],
+                    'form_state': {'plans': []},
+                },
+                'preferred_incremental_portfolio_proposal': {'preferred': {'proposal_label': 'Plan A'}, 'has_manual_override': False, 'explanation': ''},
+                'operation_execution_feature': {'has_context': False, 'has_symbols': False, 'tracked_symbols_count': 0, 'matched_symbols_count': 0, 'missing_symbols_count': 0, 'coverage_pct': 0, 'headline': '', 'summary': '', 'alerts': [], 'execution_analytics': {}, 'rows': []},
+                'decision_engine_summary': {'score': 0, 'confidence': 'Media', 'explanation': [], 'action_suggestions': [], 'portfolio_scope': {}, 'macro_state': {'label': ''}, 'portfolio_state': {'label': ''}, 'recommendation': {'has_recommendation': False, 'reason': ''}, 'suggested_assets': [], 'preferred_proposal': None, 'expected_impact': {'summary': ''}, 'operation_execution_signal': {'has_signal': False, 'status': 'none', 'title': '', 'summary': ''}, 'execution_gate': {'has_blocker': False, 'primary_cta_label': 'Ejecutar decision', 'primary_cta_tone': 'success'}, 'tracking_payload': {}},
+                'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'headline': ''},
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_backlog_prioritization': {'count': 0, 'has_priorities': False, 'has_shortlist': False, 'has_focus_split': False, 'counts': {'high': 0, 'medium': 0, 'watch': 0, 'low': 0}, 'followup_counts': {'review_now': 0, 'monitor': 0, 'hold': 0}, 'active_followup_filter': 'all', 'active_followup_filter_label': 'Todas', 'available_followup_filters': [], 'manual_review_summary': {'pending_count': 0, 'deferred_count': 0, 'accepted_count': 0, 'rejected_count': 0, 'closed_count': 0, 'reviewed_count': 0, 'headline': '', 'has_manual_reviews': False}, 'deferred_review_summary': {'deferred_count': 0, 'reactivable_count': 0, 'archivable_count': 0, 'top_reactivable_label': '', 'top_reactivable_priority_label': '', 'has_reactivable': False, 'headline': ''}, 'headline': '', 'explanation': '', 'top_item': None, 'economic_leader': None, 'tactical_leader': None},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_reactivation_summary': {'count': 0, 'has_items': False, 'items': [], 'headline': '', 'current_count': 0, 'accepted_count': 0, 'deferred_count': 0, 'rejected_count': 0, 'front_count': 0, 'effectiveness_label': 'Sin datos', 'acceptance_rate': 0, 'redeferral_rate': 0, 'rejection_rate': 0},
+                'incremental_reactivation_vs_backlog_summary': {'preferred_source': 'backlog_nuevo', 'headline': '', 'label': '', 'summary': ''},
+                'incremental_future_purchase_shortlist': {'items': [], 'count': 0, 'has_items': False, 'preferred_source': 'backlog_nuevo', 'preferred_label': '', 'headline': '', 'quality_label': ''},
+                'incremental_future_purchase_source_guidance': {'source': 'backlog_nuevo', 'label': '', 'headline': '', 'next_action': ''},
+                'incremental_future_purchase_workflow_summary': {'status': 'monitor', 'label': '', 'headline': '', 'next_step': '', 'has_summary': False},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Listo para ejecutar' in body
+        assert 'Seguir observando' in body
+        assert 'Validar ejecucion' in body or 'Validar ejecuci' in body
+        assert 'conviene empezar por MCD' in body
+        assert 'cuidar la forma de entrada' in body
+        assert 'necesita validar mejor su ejecucion real' in body
+
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')
         response = auth_client.get(url)
