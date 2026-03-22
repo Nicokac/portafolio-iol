@@ -2978,6 +2978,38 @@ def _build_incremental_backlog_manual_review_summary(decision_counts: Dict[str, 
     }
 
 
+def _build_incremental_backlog_deferred_review_summary(items: List[Dict], decision_counts: Dict[str, int]) -> Dict:
+    deferred_count = int(decision_counts.get("deferred", len(items)))
+    reactivable_items = [
+        item
+        for item in items
+        if str((item.get("history_priority") or {}).get("priority") or "") in {"high", "medium"}
+    ]
+    archivable_items = [
+        item
+        for item in items
+        if str((item.get("history_priority") or {}).get("priority") or "") not in {"high", "medium"}
+    ]
+    top_reactivable = reactivable_items[0] if reactivable_items else None
+
+    if reactivable_items:
+        headline = "Parte de las diferidas todavia conserva fit suficiente para reactivarse como futura compra."
+    elif deferred_count > 0:
+        headline = "Las diferidas actuales ya no muestran suficiente fit economico o tactico y conviene archivarlas."
+    else:
+        headline = "Todavia no hay diferidas revisadas para separar entre reactivables y archivables."
+
+    return {
+        "deferred_count": deferred_count,
+        "reactivable_count": len(reactivable_items),
+        "archivable_count": len(archivable_items),
+        "top_reactivable_label": (top_reactivable or {}).get("proposal_label") or "",
+        "top_reactivable_priority_label": str(((top_reactivable or {}).get("history_priority") or {}).get("priority_label") or ""),
+        "has_reactivable": bool(reactivable_items),
+        "headline": headline,
+    }
+
+
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
     """Retorna el snapshot incremental activo como baseline de seguimiento del usuario."""
 
@@ -3130,6 +3162,7 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5, followup_fil
     """Ordena el backlog pendiente en prioridades operativas explicitas."""
 
     backlog_payload = get_incremental_pending_backlog_vs_baseline(user=user, limit=limit)
+    deferred_history = get_incremental_proposal_history(user=user, limit=limit, decision_status="deferred")
     items = []
     for item in backlog_payload.get("items", []):
         priority = _classify_incremental_backlog_priority(item)
@@ -3195,6 +3228,10 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5, followup_fil
         "count": len(ordered_items),
         "counts": counts,
         "manual_review_summary": _build_incremental_backlog_manual_review_summary(decision_counts),
+        "deferred_review_summary": _build_incremental_backlog_deferred_review_summary(
+            list(deferred_history.get("items") or []),
+            decision_counts,
+        ),
         "top_item": top_item,
         "economic_leader": _build_incremental_backlog_focus_item(economic_leader, focus="economic"),
         "tactical_leader": _build_incremental_backlog_focus_item(tactical_leader, focus="tactical"),

@@ -3322,45 +3322,51 @@ class TestDashboardSelectors(TestCase):
         class DummyUser:
             is_authenticated = True
 
-        with patch(
-            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
-            return_value={
-                "baseline": {"proposal_label": "Baseline activo"},
-                "items": [
-                    {
-                        "snapshot": {"proposal_label": "Pendiente baja", "is_backlog_front": False},
-                        "score_difference": -0.4,
-                        "beats_baseline": False,
-                        "loses_vs_baseline": True,
-                        "ties_baseline": False,
-                        "improves_profitability": False,
-                        "protects_fragility": False,
-                        "tactical_clean": False,
-                    },
-                    {
-                        "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
-                        "score_difference": 0.6,
-                        "beats_baseline": True,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": False,
-                        "improves_profitability": True,
-                        "protects_fragility": True,
-                        "tactical_clean": True,
-                    },
-                    {
-                        "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
-                        "score_difference": 0.0,
-                        "beats_baseline": False,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": True,
-                        "improves_profitability": False,
-                        "protects_fragility": True,
-                        "tactical_clean": True,
-                    },
-                ],
-                "has_baseline": True,
-                "has_pending_backlog": True,
-            },
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                return_value={
+                    "baseline": {"proposal_label": "Baseline activo"},
+                    "items": [
+                        {
+                            "snapshot": {"proposal_label": "Pendiente baja", "is_backlog_front": False},
+                            "score_difference": -0.4,
+                            "beats_baseline": False,
+                            "loses_vs_baseline": True,
+                            "ties_baseline": False,
+                            "improves_profitability": False,
+                            "protects_fragility": False,
+                            "tactical_clean": False,
+                        },
+                        {
+                            "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
+                            "score_difference": 0.6,
+                            "beats_baseline": True,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": False,
+                            "improves_profitability": True,
+                            "protects_fragility": True,
+                            "tactical_clean": True,
+                        },
+                        {
+                            "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
+                            "score_difference": 0.0,
+                            "beats_baseline": False,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": True,
+                            "improves_profitability": False,
+                            "protects_fragility": True,
+                            "tactical_clean": True,
+                        },
+                    ],
+                    "has_baseline": True,
+                    "has_pending_backlog": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={"items": [], "decision_counts": {"deferred": 0}},
+            ),
         ):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
@@ -3381,6 +3387,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["manual_review_summary"]["pending_count"] == 0
         assert detail["manual_review_summary"]["deferred_count"] == 0
         assert detail["manual_review_summary"]["closed_count"] == 0
+        assert detail["deferred_review_summary"]["reactivable_count"] == 0
+        assert detail["deferred_review_summary"]["archivable_count"] == 0
         assert detail["shortlist"][0]["priority_label"] == "Alta"
         assert detail["shortlist"][0]["economic_edge"] is True
         assert detail["shortlist"][0]["tactical_edge"] is True
@@ -3400,25 +3408,31 @@ class TestDashboardSelectors(TestCase):
         class DummyUser:
             is_authenticated = True
 
-        with patch(
-            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
-            return_value={
-                "baseline": {"proposal_label": "Baseline activo"},
-                "items": [
-                    {
-                        "snapshot": {"proposal_label": "Pendiente recuperable", "is_backlog_front": False},
-                        "score_difference": 0.2,
-                        "beats_baseline": True,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": False,
-                        "improves_profitability": True,
-                        "protects_fragility": True,
-                        "tactical_clean": False,
-                    },
-                ],
-                "has_baseline": True,
-                "has_pending_backlog": True,
-            },
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                return_value={
+                    "baseline": {"proposal_label": "Baseline activo"},
+                    "items": [
+                        {
+                            "snapshot": {"proposal_label": "Pendiente recuperable", "is_backlog_front": False},
+                            "score_difference": 0.2,
+                            "beats_baseline": True,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": False,
+                            "improves_profitability": True,
+                            "protects_fragility": True,
+                            "tactical_clean": False,
+                        },
+                    ],
+                    "has_baseline": True,
+                    "has_pending_backlog": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={"items": [], "decision_counts": {"deferred": 0}},
+            ),
         ):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
@@ -3435,45 +3449,51 @@ class TestDashboardSelectors(TestCase):
         class DummyUser:
             is_authenticated = True
 
-        with patch(
-            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
-            return_value={
-                "baseline": {"proposal_label": "Baseline activo"},
-                "items": [
-                    {
-                        "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
-                        "score_difference": 0.6,
-                        "beats_baseline": True,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": False,
-                        "improves_profitability": True,
-                        "protects_fragility": True,
-                        "tactical_clean": True,
-                    },
-                    {
-                        "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
-                        "score_difference": 0.2,
-                        "beats_baseline": True,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": False,
-                        "improves_profitability": True,
-                        "protects_fragility": True,
-                        "tactical_clean": False,
-                    },
-                    {
-                        "snapshot": {"proposal_label": "Pendiente baja", "is_backlog_front": False},
-                        "score_difference": -0.2,
-                        "beats_baseline": False,
-                        "loses_vs_baseline": True,
-                        "ties_baseline": False,
-                        "improves_profitability": False,
-                        "protects_fragility": False,
-                        "tactical_clean": False,
-                    },
-                ],
-                "has_baseline": True,
-                "has_pending_backlog": True,
-            },
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                return_value={
+                    "baseline": {"proposal_label": "Baseline activo"},
+                    "items": [
+                        {
+                            "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
+                            "score_difference": 0.6,
+                            "beats_baseline": True,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": False,
+                            "improves_profitability": True,
+                            "protects_fragility": True,
+                            "tactical_clean": True,
+                        },
+                        {
+                            "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
+                            "score_difference": 0.2,
+                            "beats_baseline": True,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": False,
+                            "improves_profitability": True,
+                            "protects_fragility": True,
+                            "tactical_clean": False,
+                        },
+                        {
+                            "snapshot": {"proposal_label": "Pendiente baja", "is_backlog_front": False},
+                            "score_difference": -0.2,
+                            "beats_baseline": False,
+                            "loses_vs_baseline": True,
+                            "ties_baseline": False,
+                            "improves_profitability": False,
+                            "protects_fragility": False,
+                            "tactical_clean": False,
+                        },
+                    ],
+                    "has_baseline": True,
+                    "has_pending_backlog": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={"items": [], "decision_counts": {"deferred": 0}},
+            ),
         ):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5, followup_filter="monitor")
 
@@ -3487,15 +3507,27 @@ class TestDashboardSelectors(TestCase):
         class DummyUser:
             is_authenticated = True
 
-        with patch(
-            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
-            return_value={
-                "baseline": {"proposal_label": "Baseline activo"},
-                "items": [],
-                "decision_counts": {"total": 6, "pending": 2, "accepted": 1, "deferred": 2, "rejected": 1},
-                "has_baseline": True,
-                "has_pending_backlog": True,
-            },
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                return_value={
+                    "baseline": {"proposal_label": "Baseline activo"},
+                    "items": [],
+                    "decision_counts": {"total": 6, "pending": 2, "accepted": 1, "deferred": 2, "rejected": 1},
+                    "has_baseline": True,
+                    "has_pending_backlog": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={
+                    "items": [
+                        {"proposal_label": "Diferida reactiva", "history_priority": {"priority": "medium", "priority_label": "Recuperable"}},
+                        {"proposal_label": "Diferida vieja", "history_priority": {"priority": "low", "priority_label": "Baja"}},
+                    ],
+                    "decision_counts": {"deferred": 2},
+                },
+            ),
         ):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
@@ -3504,19 +3536,28 @@ class TestDashboardSelectors(TestCase):
         assert detail["manual_review_summary"]["closed_count"] == 2
         assert detail["manual_review_summary"]["reviewed_count"] == 4
         assert "propuestas vigentes" in detail["manual_review_summary"]["headline"].lower()
+        assert detail["deferred_review_summary"]["reactivable_count"] == 1
+        assert detail["deferred_review_summary"]["archivable_count"] == 1
+        assert detail["deferred_review_summary"]["top_reactivable_label"] == "Diferida reactiva"
 
     def test_get_incremental_backlog_prioritization_handles_missing_inputs(self):
         class DummyUser:
             is_authenticated = True
 
-        with patch(
-            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
-            return_value={
-                "baseline": None,
-                "items": [],
-                "has_baseline": False,
-                "has_pending_backlog": False,
-            },
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                return_value={
+                    "baseline": None,
+                    "items": [],
+                    "has_baseline": False,
+                    "has_pending_backlog": False,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={"items": [], "decision_counts": {"deferred": 0}},
+            ),
         ):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
@@ -3529,29 +3570,35 @@ class TestDashboardSelectors(TestCase):
         class DummyUser:
             is_authenticated = True
 
-        with patch(
-            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
-            return_value={
-                "baseline": {"proposal_label": "Baseline activo"},
-                "items": [
-                    {
-                        "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
-                        "score_difference": 0.6,
-                        "beats_baseline": True,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": False,
-                    },
-                    {
-                        "snapshot": {"proposal_label": "Pendiente manual", "is_backlog_front": True},
-                        "score_difference": 0.0,
-                        "beats_baseline": False,
-                        "loses_vs_baseline": False,
-                        "ties_baseline": True,
-                    },
-                ],
-                "has_baseline": True,
-                "has_pending_backlog": True,
-            },
+        with (
+            patch(
+                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                return_value={
+                    "baseline": {"proposal_label": "Baseline activo"},
+                    "items": [
+                        {
+                            "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
+                            "score_difference": 0.6,
+                            "beats_baseline": True,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": False,
+                        },
+                        {
+                            "snapshot": {"proposal_label": "Pendiente manual", "is_backlog_front": True},
+                            "score_difference": 0.0,
+                            "beats_baseline": False,
+                            "loses_vs_baseline": False,
+                            "ties_baseline": True,
+                        },
+                    ],
+                    "has_baseline": True,
+                    "has_pending_backlog": True,
+                },
+            ),
+            patch(
+                "apps.dashboard.selectors.get_incremental_proposal_history",
+                return_value={"items": [], "decision_counts": {"deferred": 0}},
+            ),
         ):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 

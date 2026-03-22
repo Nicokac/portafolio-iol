@@ -940,9 +940,40 @@
                         </div>
                     </div>
                 </div>
-                <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.manual_review_summary.headline }}</div>
-                {% if incremental_backlog_prioritization.top_item %}
-                <div class="border rounded p-3 mt-3">
+                  <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.manual_review_summary.headline }}</div>
+                  <div class="row g-3 mt-1">
+                      <div class="col-lg-4">
+                          <div class="border rounded p-3 h-100">
+                              <div class="small text-muted mb-1">Diferidas reactivables</div>
+                              <div><strong>{{ incremental_backlog_prioritization.deferred_review_summary.reactivable_count|default:0 }}</strong></div>
+                              <div class="small text-muted mt-2">
+                                  {% if incremental_backlog_prioritization.deferred_review_summary.has_reactivable %}
+                                  {{ incremental_backlog_prioritization.deferred_review_summary.top_reactivable_label }}
+                                  {% if incremental_backlog_prioritization.deferred_review_summary.top_reactivable_priority_label %}
+                                  · {{ incremental_backlog_prioritization.deferred_review_summary.top_reactivable_priority_label }}
+                                  {% endif %}
+                                  {% else %}
+                                  Ninguna diferida sigue mostrando fit suficiente hoy.
+                                  {% endif %}
+                              </div>
+                          </div>
+                      </div>
+                      <div class="col-lg-4">
+                          <div class="border rounded p-3 h-100">
+                              <div class="small text-muted mb-1">Diferidas para archivar</div>
+                              <div><strong>{{ incremental_backlog_prioritization.deferred_review_summary.archivable_count|default:0 }}</strong></div>
+                              <div class="small text-muted mt-2">Diferidas que hoy ya no justifican reactivación prioritaria.</div>
+                          </div>
+                      </div>
+                      <div class="col-lg-4">
+                          <div class="border rounded p-3 h-100">
+                              <div class="small text-muted mb-1">Lectura de diferidas</div>
+                              <div class="small text-muted">{{ incremental_backlog_prioritization.deferred_review_summary.headline }}</div>
+                          </div>
+                      </div>
+                  </div>
+                  {% if incremental_backlog_prioritization.top_item %}
+                  <div class="border rounded p-3 mt-3">
                     <div class="small text-muted mb-1">Próxima revisión sugerida</div>
                     <div>
                         <strong>{{ incremental_backlog_prioritization.top_item.snapshot.proposal_label }}</strong>

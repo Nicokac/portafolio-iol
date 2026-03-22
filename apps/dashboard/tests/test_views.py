@@ -855,6 +855,15 @@ class TestDashboardView:
                         'headline': 'Todavía hay propuestas vigentes para futuras compras dentro del backlog.',
                         'has_manual_reviews': True,
                     },
+                    'deferred_review_summary': {
+                        'deferred_count': 2,
+                        'reactivable_count': 1,
+                        'archivable_count': 1,
+                        'top_reactivable_label': 'Plan guardado 2',
+                        'top_reactivable_priority_label': 'Recuperable',
+                        'has_reactivable': True,
+                        'headline': 'Parte de las diferidas todavia conserva fit suficiente para reactivarse como futura compra.',
+                    },
                     'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
                     'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
                     'explanation': 'El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, sin deterioro material de fragilidad y con buena ejecutabilidad tactica; Plan guardado 1 queda arriba por prioridad.',
@@ -980,6 +989,9 @@ class TestDashboardView:
         assert 'Diferidas' in body
         assert 'Cerradas' in body
         assert 'Última revisión' in body or 'Ultima revision' in body
+        assert 'Diferidas reactivables' in body
+        assert 'Diferidas para archivar' in body
+        assert 'Lectura de diferidas' in body
         assert 'Próxima revisión sugerida' in body or 'Pr?xima revisi?n sugerida' in body
         assert 'Revisar primero Plan guardado 1' in body
         assert 'Macro local FX + UVA:' in body
