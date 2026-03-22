@@ -2925,6 +2925,34 @@ def _build_incremental_backlog_followup(*, conviction_level: str) -> Dict:
     }
 
 
+def _normalize_incremental_backlog_followup_filter(followup_filter: str | None) -> str | None:
+    normalized = str(followup_filter or "").strip().lower()
+    if normalized in {"review_now", "monitor", "hold"}:
+        return normalized
+    return None
+
+
+def _format_incremental_backlog_followup_filter_label(followup_filter: str | None) -> str:
+    mapping = {
+        "review_now": "Revisar ya",
+        "monitor": "Monitorear",
+        "hold": "En espera",
+    }
+    return mapping.get(str(followup_filter or "").strip().lower(), "Todas")
+
+
+def _build_incremental_backlog_followup_filter_options(active_filter: str | None, counts: Dict[str, int]) -> list[Dict]:
+    options = [
+        {"key": "all", "label": "Todas", "count": sum(int(value or 0) for value in counts.values())},
+        {"key": "review_now", "label": "Revisar ya", "count": int(counts.get("review_now", 0))},
+        {"key": "monitor", "label": "Monitorear", "count": int(counts.get("monitor", 0))},
+        {"key": "hold", "label": "En espera", "count": int(counts.get("hold", 0))},
+    ]
+    for option in options:
+        option["selected"] = (active_filter or "all") == option["key"]
+    return options
+
+
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
     """Retorna el snapshot incremental activo como baseline de seguimiento del usuario."""
 
@@ -3072,7 +3100,7 @@ def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict
     }
 
 
-def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
+def get_incremental_backlog_prioritization(*, user, limit: int = 5, followup_filter: str | None = None) -> Dict:
     """Ordena el backlog pendiente en prioridades operativas explicitas."""
 
     backlog_payload = get_incremental_pending_backlog_vs_baseline(user=user, limit=limit)
@@ -3118,10 +3146,21 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
         ),
         None,
     )
-    shortlist = [
+    normalized_followup_filter = _normalize_incremental_backlog_followup_filter(followup_filter)
+    shortlist_items = [
         _build_incremental_backlog_shortlist_item(index=index + 1, item=item)
-        for index, item in enumerate(ordered_items[:3])
+        for index, item in enumerate(ordered_items)
     ]
+    followup_counts = {
+        "review_now": sum(1 for item in shortlist_items if item.get("followup", {}).get("status") == "review_now"),
+        "monitor": sum(1 for item in shortlist_items if item.get("followup", {}).get("status") == "monitor"),
+        "hold": sum(1 for item in shortlist_items if item.get("followup", {}).get("status") == "hold"),
+    }
+    if normalized_followup_filter:
+        shortlist_items = [
+            item for item in shortlist_items if str((item.get("followup") or {}).get("status") or "") == normalized_followup_filter
+        ]
+    shortlist = shortlist_items[:3]
 
     return {
         "baseline": backlog_payload.get("baseline"),
@@ -3132,6 +3171,13 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
         "economic_leader": _build_incremental_backlog_focus_item(economic_leader, focus="economic"),
         "tactical_leader": _build_incremental_backlog_focus_item(tactical_leader, focus="tactical"),
         "has_focus_split": bool(economic_leader or tactical_leader),
+        "active_followup_filter": normalized_followup_filter or "all",
+        "active_followup_filter_label": _format_incremental_backlog_followup_filter_label(normalized_followup_filter),
+        "available_followup_filters": _build_incremental_backlog_followup_filter_options(
+            normalized_followup_filter,
+            followup_counts,
+        ),
+        "followup_counts": followup_counts,
         "shortlist": shortlist,
         "has_shortlist": bool(shortlist),
         "has_priorities": bool(ordered_items),
@@ -3439,6 +3485,7 @@ def get_planeacion_incremental_context(
         "incremental_backlog_prioritization": get_incremental_backlog_prioritization(
             user=user,
             limit=history_limit,
+            followup_filter=_query_param_value(query_params, "backlog_followup_filter"),
         ),
         "incremental_manual_decision_summary": get_incremental_manual_decision_summary(
             user=user,

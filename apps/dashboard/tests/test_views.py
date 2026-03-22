@@ -500,6 +500,7 @@ class TestDashboardView:
             captured["decision_status_filter"] = query_params.get("decision_status_filter")
             captured["history_priority_filter"] = query_params.get("history_priority_filter")
             captured["history_sort"] = query_params.get("history_sort")
+            captured["backlog_followup_filter"] = query_params.get("backlog_followup_filter")
             captured["user_id"] = user.id
             captured["capital_amount"] = capital_amount
             captured["history_limit"] = history_limit
@@ -537,7 +538,12 @@ class TestDashboardView:
 
         response = auth_client.get(
             reverse("dashboard:planeacion"),
-            {"decision_status_filter": "pending", "history_priority_filter": "high", "history_sort": "priority"},
+            {
+                "decision_status_filter": "pending",
+                "history_priority_filter": "high",
+                "history_sort": "priority",
+                "backlog_followup_filter": "monitor",
+            },
         )
 
         assert response.status_code == 200
@@ -545,6 +551,7 @@ class TestDashboardView:
             "decision_status_filter": "pending",
             "history_priority_filter": "high",
             "history_sort": "priority",
+            "backlog_followup_filter": "monitor",
             "user_id": int(auth_client.session["_auth_user_id"]),
             "capital_amount": 600000,
             "history_limit": 5,
@@ -829,6 +836,15 @@ class TestDashboardView:
                     'has_priorities': True,
                     'has_focus_split': True,
                     'has_shortlist': True,
+                    'active_followup_filter': 'all',
+                    'active_followup_filter_label': 'Todas',
+                    'available_followup_filters': [
+                        {'key': 'all', 'label': 'Todas', 'count': 3, 'selected': True},
+                        {'key': 'review_now', 'label': 'Revisar ya', 'count': 0, 'selected': False},
+                        {'key': 'monitor', 'label': 'Monitorear', 'count': 2, 'selected': False},
+                        {'key': 'hold', 'label': 'En espera', 'count': 1, 'selected': False},
+                    ],
+                    'followup_counts': {'review_now': 0, 'monitor': 2, 'hold': 1},
                     'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
                     'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
                     'explanation': 'El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, sin deterioro material de fragilidad y con buena ejecutabilidad tactica; Plan guardado 1 queda arriba por prioridad.',
@@ -947,6 +963,9 @@ class TestDashboardView:
         assert 'Alta prioridad' in body
         assert 'Recuperables' in body
         assert 'En observación' in body or 'En observaci?n' in body
+        assert 'Filtrar shortlist por seguimiento' in body
+        assert 'Revisar ya' in body
+        assert 'En espera' in body
         assert 'Próxima revisión sugerida' in body or 'Pr?xima revisi?n sugerida' in body
         assert 'Revisar primero Plan guardado 1' in body
         assert 'Macro local FX + UVA:' in body

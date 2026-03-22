@@ -3385,6 +3385,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["shortlist"][0]["conviction"]["label"] in {"Convicción alta", "Convicci?n alta"}
         assert detail["shortlist"][0]["followup"]["status"] == "review_now"
         assert detail["shortlist"][0]["followup"]["label"] == "Revisar ya"
+        assert detail["followup_counts"] == {"review_now": 1, "monitor": 0, "hold": 2}
+        assert detail["active_followup_filter"] == "all"
         assert detail["economic_leader"]["proposal_label"] == "Pendiente alta"
         assert detail["economic_leader"]["focus_label"] in {"Líder económico", "L?der econ?mico"}
         assert detail["tactical_leader"]["proposal_label"] == "Pendiente alta"
@@ -3425,6 +3427,58 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["priority_label"] == "Recuperable"
         assert "recuperable" in detail["items"][0]["next_action"].lower()
         assert "alternativas recuperables" in detail["explanation"].lower()
+
+    def test_get_incremental_backlog_prioritization_filters_shortlist_by_followup(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+            return_value={
+                "baseline": {"proposal_label": "Baseline activo"},
+                "items": [
+                    {
+                        "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
+                        "score_difference": 0.6,
+                        "beats_baseline": True,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": False,
+                        "improves_profitability": True,
+                        "protects_fragility": True,
+                        "tactical_clean": True,
+                    },
+                    {
+                        "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
+                        "score_difference": 0.2,
+                        "beats_baseline": True,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": False,
+                        "improves_profitability": True,
+                        "protects_fragility": True,
+                        "tactical_clean": False,
+                    },
+                    {
+                        "snapshot": {"proposal_label": "Pendiente baja", "is_backlog_front": False},
+                        "score_difference": -0.2,
+                        "beats_baseline": False,
+                        "loses_vs_baseline": True,
+                        "ties_baseline": False,
+                        "improves_profitability": False,
+                        "protects_fragility": False,
+                        "tactical_clean": False,
+                    },
+                ],
+                "has_baseline": True,
+                "has_pending_backlog": True,
+            },
+        ):
+            detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5, followup_filter="monitor")
+
+        assert detail["active_followup_filter"] == "monitor"
+        assert detail["active_followup_filter_label"] == "Monitorear"
+        assert detail["followup_counts"] == {"review_now": 1, "monitor": 1, "hold": 1}
+        assert [item["proposal_label"] for item in detail["shortlist"]] == ["Pendiente media"]
+        assert detail["shortlist"][0]["followup"]["status"] == "monitor"
 
     def test_get_incremental_backlog_prioritization_handles_missing_inputs(self):
         class DummyUser:
@@ -3769,6 +3823,10 @@ class TestDashboardSelectors(TestCase):
                 return_value={"has_baseline": True},
             ) as baseline,
             patch(
+                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                return_value={"count": 1},
+            ) as backlog_prioritization,
+            patch(
                 "apps.dashboard.selectors.get_incremental_manual_decision_summary",
                 return_value={"has_decision": True},
             ) as decision_summary,
@@ -3809,11 +3867,11 @@ class TestDashboardSelectors(TestCase):
         manual_comparison.assert_called_once_with({"decision_status_filter": "pending"}, default_capital_amount=700000)
         preferred.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
         decision_engine.assert_called_once_with(ANY, query_params={"decision_status_filter": "pending"}, capital_amount=700000)
-        assert history.call_count == 2
-        history.assert_any_call(user=ANY, limit=7, decision_status="pending")
-        assert baseline.call_count == 2
-        baseline.assert_any_call(user=ANY)
+        history.assert_called_once_with(user=ANY, limit=7, decision_status="pending", priority_filter="", sort_mode="")
+        assert detail["incremental_backlog_prioritization"]["count"] == 1
+        baseline.assert_called_once_with(user=ANY)
         decision_summary.assert_called_once_with(user=ANY)
+        backlog_prioritization.assert_called_once_with(user=ANY, limit=7, followup_filter="")
         executive_summary.assert_called_once_with({"decision_status_filter": "pending"}, user=ANY, capital_amount=700000, limit=7)
 
     def test_concentracion_por_pais(self):

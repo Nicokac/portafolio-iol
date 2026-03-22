@@ -866,6 +866,45 @@
                         </div>
                     </div>
                 </div>
+                <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mt-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-lg-4">
+                            <label class="form-label" for="backlog_followup_filter">Filtrar shortlist por seguimiento</label>
+                            <select class="form-select" id="backlog_followup_filter" name="backlog_followup_filter">
+                                {% for option in incremental_backlog_prioritization.available_followup_filters %}
+                                <option value="{% if option.key != 'all' %}{{ option.key }}{% endif %}" {% if option.selected %}selected{% endif %}>
+                                    {{ option.label }} · {{ option.count }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-8">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100">
+                                        <div class="small text-muted">Revisar ya</div>
+                                        <strong>{{ incremental_backlog_prioritization.followup_counts.review_now|default:0 }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100">
+                                        <div class="small text-muted">Monitorear</div>
+                                        <strong>{{ incremental_backlog_prioritization.followup_counts.monitor|default:0 }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 h-100">
+                                        <div class="small text-muted">En espera</div>
+                                        <strong>{{ incremental_backlog_prioritization.followup_counts.hold|default:0 }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar filtro</button>
+                    </div>
+                </form>
                 {% if incremental_backlog_prioritization.top_item %}
                 <div class="border rounded p-3 mt-3">
                     <div class="small text-muted mb-1">Próxima revisión sugerida</div>
@@ -915,6 +954,12 @@
                 {% if incremental_backlog_prioritization.has_shortlist %}
                 <div class="mt-3">
                     <h6 class="mb-2">Shortlist para futuras compras</h6>
+                    {% if incremental_backlog_prioritization.active_followup_filter != 'all' %}
+                    <div class="small text-muted mb-2">
+                        Mostrando shortlist filtrada por seguimiento:
+                        <strong>{{ incremental_backlog_prioritization.active_followup_filter_label }}</strong>
+                    </div>
+                    {% endif %}
                     <div class="d-flex flex-column gap-2">
                         {% for item in incremental_backlog_prioritization.shortlist %}
                         <div class="border rounded p-3">
