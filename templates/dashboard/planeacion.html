@@ -2084,6 +2084,14 @@
                                         value="{{ plan.capital_raw }}"
                                     >
                                 </div>
+                                {% if plan.has_execution_order_guidance %}
+                                <input type="hidden" name="{{ plan.plan_key }}_execution_order_label" value="{{ plan.execution_order_label }}">
+                                <input type="hidden" name="{{ plan.plan_key }}_execution_order_summary" value="{{ plan.execution_order_summary }}">
+                                <div class="alert alert-light border small py-2 px-3 mb-3">
+                                    <strong>{{ plan.execution_order_label }}:</strong>
+                                    {{ plan.execution_order_summary }}
+                                </div>
+                                {% endif %}
                                 <div class="row g-2">
                                     {% for row in plan.rows %}
                                     <div class="col-6">
@@ -2152,6 +2160,12 @@
                                     <strong>{{ proposal.label }}</strong>
                                     {% if proposal.proposal_key == manual_incremental_portfolio_simulation_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
+                                    {% endif %}
+                                    {% if proposal.execution_order_summary %}
+                                    <div class="small text-muted mt-2">
+                                        <strong>{{ proposal.execution_order_label }}:</strong>
+                                        {{ proposal.execution_order_summary }}
+                                    </div>
                                     {% endif %}
                                 </td>
                                 <td>

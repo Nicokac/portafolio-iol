@@ -2395,6 +2395,8 @@ def get_manual_incremental_portfolio_simulation_comparison(
                         "purchase_plan": plan["purchase_plan"],
                         "capital_amount": plan["capital_amount"],
                         "input_warnings": plan["warnings"],
+                        "execution_order_label": plan.get("execution_order_label") or "",
+                        "execution_order_summary": plan.get("execution_order_summary") or "",
                         "simulation": {
                             "before": simulation["before"],
                             "after": simulation["after"],
@@ -4394,7 +4396,8 @@ def get_decision_engine_summary(
 
     query_params = query_params or {}
     query_stamp = _build_decision_engine_query_stamp(query_params)
-    cache_key = f"decision_engine_summary:{getattr(user, 'pk', 'anon')}:{int(capital_amount)}:{query_stamp}"
+    query_signature = hashlib.md5(query_stamp.encode("utf-8")).hexdigest()
+    cache_key = f"decision_engine_summary:{getattr(user, 'pk', 'anon')}:{int(capital_amount)}:{query_signature}"
 
     def build():
         portfolio_scope = _build_portfolio_scope_summary()
@@ -5485,6 +5488,13 @@ def _build_incremental_snapshot_reapply_payload(item: Dict) -> Dict:
     for index, purchase in enumerate(purchase_plan[:3], start=1):
         query_items.append((f"plan_a_symbol_{index}", str(purchase.get("symbol") or "").strip().upper()))
         query_items.append((f"plan_a_amount_{index}", _stringify_reapply_amount(purchase.get("amount") or 0)))
+
+    execution_quality = item.get("execution_quality") or {}
+    execution_order_label = str(execution_quality.get("execution_order_label") or "").strip()
+    execution_order_summary = str(execution_quality.get("execution_order_summary") or "").strip()
+    if execution_order_label and execution_order_summary:
+        query_items.append(("plan_a_execution_order_label", execution_order_label))
+        query_items.append(("plan_a_execution_order_summary", execution_order_summary))
 
     return {
         "reapply_querystring": urlencode(query_items),
@@ -6781,6 +6791,12 @@ def _build_manual_incremental_comparison_form_state(
 
     for plan_key, label in (("plan_a", "Plan manual A"), ("plan_b", "Plan manual B")):
         capital_raw = str(_query_param_value(query_params, f"{plan_key}_capital", "")).strip()
+        execution_order_label = str(
+            _query_param_value(query_params, f"{plan_key}_execution_order_label", "")
+        ).strip()
+        execution_order_summary = str(
+            _query_param_value(query_params, f"{plan_key}_execution_order_summary", "")
+        ).strip()
         rows = []
         for index in range(1, 4):
             rows.append(
@@ -6823,6 +6839,9 @@ def _build_manual_incremental_comparison_form_state(
             "rows": rows,
             "warnings": warnings,
             "has_input": touched_rows > 0 or bool(capital_raw),
+            "execution_order_label": execution_order_label,
+            "execution_order_summary": execution_order_summary,
+            "has_execution_order_guidance": bool(execution_order_label and execution_order_summary),
         }
         plans.append(plan_state)
 
@@ -6834,6 +6853,8 @@ def _build_manual_incremental_comparison_form_state(
                     "capital_amount": capital_amount,
                     "purchase_plan": purchase_plan,
                     "warnings": warnings,
+                    "execution_order_label": execution_order_label,
+                    "execution_order_summary": execution_order_summary,
                 }
             )
 

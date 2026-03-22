@@ -218,3 +218,5 @@ Efecto actual:
 - la propuesta sugerida puede indicar `Ejecutar primero`
 - no cambia el ranking global de propuestas
 - solo ordena mejor la lectura operativa dentro de la propuesta ya elegida
+
+- La reaplicacion de propuestas al comparador manual tambien preserva el orden de ejecucion sugerido por simbolo cuando esa metadata ya existe en la propuesta preferida.

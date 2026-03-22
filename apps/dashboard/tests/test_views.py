@@ -1821,6 +1821,26 @@ class TestDashboardView:
         assert 'value="MCD"' in body
         assert 'value="600000"' in body
 
+    def test_planeacion_renders_reapplied_execution_order_guidance_in_manual_comparator(self, auth_client):
+        response = auth_client.get(
+            reverse('dashboard:planeacion'),
+            {
+                'manual_compare': '1',
+                'plan_a_capital': '600000',
+                'plan_a_symbol_1': 'KO',
+                'plan_a_amount_1': '300000',
+                'plan_a_symbol_2': 'MCD',
+                'plan_a_amount_2': '300000',
+                'plan_a_execution_order_label': 'Ejecutar primero',
+                'plan_a_execution_order_summary': 'Arrancar por KO y dejar MCD para una validacion adicional.',
+            },
+        )
+
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert 'Ejecutar primero' in body
+        assert 'Arrancar por KO y dejar MCD para una validacion adicional.' in body
+
     def test_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')
         response = auth_client.get(url)

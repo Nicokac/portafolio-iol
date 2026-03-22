@@ -2835,6 +2835,45 @@ class TestDashboardSelectors(TestCase):
         assert detail["proposals"][0]["proposal_label"] == "Plan manual A"
         assert detail["proposals"][0]["simulation_delta"]["expected_return_change"] == 0.7
 
+    def test_get_manual_incremental_portfolio_simulation_comparison_preserves_reapplied_execution_order_guidance(self):
+        cache.clear()
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.2,
+                        "real_expected_return_change": 0.0,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.1,
+                        "risk_concentration_change": -0.1,
+                    },
+                    "interpretation": "Plan manual reaplicado.",
+                    "warnings": [],
+                }
+
+        query_params = {
+            "manual_compare": "1",
+            "plan_a_capital": "600000",
+            "plan_a_symbol_1": "KO",
+            "plan_a_amount_1": "300000",
+            "plan_a_symbol_2": "MCD",
+            "plan_a_amount_2": "300000",
+            "plan_a_execution_order_label": "Ejecutar primero",
+            "plan_a_execution_order_summary": "Arrancar por KO y dejar MCD para una validacion adicional.",
+        }
+
+        with patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator):
+            detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
+
+        assert detail["form_state"]["plans"][0]["has_execution_order_guidance"] is True
+        assert detail["form_state"]["plans"][0]["execution_order_label"] == "Ejecutar primero"
+        assert "Arrancar por KO" in detail["form_state"]["plans"][0]["execution_order_summary"]
+        assert detail["proposals"][0]["execution_order_label"] == "Ejecutar primero"
+        assert "Arrancar por KO" in detail["proposals"][0]["execution_order_summary"]
+
     def test_get_manual_incremental_portfolio_simulation_comparison_handles_empty_input(self):
         cache.clear()
 
@@ -3123,6 +3162,10 @@ class TestDashboardSelectors(TestCase):
                         {"symbol": "xlu", "amount": 200000},
                         {"symbol": "ko", "amount": 1000},
                     ],
+                    "execution_quality": {
+                        "execution_order_label": "Ejecutar primero",
+                        "execution_order_summary": "Arrancar por KO y dejar MCD para una validacion adicional.",
+                    },
                 },
                 {"proposal_label": "Split KO + MCD", "capital_amount": 300000, "purchase_plan": []},
             ],
@@ -3142,6 +3185,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["simulation_delta"] == {}
         assert "manual_compare=1" in detail["items"][0]["reapply_querystring"]
         assert "plan_a_symbol_1=KO" in detail["items"][0]["reapply_querystring"]
+        assert "plan_a_execution_order_label=Ejecutar+primero" in detail["items"][0]["reapply_querystring"]
         assert detail["items"][0]["reapply_truncated"] is True
 
     def test_get_incremental_proposal_history_supports_manual_decision_filter(self):

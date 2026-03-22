@@ -292,3 +292,5 @@ Si la pregunta es:
 ## Estado
 
 Documento vigente para el estado actual de integracion IOL del proyecto.
+
+- El reapply hacia `Planeacion` puede arrastrar metadata opcional de orden de ejecucion (`plan_a_execution_order_label`, `plan_a_execution_order_summary`) para conservar la recomendacion operativa del plan reaplicado sin alterar la simulacion.
