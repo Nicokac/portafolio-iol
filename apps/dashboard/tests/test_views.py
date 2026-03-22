@@ -1002,7 +1002,11 @@ class TestDashboardView:
                             'rank': 1,
                             'proposal_label': 'Plan guardado 1',
                             'source_label': 'Backlog nuevo',
+                            'snapshot_id': 1,
+                            'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000',
+                            'reapply_truncated': False,
                             'is_backlog_front': False,
+                            'is_tracking_baseline': False,
                             'selected_context': 'Plan manual enviado por el usuario',
                             'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
                             'priority_label': 'Alta',
@@ -1010,12 +1014,21 @@ class TestDashboardView:
                             'is_future_purchase_recommended': True,
                             'future_purchase_recommendation_label': 'Recomendada ahora',
                             'future_purchase_recommendation_summary': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
+                            'future_purchase_recommendation_actions': {
+                                'can_reapply': True,
+                                'can_promote_front': True,
+                                'can_promote_baseline': True,
+                            },
                         },
                         {
                             'rank': 2,
                             'proposal_label': 'Plan reactivado',
                             'source_label': 'Reactivada',
+                            'snapshot_id': 2,
+                            'reapply_querystring': '',
+                            'reapply_truncated': False,
                             'is_backlog_front': True,
+                            'is_tracking_baseline': False,
                             'selected_context': 'Reactivada desde diferidas',
                             'next_action': 'Revisar reactivada vigente antes de perder contexto operativo.',
                             'priority_label': 'Pendiente',
@@ -1023,6 +1036,11 @@ class TestDashboardView:
                             'is_future_purchase_recommended': False,
                             'future_purchase_recommendation_label': '',
                             'future_purchase_recommendation_summary': '',
+                            'future_purchase_recommendation_actions': {
+                                'can_reapply': False,
+                                'can_promote_front': False,
+                                'can_promote_baseline': False,
+                            },
                         },
                     ],
                     'count': 2,
@@ -1098,6 +1116,9 @@ class TestDashboardView:
         assert 'Fuente más sólida' in body
         assert 'Mejor calidad promedio: Backlog nuevo' in body
         assert 'Recomendada ahora' in body
+        assert 'Reaplicar en comparador manual' in body
+        assert 'Poner al frente' in body
+        assert 'Promover a baseline' in body
         assert 'Diferidas reactivables' in body
         assert 'Diferidas archivables' in body
         assert 'Revisar ya' in body
@@ -2926,7 +2947,11 @@ class TestDashboardView:
                             'rank': 1,
                             'proposal_label': 'Plan backlog',
                             'source_label': 'Backlog nuevo',
+                            'snapshot_id': 11,
+                            'reapply_querystring': 'manual_capital_amount=300000',
+                            'reapply_truncated': False,
                             'is_backlog_front': False,
+                            'is_tracking_baseline': False,
                             'selected_context': 'Plan manual enviado por el usuario',
                             'next_action': 'Revisar primero Plan backlog.',
                             'priority_label': 'Alta',
@@ -2934,12 +2959,21 @@ class TestDashboardView:
                             'is_future_purchase_recommended': True,
                             'future_purchase_recommendation_label': 'Recomendada ahora',
                             'future_purchase_recommendation_summary': 'Revisar primero Plan backlog.',
+                            'future_purchase_recommendation_actions': {
+                                'can_reapply': True,
+                                'can_promote_front': True,
+                                'can_promote_baseline': True,
+                            },
                         },
                         {
                             'rank': 2,
                             'proposal_label': 'Plan reactivado',
                             'source_label': 'Reactivada',
+                            'snapshot_id': 12,
+                            'reapply_querystring': '',
+                            'reapply_truncated': False,
                             'is_backlog_front': True,
+                            'is_tracking_baseline': False,
                             'selected_context': 'Reactivada desde diferidas',
                             'next_action': 'Revisar reactivada vigente antes de perder contexto operativo.',
                             'priority_label': 'Pendiente',
@@ -2947,6 +2981,11 @@ class TestDashboardView:
                             'is_future_purchase_recommended': False,
                             'future_purchase_recommendation_label': '',
                             'future_purchase_recommendation_summary': '',
+                            'future_purchase_recommendation_actions': {
+                                'can_reapply': False,
+                                'can_promote_front': False,
+                                'can_promote_baseline': False,
+                            },
                         }
                     ],
                     'count': 2,

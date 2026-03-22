@@ -3248,7 +3248,11 @@ def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict
         "expected_return_change": simulation_delta.get("expected_return_change"),
         "fragility_change": simulation_delta.get("fragility_change"),
         "scenario_loss_change": simulation_delta.get("scenario_loss_change"),
+        "snapshot_id": snapshot.get("id"),
+        "reapply_querystring": snapshot.get("reapply_querystring") or "",
+        "reapply_truncated": bool(snapshot.get("reapply_truncated")),
         "is_backlog_front": bool(snapshot.get("is_backlog_front")),
+        "is_tracking_baseline": bool(snapshot.get("is_tracking_baseline")),
         "economic_edge": economic_edge,
         "tactical_edge": tactical_edge,
         "conviction": conviction,
@@ -3636,7 +3640,11 @@ def _build_incremental_future_purchase_shortlist(
                 "expected_return_change": None,
                 "fragility_change": None,
                 "scenario_loss_change": None,
+                "snapshot_id": item.get("snapshot_id"),
+                "reapply_querystring": "",
+                "reapply_truncated": False,
                 "is_backlog_front": bool(item.get("is_backlog_front")),
+                "is_tracking_baseline": bool(item.get("is_tracking_baseline")),
                 "economic_edge": bool(item.get("is_accepted")),
                 "tactical_edge": bool(item.get("is_active")),
                 "conviction": {
@@ -3790,6 +3798,19 @@ def _annotate_incremental_future_purchase_recommended_items(
         enriched["future_purchase_recommendation_summary"] = (
             str(guidance.get("next_action") or "").strip() if is_recommended else ""
         )
+        enriched["future_purchase_recommendation_actions"] = {
+            "can_reapply": bool(is_recommended and str(enriched.get("reapply_querystring") or "").strip()),
+            "can_promote_front": bool(
+                is_recommended
+                and enriched.get("snapshot_id") is not None
+                and not bool(enriched.get("is_backlog_front"))
+            ),
+            "can_promote_baseline": bool(
+                is_recommended
+                and enriched.get("snapshot_id") is not None
+                and not bool(enriched.get("is_tracking_baseline"))
+            ),
+        }
         return enriched
 
     shortlist["items"] = [

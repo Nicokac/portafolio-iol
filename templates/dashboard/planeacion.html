@@ -958,6 +958,42 @@
                                         {% if item.future_purchase_recommendation_summary %}
                                         <div class="small text-muted mt-2">{{ item.future_purchase_recommendation_summary }}</div>
                                         {% endif %}
+                                        {% if item.future_purchase_recommendation_actions.can_reapply or item.future_purchase_recommendation_actions.can_promote_front or item.future_purchase_recommendation_actions.can_promote_baseline %}
+                                        <div class="mt-2 d-flex flex-wrap gap-2">
+                                            {% if item.future_purchase_recommendation_actions.can_reapply %}
+                                            <a
+                                                href="{% url 'dashboard:planeacion' %}?{{ item.reapply_querystring }}#planeacion-aportes"
+                                                class="btn btn-outline-secondary btn-sm"
+                                            >
+                                                Reaplicar en comparador manual
+                                            </a>
+                                            {% endif %}
+                                            {% if item.future_purchase_recommendation_actions.can_promote_front %}
+                                            <form method="post" action="{% url 'dashboard:promote_incremental_backlog_front' %}" class="d-inline-block">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="snapshot_id" value="{{ item.snapshot_id }}">
+                                                <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
+                                                <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
+                                                <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
+                                                <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
+                                                <button type="submit" class="btn btn-outline-info btn-sm">Poner al frente</button>
+                                            </form>
+                                            {% endif %}
+                                            {% if item.future_purchase_recommendation_actions.can_promote_baseline %}
+                                            <form method="post" action="{% url 'dashboard:promote_incremental_baseline' %}" class="d-inline-block">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="snapshot_id" value="{{ item.snapshot_id }}">
+                                                <input type="hidden" name="decision_status_filter" value="{% if incremental_proposal_history.active_filter != 'all' %}{{ incremental_proposal_history.active_filter }}{% endif %}">
+                                                <input type="hidden" name="history_priority_filter" value="{% if incremental_proposal_history.active_priority_filter != 'all' %}{{ incremental_proposal_history.active_priority_filter }}{% endif %}">
+                                                <input type="hidden" name="history_deferred_fit_filter" value="{% if incremental_proposal_history.active_deferred_fit_filter != 'all' %}{{ incremental_proposal_history.active_deferred_fit_filter }}{% endif %}">
+                                                <input type="hidden" name="history_future_purchase_source_filter" value="{% if incremental_proposal_history.active_future_purchase_source_filter != 'all' %}{{ incremental_proposal_history.active_future_purchase_source_filter }}{% endif %}">
+                                                <input type="hidden" name="history_sort" value="{{ incremental_proposal_history.active_sort_mode }}">
+                                                <button type="submit" class="btn btn-outline-primary btn-sm">Promover a baseline</button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
                                         <div class="small text-muted mt-2">{{ item.next_action }}</div>
                                     </div>
                                     <div class="text-end">

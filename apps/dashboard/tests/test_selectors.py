@@ -4336,6 +4336,10 @@ class TestDashboardSelectors(TestCase):
                             "priority_label": "Alta",
                             "next_action": "Revisar primero Pendiente A.",
                             "selected_context": "Backlog nuevo",
+                            "snapshot_id": 11,
+                            "reapply_querystring": "manual_capital_amount=300000",
+                            "reapply_truncated": False,
+                            "is_tracking_baseline": False,
                             "expected_return_change": 0.4,
                             "fragility_change": -1.2,
                             "scenario_loss_change": 0.2,
@@ -4407,6 +4411,9 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["source_label"] == "Backlog nuevo"
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["is_future_purchase_recommended"] is True
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_label"] == "Recomendada ahora"
+        assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_actions"]["can_reapply"] is True
+        assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_actions"]["can_promote_front"] is True
+        assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_actions"]["can_promote_baseline"] is True
         assert detail["incremental_future_purchase_shortlist"]["items"][1]["source_label"] == "Reactivada"
         assert detail["incremental_proposal_history"]["items"][0]["is_future_purchase_recommended"] is True
         assert detail["incremental_proposal_history"]["items"][0]["future_purchase_recommendation_label"] == "Recomendada ahora"
