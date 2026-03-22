@@ -1095,7 +1095,7 @@ Un módulo se considera terminado solo si cumple todos estos puntos:
 3. implementación completada
 4. tests agregados y ejecutados
 5. edge cases cubiertos
-6. documentación breve agregada o actualizada
+6. documentación breve agregada o actualizada en el mismo módulo sobre los documentos correspondientes
 7. salida serializable y consistente
 8. resumen de cierre preparado
 9. mensaje de commit propuesto
@@ -1182,6 +1182,29 @@ El agente debe documentar en forma breve y útil:
 * algoritmo MVP
 * limitaciones
 * futuros puntos de extensión
+
+### Regla de actualización documental continua
+
+Cada vez que el agente modifique código, comportamiento visible, contratos, flujos operativos, superficies UI, endpoints consumidos o reglas de decisión, debe actualizar en el mismo módulo los documentos correspondientes.
+
+La documentación no debe quedar para una pasada masiva posterior salvo que el usuario lo pida explícitamente.
+
+Orden esperado:
+
+1. implementar o ajustar el cambio
+2. actualizar en el mismo turno la documentación afectada
+3. cerrar el módulo dejando código y documentación alineados
+
+Como criterio mínimo, el agente debe evaluar siempre si corresponde actualizar:
+
+* `README.md`
+* `docs/README.md`
+* documentación funcional del flujo afectado
+* documentación técnica del módulo afectado
+* mapas de pipeline o de endpoints si cambió uso real de datos
+* checklists o inventarios de exposición si cambió una superficie visible
+
+Si decide no actualizar documentación en un módulo con cambios funcionales o técnicos, debe justificarlo explícitamente en el cierre.
 
 Debe evitar documentación inflada o redundante.
 
