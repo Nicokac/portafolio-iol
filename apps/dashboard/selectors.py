@@ -3715,6 +3715,57 @@ def _build_incremental_future_purchase_shortlist(
     }
 
 
+def _build_incremental_future_purchase_source_guidance(
+    quality_summary: Dict,
+    shortlist: Dict,
+    backlog_prioritization: Dict,
+    reactivation_summary: Dict,
+) -> Dict:
+    source = str((shortlist or {}).get("preferred_source") or (quality_summary or {}).get("dominant_source") or "none")
+    if source == "backlog_nuevo":
+        top_item = dict((backlog_prioritization or {}).get("top_item") or {})
+        snapshot = dict(top_item.get("snapshot") or {})
+        proposal_label = str(snapshot.get("proposal_label") or "backlog nuevo prioritario")
+        next_action = str(top_item.get("next_action") or f"Revisar primero {proposal_label}.")
+        headline = str((quality_summary or {}).get("headline") or "Backlog nuevo hoy concentra la mejor fuente para revisar futuras compras.")
+        return {
+            "source": "backlog_nuevo",
+            "label": "Salir desde backlog nuevo",
+            "headline": headline,
+            "next_action": next_action,
+            "proposal_label": proposal_label,
+            "has_guidance": True,
+        }
+    if source == "reactivadas":
+        active_item = next(
+            (item for item in list((reactivation_summary or {}).get("items") or []) if item.get("is_active")),
+            None,
+        ) or {}
+        proposal_label = str(active_item.get("proposal_label") or "reactivada vigente")
+        next_action = (
+            "Revisar reactivada vigente antes de perder contexto operativo."
+            if proposal_label == "reactivada vigente"
+            else f"Revisar primero {proposal_label} entre las reactivadas vigentes."
+        )
+        headline = str((quality_summary or {}).get("headline") or "Reactivadas hoy concentra la mejor fuente para revisar futuras compras.")
+        return {
+            "source": "reactivadas",
+            "label": "Salir desde reactivadas",
+            "headline": headline,
+            "next_action": next_action,
+            "proposal_label": proposal_label,
+            "has_guidance": True,
+        }
+    return {
+        "source": "mixto",
+        "label": "Lectura mixta",
+        "headline": "Conviene mantener una lectura mixta entre backlog nuevo y reactivadas.",
+        "next_action": "Revisar la shortlist unificada y priorizar el mejor fit visible del momento.",
+        "proposal_label": "",
+        "has_guidance": True,
+    }
+
+
 def get_incremental_baseline_drift(
     query_params,
     *,
@@ -4248,6 +4299,12 @@ def get_planeacion_incremental_context(
         incremental_proposal_history.get("future_purchase_source_quality_summary") or {},
         limit=3,
     )
+    incremental_future_purchase_source_guidance = _build_incremental_future_purchase_source_guidance(
+        incremental_proposal_history.get("future_purchase_source_quality_summary") or {},
+        incremental_future_purchase_shortlist,
+        incremental_backlog_prioritization,
+        incremental_reactivation_summary,
+    )
     incremental_decision_executive_summary = get_incremental_decision_executive_summary(
         query_params,
         user=user,
@@ -4273,6 +4330,7 @@ def get_planeacion_incremental_context(
         "incremental_reactivation_summary": incremental_reactivation_summary,
         "incremental_reactivation_vs_backlog_summary": incremental_reactivation_vs_backlog_summary,
         "incremental_future_purchase_shortlist": incremental_future_purchase_shortlist,
+        "incremental_future_purchase_source_guidance": incremental_future_purchase_source_guidance,
         "incremental_decision_executive_summary": incremental_decision_executive_summary,
     }
 

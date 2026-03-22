@@ -4395,6 +4395,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_future_purchase_shortlist"]["headline"] == "Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa."
         assert detail["incremental_future_purchase_shortlist"]["quality_preferred_source"] == "backlog_nuevo"
         assert detail["incremental_future_purchase_shortlist"]["quality_label"] == "Domina backlog nuevo"
+        assert detail["incremental_future_purchase_source_guidance"]["source"] == "backlog_nuevo"
+        assert detail["incremental_future_purchase_source_guidance"]["label"] == "Salir desde backlog nuevo"
         assert detail["incremental_future_purchase_shortlist"]["count"] == 2
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["source_label"] == "Backlog nuevo"
         assert detail["incremental_future_purchase_shortlist"]["items"][1]["source_label"] == "Reactivada"

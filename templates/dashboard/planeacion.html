@@ -928,6 +928,14 @@
                             <strong>{{ incremental_future_purchase_shortlist.quality_label }}</strong>
                         </div>
                         {% endif %}
+                        {% if incremental_future_purchase_source_guidance.has_guidance %}
+                        <div class="border rounded p-3 mb-2">
+                            <div class="small text-muted mb-1">Primera acción por fuente sólida</div>
+                            <div><strong>{{ incremental_future_purchase_source_guidance.label }}</strong></div>
+                            <div class="small text-muted mt-2">{{ incremental_future_purchase_source_guidance.headline }}</div>
+                            <div class="small text-muted mt-2">{{ incremental_future_purchase_source_guidance.next_action }}</div>
+                        </div>
+                        {% endif %}
                         <div class="d-flex flex-column gap-2">
                             {% for item in incremental_future_purchase_shortlist.items %}
                             <div class="border rounded p-3">
@@ -1124,8 +1132,8 @@
                           </div>
                       </div>
                   </div>
-                  {% if incremental_backlog_prioritization.top_item %}
-                  <div class="border rounded p-3 mt-3">
+                {% if incremental_backlog_prioritization.top_item %}
+                <div class="border rounded p-3 mt-3">
                     <div class="small text-muted mb-1">Próxima revisión sugerida</div>
                     <div>
                         <strong>{{ incremental_backlog_prioritization.top_item.snapshot.proposal_label }}</strong>
@@ -1135,6 +1143,14 @@
                     </div>
                     <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.top_item.next_action }}</div>
                     <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.explanation }}</div>
+                </div>
+                {% endif %}
+                {% if incremental_future_purchase_source_guidance.has_guidance %}
+                <div class="border rounded p-3 mt-3">
+                    <div class="small text-muted mb-1">Primera acción por fuente sólida</div>
+                    <div><strong>{{ incremental_future_purchase_source_guidance.label }}</strong></div>
+                    <div class="small text-muted mt-2">{{ incremental_future_purchase_source_guidance.headline }}</div>
+                    <div class="small text-muted mt-2">{{ incremental_future_purchase_source_guidance.next_action }}</div>
                 </div>
                 {% endif %}
                 {% if incremental_backlog_prioritization.has_focus_split %}

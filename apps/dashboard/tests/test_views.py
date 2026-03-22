@@ -1029,6 +1029,14 @@ class TestDashboardView:
                     'quality_label': 'Mejor calidad promedio: Backlog nuevo',
                     'quality_headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
                 },
+                'incremental_future_purchase_source_guidance': {
+                    'source': 'backlog_nuevo',
+                    'label': 'Salir desde backlog nuevo',
+                    'headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
+                    'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
+                    'proposal_label': 'Plan guardado 1',
+                    'has_guidance': True,
+                },
                 'incremental_manual_decision_summary': {
                     'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
                     'has_decision': True,
@@ -2938,6 +2946,14 @@ class TestDashboardView:
                     'quality_label': 'Mejor calidad promedio: Backlog nuevo',
                     'quality_headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
                 },
+                'incremental_future_purchase_source_guidance': {
+                    'source': 'backlog_nuevo',
+                    'label': 'Salir desde backlog nuevo',
+                    'headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
+                    'next_action': 'Revisar primero Plan backlog.',
+                    'proposal_label': 'Plan backlog',
+                    'has_guidance': True,
+                },
                 'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
                 'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
             },
@@ -2960,6 +2976,8 @@ class TestDashboardView:
         assert 'Shortlist unificada de futuras compras' in body
         assert 'Mejor calidad promedio: Backlog nuevo' in body
         assert 'Fuente más sólida hoy:' in body
+        assert 'Primera acción por fuente sólida' in body
+        assert 'Salir desde backlog nuevo' in body
         assert 'Backlog nuevo' in body
         assert 'Reactivada' in body
         assert 'Plan reactivado' in body
