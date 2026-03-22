@@ -935,6 +935,9 @@
                                         {% if item.tactical_edge %}
                                         <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1">Gana por ejecutabilidad</span>
                                         {% endif %}
+                                        <span class="badge {% if item.conviction.level == 'high' %}bg-success{% elif item.conviction.level == 'medium' %}bg-warning text-dark{% else %}bg-secondary{% endif %} ms-1">
+                                            {{ item.conviction.label }}
+                                        </span>
                                     </div>
                                     {% if item.selected_context %}
                                     <div class="small text-muted mt-1">{{ item.selected_context }}</div>
@@ -946,6 +949,7 @@
                                     <div>Δ Worst: {{ item.scenario_loss_change|default:"-" }}</div>
                                 </div>
                             </div>
+                            <div class="small text-muted mt-2">{{ item.conviction.summary }}</div>
                             <div class="small text-muted mt-2">{{ item.next_action }}</div>
                         </div>
                         {% endfor %}

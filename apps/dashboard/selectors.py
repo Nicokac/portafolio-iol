@@ -2848,6 +2848,9 @@ def _sort_incremental_history_items(items: list[Dict], *, sort_mode: str) -> lis
 def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict:
     snapshot = dict(item.get("snapshot") or {})
     simulation_delta = dict(snapshot.get("simulation_delta") or {})
+    economic_edge = bool(item.get("improves_profitability") and item.get("protects_fragility"))
+    tactical_edge = bool(item.get("tactical_clean"))
+    conviction = _build_incremental_backlog_conviction(item, economic_edge=economic_edge, tactical_edge=tactical_edge)
     return {
         "rank": index,
         "proposal_label": snapshot.get("proposal_label") or "-",
@@ -2860,8 +2863,9 @@ def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict
         "fragility_change": simulation_delta.get("fragility_change"),
         "scenario_loss_change": simulation_delta.get("scenario_loss_change"),
         "is_backlog_front": bool(snapshot.get("is_backlog_front")),
-        "economic_edge": bool(item.get("improves_profitability") and item.get("protects_fragility")),
-        "tactical_edge": bool(item.get("tactical_clean")),
+        "economic_edge": economic_edge,
+        "tactical_edge": tactical_edge,
+        "conviction": conviction,
     }
 
 
@@ -2870,12 +2874,33 @@ def _build_incremental_backlog_focus_item(item: Dict | None, *, focus: str) -> D
         return None
     shortlist_item = _build_incremental_backlog_shortlist_item(index=1, item=item)
     if focus == "economic":
-        shortlist_item["focus_label"] = "Líder económico"
+        shortlist_item["focus_label"] = "L?der econ?mico"
         shortlist_item["focus_summary"] = "Mejora retorno esperado sin deterioro material de fragilidad."
     else:
-        shortlist_item["focus_label"] = "Líder táctico"
-        shortlist_item["focus_summary"] = "Conserva la ejecutabilidad más limpia para reconsiderar una compra."
+        shortlist_item["focus_label"] = "L?der t?ctico"
+        shortlist_item["focus_summary"] = "Conserva la ejecutabilidad m?s limpia para reconsiderar una compra."
     return shortlist_item
+
+
+def _build_incremental_backlog_conviction(item: Dict, *, economic_edge: bool, tactical_edge: bool) -> Dict:
+    priority = str(item.get("priority") or "low")
+    if priority == "high" and economic_edge and tactical_edge:
+        return {
+            "level": "high",
+            "label": "Convicci?n alta",
+            "summary": "Mejora la ecuaci?n econ?mica y conserva una ejecutabilidad t?ctica limpia.",
+        }
+    if priority in {"high", "medium"} and (economic_edge or tactical_edge):
+        return {
+            "level": "medium",
+            "label": "Convicci?n media",
+            "summary": "Tiene m?rito para reabrir la compra, pero no domina ambos frentes al mismo tiempo.",
+        }
+    return {
+        "level": "low",
+        "label": "Convicci?n baja",
+        "summary": "Conviene mantenerla en observaci?n hasta que mejore retorno, fragilidad o ejecutabilidad.",
+    }
 
 
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:

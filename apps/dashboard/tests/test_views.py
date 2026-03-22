@@ -867,6 +867,11 @@ class TestDashboardView:
                             'is_backlog_front': False,
                             'economic_edge': True,
                             'tactical_edge': False,
+                            'conviction': {
+                                'level': 'medium',
+                                'label': 'Convicción media',
+                                'summary': 'Tiene mérito para reabrir la compra, pero no domina ambos frentes al mismo tiempo.',
+                            },
                         },
                         {
                             'rank': 2,
@@ -881,6 +886,11 @@ class TestDashboardView:
                             'is_backlog_front': False,
                             'economic_edge': False,
                             'tactical_edge': True,
+                            'conviction': {
+                                'level': 'medium',
+                                'label': 'Convicción media',
+                                'summary': 'Tiene mérito para reabrir la compra, pero no domina ambos frentes al mismo tiempo.',
+                            },
                         },
                     ],
                 },
@@ -941,6 +951,7 @@ class TestDashboardView:
         assert 'Líder táctico' in body or 'Lider tactico' in body
         assert 'Gana por retorno' in body
         assert 'Gana por ejecutabilidad' in body
+        assert 'Convicción media' in body or 'Conviccion media' in body
         assert 'Plan guardado 2' in body
         assert 'Tecnología / growth' in body
         assert 'Por qué este bloque recibió este score' in body

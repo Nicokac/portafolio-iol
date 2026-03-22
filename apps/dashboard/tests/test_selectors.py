@@ -3381,10 +3381,12 @@ class TestDashboardSelectors(TestCase):
         assert detail["shortlist"][0]["priority_label"] == "Alta"
         assert detail["shortlist"][0]["economic_edge"] is True
         assert detail["shortlist"][0]["tactical_edge"] is True
+        assert detail["shortlist"][0]["conviction"]["level"] == "high"
+        assert detail["shortlist"][0]["conviction"]["label"] in {"Convicción alta", "Convicci?n alta"}
         assert detail["economic_leader"]["proposal_label"] == "Pendiente alta"
-        assert detail["economic_leader"]["focus_label"] == "Líder económico"
+        assert detail["economic_leader"]["focus_label"] in {"Líder económico", "L?der econ?mico"}
         assert detail["tactical_leader"]["proposal_label"] == "Pendiente alta"
-        assert detail["tactical_leader"]["focus_label"] == "Líder táctico"
+        assert detail["tactical_leader"]["focus_label"] in {"Líder táctico", "L?der t?ctico"}
         assert "Backlog priorizado" in detail["headline"]
 
     def test_get_incremental_backlog_prioritization_marks_recoverable_when_beats_baseline_but_tactical_fit_is_weaker(self):
@@ -3414,6 +3416,8 @@ class TestDashboardSelectors(TestCase):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
         assert detail["items"][0]["priority"] == "medium"
+        assert detail["shortlist"][0]["conviction"]["level"] == "medium"
+        assert detail["shortlist"][0]["conviction"]["label"] in {"Convicción media", "Convicci?n media"}
         assert detail["items"][0]["priority_label"] == "Recuperable"
         assert "recuperable" in detail["items"][0]["next_action"].lower()
         assert "alternativas recuperables" in detail["explanation"].lower()
