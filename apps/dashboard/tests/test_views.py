@@ -796,6 +796,19 @@ class TestDashboardView:
                     'item': {'proposal_label': 'Plan baseline', 'source_label': 'Comparador manual', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'created_at': '2026-03-17 11:00'},
                     'has_baseline': True,
                 },
+                'incremental_backlog_prioritization': {
+                    'count': 3,
+                    'has_priorities': True,
+                    'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
+                    'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
+                    'explanation': 'El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, sin deterioro material de fragilidad y con buena ejecutabilidad tactica; Plan guardado 1 queda arriba por prioridad.',
+                    'top_item': {
+                        'snapshot': {'proposal_label': 'Plan guardado 1'},
+                        'priority': 'high',
+                        'priority_label': 'Alta',
+                        'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
+                    },
+                },
                 'incremental_manual_decision_summary': {
                     'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
                     'has_decision': True,
@@ -835,6 +848,12 @@ class TestDashboardView:
         assert 'FCI cash management' in body
         assert 'Diagnóstico previo al aporte' in body
         assert 'Señales de diagnóstico y priorización' in body
+        assert 'Backlog priorizado' in body
+        assert 'Alta prioridad' in body
+        assert 'Recuperables' in body
+        assert 'En observación' in body or 'En observaci?n' in body
+        assert 'Próxima revisión sugerida' in body or 'Pr?xima revisi?n sugerida' in body
+        assert 'Revisar primero Plan guardado 1' in body
         assert 'Macro local FX + UVA:' in body
         assert 'Macro local FX/UVA' in body
         assert 'Primera acción sugerida:' in body

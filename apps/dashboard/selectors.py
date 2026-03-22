@@ -3177,6 +3177,10 @@ def get_planeacion_incremental_context(
         "incremental_proposal_tracking_baseline": get_incremental_proposal_tracking_baseline(
             user=user,
         ),
+        "incremental_backlog_prioritization": get_incremental_backlog_prioritization(
+            user=user,
+            limit=history_limit,
+        ),
         "incremental_manual_decision_summary": get_incremental_manual_decision_summary(
             user=user,
         ),

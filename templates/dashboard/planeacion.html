@@ -833,6 +833,56 @@
                     </div>
                 </div>
             </div>
+            <div class="card-body border-bottom">
+                <p class="text-muted mb-3">Antes de revisar snapshots guardados uno por uno, conviene mirar qué tan priorizable está el backlog frente al baseline activo.</p>
+                {% if incremental_backlog_prioritization.has_priorities %}
+                <div class="row g-3">
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Backlog priorizado</div>
+                            <div><strong>{{ incremental_backlog_prioritization.count }}</strong></div>
+                            <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.headline }}</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Alta prioridad</div>
+                            <div><strong>{{ incremental_backlog_prioritization.counts.high|default:0 }}</strong></div>
+                            <div class="small text-muted mt-2">Mejoran baseline, cuidan fragilidad y conservan mejor ejecutabilidad táctica.</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Recuperables</div>
+                            <div><strong>{{ incremental_backlog_prioritization.counts.medium|default:0 }}</strong></div>
+                            <div class="small text-muted mt-2">Superan baseline, pero todavía no con el balance táctico más limpio.</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">En observación</div>
+                            <div><strong>{{ incremental_backlog_prioritization.counts.watch|default:0 }}</strong></div>
+                            <div class="small text-muted mt-2">Empatan baseline o mejoran solo una parte de la ecuación.</div>
+                        </div>
+                    </div>
+                </div>
+                {% if incremental_backlog_prioritization.top_item %}
+                <div class="border rounded p-3 mt-3">
+                    <div class="small text-muted mb-1">Próxima revisión sugerida</div>
+                    <div>
+                        <strong>{{ incremental_backlog_prioritization.top_item.snapshot.proposal_label }}</strong>
+                        <span class="badge {% if incremental_backlog_prioritization.top_item.priority == 'high' %}bg-success{% elif incremental_backlog_prioritization.top_item.priority == 'medium' %}bg-warning text-dark{% elif incremental_backlog_prioritization.top_item.priority == 'watch' %}bg-secondary{% else %}bg-danger{% endif %} ms-2">
+                            {{ incremental_backlog_prioritization.top_item.priority_label }}
+                        </span>
+                    </div>
+                    <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.top_item.next_action }}</div>
+                    <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.explanation }}</div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-muted">Todavía no hay backlog incremental suficiente para priorizar frente al baseline activo.</div>
+                {% endif %}
+            </div>
             <div class="card-body">
                 <p class="text-muted mb-3">El historial y las acciones manuales quedan disponibles solo como trazabilidad operativa. No forman parte de la lectura principal del aporte mensual.</p>
                 <details>

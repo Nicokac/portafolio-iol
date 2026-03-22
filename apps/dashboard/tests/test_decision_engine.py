@@ -196,6 +196,7 @@ class TestDecisionEngineSummary:
             patch("apps.dashboard.selectors.get_decision_engine_summary", return_value={"score": 78, "confidence": "Alta"}) as decision_engine,
             patch("apps.dashboard.selectors.get_incremental_proposal_history", return_value={"count": 1, "active_filter": "pending"}),
             patch("apps.dashboard.selectors.get_incremental_proposal_tracking_baseline", return_value={"has_baseline": True}),
+            patch("apps.dashboard.selectors.get_incremental_backlog_prioritization", return_value={"has_priorities": True, "count": 2}),
             patch("apps.dashboard.selectors.get_incremental_manual_decision_summary", return_value={"has_decision": True}),
             patch("apps.dashboard.selectors.get_incremental_decision_executive_summary", return_value={"status": "review_backlog"}),
         ):
@@ -208,4 +209,5 @@ class TestDecisionEngineSummary:
 
         assert detail["decision_engine_summary"]["score"] == 78
         assert detail["decision_engine_summary"]["confidence"] == "Alta"
+        assert detail["incremental_backlog_prioritization"]["count"] == 2
         decision_engine.assert_called_once_with(ANY, query_params={"decision_status_filter": "pending"}, capital_amount=700000)
