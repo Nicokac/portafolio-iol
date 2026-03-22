@@ -3207,6 +3207,9 @@ class TestDashboardSelectors(TestCase):
                         "beats_baseline": False,
                         "loses_vs_baseline": True,
                         "ties_baseline": False,
+                        "improves_profitability": False,
+                        "protects_fragility": False,
+                        "tactical_clean": False,
                     },
                     {
                         "snapshot": {"proposal_label": "Pendiente alta", "is_backlog_front": False},
@@ -3214,6 +3217,9 @@ class TestDashboardSelectors(TestCase):
                         "beats_baseline": True,
                         "loses_vs_baseline": False,
                         "ties_baseline": False,
+                        "improves_profitability": True,
+                        "protects_fragility": True,
+                        "tactical_clean": True,
                     },
                     {
                         "snapshot": {"proposal_label": "Pendiente media", "is_backlog_front": False},
@@ -3221,6 +3227,9 @@ class TestDashboardSelectors(TestCase):
                         "beats_baseline": False,
                         "loses_vs_baseline": False,
                         "ties_baseline": True,
+                        "improves_profitability": False,
+                        "protects_fragility": True,
+                        "tactical_clean": True,
                     },
                 ],
                 "has_baseline": True,
@@ -3230,7 +3239,7 @@ class TestDashboardSelectors(TestCase):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
         assert detail["has_priorities"] is True
-        assert detail["counts"] == {"high": 1, "medium": 1, "low": 1}
+        assert detail["counts"] == {"high": 1, "medium": 0, "watch": 1, "low": 1}
         assert [item["snapshot"]["proposal_label"] for item in detail["items"]] == [
             "Pendiente alta",
             "Pendiente media",
@@ -3238,7 +3247,37 @@ class TestDashboardSelectors(TestCase):
         ]
         assert detail["top_item"]["priority"] == "high"
         assert "Backlog priorizado" in detail["headline"]
-        assert "superan el baseline activo" in detail["explanation"]
+
+    def test_get_incremental_backlog_prioritization_marks_recoverable_when_beats_baseline_but_tactical_fit_is_weaker(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+            return_value={
+                "baseline": {"proposal_label": "Baseline activo"},
+                "items": [
+                    {
+                        "snapshot": {"proposal_label": "Pendiente recuperable", "is_backlog_front": False},
+                        "score_difference": 0.2,
+                        "beats_baseline": True,
+                        "loses_vs_baseline": False,
+                        "ties_baseline": False,
+                        "improves_profitability": True,
+                        "protects_fragility": True,
+                        "tactical_clean": False,
+                    },
+                ],
+                "has_baseline": True,
+                "has_pending_backlog": True,
+            },
+        ):
+            detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
+
+        assert detail["items"][0]["priority"] == "medium"
+        assert detail["items"][0]["priority_label"] == "Recuperable"
+        assert "recuperable" in detail["items"][0]["next_action"].lower()
+        assert "alternativas recuperables" in detail["explanation"].lower()
 
     def test_get_incremental_backlog_prioritization_handles_missing_inputs(self):
         class DummyUser:
@@ -3291,7 +3330,7 @@ class TestDashboardSelectors(TestCase):
             detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
 
         assert detail["top_item"]["snapshot"]["proposal_label"] == "Pendiente manual"
-        assert detail["items"][0]["priority"] == "medium"
+        assert detail["items"][0]["priority"] == "watch"
         assert "frente manual" in detail["headline"].lower()
         assert "promovido manualmente" in detail["explanation"].lower()
 

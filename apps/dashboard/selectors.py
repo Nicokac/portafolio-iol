@@ -2767,6 +2767,18 @@ def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict
     for item in pending_items:
         comparison = _build_incremental_snapshot_comparison(baseline, item) if baseline else None
         summary = _build_incremental_baseline_drift_summary(comparison)
+        baseline_trace = dict(item.get("baseline_trace") or {})
+        tactical_trace = dict(item.get("tactical_trace") or {})
+        comparison_metrics = {metric.get("key"): metric for metric in (comparison or {}).get("metrics", [])}
+        expected_direction = str((comparison_metrics.get("expected_return_change") or {}).get("direction") or "neutral")
+        fragility_direction = str((comparison_metrics.get("fragility_change") or {}).get("direction") or "neutral")
+        scenario_direction = str((comparison_metrics.get("scenario_loss_change") or {}).get("direction") or "neutral")
+        tactical_clean = bool(
+            not tactical_trace.get("has_trace")
+            or any(str(badge.get("label") or "").strip() == "Alternativa promovida" for badge in tactical_trace.get("badges", []))
+        )
+        improves_profitability = expected_direction == "favorable"
+        protects_fragility = fragility_direction != "unfavorable"
         comparisons.append(
             {
                 "snapshot": item,
@@ -2777,6 +2789,18 @@ def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict
                 "beats_baseline": bool(comparison and comparison.get("winner") == "current"),
                 "loses_vs_baseline": bool(comparison and comparison.get("winner") == "saved"),
                 "ties_baseline": bool(comparison and comparison.get("winner") == "tie"),
+                "improves_profitability": improves_profitability,
+                "protects_fragility": protects_fragility,
+                "tactical_clean": tactical_clean,
+                "comparison_fit": {
+                    "expected_direction": expected_direction,
+                    "fragility_direction": fragility_direction,
+                    "scenario_direction": scenario_direction,
+                    "improves_profitability": improves_profitability,
+                    "protects_fragility": protects_fragility,
+                    "tactical_clean": tactical_clean,
+                    "baseline_headline": baseline_trace.get("headline") or "",
+                },
             }
         )
 
@@ -2789,6 +2813,9 @@ def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict
         best_candidate = sorted(
             comparable_items,
             key=lambda item: (
+                1 if item.get("improves_profitability") else 0,
+                1 if item.get("protects_fragility") else 0,
+                1 if item.get("tactical_clean") else 0,
                 1 if item["beats_baseline"] else 0,
                 1 if item["ties_baseline"] else 0,
                 item.get("score_difference") if item.get("score_difference") is not None else float("-inf"),
@@ -2839,6 +2866,7 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
     counts = {
         "high": sum(1 for item in ordered_items if item["priority"] == "high"),
         "medium": sum(1 for item in ordered_items if item["priority"] == "medium"),
+        "watch": sum(1 for item in ordered_items if item["priority"] == "watch"),
         "low": sum(1 for item in ordered_items if item["priority"] == "low"),
     }
     top_item = ordered_items[0] if ordered_items else None
@@ -3684,17 +3712,20 @@ def _build_incremental_pending_backlog_explanation(
 
 
 def _classify_incremental_backlog_priority(item: Dict) -> str:
-    if item.get("beats_baseline"):
+    if item.get("beats_baseline") and item.get("improves_profitability") and item.get("protects_fragility") and item.get("tactical_clean"):
         return "high"
-    if item.get("ties_baseline"):
+    if item.get("beats_baseline"):
         return "medium"
+    if item.get("ties_baseline"):
+        return "watch"
     return "low"
 
 
 def _format_incremental_backlog_priority(priority: str) -> str:
     mapping = {
         "high": "Alta",
-        "medium": "Media",
+        "medium": "Recuperable",
+        "watch": "Observación",
         "low": "Baja",
     }
     return mapping.get(priority, "Baja")
@@ -3704,9 +3735,10 @@ def _incremental_backlog_priority_order(priority: str) -> int:
     mapping = {
         "high": 0,
         "medium": 1,
-        "low": 2,
+        "watch": 2,
+        "low": 3,
     }
-    return mapping.get(priority, 3)
+    return mapping.get(priority, 4)
 
 
 def _build_incremental_backlog_next_action(priority: str, item: Dict) -> str:
@@ -3714,9 +3746,11 @@ def _build_incremental_backlog_next_action(priority: str, item: Dict) -> str:
     if item.get("snapshot", {}).get("is_backlog_front"):
         return f"{proposal_label} ya esta marcado al frente del backlog para revision prioritaria."
     if priority == "high":
-        return f"Revisar primero {proposal_label} como candidata a reemplazar el baseline."
+        return f"Revisar primero {proposal_label}: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica."
     if priority == "medium":
-        return f"Mantener {proposal_label} en observacion; hoy empata con el baseline."
+        return f"Revisar {proposal_label} como candidata recuperable: mejora baseline, pero todavia no es la opcion mas limpia."
+    if priority == "watch":
+        return f"Mantener {proposal_label} en observacion; hoy empata con el baseline o mejora parcialmente."
     return f"Dejar {proposal_label} al final del backlog operativo mientras no mejore su comparacion."
 
 
@@ -3754,11 +3788,14 @@ def _build_incremental_backlog_prioritization_explanation(backlog_payload: Dict,
         )
     if counts.get("high", 0) > 0 and top_item is not None:
         return (
-            f"El backlog ya contiene alternativas que superan el baseline activo; "
+            f"El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, "
+            f"sin deterioro material de fragilidad y con buena ejecutabilidad tactica; "
             f"{top_item.get('snapshot', {}).get('proposal_label') or 'la primera opcion'} queda arriba por prioridad."
         )
     if counts.get("medium", 0) > 0:
-        return "El backlog no mejora el baseline, pero incluye alternativas que hoy empatan y conviene seguir de cerca."
+        return "El backlog incluye alternativas recuperables: mejoran baseline, pero todavia no muestran el balance tactico mas limpio."
+    if counts.get("watch", 0) > 0:
+        return "El backlog muestra alternativas en observacion: empatan baseline o mejoran solo una parte de la ecuacion riesgo-retorno."
     return "El backlog pendiente actual queda por debajo del baseline activo y puede revisarse al final."
 
 
