@@ -2845,6 +2845,24 @@ def _sort_incremental_history_items(items: list[Dict], *, sort_mode: str) -> lis
     )
 
 
+def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict:
+    snapshot = dict(item.get("snapshot") or {})
+    simulation_delta = dict(snapshot.get("simulation_delta") or {})
+    return {
+        "rank": index,
+        "proposal_label": snapshot.get("proposal_label") or "-",
+        "priority": item.get("priority") or "low",
+        "priority_label": item.get("priority_label") or _format_incremental_backlog_priority("low"),
+        "next_action": item.get("next_action") or "",
+        "selected_context": snapshot.get("selected_context") or "",
+        "score_difference": item.get("score_difference"),
+        "expected_return_change": simulation_delta.get("expected_return_change"),
+        "fragility_change": simulation_delta.get("fragility_change"),
+        "scenario_loss_change": simulation_delta.get("scenario_loss_change"),
+        "is_backlog_front": bool(snapshot.get("is_backlog_front")),
+    }
+
+
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
     """Retorna el snapshot incremental activo como baseline de seguimiento del usuario."""
 
@@ -3022,6 +3040,10 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
         "low": sum(1 for item in ordered_items if item["priority"] == "low"),
     }
     top_item = ordered_items[0] if ordered_items else None
+    shortlist = [
+        _build_incremental_backlog_shortlist_item(index=index + 1, item=item)
+        for index, item in enumerate(ordered_items[:3])
+    ]
 
     return {
         "baseline": backlog_payload.get("baseline"),
@@ -3029,6 +3051,8 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
         "count": len(ordered_items),
         "counts": counts,
         "top_item": top_item,
+        "shortlist": shortlist,
+        "has_shortlist": bool(shortlist),
         "has_priorities": bool(ordered_items),
         "headline": _build_incremental_backlog_prioritization_headline(backlog_payload, counts, top_item),
         "explanation": _build_incremental_backlog_prioritization_explanation(backlog_payload, counts, top_item),

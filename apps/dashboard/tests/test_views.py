@@ -827,6 +827,7 @@ class TestDashboardView:
                 'incremental_backlog_prioritization': {
                     'count': 3,
                     'has_priorities': True,
+                    'has_shortlist': True,
                     'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
                     'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
                     'explanation': 'El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, sin deterioro material de fragilidad y con buena ejecutabilidad tactica; Plan guardado 1 queda arriba por prioridad.',
@@ -836,6 +837,32 @@ class TestDashboardView:
                         'priority_label': 'Alta',
                         'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
                     },
+                    'shortlist': [
+                        {
+                            'rank': 1,
+                            'proposal_label': 'Plan guardado 1',
+                            'priority': 'high',
+                            'priority_label': 'Alta',
+                            'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
+                            'selected_context': 'Plan manual enviado por el usuario',
+                            'expected_return_change': 0.4,
+                            'fragility_change': -1.5,
+                            'scenario_loss_change': 0.3,
+                            'is_backlog_front': False,
+                        },
+                        {
+                            'rank': 2,
+                            'proposal_label': 'Plan guardado 2',
+                            'priority': 'medium',
+                            'priority_label': 'Recuperable',
+                            'next_action': 'Revisar luego Plan guardado 2: mejora baseline, pero todavia pide validacion tactica adicional.',
+                            'selected_context': '',
+                            'expected_return_change': 0.2,
+                            'fragility_change': -0.8,
+                            'scenario_loss_change': 0.1,
+                            'is_backlog_front': False,
+                        },
+                    ],
                 },
                 'incremental_manual_decision_summary': {
                     'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
@@ -889,6 +916,8 @@ class TestDashboardView:
         assert 'Plan incremental MVP' in body
         assert 'Alta' in body
         assert 'Revisar primero Plan guardado 1' in body
+        assert 'Shortlist para futuras compras' in body
+        assert 'Plan guardado 2' in body
         assert 'Tecnología / growth' in body
         assert 'Por qué este bloque recibió este score' in body
         assert 'Señales positivas' in body

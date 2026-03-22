@@ -3372,6 +3372,13 @@ class TestDashboardSelectors(TestCase):
             "Pendiente baja",
         ]
         assert detail["top_item"]["priority"] == "high"
+        assert detail["has_shortlist"] is True
+        assert [item["proposal_label"] for item in detail["shortlist"]] == [
+            "Pendiente alta",
+            "Pendiente media",
+            "Pendiente baja",
+        ]
+        assert detail["shortlist"][0]["priority_label"] == "Alta"
         assert "Backlog priorizado" in detail["headline"]
 
     def test_get_incremental_backlog_prioritization_marks_recoverable_when_beats_baseline_but_tactical_fit_is_weaker(self):
