@@ -2860,7 +2860,22 @@ def _build_incremental_backlog_shortlist_item(*, index: int, item: Dict) -> Dict
         "fragility_change": simulation_delta.get("fragility_change"),
         "scenario_loss_change": simulation_delta.get("scenario_loss_change"),
         "is_backlog_front": bool(snapshot.get("is_backlog_front")),
+        "economic_edge": bool(item.get("improves_profitability") and item.get("protects_fragility")),
+        "tactical_edge": bool(item.get("tactical_clean")),
     }
+
+
+def _build_incremental_backlog_focus_item(item: Dict | None, *, focus: str) -> Dict | None:
+    if not item:
+        return None
+    shortlist_item = _build_incremental_backlog_shortlist_item(index=1, item=item)
+    if focus == "economic":
+        shortlist_item["focus_label"] = "Líder económico"
+        shortlist_item["focus_summary"] = "Mejora retorno esperado sin deterioro material de fragilidad."
+    else:
+        shortlist_item["focus_label"] = "Líder táctico"
+        shortlist_item["focus_summary"] = "Conserva la ejecutabilidad más limpia para reconsiderar una compra."
+    return shortlist_item
 
 
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
@@ -3040,6 +3055,22 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
         "low": sum(1 for item in ordered_items if item["priority"] == "low"),
     }
     top_item = ordered_items[0] if ordered_items else None
+    economic_leader = next(
+        (
+            item
+            for item in ordered_items
+            if item.get("improves_profitability") and item.get("protects_fragility")
+        ),
+        None,
+    )
+    tactical_leader = next(
+        (
+            item
+            for item in ordered_items
+            if item.get("tactical_clean")
+        ),
+        None,
+    )
     shortlist = [
         _build_incremental_backlog_shortlist_item(index=index + 1, item=item)
         for index, item in enumerate(ordered_items[:3])
@@ -3051,6 +3082,9 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5) -> Dict:
         "count": len(ordered_items),
         "counts": counts,
         "top_item": top_item,
+        "economic_leader": _build_incremental_backlog_focus_item(economic_leader, focus="economic"),
+        "tactical_leader": _build_incremental_backlog_focus_item(tactical_leader, focus="tactical"),
+        "has_focus_split": bool(economic_leader or tactical_leader),
         "shortlist": shortlist,
         "has_shortlist": bool(shortlist),
         "has_priorities": bool(ordered_items),

@@ -879,6 +879,39 @@
                     <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.explanation }}</div>
                 </div>
                 {% endif %}
+                {% if incremental_backlog_prioritization.has_focus_split %}
+                <div class="row g-3 mt-1">
+                    {% if incremental_backlog_prioritization.economic_leader %}
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">{{ incremental_backlog_prioritization.economic_leader.focus_label }}</div>
+                            <div>
+                                <strong>{{ incremental_backlog_prioritization.economic_leader.proposal_label }}</strong>
+                                <span class="badge bg-success ms-2">{{ incremental_backlog_prioritization.economic_leader.priority_label }}</span>
+                            </div>
+                            <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.economic_leader.focus_summary }}</div>
+                            <div class="small text-muted mt-2">
+                                Δ Expected: {{ incremental_backlog_prioritization.economic_leader.expected_return_change|default:"-" }}
+                                · Δ Fragility: {{ incremental_backlog_prioritization.economic_leader.fragility_change|default:"-" }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if incremental_backlog_prioritization.tactical_leader %}
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">{{ incremental_backlog_prioritization.tactical_leader.focus_label }}</div>
+                            <div>
+                                <strong>{{ incremental_backlog_prioritization.tactical_leader.proposal_label }}</strong>
+                                <span class="badge bg-info text-dark ms-2">{{ incremental_backlog_prioritization.tactical_leader.priority_label }}</span>
+                            </div>
+                            <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.tactical_leader.focus_summary }}</div>
+                            <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.tactical_leader.next_action }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% if incremental_backlog_prioritization.has_shortlist %}
                 <div class="mt-3">
                     <h6 class="mb-2">Shortlist para futuras compras</h6>
@@ -895,6 +928,12 @@
                                         </span>
                                         {% if item.is_backlog_front %}
                                         <span class="badge bg-info text-dark ms-1">Al frente</span>
+                                        {% endif %}
+                                        {% if item.economic_edge %}
+                                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle ms-1">Gana por retorno</span>
+                                        {% endif %}
+                                        {% if item.tactical_edge %}
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1">Gana por ejecutabilidad</span>
                                         {% endif %}
                                     </div>
                                     {% if item.selected_context %}

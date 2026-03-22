@@ -827,6 +827,7 @@ class TestDashboardView:
                 'incremental_backlog_prioritization': {
                     'count': 3,
                     'has_priorities': True,
+                    'has_focus_split': True,
                     'has_shortlist': True,
                     'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
                     'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
@@ -836,6 +837,21 @@ class TestDashboardView:
                         'priority': 'high',
                         'priority_label': 'Alta',
                         'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.',
+                    },
+                    'economic_leader': {
+                        'proposal_label': 'Plan guardado 1',
+                        'priority_label': 'Alta',
+                        'focus_label': 'Líder económico',
+                        'focus_summary': 'Mejora retorno esperado sin deterioro material de fragilidad.',
+                        'expected_return_change': 0.4,
+                        'fragility_change': -1.5,
+                    },
+                    'tactical_leader': {
+                        'proposal_label': 'Plan guardado 2',
+                        'priority_label': 'Recuperable',
+                        'focus_label': 'Líder táctico',
+                        'focus_summary': 'Conserva la ejecutabilidad más limpia para reconsiderar una compra.',
+                        'next_action': 'Revisar luego Plan guardado 2: mejora baseline, pero todavia pide validacion tactica adicional.',
                     },
                     'shortlist': [
                         {
@@ -849,6 +865,8 @@ class TestDashboardView:
                             'fragility_change': -1.5,
                             'scenario_loss_change': 0.3,
                             'is_backlog_front': False,
+                            'economic_edge': True,
+                            'tactical_edge': False,
                         },
                         {
                             'rank': 2,
@@ -861,6 +879,8 @@ class TestDashboardView:
                             'fragility_change': -0.8,
                             'scenario_loss_change': 0.1,
                             'is_backlog_front': False,
+                            'economic_edge': False,
+                            'tactical_edge': True,
                         },
                     ],
                 },
@@ -917,6 +937,10 @@ class TestDashboardView:
         assert 'Alta' in body
         assert 'Revisar primero Plan guardado 1' in body
         assert 'Shortlist para futuras compras' in body
+        assert 'Líder económico' in body or 'Lider economico' in body
+        assert 'Líder táctico' in body or 'Lider tactico' in body
+        assert 'Gana por retorno' in body
+        assert 'Gana por ejecutabilidad' in body
         assert 'Plan guardado 2' in body
         assert 'Tecnología / growth' in body
         assert 'Por qué este bloque recibió este score' in body
