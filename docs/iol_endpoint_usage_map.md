@@ -33,14 +33,14 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | Endpoint IOL | Cliente | Uso real actual | Superficie | Aprovechamiento actual | Brecha principal |
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/estadocuenta` | `IOLAPIClient.get_estado_cuenta()` | Sync patrimonial base y liquidez por cuenta | snapshots, KPIs, `Resumen`, `Planeacion`, `Estrategia` | Alto | `estadisticas[]` sigue fuera de uso |
-| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, señal visible, compuerta de ejecucion, condicionamiento de prioridad, shortlist sugerida reordenada, promoción de alternativa limpia y degradación de score/confidence en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni señal persistida en recomendaciones |
-| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync/listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, auditoria operativa visible, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual y analitica operativa historica por subset filtrado | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
-| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles, batch sobre subset filtrado, drill-down operativo y metricas historicas de ejecucion/costo | Alto | no hay serie persistida propia de ejecucion ni slippage robusto |
+| `GET /api/v2/portafolio/{pais}` | `IOLAPIClient.get_portafolio()` | Sync de posiciones por activo | snapshots, portfolio actual, hoja de portafolio, `Resumen` y `Planeacion` con lectura tactica de `parking`, senal visible, compuerta de ejecucion, condicionamiento de prioridad, shortlist sugerida reordenada, promocion de alternativa limpia y degradacion de score/confidence en modo decision | Alto | `parking` ya entra en la decision tactica, pero todavia no tiene capa historica ni senal persistida en recomendaciones |
+| `GET /api/v2/operaciones` | `IOLAPIClient.get_operaciones()` | Sync y listado de operaciones con filtros normalizados | `OperacionIOL`, hoja de operaciones con filtros locales y sync remoto filtrado, observabilidad, auditoria operativa visible, `Resumen`, `Estrategia`, `Planeacion` via flujo operativo mensual y analitica operativa historica por subset filtrado | Alto | `pais_consulta` ya se persiste, pero el backfill historico todavia es progresivo |
+| `GET /api/v2/operaciones/{numero}` | `IOLAPIClient.get_operacion()` | Enriquecimiento detallado de una operacion | `OperacionIOL` detalle, auditoria, hoja de operaciones con detalle on-demand, timeline, fills, aranceles, batch sobre subset filtrado, drill-down operativo y metricas historicas de ejecucion o costo | Alto | no hay serie persistida propia de ejecucion ni slippage robusto |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
-| `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion/confirmacion |
+| `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion o confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops`, `Resumen`, `Estrategia`, `Planeacion` via snapshot cacheado y lectura historica corta de ejecucion reciente | Alto | la persistencia historica sigue acotada al universo refrescado manualmente |
-| `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo/performance, `Ops` | Alto | sigue siendo opt-in via sync, no cobertura total garantizada |
+| `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo, performance y `Ops` | Alto | sigue siendo opt-in via sync, no cobertura total garantizada |
 
 ## Endpoint por endpoint
 
@@ -79,14 +79,14 @@ Se usa para:
 - hoja de portafolio con lectura visible de `parking`
 - chequeo tactico de `parking` en `Resumen`
 - chequeo tactico de `parking` en `Planeacion`
-- señal tactica de `parking` dentro del bloque `Modo decision` de `Planeacion`
+- senal tactica de `parking` dentro del bloque `Modo decision` de `Planeacion`
 - compuerta de ejecucion en `Planeacion` cuando hay `parking` visible
 - condicionamiento de prioridad de la recomendacion cuando el bloque sugerido coincide con posiciones en `parking`
 - shortlist de activos sugeridos condicionada cuando un candidato cae en un bloque con `parking` visible
 - reordenamiento de la shortlist para priorizar candidatos no condicionados por `parking`
 - propuesta preferida condicionada cuando su `purchase_plan` cae en bloques con `parking`
-- promoción de una propuesta alternativa limpia cuando la preferida original queda condicionada y la diferencia de score es acotada
-- degradación de `score` y `confidence` del `Modo decision` cuando `parking` sigue visible
+- promocion de una propuesta alternativa limpia cuando la preferida original queda condicionada y la diferencia de score es acotada
+- degradacion de `score` y `confidence` del `Modo decision` cuando `parking` sigue visible
 
 Campos hoy bien aprovechados:
 
@@ -98,7 +98,7 @@ Campos hoy bien aprovechados:
 Conclusion:
 
 - el contrato base ya esta bien endurecido
-- `parking` ya dejo de ser dato huérfano en persistencia
+- `parking` ya dejo de ser dato huerfano en persistencia
 - `parking` ya impacta la lectura de decision tactica en `Planeacion`
 - `parking` ya puede frenar la ejecucion directa y forzar revision tactica antes del despliegue
 - `parking` ya puede condicionar la prioridad visible de la recomendacion cuando hay superposicion con el bloque sugerido
@@ -122,17 +122,8 @@ Se usa para:
 - observabilidad operativa del ultimo sync filtrado, ultimo enriquecimiento y ultimo backfill
 - flujo operativo mensual en `Resumen`, `Estrategia` y `Planeacion`
 - lectura reciente de compras, ventas, dividendos y suscripciones FCI
-- metricas historicas del subset filtrado para:
-  - volumen con monto visible
-  - cobertura de aranceles visibles
-  - fills visibles
-  - fragmentacion historica
-  - desagregado por familia operativa
-- comparacion operativa entre:
-  - compras
-  - ventas
-  - dividendos
-  - flujos FCI
+- metricas historicas del subset filtrado para volumen con monto visible, cobertura de aranceles visibles, fills visibles y fragmentacion historica
+- comparacion operativa entre compras, ventas, dividendos y flujos FCI
 - soporte de acciones batch previas al enriquecimiento por numero
 
 Hallazgo operativo importante:
@@ -154,21 +145,13 @@ Conclusion:
 
 Se usa para:
 
-- enriquecer una operacion concreta con:
-  - estados
-  - aranceles
-  - fills
-  - fechas detalladas
+- enriquecer una operacion concreta con estados, aranceles, fills y fechas detalladas
 - abrir el detalle desde el numero clickable en la hoja de operaciones
 - mostrar timeline de estados, fills y aranceles on-demand
 - permitir re-sincronizacion manual desde IOL
 - enriquecer en batch solo las operaciones sin detalle de la pagina filtrada actual
-- alimentar lectura resumida de fallos/resultado via auditoria operativa visible en la hoja
-- alimentar metricas historicas agregadas de ejecucion y costo sobre el subset filtrado:
-  - aranceles visibles
-  - fills visibles
-  - fragmentacion
-  - costo relativo sobre monto visible
+- alimentar lectura resumida de fallos y resultado via auditoria operativa visible en la hoja
+- alimentar metricas historicas agregadas de ejecucion y costo sobre el subset filtrado
 
 Conclusion:
 
@@ -211,7 +194,7 @@ Se usa hoy como:
 - fallback de elegibilidad para historicos cuando falla metadata de titulo
 - capa tactica compartida para `Resumen`, `Estrategia` y `Planeacion`
 - persistencia minima de observaciones puntuales para leer spread, libro y actividad reciente antes de decidir compras futuras
-- señal historica corta de ejecucion dentro de `Planeacion`
+- senal historica corta de ejecucion dentro de `Planeacion`
 - recomendacion principal condicionada cuando el bloque sugerido viene con liquidez reciente debil
 - recomendacion principal repriorizada hacia un bloque alternativo limpio cuando existe una opcion razonable dentro del mismo plan mensual
 - shortlist sugerida condicionada cuando el bloque candidato viene con liquidez reciente debil
@@ -236,9 +219,9 @@ Conclusion:
 - ya no queda solo como foto puntual; ahora tambien deja una huella historica minima para decidir compras futuras con menos friccion operativa
 - ya puede degradar la recomendacion principal cuando el bloque sugerido no viene acompanado por una ejecucion reciente limpia
 - ya puede promover un bloque alternativo mas limpio cuando la recomendacion original queda demasiado condicionada
-- ya puede degradar candidatos y propuesta sugerida cuando la calidad reciente de ejecucion no acompaña
+- ya puede degradar candidatos y propuesta sugerida cuando la calidad reciente de ejecucion no acompana
 - ya puede promover una propuesta incremental alternativa cuando la preferida original no viene con una ejecucion reciente suficientemente limpia
-- ya puede deteriorar la firmeza cuantitativa final de la decision cuando el contexto de ejecucion reciente no acompaña
+- ya puede deteriorar la firmeza cuantitativa final de la decision cuando el contexto de ejecucion reciente no acompana
 - la brecha actual ya no es si conviene persistirlo, sino cuanta automatizacion y cobertura adicional merece ese historial
 
 ### 8. `seriehistorica`
@@ -259,13 +242,13 @@ Conclusion:
 Los endpoints con mayor potencial todavia no exprimido son:
 
 1. `CotizacionDetalle`
-   - ya mejoro mucho, pero todavia no se persiste ni entra en una capa historica propia
+   - ya mejoro mucho, pero la persistencia historica sigue siendo corta y de cobertura acotada
 2. `operaciones/{numero}`
    - ya se explota visualmente y en metricas agregadas; falta una capa historica mas robusta si se quiere analitica de slippage o calidad de precio
 3. `operaciones`
    - ya se usa bien en hoja, dashboard y analitica operativa; falta backfill historico de `pais_consulta` para cerrar del todo el filtro local
 4. `portafolio/{pais}`
-   - `parking` ya es visible, condiciona la decision tactica y puede frenar la ejecucion directa en `Planeacion`; falta decidir si merece integracion en recomendaciones persistidas o señales historicas
+   - `parking` ya es visible, condiciona la decision tactica y puede frenar la ejecucion directa en `Planeacion`; falta decidir si merece integracion en recomendaciones persistidas o senales historicas
 
 ## Recomendacion de lectura
 
@@ -281,4 +264,3 @@ Si la pregunta es:
 ## Estado
 
 Documento vigente para el estado actual de integracion IOL del proyecto.
-

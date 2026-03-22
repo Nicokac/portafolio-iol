@@ -148,14 +148,14 @@ Salidas operativas:
   - recomendaciones
   - simulacion
   - optimizacion
-  - lectura historica corta de ejecucion reciente desde `CotizacionDetalle` para decidir compras futuras con mejor spread/libro/actividad
+  - lectura historica corta de ejecucion reciente desde `CotizacionDetalle` para decidir compras futuras con mejor spread, libro y actividad
   - recomendacion principal condicionada cuando el bloque sugerido viene con liquidez reciente debil
   - recomendacion principal repriorizada cuando existe un bloque alternativo razonable con ejecucion reciente mas limpia
   - degradacion de shortlist y propuesta sugerida cuando la ejecucion reciente del bloque viene debil
   - propuesta preferida repriorizada cuando existe una alternativa comparable con ejecucion reciente mas limpia
   - degradacion de `score` y `confidence` cuando esa friccion reciente sigue activa
   - chequeo tactico de `parking` antes de decidir despliegue
-  - señal tactica de `parking` dentro de `Modo decision`
+  - senal tactica de `parking` dentro de `Modo decision`
   - compuerta de ejecucion cuando `parking` sigue visible
   - recomendacion condicionada cuando el bloque sugerido se superpone con posiciones en `parking`
   - shortlist sugerida degradada cuando el candidato cae en un bloque con `parking`
@@ -163,6 +163,8 @@ Salidas operativas:
   - propuesta preferida condicionada cuando su plan cae en bloques con `parking`
   - propuesta preferida sustituida por una alternativa limpia cuando el overlap con `parking` es evitable
   - `score` y `confidence` degradados cuando persiste `parking` visible
+  - shortlist unificada de futuras compras con backlog nuevo y reactivadas
+  - workflow superior de futuras compras y propuesta `Recomendada ahora`
 - `Portafolio`
   - lectura visible de `parking` por activo
   - valorizado y disponible inmediato sobre la hoja actual
@@ -191,7 +193,7 @@ models persistidos
 Los selectors no deberian sincronizar ni persistir.
 Su rol es consolidar outputs para UI.
 
-## Estado actual / brechas
+## Estado actual y brechas
 
 Estado actual:
 
@@ -199,15 +201,17 @@ Estado actual:
 - benchmarks y macro local tienen sync propio
 - `Ops` ya muestra un resumen unificado del pipeline
 - `Ops` tambien puede validar market snapshot puntual del portfolio actual
+- `Planeacion` ya usa parte del pipeline para gobierno tactico de futuras compras
 
 Brechas:
 
 - `last_successful_iol_sync` no tiene historial persistido de exitos
 - la historia util para covarianza sigue dependiendo de continuidad real de snapshots
 - algunas superficies todavia consumen observabilidad via AJAX y no todo esta unificado server-render
+- la persistencia historica de ejecucion reciente desde `CotizacionDetalle` sigue siendo corta y acotada al universo refrescado
 
 ## Limitaciones actuales
 
-- el pipeline depende de disponibilidad externa de IOL y proveedores de mercado/macro
+- el pipeline depende de disponibilidad externa de IOL y proveedores de mercado o macro
 - la integridad historica no implica automaticamente suficiencia para covarianza
 - la observabilidad del pipeline es operativa, no reemplaza monitoreo externo o alertado dedicado

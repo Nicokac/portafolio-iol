@@ -1,12 +1,12 @@
-# Señales y recomendaciones
+# Senales y recomendaciones
 
-## Propósito
+## Proposito
 
-Explicar cómo se generan señales analíticas y cómo terminan convertidas en recomendaciones visibles en producto.
+Explicar como se generan senales analiticas y como terminan convertidas en recomendaciones visibles en producto.
 
 ## Inputs
 
-Fuentes de señales actuales:
+Fuentes de senales actuales:
 
 - `RiskContributionService`
 - `CovarianceAwareRiskContributionService`
@@ -16,24 +16,24 @@ Fuentes de señales actuales:
 - `ExpectedReturnService`
 - `LocalMacroSignalsService`
 
-Además, el engine combina recomendaciones legacy basadas en:
+Ademas, el engine combina recomendaciones legacy basadas en:
 
 - liquidez
-- concentración geográfica
-- concentración sectorial
-- concentración patrimonial
-- revisión de rendimiento
+- concentracion geografica
+- concentracion sectorial
+- concentracion patrimonial
+- revision de rendimiento
 
 ## Servicios principales
 
-### Servicios analíticos
+### Servicios analiticos
 
 Cada servicio expone:
 
-- cálculo principal
+- calculo principal
 - `build_recommendation_signals()`
 
-Esas señales ya salen serializadas con:
+Esas senales ya salen serializadas con:
 
 - `signal_key`
 - `severity`
@@ -46,8 +46,8 @@ Esas señales ya salen serializadas con:
 
 Responsabilidades:
 
-- combinar recomendaciones legacy y señales de `Analytics v2`
-- mapear señales a formato de recomendación visible
+- combinar recomendaciones legacy y senales de `Analytics v2`
+- mapear senales a formato de recomendacion visible
 - sugerir acciones simples
 - priorizar y deduplicar
 
@@ -59,13 +59,13 @@ Servicios analytics_v2
   -> RecommendationEngine._analyze_analytics_v2()
   -> _map_signal_to_recommendation()
   -> _prioritize_recommendations()
-  -> Planeación / API de recomendaciones
+  -> Planeacion / API de recomendaciones
 ```
 
 Y en paralelo:
 
 ```text
-Heurísticas legacy
+Heuristicas legacy
   -> RecommendationEngine._analyze_liquidity()
   -> _analyze_geographic_concentration()
   -> _analyze_sector_concentration()
@@ -75,7 +75,7 @@ Heurísticas legacy
 
 ## Outputs
 
-Formato final de recomendación:
+Formato final de recomendacion:
 
 - `tipo`
 - `prioridad`
@@ -87,13 +87,14 @@ Formato final de recomendación:
 - `activos_sugeridos` cuando aplica
 - `modelo_riesgo` cuando aplica
 
-## Cómo llega a las superficies
+## Como llega a las superficies
 
-### Planeación
+### Planeacion
 
 - consume recomendaciones combinadas
 - mezcla legacy + `Analytics v2`
-- muestra la lista priorizada para lectura táctica
+- muestra la lista priorizada para lectura tactica
+- la recomendacion combinada convive con el workflow incremental de futuras compras, pero no lo reemplaza
 
 ### API
 
@@ -103,13 +104,13 @@ Formato final de recomendación:
 ### Estrategia
 
 - no muestra la lista completa del engine
-- sí muestra señales resumidas en `Analytics v2`
+- si muestra senales resumidas en `Analytics v2`
 
 ## Casos relevantes ya implementados
 
 ### Risk Contribution
 
-Señales como:
+Senales como:
 
 - `risk_concentration_top_assets`
 - `risk_concentration_tech`
@@ -121,17 +122,21 @@ Señales como:
 
 ### Macro local
 
-Señales como:
+Senales como:
 
 - `local_liquidity_real_carry_negative`
 - `local_inflation_hedge_gap`
 - `local_country_risk_high`
 - `local_sovereign_risk_excess`
 - `local_sovereign_hard_dollar_dependence`
+- `local_fx_gap_high`
+- `local_fx_gap_deteriorating`
+- `local_fx_regime_tensioned`
+- `local_fx_regime_divergent`
 
-## Priorización y deduplicación
+## Priorizacion y deduplicacion
 
-La deduplicación actual vive en:
+La deduplicacion actual vive en:
 
 - `_recommendation_topic_key()`
 - `_recommendation_specificity_rank()`
@@ -139,38 +144,41 @@ La deduplicación actual vive en:
 
 Criterios actuales:
 
-- preferir `Analytics v2` frente a heurísticas legacy cuando hablan del mismo tópico
-- preferir señales más específicas frente a señales genéricas
-- usar `evidence` cuando hace falta distinguir si dos señales realmente hablan del mismo bloque
+- preferir `Analytics v2` frente a heuristicas legacy cuando hablan del mismo topico
+- preferir senales mas especificas frente a senales genericas
+- usar `evidence` cuando hace falta distinguir si dos senales realmente hablan del mismo bloque
 
 Ejemplos actuales:
 
 - `country_risk_overconcentration` para Argentina gana sobre `risk_concentration_argentina`
-- `sector_risk_overconcentration` para tecnología gana sobre `risk_concentration_tech`
-- `country_risk_underconcentration` se mantiene como señal informativa distinta
+- `sector_risk_overconcentration` para tecnologia gana sobre `risk_concentration_tech`
+- `country_risk_underconcentration` se mantiene como senal informativa distinta
+- los topicos locales se deduplican para reducir ruido entre riesgo soberano, cobertura CER y FX local
 
 ## Superficies donde impacta
 
-- `Planeación`
+- `Planeacion`
 - endpoints de recomendaciones
-- señales resumidas de `Estrategia`
+- senales resumidas de `Estrategia`
 
-## Estado actual / brechas
+## Estado actual y brechas
 
 Estado actual:
 
-- la app ya tiene una capa rica de señales de `Analytics v2`
+- la app ya tiene una capa rica de senales de `Analytics v2`
 - el engine ya deduplica varios solapamientos importantes
 - las acciones sugeridas son simples y trazables
+- el workflow incremental de futuras compras opera arriba de estas recomendaciones, sin duplicar el engine base
 
 Brechas:
 
-- no existe una superficie dedicada para auditar todas las señales emitidas por corrida
-- la explicación de por qué una señal ganó sobre otra no se expone en UI
-- la deduplicación sigue siendo heurística y puntual
+- no existe una superficie dedicada para auditar todas las senales emitidas por corrida
+- la explicacion de por que una senal gano sobre otra no se expone en UI
+- la deduplicacion sigue siendo heuristica y puntual
+- la integracion con `parking` y ejecucion reciente vive principalmente en `Planeacion`, no como recomendaciones persistidas de primer nivel
 
 ## Limitaciones actuales
 
-- el engine no fusiona señales: elige una y descarta la otra por tópico
+- el engine no fusiona senales: elige una y descarta la otra por topico
 - las recomendaciones no exponen toda la evidencia interna del servicio origen
-- parte de la priorización depende de reglas manuales por `tipo`
+- parte de la priorizacion depende de reglas manuales por `tipo`
