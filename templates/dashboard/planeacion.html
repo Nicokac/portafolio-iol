@@ -472,6 +472,12 @@
                                 {% endif %}
                                 {% if decision.preferred_proposal.execution_quality.has_rows %}
                                 <div class="small text-muted mt-2">{{ decision.preferred_proposal.execution_quality.summary }}</div>
+                                {% if decision.preferred_proposal.execution_quality.execution_order_summary %}
+                                <div class="alert alert-light border small mt-2 mb-2">
+                                    <strong>{{ decision.preferred_proposal.execution_quality.execution_order_label }}:</strong>
+                                    {{ decision.preferred_proposal.execution_quality.execution_order_summary }}
+                                </div>
+                                {% endif %}
                                 <div class="d-flex flex-column gap-2 mt-2">
                                     {% for item in decision.preferred_proposal.execution_quality.rows %}
                                     <div class="border rounded p-2">

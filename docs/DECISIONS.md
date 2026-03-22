@@ -212,3 +212,9 @@ Motivo:
 
 - una propuesta multi-activo puede ser buena en agregado pero muy desigual en ejecutabilidad
 - el usuario necesitaba ver rapido que tramo parece mas limpio y cual conviene tratar con mas cautela
+
+Efecto actual:
+
+- la propuesta sugerida puede indicar `Ejecutar primero`
+- no cambia el ranking global de propuestas
+- solo ordena mejor la lectura operativa dentro de la propuesta ya elegida

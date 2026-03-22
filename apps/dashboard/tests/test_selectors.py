@@ -243,6 +243,8 @@ class TestDashboardSelectors(TestCase):
         assert preferred["execution_quality"]["best_symbol"] == "KO"
         assert preferred["execution_quality"]["weakest_symbol"] == "MCD"
         assert "KO hoy tiene la mejor huella operativa visible" in preferred["execution_quality"]["summary"]
+        assert preferred["execution_quality"]["execution_order_label"] == "Ejecutar primero"
+        assert "Arrancar por KO" in preferred["execution_quality"]["execution_order_summary"]
 
     def test_get_portfolio_parking_feature_context_summarizes_visible_parking(self):
         fecha = timezone.now()

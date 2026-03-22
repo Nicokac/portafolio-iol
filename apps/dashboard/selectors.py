@@ -6278,12 +6278,22 @@ def _annotate_preferred_proposal_with_execution_quality(
             f"{best_row['symbol']} hoy tiene la mejor huella operativa visible; "
             f"{weakest_row['symbol']} pide mas validacion antes de ejecutarlo."
         )
+        execution_order_label = "Ejecutar primero"
+        execution_order_summary = (
+            f"Arrancar por {best_row['symbol']} y dejar {weakest_row['symbol']} para una validacion adicional."
+        )
     elif best_row:
         execution_summary = f"{best_row['symbol']} es el tramo con mejor referencia operativa visible dentro de la propuesta."
+        execution_order_label = "Ejecutar primero"
+        execution_order_summary = f"Si avanzas con esta propuesta, conviene empezar por {best_row['symbol']}."
     elif weakest_row:
         execution_summary = f"{weakest_row['symbol']} sigue sin una referencia operativa comparable suficiente."
+        execution_order_label = "Validar primero"
+        execution_order_summary = f"Antes de ejecutar la propuesta, conviene validar mejor {weakest_row['symbol']}."
     else:
         execution_summary = ""
+        execution_order_label = ""
+        execution_order_summary = ""
 
     enriched["execution_quality"] = {
         "has_rows": bool(purchase_rows),
@@ -6291,6 +6301,8 @@ def _annotate_preferred_proposal_with_execution_quality(
         "best_symbol": (best_row or {}).get("symbol") or "",
         "weakest_symbol": (weakest_row or {}).get("symbol") or "",
         "summary": execution_summary,
+        "execution_order_label": execution_order_label,
+        "execution_order_summary": execution_order_summary,
     }
     return enriched
 

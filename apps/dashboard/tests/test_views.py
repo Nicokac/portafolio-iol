@@ -3231,6 +3231,8 @@ class TestDashboardView:
                         'execution_quality': {
                             'has_rows': True,
                             'summary': 'KO hoy tiene la mejor huella operativa visible; MCD pide mas validacion antes de ejecutarlo.',
+                            'execution_order_label': 'Ejecutar primero',
+                            'execution_order_summary': 'Arrancar por KO y dejar MCD para una validacion adicional.',
                             'rows': [
                                 {'symbol': 'KO', 'execution_label': 'Costo visible', 'execution_tone': 'success', 'coverage_status': 'covered', 'coverage_label': 'Con huella real', 'fecha_label': '2026-03-20 11:00', 'fills_count': 1, 'fee_over_amount_pct': 0.50},
                                 {'symbol': 'MCD', 'execution_label': 'Sin referencia', 'execution_tone': 'warning', 'coverage_status': 'missing', 'coverage_label': 'Sin huella real', 'fecha_label': '', 'fills_count': 0, 'fee_over_amount_pct': None},
@@ -3260,6 +3262,8 @@ class TestDashboardView:
 
         assert response.status_code == 200
         assert 'KO hoy tiene la mejor huella operativa visible' in body
+        assert 'Ejecutar primero' in body
+        assert 'Arrancar por KO y dejar MCD para una validacion adicional.' in body
         assert 'Costo visible' in body
         assert 'Sin huella real' in body
 

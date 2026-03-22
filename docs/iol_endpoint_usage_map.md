@@ -82,6 +82,7 @@ Tambien alimenta una lectura tactica en `Planeacion`:
 - fragmentacion por multiples fills
 - compuerta de ejecucion cuando la propuesta no tiene huella operativa comparable suficiente
 - lectura comparativa por simbolo dentro de la propuesta sugerida para distinguir el tramo mas limpio y el mas fragil
+- sugerencia explicita de orden de ejecucion dentro de la propuesta cuando la huella operativa por simbolo es desigual
 
 Esto permite que una propuesta futura no se evalue solo por:
 
