@@ -836,28 +836,42 @@
                     <p class="text-muted mb-2">{{ incremental_reactivation_summary.headline }}</p>
                     {% if incremental_reactivation_summary.has_reactivations %}
                     <div class="row g-3">
-                        <div class="col-lg-3">
+                        <div class="col-lg-2">
                             <div class="border rounded p-3 h-100">
                                 <div class="small text-muted mb-1">Reactivaciones recientes</div>
                                 <div><strong>{{ incremental_reactivation_summary.count }}</strong></div>
                                 <div class="small text-muted mt-2">Snapshots diferidos que volvieron a entrar al backlog.</div>
                             </div>
                         </div>
-                        <div class="col-lg-3">
+                        <div class="col-lg-2">
                             <div class="border rounded p-3 h-100">
                                 <div class="small text-muted mb-1">Siguen vigentes</div>
                                 <div><strong>{{ incremental_reactivation_summary.active_count }}</strong></div>
                                 <div class="small text-muted mt-2">Reactivaciones que todavía siguen pendientes.</div>
                             </div>
                         </div>
-                        <div class="col-lg-3">
+                        <div class="col-lg-2">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-1">Terminaron aceptadas</div>
+                                <div><strong>{{ incremental_reactivation_summary.accepted_count }}</strong></div>
+                                <div class="small text-muted mt-2">Reactivaciones que sí cerraron como compra válida.</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-1">Volvieron a diferirse</div>
+                                <div><strong>{{ incremental_reactivation_summary.deferred_count }}</strong></div>
+                                <div class="small text-muted mt-2">Reactivaciones que todavía no lograron destrabarse.</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2">
                             <div class="border rounded p-3 h-100">
                                 <div class="small text-muted mb-1">Al frente del backlog</div>
                                 <div><strong>{{ incremental_reactivation_summary.front_count }}</strong></div>
                                 <div class="small text-muted mt-2">Reactivaciones que hoy lideran la revisión operativa.</div>
                             </div>
                         </div>
-                        <div class="col-lg-3">
+                        <div class="col-lg-2">
                             <div class="border rounded p-3 h-100">
                                 <div class="small text-muted mb-1">Última reactivación</div>
                                 <div><strong>{{ incremental_reactivation_summary.items.0.proposal_label }}</strong></div>
@@ -871,7 +885,7 @@
                             <div class="d-flex justify-content-between align-items-start gap-3">
                                 <div>
                                     <strong>{{ item.proposal_label }}</strong>
-                                    <span class="badge {% if item.is_backlog_front %}bg-info text-dark{% elif item.is_active %}bg-warning text-dark{% else %}bg-secondary{% endif %} ms-2">
+                                    <span class="badge {% if item.is_backlog_front %}bg-info text-dark{% elif item.is_active %}bg-warning text-dark{% elif item.is_accepted %}bg-success{% elif item.is_rejected %}bg-danger{% else %}bg-secondary{% endif %} ms-2">
                                         {{ item.current_status_label }}
                                     </span>
                                     {% if item.is_backlog_front %}

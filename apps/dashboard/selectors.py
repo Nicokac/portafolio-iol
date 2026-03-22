@@ -3149,6 +3149,9 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
     items = []
     active_count = 0
     front_count = 0
+    accepted_count = 0
+    deferred_count = 0
+    rejected_count = 0
     for audit in audits:
         raw_snapshot_id = (audit.details or {}).get("snapshot_id")
         try:
@@ -3162,6 +3165,12 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
             active_count += 1
         if current_status == "pending" and is_backlog_front:
             front_count += 1
+        if current_status == "accepted":
+            accepted_count += 1
+        elif current_status == "deferred":
+            deferred_count += 1
+        elif current_status == "rejected":
+            rejected_count += 1
         items.append(
             {
                 "snapshot_id": snapshot_id,
@@ -3172,11 +3181,20 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
                 "current_status_label": _format_incremental_manual_decision_status(current_status) if current_status else "Sin snapshot",
                 "is_backlog_front": is_backlog_front,
                 "is_active": current_status == "pending",
+                "is_accepted": current_status == "accepted",
+                "is_deferred_again": current_status == "deferred",
+                "is_rejected": current_status == "rejected",
                 "current_summary": (
                     "Sigue al frente del backlog incremental."
                     if current_status == "pending" and is_backlog_front
                     else "Sigue vigente como candidata pendiente."
                     if current_status == "pending"
+                    else "Termino aceptada despues de reactivarse."
+                    if current_status == "accepted"
+                    else "Volvio a diferirse despues de reactivarse."
+                    if current_status == "deferred"
+                    else "Se descarto despues de reactivarse."
+                    if current_status == "rejected"
                     else "Ya no sigue pendiente en el backlog actual."
                 ),
             }
@@ -3184,7 +3202,7 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
 
     if items:
         headline = (
-            f"Se registraron {len(items)} reactivaciones recientes; {active_count} siguen vigentes y {front_count} quedaron al frente del backlog."
+            f"Se registraron {len(items)} reactivaciones recientes; {active_count} siguen vigentes, {accepted_count} terminaron aceptadas y {front_count} quedaron al frente del backlog."
         )
     else:
         headline = "Todavia no hay reactivaciones recientes para revisar."
@@ -3194,6 +3212,9 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
         "count": len(items),
         "active_count": active_count,
         "front_count": front_count,
+        "accepted_count": accepted_count,
+        "deferred_count": deferred_count,
+        "rejected_count": rejected_count,
         "has_reactivations": bool(items),
         "headline": headline,
     }

@@ -2793,9 +2793,12 @@ class TestDashboardView:
                 'incremental_reactivation_summary': {
                     'count': 1,
                     'active_count': 1,
+                    'accepted_count': 0,
+                    'deferred_count': 0,
+                    'rejected_count': 0,
                     'front_count': 1,
                     'has_reactivations': True,
-                    'headline': 'Se registraron 1 reactivaciones recientes; 1 siguen vigentes y 1 quedaron al frente del backlog.',
+                    'headline': 'Se registraron 1 reactivaciones recientes; 1 siguen vigentes, 0 terminaron aceptadas y 1 quedaron al frente del backlog.',
                     'items': [{'proposal_label': 'Plan reactivado', 'reactivated_at': '2026-03-17 11:00', 'user_label': 'testuser', 'current_status_label': 'Pendiente', 'is_backlog_front': True, 'is_active': True, 'current_summary': 'Sigue al frente del backlog incremental.'}],
                 },
                 'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
@@ -2809,5 +2812,7 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'Reactivaciones recientes' in body
         assert 'Siguen vigentes' in body
+        assert 'Terminaron aceptadas' in body
+        assert 'Volvieron a diferirse' in body
         assert 'Al frente del backlog' in body
         assert 'Plan reactivado' in body

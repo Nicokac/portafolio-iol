@@ -3323,10 +3323,42 @@ class TestDashboardSelectors(TestCase):
         assert detail["count"] == 1
         assert detail["active_count"] == 1
         assert detail["front_count"] == 1
+        assert detail["accepted_count"] == 0
+        assert detail["deferred_count"] == 0
+        assert detail["rejected_count"] == 0
         assert detail["items"][0]["proposal_label"] == "Plan reactivado"
         assert detail["items"][0]["current_status"] == "pending"
         assert detail["items"][0]["is_backlog_front"] is True
         assert "reactivaciones recientes" in detail["headline"].lower()
+
+    def test_get_incremental_reactivation_summary_tracks_post_reactivation_outcome(self):
+        user = User.objects.create_user(username="reactivation-outcome", password="testpass123")
+        snapshot = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key="manual_plan",
+            source_label="Comparador manual",
+            proposal_key="plan_accepted",
+            proposal_label="Plan aceptado",
+            purchase_plan=[{"symbol": "MCD", "amount": 100000}],
+            capital_amount=100000,
+            manual_decision_status="accepted",
+            is_backlog_front=False,
+        )
+        SensitiveActionAudit.objects.create(
+            user=user,
+            action="reactivate_incremental_deferred_snapshot",
+            status="success",
+            details={"snapshot_id": snapshot.id, "proposal_label": "Plan aceptado"},
+        )
+
+        detail = get_incremental_reactivation_summary(user=user, limit=3)
+
+        assert detail["accepted_count"] == 1
+        assert detail["active_count"] == 0
+        assert detail["deferred_count"] == 0
+        assert detail["rejected_count"] == 0
+        assert detail["items"][0]["is_accepted"] is True
+        assert detail["items"][0]["current_summary"] == "Termino aceptada despues de reactivarse."
 
     def test_get_incremental_pending_backlog_vs_baseline_compares_pending_snapshots(self):
         class DummyUser:
