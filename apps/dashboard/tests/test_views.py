@@ -818,7 +818,7 @@ class TestDashboardView:
                     },
                 },
                 'incremental_proposal_history': {
-                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'history_priority': {'has_priority': True, 'priority': 'high', 'priority_label': 'Alta', 'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.'}, 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
+                    'items': [{'id': 1, 'proposal_label': 'Plan guardado 1', 'source_label': 'Comparador manual', 'selected_context': 'Plan manual enviado por el usuario', 'purchase_plan': [{'symbol': 'KO', 'amount': 300000}], 'simulation_delta': {'expected_return_change': 0.4, 'fragility_change': -1.5, 'scenario_loss_change': 0.3}, 'decision_score': 78, 'decision_confidence': 'Alta', 'decision_explanation': ['Se reforzó una propuesta defensiva con mejor resiliencia.', 'El contexto macro no contradecía la compra.'], 'history_priority': {'has_priority': True, 'priority': 'high', 'priority_label': 'Alta', 'next_action': 'Revisar primero Plan guardado 1: mejora baseline, cuida fragilidad y mantiene buena ejecutabilidad tactica.'}, 'future_purchase_context': {'source': 'backlog_nuevo', 'label': 'Backlog nuevo', 'summary': 'Sigue pendiente como idea nueva dentro del backlog actual.', 'is_relevant': True}, 'macro_state': 'normal', 'portfolio_state': 'ok', 'manual_decision_status': 'pending', 'manual_decision_status_label': 'Pendiente', 'is_backlog_front': False, 'is_tracking_baseline': False, 'reapply_querystring': 'manual_capital_amount=300000&manual_a_symbol_1=KO&manual_a_amount_1=300000', 'reapply_truncated': False, 'created_at': '2026-03-17 11:00'}],
                     'count': 1,
                     'has_history': True,
                     'active_filter': 'all',
@@ -827,13 +827,13 @@ class TestDashboardView:
                     'active_priority_filter_label': 'Todas las prioridades',
                     'active_deferred_fit_filter': 'all',
                     'active_deferred_fit_filter_label': 'Todas las diferidas',
-                    'active_sort_mode': 'newest',
-                    'active_sort_mode_label': 'Más recientes',
+                    'active_sort_mode': 'future_purchase',
+                    'active_sort_mode_label': 'Futuras compras',
                     'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
                     'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
                     'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
                     'available_deferred_fit_filters': [{'key': 'all', 'label': 'Todas las diferidas', 'count': 2, 'selected': True}, {'key': 'reactivable', 'label': 'Diferidas reactivables', 'count': 1, 'selected': False}, {'key': 'archivable', 'label': 'Diferidas archivables', 'count': 1, 'selected': False}],
-                    'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': True}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}],
+                    'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': False}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}, {'key': 'future_purchase', 'label': 'Futuras compras', 'selected': True}],
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
                 'incremental_proposal_tracking_baseline': {
@@ -1044,6 +1044,7 @@ class TestDashboardView:
         assert 'Alta' in body
         assert 'Revisar primero Plan guardado 1' in body
         assert 'Shortlist para futuras compras' in body
+        assert 'Futuras compras' in body
         assert 'Líder económico' in body or 'Lider economico' in body
         assert 'Líder táctico' in body or 'Lider tactico' in body
         assert 'Gana por retorno' in body
@@ -1051,6 +1052,7 @@ class TestDashboardView:
         assert 'Convicción media' in body or 'Conviccion media' in body
         assert 'Monitorear' in body
         assert 'Plan guardado 2' in body
+        assert 'Sigue pendiente como idea nueva dentro del backlog actual.' in body
         assert 'Tecnología / growth' in body
         assert 'Por qué este bloque recibió este score' in body
         assert 'Señales positivas' in body

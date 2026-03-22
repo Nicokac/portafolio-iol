@@ -1333,6 +1333,9 @@
                                                     {{ item.history_priority.priority_label }}
                                                 </span>
                                                 {% endif %}
+                                                {% if item.future_purchase_context.label %}
+                                                <span class="badge bg-light text-dark border ms-2">{{ item.future_purchase_context.label }}</span>
+                                                {% endif %}
                                                 {% if item.selected_context %}
                                                 <div class="small text-muted">{{ item.selected_context }}</div>
                                                 {% endif %}
@@ -1412,6 +1415,9 @@
                                                 {% endif %}
                                                 {% if item.history_priority.next_action %}
                                                 <div class="small text-muted mt-2">{{ item.history_priority.next_action }}</div>
+                                                {% endif %}
+                                                {% if item.future_purchase_context.summary %}
+                                                <div class="small text-muted mt-2">{{ item.future_purchase_context.summary }}</div>
                                                 {% endif %}
                                                 {% if item.deferred_fit.status %}
                                                 <div class="small text-muted mt-2">

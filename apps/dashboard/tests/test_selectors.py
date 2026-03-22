@@ -2952,6 +2952,76 @@ class TestDashboardSelectors(TestCase):
         assert "prioridad: alta" in detail["headline"].lower()
         assert "ordenados por prioridad operativa" in detail["headline"].lower()
 
+    def test_get_incremental_proposal_history_supports_future_purchase_sort(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "id": 1,
+                    "proposal_label": "Reactivada vigente",
+                    "comparison_score": 4.2,
+                    "purchase_plan": [{"symbol": "KO", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.5,
+                        "fragility_change": -1.1,
+                        "scenario_loss_change": 0.2,
+                    },
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 2,
+                    "proposal_label": "Backlog nuevo fuerte",
+                    "comparison_score": 4.6,
+                    "purchase_plan": [{"symbol": "MCD", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.7,
+                        "fragility_change": -1.5,
+                        "scenario_loss_change": 0.4,
+                    },
+                    "manual_decision_status": "pending",
+                },
+            ],
+        ) as mocked, patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 2, "pending": 2, "accepted": 0, "deferred": 0, "rejected": 0},
+        ), patch(
+            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            return_value={
+                "item": {
+                    "id": 10,
+                    "proposal_label": "Baseline activo",
+                    "comparison_score": 4.0,
+                    "purchase_plan": [{"symbol": "SPY", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.4,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                    },
+                },
+                "has_baseline": True,
+            },
+        ):
+            detail = get_incremental_proposal_history(
+                user=user,
+                limit=5,
+                sort_mode="future_purchase",
+                preferred_source="backlog_nuevo",
+                reactivated_snapshot_ids=[1],
+            )
+
+        mocked.assert_called_once_with(user=user, limit=10, decision_status=None)
+        assert detail["active_sort_mode"] == "future_purchase"
+        assert detail["active_sort_mode_label"] == "Futuras compras"
+        assert detail["items"][0]["proposal_label"] == "Backlog nuevo fuerte"
+        assert detail["items"][0]["future_purchase_context"]["label"] == "Backlog nuevo"
+        assert detail["items"][1]["future_purchase_context"]["label"] == "Reactivada"
+        assert "ordenados para futuras compras" in detail["headline"].lower()
+
     def test_get_incremental_proposal_history_supports_deferred_fit_filter(self):
         class DummyUser:
             is_authenticated = True
@@ -4131,6 +4201,8 @@ class TestDashboardSelectors(TestCase):
             priority_filter="",
             deferred_fit_filter="",
             sort_mode="",
+            preferred_source="backlog_nuevo",
+            reactivated_snapshot_ids=[],
         )
         assert detail["incremental_backlog_prioritization"]["count"] == 1
         baseline.assert_called_once_with(user=ANY)

@@ -2533,6 +2533,8 @@ def get_incremental_proposal_history(
     priority_filter: str | None = None,
     deferred_fit_filter: str | None = None,
     sort_mode: str | None = None,
+    preferred_source: str | None = None,
+    reactivated_snapshot_ids: list[int] | set[int] | tuple[int, ...] | None = None,
 ) -> Dict:
     """Retorna historial reciente de propuestas incrementales guardadas por el usuario."""
 
@@ -2546,6 +2548,11 @@ def get_incremental_proposal_history(
     counts = service.get_decision_counts(user=user)
     baseline_payload = get_incremental_proposal_tracking_baseline(user=user)
     baseline_item = baseline_payload.get("item")
+    normalized_reactivated_snapshot_ids = {
+        int(snapshot_id)
+        for snapshot_id in list(reactivated_snapshot_ids or [])
+        if str(snapshot_id).strip()
+    }
     items = []
     for item in raw_items:
         reapply = _build_incremental_snapshot_reapply_payload(item)
@@ -2566,6 +2573,10 @@ def get_incremental_proposal_history(
             tactical_trace=enriched["tactical_trace"],
         )
         enriched["deferred_fit"] = _build_incremental_history_deferred_fit(enriched)
+        enriched["future_purchase_context"] = _build_incremental_future_purchase_history_context(
+            enriched,
+            reactivated_snapshot_ids=normalized_reactivated_snapshot_ids,
+        )
         enriched.update(reapply)
         items.append(enriched)
 
@@ -2582,7 +2593,11 @@ def get_incremental_proposal_history(
             if str((item.get("deferred_fit") or {}).get("status") or "") == normalized_deferred_fit_filter
         ]
 
-    items = _sort_incremental_history_items(items, sort_mode=normalized_sort_mode)
+    items = _sort_incremental_history_items(
+        items,
+        sort_mode=normalized_sort_mode,
+        preferred_source=preferred_source,
+    )
     items = items[: max(int(limit), 0)]
 
     return {
@@ -2805,8 +2820,8 @@ def _normalize_incremental_history_deferred_fit_filter(deferred_fit_filter: str 
 
 def _normalize_incremental_history_sort_mode(sort_mode: str | None) -> str:
     normalized = str(sort_mode or "").strip().lower()
-    if normalized == "priority":
-        return "priority"
+    if normalized in {"priority", "future_purchase"}:
+        return normalized
     return "newest"
 
 
@@ -2825,9 +2840,11 @@ def _format_incremental_history_deferred_fit_filter_label(deferred_fit_filter: s
 
 
 def _format_incremental_history_sort_mode_label(sort_mode: str | None) -> str:
+    if str(sort_mode or "").strip().lower() == "future_purchase":
+        return "Futuras compras"
     if str(sort_mode or "").strip().lower() == "priority":
         return "Prioridad operativa"
-    return "Más recientes"
+    return "Mas recientes"
 
 
 def _build_incremental_history_priority_counts(items: list[Dict]) -> Dict[str, int]:
@@ -2898,17 +2915,78 @@ def _build_incremental_history_deferred_fit_filter_options(active_filter: str | 
 
 def _build_incremental_history_sort_options(active_sort_mode: str) -> list[Dict]:
     options = [
-        {"key": "newest", "label": "Más recientes"},
+        {"key": "newest", "label": "Mas recientes"},
         {"key": "priority", "label": "Prioridad operativa"},
+        {"key": "future_purchase", "label": "Futuras compras"},
     ]
     for option in options:
         option["selected"] = active_sort_mode == option["key"]
     return options
 
 
-def _sort_incremental_history_items(items: list[Dict], *, sort_mode: str) -> list[Dict]:
-    if sort_mode != "priority":
+def _build_incremental_future_purchase_history_context(
+    item: Dict,
+    *,
+    reactivated_snapshot_ids: set[int] | None = None,
+) -> Dict:
+    snapshot_id = item.get("id")
+    try:
+        normalized_snapshot_id = int(snapshot_id)
+    except (TypeError, ValueError):
+        normalized_snapshot_id = None
+
+    is_pending = str(item.get("manual_decision_status") or "") == "pending"
+    is_recently_reactivated = bool(
+        normalized_snapshot_id is not None and normalized_snapshot_id in (reactivated_snapshot_ids or set())
+    )
+    if is_pending and is_recently_reactivated:
+        return {
+            "source": "reactivadas",
+            "label": "Reactivada",
+            "summary": "Sigue vigente tras reactivarse desde diferidas.",
+            "is_relevant": True,
+        }
+    if is_pending:
+        return {
+            "source": "backlog_nuevo",
+            "label": "Backlog nuevo",
+            "summary": "Sigue pendiente como idea nueva dentro del backlog actual.",
+            "is_relevant": True,
+        }
+    return {
+        "source": "other",
+        "label": "",
+        "summary": "",
+        "is_relevant": False,
+    }
+
+
+def _sort_incremental_history_items(
+    items: list[Dict],
+    *,
+    sort_mode: str,
+    preferred_source: str | None = None,
+) -> list[Dict]:
+    if sort_mode not in {"priority", "future_purchase"}:
         return items
+    if sort_mode == "future_purchase":
+        normalized_preferred_source = str(preferred_source or "mixto")
+        if normalized_preferred_source == "reactivadas":
+            source_order = {"reactivadas": 0, "backlog_nuevo": 1, "other": 2}
+        elif normalized_preferred_source == "backlog_nuevo":
+            source_order = {"backlog_nuevo": 0, "reactivadas": 1, "other": 2}
+        else:
+            source_order = {"backlog_nuevo": 0, "reactivadas": 0, "other": 1}
+        return sorted(
+            items,
+            key=lambda item: (
+                int(source_order.get(str((item.get("future_purchase_context") or {}).get("source") or "other"), 2)),
+                0 if item.get("is_backlog_front") else 1,
+                _incremental_backlog_priority_order(str((item.get("history_priority") or {}).get("priority") or "low")),
+                -(float(item.get("comparison_score")) if item.get("comparison_score") is not None else float("-inf")),
+                str(item.get("proposal_label") or ""),
+            ),
+        )
     return sorted(
         items,
         key=lambda item: (
@@ -3882,21 +3960,11 @@ def get_planeacion_incremental_context(
         query_params=query_params,
         capital_amount=capital_amount,
     )
-    incremental_proposal_history = get_incremental_proposal_history(
-        user=user,
-        limit=history_limit,
-        decision_status=_query_param_value(query_params, "decision_status_filter"),
-        priority_filter=_query_param_value(query_params, "history_priority_filter"),
-        deferred_fit_filter=_query_param_value(query_params, "history_deferred_fit_filter"),
-        sort_mode=_query_param_value(query_params, "history_sort"),
-    )
-    incremental_proposal_tracking_baseline = get_incremental_proposal_tracking_baseline(user=user)
     incremental_backlog_prioritization = get_incremental_backlog_prioritization(
         user=user,
         limit=history_limit,
         followup_filter=_query_param_value(query_params, "backlog_followup_filter"),
     )
-    incremental_manual_decision_summary = get_incremental_manual_decision_summary(user=user)
     incremental_reactivation_summary = get_incremental_reactivation_summary(
         user=user,
         limit=min(history_limit, 3),
@@ -3905,6 +3973,22 @@ def get_planeacion_incremental_context(
         incremental_reactivation_summary,
         incremental_backlog_prioritization,
     )
+    incremental_proposal_history = get_incremental_proposal_history(
+        user=user,
+        limit=history_limit,
+        decision_status=_query_param_value(query_params, "decision_status_filter"),
+        priority_filter=_query_param_value(query_params, "history_priority_filter"),
+        deferred_fit_filter=_query_param_value(query_params, "history_deferred_fit_filter"),
+        sort_mode=_query_param_value(query_params, "history_sort"),
+        preferred_source=incremental_reactivation_vs_backlog_summary.get("preferred_source"),
+        reactivated_snapshot_ids=[
+            item.get("snapshot_id")
+            for item in list(incremental_reactivation_summary.get("items") or [])
+            if item.get("snapshot_id") is not None
+        ],
+    )
+    incremental_proposal_tracking_baseline = get_incremental_proposal_tracking_baseline(user=user)
+    incremental_manual_decision_summary = get_incremental_manual_decision_summary(user=user)
     incremental_future_purchase_shortlist = _build_incremental_future_purchase_shortlist(
         incremental_reactivation_summary,
         incremental_backlog_prioritization,
@@ -4423,6 +4507,8 @@ def _build_incremental_history_headline(
         suffix.append(f"Diferidas: {_format_incremental_history_deferred_fit_filter_label(deferred_fit_filter)}")
     if str(sort_mode or "").strip().lower() == "priority":
         suffix.append("Ordenados por prioridad operativa")
+    if str(sort_mode or "").strip().lower() == "future_purchase":
+        suffix.append("Ordenados para futuras compras")
     if suffix:
         return f"{base} {' · '.join(suffix)}."
     return base
