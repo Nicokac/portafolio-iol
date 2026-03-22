@@ -3359,6 +3359,10 @@ class TestDashboardSelectors(TestCase):
         assert detail["rejected_count"] == 0
         assert detail["items"][0]["is_accepted"] is True
         assert detail["items"][0]["current_summary"] == "Termino aceptada despues de reactivarse."
+        assert detail["acceptance_rate"] == 100.0
+        assert detail["redeferral_rate"] == 0.0
+        assert detail["rejection_rate"] == 0.0
+        assert detail["effectiveness_label"] == "Alta"
 
     def test_get_incremental_pending_backlog_vs_baseline_compares_pending_snapshots(self):
         class DummyUser:

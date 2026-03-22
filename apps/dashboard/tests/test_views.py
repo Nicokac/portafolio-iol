@@ -2797,6 +2797,10 @@ class TestDashboardView:
                     'deferred_count': 0,
                     'rejected_count': 0,
                     'front_count': 1,
+                    'acceptance_rate': 0.0,
+                    'redeferral_rate': 0.0,
+                    'rejection_rate': 0.0,
+                    'effectiveness_label': 'Baja',
                     'has_reactivations': True,
                     'headline': 'Se registraron 1 reactivaciones recientes; 1 siguen vigentes, 0 terminaron aceptadas y 1 quedaron al frente del backlog.',
                     'items': [{'proposal_label': 'Plan reactivado', 'reactivated_at': '2026-03-17 11:00', 'user_label': 'testuser', 'current_status_label': 'Pendiente', 'is_backlog_front': True, 'is_active': True, 'current_summary': 'Sigue al frente del backlog incremental.'}],
@@ -2815,4 +2819,8 @@ class TestDashboardView:
         assert 'Terminaron aceptadas' in body
         assert 'Volvieron a diferirse' in body
         assert 'Al frente del backlog' in body
+        assert 'Efectividad de reactivación' in body
+        assert 'Tasa de aceptación' in body
+        assert 'Tasa de re-diferimiento' in body
+        assert 'Tasa de descarte' in body
         assert 'Plan reactivado' in body

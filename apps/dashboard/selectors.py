@@ -3123,6 +3123,10 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
             "count": 0,
             "active_count": 0,
             "front_count": 0,
+            "acceptance_rate": 0.0,
+            "redeferral_rate": 0.0,
+            "rejection_rate": 0.0,
+            "effectiveness_label": "Sin datos",
             "has_reactivations": False,
             "headline": "Todavia no hay reactivaciones recientes para revisar.",
         }
@@ -3207,6 +3211,19 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
     else:
         headline = "Todavia no hay reactivaciones recientes para revisar."
 
+    total_count = len(items)
+    acceptance_rate = round((accepted_count / total_count) * 100, 1) if total_count else 0.0
+    redeferral_rate = round((deferred_count / total_count) * 100, 1) if total_count else 0.0
+    rejection_rate = round((rejected_count / total_count) * 100, 1) if total_count else 0.0
+    if total_count == 0:
+        effectiveness_label = "Sin datos"
+    elif acceptance_rate >= 50 and rejection_rate == 0:
+        effectiveness_label = "Alta"
+    elif acceptance_rate >= 25:
+        effectiveness_label = "Media"
+    else:
+        effectiveness_label = "Baja"
+
     return {
         "items": items,
         "count": len(items),
@@ -3215,6 +3232,10 @@ def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
         "accepted_count": accepted_count,
         "deferred_count": deferred_count,
         "rejected_count": rejected_count,
+        "acceptance_rate": acceptance_rate,
+        "redeferral_rate": redeferral_rate,
+        "rejection_rate": rejection_rate,
+        "effectiveness_label": effectiveness_label,
         "has_reactivations": bool(items),
         "headline": headline,
     }
