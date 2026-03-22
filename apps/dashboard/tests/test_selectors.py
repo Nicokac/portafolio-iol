@@ -3155,6 +3155,105 @@ class TestDashboardSelectors(TestCase):
         assert detail["proposals"][0]["proposal_label"] == "KO"
         assert detail["proposals"][0]["simulation_delta"]["fragility_change"] == -2.5
 
+    def test_get_candidate_incremental_portfolio_comparison_uses_operational_tiebreak_for_close_candidates(self):
+        cache.clear()
+
+        monthly_plan = {
+            "capital_total": 600000,
+            "recommended_blocks": [
+                {"bucket": "defensive", "label": "Defensive / resiliente", "suggested_amount": 300000},
+            ],
+        }
+        candidate_ranking = {
+            "by_block": [
+                {
+                    "block": "defensive",
+                    "candidates": [
+                        {"asset": "KO", "score": 8.4, "main_reason": "defensive_sector_match"},
+                        {"asset": "MCD", "score": 8.1, "main_reason": "dividend_profile"},
+                    ],
+                },
+            ]
+        }
+
+        class DummyIncrementalPortfolioSimulator:
+            def simulate(self, proposal):
+                symbol = proposal["purchase_plan"][0]["symbol"]
+                if symbol == "KO":
+                    return {
+                        "before": {},
+                        "after": {},
+                        "delta": {
+                            "expected_return_change": 0.55,
+                            "real_expected_return_change": 0.2,
+                            "fragility_change": -1.5,
+                            "scenario_loss_change": 0.2,
+                            "risk_concentration_change": -0.3,
+                        },
+                        "interpretation": "KO queda apenas arriba por score.",
+                        "warnings": [],
+                    }
+                return {
+                    "before": {},
+                    "after": {},
+                    "delta": {
+                        "expected_return_change": 0.5,
+                        "real_expected_return_change": 0.2,
+                        "fragility_change": -1.4,
+                        "scenario_loss_change": 0.2,
+                        "risk_concentration_change": -0.3,
+                    },
+                    "interpretation": "MCD queda muy cerca.",
+                    "warnings": [],
+                }
+
+        def fake_operation_execution_feature_context(*, purchase_plan, lookback_days=180, symbol_limit=3):
+            symbol = purchase_plan[0]["symbol"]
+            if symbol == "KO":
+                return {
+                    "tracked_symbols": ["KO"],
+                    "matched_symbols_count": 0,
+                    "missing_symbols_count": 1,
+                    "coverage_pct": Decimal("0"),
+                    "execution_analytics": {"fragmented_pct": Decimal("0")},
+                    "rows": [],
+                }
+            return {
+                "tracked_symbols": ["MCD"],
+                "matched_symbols_count": 1,
+                "missing_symbols_count": 0,
+                "coverage_pct": Decimal("100"),
+                "execution_analytics": {"fragmented_pct": Decimal("0")},
+                "rows": [
+                    {
+                        "simbolo": "MCD",
+                        "fills_count": 1,
+                        "fee_over_amount_pct": Decimal("0.10"),
+                        "executed_amount": Decimal("300000"),
+                        "fecha_label": "2026-03-20 11:00",
+                        "is_fragmented": False,
+                        "fees_ars": Decimal("300"),
+                        "fees_usd": Decimal("0"),
+                    }
+                ],
+            }
+
+        with (
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+        ):
+            detail = get_candidate_incremental_portfolio_comparison(
+                {"candidate_compare": "1", "candidate_compare_block": "defensive"}
+            )
+
+        assert detail["best_proposal_key"] == "MCD"
+        assert detail["proposals"][0]["proposal_key"] == "MCD"
+        assert detail["operational_tiebreak"]["has_tiebreak"] is True
+        assert detail["operational_tiebreak"]["used_operational_tiebreak"] is True
+        assert detail["best_execution_readiness"]["status"] == "ready"
+
     def test_get_candidate_incremental_portfolio_comparison_handles_no_candidates(self):
         cache.clear()
 

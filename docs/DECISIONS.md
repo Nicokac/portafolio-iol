@@ -224,3 +224,5 @@ Efecto actual:
 - El comparador manual ahora resume la readiness operativa del mejor plan usando la misma senal de ejecucion real que la propuesta sugerida principal.
 
 - Cuando dos planes manuales quedan dentro de una brecha corta de score, el comparador puede desempatar por calidad operativa real y deja esa razon visible en UI.
+
+- El comparador por candidato tambien puede desempatar por calidad operativa real cuando dos activos del mismo bloque quedan muy cerca en score.

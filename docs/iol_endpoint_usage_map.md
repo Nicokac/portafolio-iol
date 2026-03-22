@@ -298,3 +298,5 @@ Documento vigente para el estado actual de integracion IOL del proyecto.
 - La lectura de `Planeacion` sobre el comparador manual ahora reutiliza la huella real de `OperacionIOL` para clasificar el mejor plan como listo, a validar o a observar antes de ejecutar.
 
 - La huella de `OperacionIOL` tambien puede actuar como desempate visible entre planes manuales casi empatados en score dentro de `Planeacion`.
+
+- La huella de `OperacionIOL` ahora tambien alimenta el comparador por candidato para resumir readiness y desempates operativos dentro del mismo bloque.
