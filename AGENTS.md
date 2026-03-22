@@ -1,4 +1,4 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 ## Propósito
 
@@ -36,9 +36,9 @@ Capacidades actuales ya existentes:
 
 Benchmark compuesto actual:
 
-* CEDEAR USA → SPY
-* Bonos argentinos → EMB
-* Liquidez ARS → BADLAR
+* CEDEAR USA -> SPY
+* Bonos argentinos -> EMB
+* Liquidez ARS -> BADLAR
 
 Analytics v2 debe expandir la capacidad analítica actual, llevando el sistema desde análisis descriptivo a análisis explicativo, de sensibilidad y de soporte más avanzado para decisiones de inversión.
 
@@ -171,14 +171,14 @@ El agente puede ejecutar operaciones Git de cierre de trabajo, pero solo bajo es
 * puede ejecutar `git commit`
 * puede ejecutar `git push`
 * el push está permitido **solo** hacia la rama `develop`
-* antes de ejecutar cualquiera de estas acciones debe existir confirmaci?n humana expl?cita
-* para estas acciones, una respuesta del usuario de solo `Si` es confirmaci?n suficiente
+* antes de ejecutar cualquiera de estas acciones debe existir confirmación humana explícita
+* para estas acciones, una respuesta del usuario de solo `Si` es confirmación suficiente
 
 Restricciones:
 
 * no hacer push a ramas distintas de `develop`
-* no hacer push si no hubo confirmaci?n expl?cita del usuario
-* no usar esta regla para saltear la revisi?n y cierre de m?dulo
+* no hacer push si no hubo confirmación explícita del usuario
+* no usar esta regla para saltear la revisión y cierre de módulo
 
 ### 9. Regla de trazabilidad
 
@@ -230,7 +230,7 @@ El roadmap está dividido en fases, módulos y submódulos.
 
 ---
 
-# FASE 0 — Descubrimiento, especificación y alcance
+# FASE 0 - Descubrimiento, especificación y alcance
 
 ## Objetivo
 
@@ -240,7 +240,7 @@ Definir Analytics v2 antes de implementar código nuevo.
 
 Que exista una base documental y técnica suficiente para que cualquier implementación posterior sea consistente, trazable y compatible con la arquitectura actual.
 
-## Módulo 0.1 — Auditoría de arquitectura existente
+## Módulo 0.1 - Auditoría de arquitectura existente
 
 ### Objetivo
 
@@ -248,7 +248,7 @@ Inspeccionar el proyecto actual y mapear qué ya existe.
 
 ### Submódulos
 
-#### 0.1.1 — Inventario de servicios actuales
+#### 0.1.1 - Inventario de servicios actuales
 
 Relevar:
 
@@ -261,7 +261,7 @@ Relevar:
 * schemas, DTOs, serializers o estructuras equivalentes
 * helpers compartidos
 
-#### 0.1.2 — Inventario de datos disponibles
+#### 0.1.2 - Inventario de datos disponibles
 
 Relevar:
 
@@ -275,7 +275,7 @@ Relevar:
 * datos de performance
 * benchmarks
 
-#### 0.1.3 — Inventario de tests existentes
+#### 0.1.3 - Inventario de tests existentes
 
 Relevar:
 
@@ -296,7 +296,7 @@ El agente debe poder responder qué existe, qué puede reutilizar y qué brechas
 
 ---
 
-## Módulo 0.2 — Especificación funcional de Analytics v2
+## Módulo 0.2 - Especificación funcional de Analytics v2
 
 ### Objetivo
 
@@ -304,7 +304,7 @@ Definir con precisión qué es Analytics v2 y qué no es.
 
 ### Submódulos
 
-#### 0.2.1 — Objetivos funcionales
+#### 0.2.1 - Objetivos funcionales
 
 Definir:
 
@@ -314,7 +314,7 @@ Definir:
 * mejora de recomendaciones
 * preparación para simulación futura
 
-#### 0.2.2 — Alcance inicial
+#### 0.2.2 - Alcance inicial
 
 Incluir explícitamente:
 
@@ -325,7 +325,7 @@ Incluir explícitamente:
 * expected return simple como fase futura cercana
 * simulación avanzada como fase posterior
 
-#### 0.2.3 — Fuera de alcance inicial
+#### 0.2.3 - Fuera de alcance inicial
 
 Excluir explícitamente:
 
@@ -341,7 +341,7 @@ Excluir explícitamente:
 
 ---
 
-## Módulo 0.3 — Arquitectura técnica v2
+## Módulo 0.3 - Arquitectura técnica v2
 
 ### Objetivo
 
@@ -349,7 +349,7 @@ Definir cómo se integra v2 al proyecto sin romper v1.
 
 ### Submódulos
 
-#### 0.3.1 — Estructura de carpetas
+#### 0.3.1 - Estructura de carpetas
 
 Definir ubicación de:
 
@@ -360,7 +360,7 @@ Definir ubicación de:
 * fixtures
 * documentación técnica
 
-#### 0.3.2 — Contratos de entrada y salida
+#### 0.3.2 - Contratos de entrada y salida
 
 Definir:
 
@@ -369,7 +369,7 @@ Definir:
 * naming consistente
 * manejo de faltantes de datos
 
-#### 0.3.3 — Integración con dashboard y recomendaciones
+#### 0.3.3 - Integración con dashboard y recomendaciones
 
 Definir puntos de consumo, no implementación final.
 
@@ -380,7 +380,7 @@ Definir puntos de consumo, no implementación final.
 
 ---
 
-## Módulo 0.4 — Gap analysis de datos
+## Módulo 0.4 - Gap analysis de datos
 
 ### Objetivo
 
@@ -388,7 +388,7 @@ Determinar si los datos actuales alcanzan para cada módulo.
 
 ### Submódulos
 
-#### 0.4.1 — Brechas por módulo
+#### 0.4.1 - Brechas por módulo
 
 Evaluar para:
 
@@ -399,7 +399,7 @@ Evaluar para:
 * expected return
 * simulation futura
 
-#### 0.4.2 — Supuestos permitidos
+#### 0.4.2 - Supuestos permitidos
 
 Documentar proxys y fallback válidos.
 
@@ -409,7 +409,7 @@ Documentar proxys y fallback válidos.
 
 ---
 
-## Módulo 0.5 — Definición del MVP
+## Módulo 0.5 - Definición del MVP
 
 ### Objetivo
 
@@ -417,7 +417,7 @@ Cerrar alcance del primer release útil de Analytics v2.
 
 ### Submódulos
 
-#### 0.5.1 — Priorización
+#### 0.5.1 - Priorización
 
 Ordenar implementación:
 
@@ -428,7 +428,7 @@ Ordenar implementación:
 5. expected return simple
 6. simulación avanzada posterior
 
-#### 0.5.2 — Criterios de aceptación por módulo
+#### 0.5.2 - Criterios de aceptación por módulo
 
 Definir qué debe cumplirse para considerar cada módulo terminado.
 
@@ -438,13 +438,13 @@ Definir qué debe cumplirse para considerar cada módulo terminado.
 
 ---
 
-# FASE 1 — Fundaciones técnicas compartidas
+# FASE 1 - Fundaciones técnicas compartidas
 
 ## Objetivo
 
 Crear la base técnica común para todos los módulos de Analytics v2.
 
-## Módulo 1.1 — Schemas y contratos compartidos
+## Módulo 1.1 - Schemas y contratos compartidos
 
 ### Objetivo
 
@@ -452,7 +452,7 @@ Definir estructuras estables y reutilizables.
 
 ### Submódulos
 
-#### 1.1.1 — Schemas comunes de portafolio
+#### 1.1.1 - Schemas comunes de portafolio
 
 Ejemplos posibles:
 
@@ -463,7 +463,7 @@ Ejemplos posibles:
 * clasificación por sector
 * liquidez normalizada
 
-#### 1.1.2 — Schemas de resultados analíticos
+#### 1.1.2 - Schemas de resultados analíticos
 
 Ejemplos posibles:
 
@@ -473,7 +473,7 @@ Ejemplos posibles:
 * item de stress result
 * metadata de calidad de datos
 
-#### 1.1.3 — Validaciones y serialización
+#### 1.1.3 - Validaciones y serialización
 
 Definir contratos para consumo por dashboard y recomendaciones.
 
@@ -486,7 +486,7 @@ Definir contratos para consumo por dashboard y recomendaciones.
 
 ---
 
-## Módulo 1.2 — Helpers compartidos
+## Módulo 1.2 - Helpers compartidos
 
 ### Objetivo
 
@@ -494,21 +494,21 @@ Centralizar lógica reutilizable transversal.
 
 ### Submódulos
 
-#### 1.2.1 — Helpers de normalización
+#### 1.2.1 - Helpers de normalización
 
 * pesos
 * porcentajes
 * totales
 * rankings
 
-#### 1.2.2 — Helpers de agrupación
+#### 1.2.2 - Helpers de agrupación
 
 * por sector
 * por país
 * por tipo de activo
 * por moneda
 
-#### 1.2.3 — Helpers de fallback y calidad de datos
+#### 1.2.3 - Helpers de fallback y calidad de datos
 
 * valores faltantes
 * proxys válidos
@@ -522,7 +522,7 @@ Centralizar lógica reutilizable transversal.
 
 ---
 
-# FASE 2 — Módulo MVP 1: Risk Contribution
+# FASE 2 - Módulo MVP 1: Risk Contribution
 
 ## Objetivo general
 
@@ -536,18 +536,18 @@ Versión inicial basada en peso y volatilidad proxy, sin covarianza avanzada.
 
 ---
 
-## Módulo 2.1 — Diseño del algoritmo de risk contribution
+## Módulo 2.1 - Diseño del algoritmo de risk contribution
 
 ### Submódulos
 
-#### 2.1.1 — Definición del score de riesgo MVP
+#### 2.1.1 - Definición del score de riesgo MVP
 
 Modelo inicial sugerido:
 
 * `risk_score = peso * volatilidad_proxy`
 * `contribution_pct = risk_score / suma_risk_score`
 
-#### 2.1.2 — Definición de volatilidad proxy
+#### 2.1.2 - Definición de volatilidad proxy
 
 Orden de prioridad:
 
@@ -556,14 +556,14 @@ Orden de prioridad:
 3. volatilidad proxy por tipo de activo
 4. fallback documentado
 
-#### 2.1.3 — Reglas para liquidez
+#### 2.1.3 - Reglas para liquidez
 
 * contribución baja o cero
 * comportamiento explícito en tests
 
 ---
 
-## Módulo 2.2 — Implementación por activo
+## Módulo 2.2 - Implementación por activo
 
 ### Resultado esperado
 
@@ -579,14 +579,14 @@ Salida por instrumento con:
 
 ### Criterios de aceptación
 
-* suma de contribuciones ≈ 100%
+* suma de contribuciones ~= 100%
 * portafolio vacío no rompe
 * faltantes usan fallback controlado
 * tests unitarios completos
 
 ---
 
-## Módulo 2.3 — Agregación por sector y país
+## Módulo 2.3 - Agregación por sector y país
 
 ### Resultado esperado
 
@@ -603,7 +603,7 @@ Agrupación de contribución al riesgo por:
 
 ---
 
-## Módulo 2.4 — Señales para recomendaciones
+## Módulo 2.4 - Señales para recomendaciones
 
 ### Resultado esperado
 
@@ -621,7 +621,7 @@ Flags como:
 
 ---
 
-## Módulo 2.5 — Tests del módulo
+## Módulo 2.5 - Tests del módulo
 
 ### Cobertura mínima esperada
 
@@ -648,7 +648,7 @@ feat(analytics-v2): agrega módulo de risk contribution MVP
 
 ---
 
-# FASE 3 — Módulo MVP 2: Scenario Analysis
+# FASE 3 - Módulo MVP 2: Scenario Analysis
 
 ## Objetivo general
 
@@ -658,7 +658,7 @@ Responder:
 
 ---
 
-## Módulo 3.1 — Catálogo de escenarios MVP
+## Módulo 3.1 - Catálogo de escenarios MVP
 
 ### Escenarios iniciales sugeridos
 
@@ -678,7 +678,7 @@ Responder:
 
 ---
 
-## Módulo 3.2 — Motor de sensibilidad heurística
+## Módulo 3.2 - Motor de sensibilidad heurística
 
 ### Objetivo
 
@@ -686,13 +686,13 @@ Aplicar reglas iniciales por tipo de activo, país, sector y moneda.
 
 ### Submódulos
 
-#### 3.2.1 — Sensibilidad por clase de activo
+#### 3.2.1 - Sensibilidad por clase de activo
 
-#### 3.2.2 — Sensibilidad por sector
+#### 3.2.2 - Sensibilidad por sector
 
-#### 3.2.3 — Sensibilidad por geografía
+#### 3.2.3 - Sensibilidad por geografía
 
-#### 3.2.4 — Sensibilidad por moneda
+#### 3.2.4 - Sensibilidad por moneda
 
 ### Criterios de aceptación
 
@@ -702,7 +702,7 @@ Aplicar reglas iniciales por tipo de activo, país, sector y moneda.
 
 ---
 
-## Módulo 3.3 — Cálculo de impacto
+## Módulo 3.3 - Cálculo de impacto
 
 ### Resultado esperado
 
@@ -722,7 +722,7 @@ Para cada escenario:
 
 ---
 
-## Módulo 3.4 — Integración con alertas y planeación
+## Módulo 3.4 - Integración con alertas y planeación
 
 ### Resultado esperado
 
@@ -734,7 +734,7 @@ Señales como:
 
 ---
 
-## Módulo 3.5 — Tests del módulo
+## Módulo 3.5 - Tests del módulo
 
 ### Cobertura mínima esperada
 
@@ -759,7 +759,7 @@ feat(analytics-v2): agrega módulo de scenario analysis MVP
 
 ---
 
-# FASE 4 — Módulo MVP 3: Factor Exposure Proxy
+# FASE 4 - Módulo MVP 3: Factor Exposure Proxy
 
 ## Objetivo general
 
@@ -769,7 +769,7 @@ Responder:
 
 ---
 
-## Módulo 4.1 — Modelo de factores MVP
+## Módulo 4.1 - Modelo de factores MVP
 
 ### Factores iniciales sugeridos
 
@@ -787,7 +787,7 @@ Responder:
 
 ---
 
-## Módulo 4.2 — Clasificación proxy por activo
+## Módulo 4.2 - Clasificación proxy por activo
 
 ### Objetivo
 
@@ -795,11 +795,11 @@ Etiquetar activos usando reglas heurísticas o mapping controlado.
 
 ### Submódulos
 
-#### 4.2.1 — Mapa explícito por símbolo cuando sea necesario
+#### 4.2.1 - Mapa explícito por símbolo cuando sea necesario
 
-#### 4.2.2 — Fallback por tipo de activo o sector
+#### 4.2.2 - Fallback por tipo de activo o sector
 
-#### 4.2.3 — Clasificación `unknown` para activos sin etiqueta confiable
+#### 4.2.3 - Clasificación `unknown` para activos sin etiqueta confiable
 
 ### Criterios de aceptación
 
@@ -808,7 +808,7 @@ Etiquetar activos usando reglas heurísticas o mapping controlado.
 
 ---
 
-## Módulo 4.3 — Agregación de exposición factorial
+## Módulo 4.3 - Agregación de exposición factorial
 
 ### Resultado esperado
 
@@ -825,7 +825,7 @@ Etiquetar activos usando reglas heurísticas o mapping controlado.
 
 ---
 
-## Módulo 4.4 — Señales para recomendaciones
+## Módulo 4.4 - Señales para recomendaciones
 
 ### Resultado esperado
 
@@ -838,7 +838,7 @@ Señales como:
 
 ---
 
-## Módulo 4.5 — Tests del módulo
+## Módulo 4.5 - Tests del módulo
 
 ### Cobertura mínima esperada
 
@@ -862,7 +862,7 @@ feat(analytics-v2): agrega módulo de factor exposure proxy
 
 ---
 
-# FASE 5 — Módulo MVP 4: Stress Testing
+# FASE 5 - Módulo MVP 4: Stress Testing
 
 ## Objetivo general
 
@@ -872,7 +872,7 @@ Responder:
 
 ---
 
-## Módulo 5.1 — Definición de stresses extremos
+## Módulo 5.1 - Definición de stresses extremos
 
 ### Ejemplos iniciales
 
@@ -883,7 +883,7 @@ Responder:
 
 ---
 
-## Módulo 5.2 — Motor de stress
+## Módulo 5.2 - Motor de stress
 
 ### Resultado esperado
 
@@ -894,7 +894,7 @@ Responder:
 
 ---
 
-## Módulo 5.3 — Integración con recomendaciones
+## Módulo 5.3 - Integración con recomendaciones
 
 ### Resultado esperado
 
@@ -906,7 +906,7 @@ Señales como:
 
 ---
 
-## Módulo 5.4 — Tests del módulo
+## Módulo 5.4 - Tests del módulo
 
 ### Cobertura mínima esperada
 
@@ -929,7 +929,7 @@ feat(analytics-v2): agrega módulo de stress testing MVP
 
 ---
 
-# FASE 6 — Módulo MVP 5: Expected Return Simple
+# FASE 6 - Módulo MVP 5: Expected Return Simple
 
 ## Objetivo general
 
@@ -937,7 +937,7 @@ Agregar una primera estimación simple de retorno esperado, controlada y explica
 
 ---
 
-## Módulo 6.1 — Modelo simple de retorno esperado
+## Módulo 6.1 - Modelo simple de retorno esperado
 
 ### Posibles enfoques
 
@@ -951,7 +951,7 @@ Debe ser explicable y no pseudo-científico.
 
 ---
 
-## Módulo 6.2 — Integración con planeación
+## Módulo 6.2 - Integración con planeación
 
 ### Resultado esperado
 
@@ -962,7 +962,7 @@ Señales como:
 
 ---
 
-## Módulo 6.3 — Tests del módulo
+## Módulo 6.3 - Tests del módulo
 
 ### Cobertura mínima esperada
 
@@ -984,25 +984,25 @@ feat(analytics-v2): agrega módulo de expected return simple
 
 ---
 
-# FASE 7 — Integración gradual con producto
+# FASE 7 - Integración gradual con producto
 
 ## Objetivo
 
 Consumir los módulos v2 en la aplicación sin romper UX ni arquitectura.
 
-## Módulo 7.1 — Integración con dashboard
+## Módulo 7.1 - Integración con dashboard
 
 ### Submódulos
 
-#### 7.1.1 — Nueva sección Analytics v2
+#### 7.1.1 - Nueva sección Analytics v2
 
-#### 7.1.2 — Tarjetas resumen por módulo
+#### 7.1.2 - Tarjetas resumen por módulo
 
-#### 7.1.3 — Tablas y gráficos por módulo
+#### 7.1.3 - Tablas y gráficos por módulo
 
-#### 7.1.4 — Tooltips metodológicos
+#### 7.1.4 - Tooltips metodológicos
 
-#### 7.1.5 — Badges de calidad de datos
+#### 7.1.5 - Badges de calidad de datos
 
 ### Criterios de aceptación
 
@@ -1012,19 +1012,19 @@ Consumir los módulos v2 en la aplicación sin romper UX ni arquitectura.
 
 ---
 
-## Módulo 7.2 — Integración con motor de recomendaciones
+## Módulo 7.2 - Integración con motor de recomendaciones
 
 ### Submódulos
 
-#### 7.2.1 — Señales de risk contribution
+#### 7.2.1 - Señales de risk contribution
 
-#### 7.2.2 — Señales de scenario analysis
+#### 7.2.2 - Señales de scenario analysis
 
-#### 7.2.3 — Señales de factor exposure
+#### 7.2.3 - Señales de factor exposure
 
-#### 7.2.4 — Señales de stress testing
+#### 7.2.4 - Señales de stress testing
 
-#### 7.2.5 — Priorización de recomendaciones
+#### 7.2.5 - Priorización de recomendaciones
 
 ### Criterios de aceptación
 
@@ -1040,7 +1040,7 @@ El agente debe detenerse y esperar confirmación antes de pasar a una integraci�
 
 ---
 
-# FASE 8 — Evolución avanzada posterior al MVP
+# FASE 8 - Evolución avanzada posterior al MVP
 
 ## Objetivo
 
@@ -1183,30 +1183,17 @@ El agente debe documentar en forma breve y útil:
 * limitaciones
 * futuros puntos de extensión
 
+Debe evitar documentación inflada o redundante.
+
 ### Regla de actualización documental continua
 
 Cada vez que el agente modifique código, comportamiento visible, contratos, flujos operativos, superficies UI, endpoints consumidos o reglas de decisión, debe actualizar en el mismo módulo los documentos correspondientes.
 
-La documentación no debe quedar para una pasada masiva posterior salvo que el usuario lo pida explícitamente.
+Esto implica:
 
-Orden esperado:
-
-1. implementar o ajustar el cambio
-2. actualizar en el mismo turno la documentación afectada
-3. cerrar el módulo dejando código y documentación alineados
-
-Como criterio mínimo, el agente debe evaluar siempre si corresponde actualizar:
-
-* `README.md`
-* `docs/README.md`
-* documentación funcional del flujo afectado
-* documentación técnica del módulo afectado
-* mapas de pipeline o de endpoints si cambió uso real de datos
-* checklists o inventarios de exposición si cambió una superficie visible
-
-Si decide no actualizar documentación en un módulo con cambios funcionales o técnicos, debe justificarlo explícitamente en el cierre.
-
-Debe evitar documentación inflada o redundante.
+* no diferir la documentación para una pasada masiva posterior
+* actualizar `README`, `docs/` o el documento canónico correspondiente cuando el cambio lo amerite
+* justificar explícitamente si un módulo no requiere cambios documentales
 
 ---
 
