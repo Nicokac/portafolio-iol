@@ -97,3 +97,30 @@ Comportamiento final:
 ### Riesgo aceptado
 Se mantiene la decision de negocio de guardar un unico token IOL vigente en base.
 Si en el futuro aparece un caso multi-cuenta o multi-credencial, el modelo debe evolucionar explicitamente en lugar de acumular multiples filas implicitas.
+
+
+---
+
+## D-005 - Data stamp cacheado para selectors del dashboard
+
+**Issue relacionada:** B1  
+**Fecha:** 2026-03-22  
+**Estado:** Implementado
+
+### Contexto
+Los selectors del dashboard ya tenian cache por resultado, pero cada llamada cacheada recalculaba de todos modos el `data_stamp` consultando tablas base para invalidacion.
+
+En pantallas densas como `Resumen` y `Planeacion`, eso multiplicaba queries de bajo valor aun cuando el resultado principal ya estaba cacheado.
+
+### Decision
+Cachear tambien el `data_stamp` durante la misma ventana TTL de los selectors.
+
+Con esto:
+
+- la primera llamada sigue calculando el stamp desde base
+- las siguientes llamadas dentro de la ventana reutilizan ese stamp sin nuevas queries
+- se reduce el costo repetido de invalidacion en cargas consecutivas del dashboard
+
+### Riesgo aceptado
+Se acepta una ventana corta de consistencia igual al TTL ya existente de los selectors.
+No se introdujo una estrategia mas compleja de invalidacion inmediata para mantener el cambio acotado y de bajo riesgo.

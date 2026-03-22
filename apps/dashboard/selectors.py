@@ -46,6 +46,7 @@ from apps.core.services.analytics_v2 import (
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
+DATA_STAMP_CACHE_KEY = "dashboard_selector:data_stamp"
 
 
 def _safe_percentage(numerator: int, denominator: int) -> Decimal:
@@ -55,10 +56,16 @@ def _safe_percentage(numerator: int, denominator: int) -> Decimal:
 
 
 def _get_data_stamp() -> str:
+    cached = cache.get(DATA_STAMP_CACHE_KEY)
+    if cached is not None:
+        return cached
+
     latest_portafolio = ActivoPortafolioSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
     latest_resumen = ResumenCuentaSnapshot.objects.aggregate(latest=Max("fecha_extraccion"))["latest"]
     latest_parametro_id = ParametroActivo.objects.aggregate(latest=Max("id"))["latest"] or 0
-    return f"{latest_portafolio}|{latest_resumen}|{latest_parametro_id}"
+    stamp = f"{latest_portafolio}|{latest_resumen}|{latest_parametro_id}"
+    cache.set(DATA_STAMP_CACHE_KEY, stamp, timeout=SELECTOR_CACHE_TTL_SECONDS)
+    return stamp
 
 
 def _get_cached_selector_result(cache_key_prefix: str, builder):

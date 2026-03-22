@@ -3,8 +3,10 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.core.cache import cache
-from django.test import Client
+from django.db import connection
+from django.test import Client, override_settings
 from django.urls import reverse
+from django.test.utils import CaptureQueriesContext
 
 from apps.core.models import IncrementalProposalSnapshot, SensitiveActionAudit
 
@@ -492,6 +494,23 @@ class TestDashboardView:
         url = reverse('dashboard:planeacion')
         response = auth_client.get(url)
         assert response.status_code == 200
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+    def test_planeacion_route_uses_fewer_queries_on_second_call(self, auth_client):
+        cache.clear()
+
+        with CaptureQueriesContext(connection) as first_call_queries:
+            first_response = auth_client.get(reverse('dashboard:planeacion'))
+
+        with CaptureQueriesContext(connection) as second_call_queries:
+            second_response = auth_client.get(reverse('dashboard:planeacion'))
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+        assert len(first_call_queries) > 0
+        assert len(second_call_queries) < len(first_call_queries)
 
     def test_planeacion_uses_incremental_context_facade(self, auth_client, monkeypatch):
         captured = {}

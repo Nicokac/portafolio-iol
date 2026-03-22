@@ -10,6 +10,7 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.dashboard.selectors import (
+    _get_data_stamp,
     _build_portfolio_scope_summary,
     get_analytics_mensual,
     get_analytics_v2_dashboard_summary,
@@ -4920,6 +4921,24 @@ class TestDashboardSelectors(TestCase):
 
         senales = get_senales_rebalanceo()
         assert isinstance(senales, dict)
+
+    @override_settings(
+        CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    )
+    def test_data_stamp_uses_cache_on_second_call(self):
+        cache.clear()
+        fecha = timezone.now()
+        make_resumen(fecha, disponible=1000.00)
+        make_activo(fecha, 'AAPL', valorizado=2000.00, tipo='ACCIONES', moneda='USD')
+
+        with CaptureQueriesContext(connection) as first_call_queries:
+            _get_data_stamp()
+
+        with CaptureQueriesContext(connection) as second_call_queries:
+            _get_data_stamp()
+
+        assert len(first_call_queries) > 0
+        assert len(second_call_queries) == 0
 
     @override_settings(
         CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
