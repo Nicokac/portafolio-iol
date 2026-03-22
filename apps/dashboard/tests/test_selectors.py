@@ -2,6 +2,7 @@ from django.test import TestCase
 from decimal import Decimal
 from datetime import timedelta
 from unittest.mock import ANY, patch
+from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import connection
 from django.test import override_settings
@@ -39,6 +40,7 @@ from apps.dashboard.selectors import (
     get_incremental_proposal_history,
     get_incremental_proposal_tracking_baseline,
     get_incremental_manual_decision_summary,
+    get_incremental_reactivation_summary,
     get_incremental_pending_backlog_vs_baseline,
     get_incremental_backlog_prioritization,
     get_incremental_backlog_front_summary,
@@ -65,7 +67,7 @@ from apps.parametros.models import ParametroActivo
 from apps.operaciones_iol.models import OperacionIOL
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
-from apps.core.models import IOLMarketSnapshotObservation
+from apps.core.models import IOLMarketSnapshotObservation, IncrementalProposalSnapshot, SensitiveActionAudit
 
 
 def make_activo(fecha, simbolo, valorizado, tipo='ACCIONES', moneda='ARS', **kwargs):
@@ -3295,6 +3297,37 @@ class TestDashboardSelectors(TestCase):
         assert detail["status"] == "pending"
         assert "Todavia no registraste" in detail["headline"]
 
+    def test_get_incremental_reactivation_summary_marks_still_active_and_front(self):
+        user = User.objects.create_user(username="reactivation-summary", password="testpass123")
+        snapshot = IncrementalProposalSnapshot.objects.create(
+            user=user,
+            source_key="manual_plan",
+            source_label="Comparador manual",
+            proposal_key="plan_reactivated",
+            proposal_label="Plan reactivado",
+            purchase_plan=[{"symbol": "KO", "amount": 100000}],
+            capital_amount=100000,
+            manual_decision_status="pending",
+            is_backlog_front=True,
+        )
+        SensitiveActionAudit.objects.create(
+            user=user,
+            action="reactivate_incremental_deferred_snapshot",
+            status="success",
+            details={"snapshot_id": snapshot.id, "proposal_label": "Plan reactivado"},
+        )
+
+        detail = get_incremental_reactivation_summary(user=user, limit=3)
+
+        assert detail["has_reactivations"] is True
+        assert detail["count"] == 1
+        assert detail["active_count"] == 1
+        assert detail["front_count"] == 1
+        assert detail["items"][0]["proposal_label"] == "Plan reactivado"
+        assert detail["items"][0]["current_status"] == "pending"
+        assert detail["items"][0]["is_backlog_front"] is True
+        assert "reactivaciones recientes" in detail["headline"].lower()
+
     def test_get_incremental_pending_backlog_vs_baseline_compares_pending_snapshots(self):
         class DummyUser:
             is_authenticated = True
@@ -3973,6 +4006,10 @@ class TestDashboardSelectors(TestCase):
                 return_value={"has_decision": True},
             ) as decision_summary,
             patch(
+                "apps.dashboard.selectors.get_incremental_reactivation_summary",
+                return_value={"count": 1, "has_reactivations": True},
+            ) as reactivation_summary,
+            patch(
                 "apps.dashboard.selectors.get_incremental_decision_executive_summary",
                 return_value={"status": "review_backlog"},
             ) as executive_summary,
@@ -3997,6 +4034,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_proposal_history"]["active_filter"] == "pending"
         assert detail["incremental_proposal_tracking_baseline"]["has_baseline"] is True
         assert detail["incremental_manual_decision_summary"]["has_decision"] is True
+        assert detail["incremental_reactivation_summary"]["has_reactivations"] is True
         assert detail["incremental_decision_executive_summary"]["status"] == "review_backlog"
 
         portfolio_scope.assert_called_once_with()
@@ -4020,6 +4058,7 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_backlog_prioritization"]["count"] == 1
         baseline.assert_called_once_with(user=ANY)
         decision_summary.assert_called_once_with(user=ANY)
+        reactivation_summary.assert_called_once_with(user=ANY, limit=3)
         backlog_prioritization.assert_called_once_with(user=ANY, limit=7, followup_filter="")
         executive_summary.assert_called_once_with({"decision_status_filter": "pending"}, user=ANY, capital_amount=700000, limit=7)
 

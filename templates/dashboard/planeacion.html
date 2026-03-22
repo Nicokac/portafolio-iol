@@ -832,6 +832,65 @@
                         {% endif %}
                     </div>
                 </div>
+                <div class="mt-3">
+                    <p class="text-muted mb-2">{{ incremental_reactivation_summary.headline }}</p>
+                    {% if incremental_reactivation_summary.has_reactivations %}
+                    <div class="row g-3">
+                        <div class="col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-1">Reactivaciones recientes</div>
+                                <div><strong>{{ incremental_reactivation_summary.count }}</strong></div>
+                                <div class="small text-muted mt-2">Snapshots diferidos que volvieron a entrar al backlog.</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-1">Siguen vigentes</div>
+                                <div><strong>{{ incremental_reactivation_summary.active_count }}</strong></div>
+                                <div class="small text-muted mt-2">Reactivaciones que todavía siguen pendientes.</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-1">Al frente del backlog</div>
+                                <div><strong>{{ incremental_reactivation_summary.front_count }}</strong></div>
+                                <div class="small text-muted mt-2">Reactivaciones que hoy lideran la revisión operativa.</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <div class="small text-muted mb-1">Última reactivación</div>
+                                <div><strong>{{ incremental_reactivation_summary.items.0.proposal_label }}</strong></div>
+                                <div class="small text-muted mt-2">{{ incremental_reactivation_summary.items.0.reactivated_at|date:"d M Y H:i" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-column gap-2 mt-3">
+                        {% for item in incremental_reactivation_summary.items %}
+                        <div class="border rounded p-3">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <strong>{{ item.proposal_label }}</strong>
+                                    <span class="badge {% if item.is_backlog_front %}bg-info text-dark{% elif item.is_active %}bg-warning text-dark{% else %}bg-secondary{% endif %} ms-2">
+                                        {{ item.current_status_label }}
+                                    </span>
+                                    {% if item.is_backlog_front %}
+                                    <span class="badge bg-primary ms-1">Al frente</span>
+                                    {% endif %}
+                                    <div class="small text-muted mt-2">{{ item.current_summary }}</div>
+                                </div>
+                                <div class="small text-muted text-end">
+                                    <div>{{ item.user_label }}</div>
+                                    <div>{{ item.reactivated_at|date:"d M Y H:i" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-muted">Todavía no se reactivaron propuestas diferidas desde el historial incremental.</div>
+                    {% endif %}
+                </div>
             </div>
             <div class="card-body border-bottom">
                 <p class="text-muted mb-3">Antes de revisar snapshots guardados uno por uno, conviene mirar qué tan priorizable está el backlog frente al baseline activo.</p>

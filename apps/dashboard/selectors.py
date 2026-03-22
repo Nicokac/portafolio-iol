@@ -13,7 +13,7 @@ from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.selectors import build_portafolio_row
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.resumen_iol.models import ResumenCuentaSnapshot
-from apps.core.models import Alert
+from apps.core.models import Alert, IncrementalProposalSnapshot, SensitiveActionAudit
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
@@ -3114,6 +3114,91 @@ def get_incremental_manual_decision_summary(*, user) -> Dict:
     }
 
 
+def get_incremental_reactivation_summary(*, user, limit: int = 3) -> Dict:
+    """Resume reactivaciones recientes de snapshots diferidos dentro del backlog incremental."""
+
+    if user is None or not getattr(user, "is_authenticated", False) or not getattr(user, "pk", None):
+        return {
+            "items": [],
+            "count": 0,
+            "active_count": 0,
+            "front_count": 0,
+            "has_reactivations": False,
+            "headline": "Todavia no hay reactivaciones recientes para revisar.",
+        }
+
+    audits = list(
+        SensitiveActionAudit.objects.filter(
+            user=user,
+            action="reactivate_incremental_deferred_snapshot",
+            status="success",
+        ).order_by("-created_at", "-id")[: max(int(limit), 0)]
+    )
+    snapshot_ids = []
+    for audit in audits:
+        raw_snapshot_id = (audit.details or {}).get("snapshot_id")
+        try:
+            snapshot_ids.append(int(raw_snapshot_id))
+        except (TypeError, ValueError):
+            continue
+
+    snapshots = {
+        snapshot.id: snapshot
+        for snapshot in IncrementalProposalSnapshot.objects.filter(user=user, id__in=snapshot_ids)
+    }
+    items = []
+    active_count = 0
+    front_count = 0
+    for audit in audits:
+        raw_snapshot_id = (audit.details or {}).get("snapshot_id")
+        try:
+            snapshot_id = int(raw_snapshot_id)
+        except (TypeError, ValueError):
+            snapshot_id = None
+        snapshot = snapshots.get(snapshot_id)
+        current_status = str(getattr(snapshot, "manual_decision_status", "") or "")
+        is_backlog_front = bool(getattr(snapshot, "is_backlog_front", False))
+        if current_status == "pending":
+            active_count += 1
+        if current_status == "pending" and is_backlog_front:
+            front_count += 1
+        items.append(
+            {
+                "snapshot_id": snapshot_id,
+                "proposal_label": str((audit.details or {}).get("proposal_label") or getattr(snapshot, "proposal_label", "") or "-"),
+                "reactivated_at": audit.created_at,
+                "user_label": audit.user.username if audit.user else "system",
+                "current_status": current_status or "missing",
+                "current_status_label": _format_incremental_manual_decision_status(current_status) if current_status else "Sin snapshot",
+                "is_backlog_front": is_backlog_front,
+                "is_active": current_status == "pending",
+                "current_summary": (
+                    "Sigue al frente del backlog incremental."
+                    if current_status == "pending" and is_backlog_front
+                    else "Sigue vigente como candidata pendiente."
+                    if current_status == "pending"
+                    else "Ya no sigue pendiente en el backlog actual."
+                ),
+            }
+        )
+
+    if items:
+        headline = (
+            f"Se registraron {len(items)} reactivaciones recientes; {active_count} siguen vigentes y {front_count} quedaron al frente del backlog."
+        )
+    else:
+        headline = "Todavia no hay reactivaciones recientes para revisar."
+
+    return {
+        "items": items,
+        "count": len(items),
+        "active_count": active_count,
+        "front_count": front_count,
+        "has_reactivations": bool(items),
+        "headline": headline,
+    }
+
+
 def get_incremental_baseline_drift(
     query_params,
     *,
@@ -3630,6 +3715,10 @@ def get_planeacion_incremental_context(
         ),
         "incremental_manual_decision_summary": get_incremental_manual_decision_summary(
             user=user,
+        ),
+        "incremental_reactivation_summary": get_incremental_reactivation_summary(
+            user=user,
+            limit=min(history_limit, 3),
         ),
         "incremental_decision_executive_summary": get_incremental_decision_executive_summary(
             query_params,

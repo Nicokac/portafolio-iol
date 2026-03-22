@@ -2772,3 +2772,42 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'Reactivar al backlog' in body
         assert 'Reactivable' in body
+
+    def test_planeacion_shows_recent_reactivations_summary(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'selected_candidates': [], 'before': {}, 'after': {}, 'delta': {}, 'interpretation': '', 'unmapped_blocks': []},
+                'incremental_portfolio_simulation_comparison': {'proposals': [], 'best_label': None},
+                'candidate_incremental_portfolio_comparison': {'available_blocks': [], 'proposals': [], 'best_label': None},
+                'candidate_split_incremental_portfolio_comparison': {'available_blocks': [], 'proposals': [], 'best_label': None},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {'capital_amount': 600000}},
+                'preferred_incremental_portfolio_proposal': {'preferred': None, 'explanation': '', 'has_manual_override': False},
+                'decision_engine_summary': {'score': 50, 'confidence': 'Media', 'explanation': [], 'action_suggestions': [], 'portfolio_scope': {}, 'macro_state': {'label': ''}, 'portfolio_state': {'label': ''}, 'recommendation': {'has_recommendation': False}, 'suggested_assets': [], 'preferred_proposal': None, 'expected_impact': {}, 'execution_gate': {'has_blocker': False, 'primary_cta_label': ''}},
+                'incremental_proposal_history': {'items': [], 'count': 0, 'has_history': False, 'active_filter': 'all', 'active_filter_label': 'Todos', 'active_priority_filter': 'all', 'active_priority_filter_label': 'Todas las prioridades', 'active_deferred_fit_filter': 'all', 'active_deferred_fit_filter_label': 'Todas las diferidas', 'active_sort_mode': 'newest', 'active_sort_mode_label': 'Mas recientes', 'decision_counts': {'total': 0, 'pending': 0, 'accepted': 0, 'deferred': 0, 'rejected': 0}, 'available_filters': [], 'available_priority_filters': [], 'available_deferred_fit_filters': [], 'available_sort_modes': [], 'headline': ''},
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_backlog_prioritization': {'count': 0, 'has_priorities': False, 'has_shortlist': False, 'has_focus_split': False, 'counts': {'high': 0, 'medium': 0, 'watch': 0, 'low': 0}, 'followup_counts': {'review_now': 0, 'monitor': 0, 'hold': 0}, 'active_followup_filter': 'all', 'active_followup_filter_label': 'Todas', 'available_followup_filters': [], 'manual_review_summary': {'pending_count': 0, 'deferred_count': 0, 'accepted_count': 0, 'rejected_count': 0, 'closed_count': 0, 'reviewed_count': 0, 'headline': '', 'has_manual_reviews': False}, 'deferred_review_summary': {'deferred_count': 0, 'reactivable_count': 0, 'archivable_count': 0, 'top_reactivable_label': '', 'top_reactivable_priority_label': '', 'has_reactivable': False, 'headline': ''}, 'headline': '', 'explanation': '', 'top_item': None, 'economic_leader': None, 'tactical_leader': None},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_reactivation_summary': {
+                    'count': 1,
+                    'active_count': 1,
+                    'front_count': 1,
+                    'has_reactivations': True,
+                    'headline': 'Se registraron 1 reactivaciones recientes; 1 siguen vigentes y 1 quedaron al frente del backlog.',
+                    'items': [{'proposal_label': 'Plan reactivado', 'reactivated_at': '2026-03-17 11:00', 'user_label': 'testuser', 'current_status_label': 'Pendiente', 'is_backlog_front': True, 'is_active': True, 'current_summary': 'Sigue al frente del backlog incremental.'}],
+                },
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+                'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Reactivaciones recientes' in body
+        assert 'Siguen vigentes' in body
+        assert 'Al frente del backlog' in body
+        assert 'Plan reactivado' in body
