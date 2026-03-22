@@ -3378,6 +3378,9 @@ class TestDashboardSelectors(TestCase):
             "Pendiente media",
             "Pendiente baja",
         ]
+        assert detail["manual_review_summary"]["pending_count"] == 0
+        assert detail["manual_review_summary"]["deferred_count"] == 0
+        assert detail["manual_review_summary"]["closed_count"] == 0
         assert detail["shortlist"][0]["priority_label"] == "Alta"
         assert detail["shortlist"][0]["economic_edge"] is True
         assert detail["shortlist"][0]["tactical_edge"] is True
@@ -3479,6 +3482,28 @@ class TestDashboardSelectors(TestCase):
         assert detail["followup_counts"] == {"review_now": 1, "monitor": 1, "hold": 1}
         assert [item["proposal_label"] for item in detail["shortlist"]] == ["Pendiente media"]
         assert detail["shortlist"][0]["followup"]["status"] == "monitor"
+
+    def test_get_incremental_backlog_prioritization_builds_manual_review_summary_from_history_counts(self):
+        class DummyUser:
+            is_authenticated = True
+
+        with patch(
+            "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+            return_value={
+                "baseline": {"proposal_label": "Baseline activo"},
+                "items": [],
+                "decision_counts": {"total": 6, "pending": 2, "accepted": 1, "deferred": 2, "rejected": 1},
+                "has_baseline": True,
+                "has_pending_backlog": True,
+            },
+        ):
+            detail = get_incremental_backlog_prioritization(user=DummyUser(), limit=5)
+
+        assert detail["manual_review_summary"]["pending_count"] == 2
+        assert detail["manual_review_summary"]["deferred_count"] == 2
+        assert detail["manual_review_summary"]["closed_count"] == 2
+        assert detail["manual_review_summary"]["reviewed_count"] == 4
+        assert "propuestas vigentes" in detail["manual_review_summary"]["headline"].lower()
 
     def test_get_incremental_backlog_prioritization_handles_missing_inputs(self):
         class DummyUser:

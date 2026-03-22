@@ -845,6 +845,16 @@ class TestDashboardView:
                         {'key': 'hold', 'label': 'En espera', 'count': 1, 'selected': False},
                     ],
                     'followup_counts': {'review_now': 0, 'monitor': 2, 'hold': 1},
+                    'manual_review_summary': {
+                        'pending_count': 1,
+                        'deferred_count': 2,
+                        'accepted_count': 1,
+                        'rejected_count': 0,
+                        'closed_count': 1,
+                        'reviewed_count': 3,
+                        'headline': 'Todavía hay propuestas vigentes para futuras compras dentro del backlog.',
+                        'has_manual_reviews': True,
+                    },
                     'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
                     'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
                     'explanation': 'El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, sin deterioro material de fragilidad y con buena ejecutabilidad tactica; Plan guardado 1 queda arriba por prioridad.',
@@ -966,6 +976,10 @@ class TestDashboardView:
         assert 'Filtrar shortlist por seguimiento' in body
         assert 'Revisar ya' in body
         assert 'En espera' in body
+        assert 'Vigentes' in body
+        assert 'Diferidas' in body
+        assert 'Cerradas' in body
+        assert 'Última revisión' in body or 'Ultima revision' in body
         assert 'Próxima revisión sugerida' in body or 'Pr?xima revisi?n sugerida' in body
         assert 'Revisar primero Plan guardado 1' in body
         assert 'Macro local FX + UVA:' in body

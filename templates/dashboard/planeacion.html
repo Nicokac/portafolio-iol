@@ -905,6 +905,42 @@
                         <button type="submit" class="btn btn-outline-secondary btn-sm">Aplicar filtro</button>
                     </div>
                 </form>
+                <div class="row g-3 mt-1">
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Vigentes</div>
+                            <div><strong>{{ incremental_backlog_prioritization.manual_review_summary.pending_count|default:0 }}</strong></div>
+                            <div class="small text-muted mt-2">Siguen abiertas como futuras compras posibles.</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Diferidas</div>
+                            <div><strong>{{ incremental_backlog_prioritization.manual_review_summary.deferred_count|default:0 }}</strong></div>
+                            <div class="small text-muted mt-2">Ya se revisaron y quedaron para revalidación futura.</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Cerradas</div>
+                            <div><strong>{{ incremental_backlog_prioritization.manual_review_summary.closed_count|default:0 }}</strong></div>
+                            <div class="small text-muted mt-2">Aceptadas o descartadas manualmente.</div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted mb-1">Última revisión</div>
+                            {% if incremental_manual_decision_summary.has_decision %}
+                            <div><strong>{{ incremental_manual_decision_summary.status_label }}</strong></div>
+                            <div class="small text-muted mt-2">{{ incremental_manual_decision_summary.item.proposal_label }}</div>
+                            {% else %}
+                            <div><strong>Pendiente</strong></div>
+                            <div class="small text-muted mt-2">Sin revisión manual registrada todavía.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2">{{ incremental_backlog_prioritization.manual_review_summary.headline }}</div>
                 {% if incremental_backlog_prioritization.top_item %}
                 <div class="border rounded p-3 mt-3">
                     <div class="small text-muted mb-1">Próxima revisión sugerida</div>

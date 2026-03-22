@@ -2953,6 +2953,31 @@ def _build_incremental_backlog_followup_filter_options(active_filter: str | None
     return options
 
 
+def _build_incremental_backlog_manual_review_summary(decision_counts: Dict[str, int]) -> Dict:
+    pending_count = int(decision_counts.get("pending", 0))
+    deferred_count = int(decision_counts.get("deferred", 0))
+    accepted_count = int(decision_counts.get("accepted", 0))
+    rejected_count = int(decision_counts.get("rejected", 0))
+    closed_count = accepted_count + rejected_count
+    reviewed_count = deferred_count + closed_count
+    if pending_count > 0:
+        headline = "Todavía hay propuestas vigentes para futuras compras dentro del backlog."
+    elif reviewed_count > 0:
+        headline = "El backlog vigente ya fue revisado manualmente y hoy no quedan propuestas pendientes."
+    else:
+        headline = "Todavía no hay decisiones manuales suficientes para leer cobertura operativa del backlog."
+    return {
+        "pending_count": pending_count,
+        "deferred_count": deferred_count,
+        "accepted_count": accepted_count,
+        "rejected_count": rejected_count,
+        "closed_count": closed_count,
+        "reviewed_count": reviewed_count,
+        "headline": headline,
+        "has_manual_reviews": bool(reviewed_count),
+    }
+
+
 def get_incremental_proposal_tracking_baseline(*, user) -> Dict:
     """Retorna el snapshot incremental activo como baseline de seguimiento del usuario."""
 
@@ -3088,6 +3113,7 @@ def get_incremental_pending_backlog_vs_baseline(*, user, limit: int = 5) -> Dict
         "items": comparisons,
         "count": len(comparisons),
         "pending_count": pending_history.get("decision_counts", {}).get("pending", len(comparisons)),
+        "decision_counts": dict(pending_history.get("decision_counts", {})),
         "has_baseline": baseline is not None,
         "has_pending_backlog": bool(pending_items),
         "has_comparable_items": bool(comparable_items),
@@ -3129,6 +3155,7 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5, followup_fil
         "watch": sum(1 for item in ordered_items if item["priority"] == "watch"),
         "low": sum(1 for item in ordered_items if item["priority"] == "low"),
     }
+    decision_counts = dict(backlog_payload.get("decision_counts", {}))
     top_item = ordered_items[0] if ordered_items else None
     economic_leader = next(
         (
@@ -3167,6 +3194,7 @@ def get_incremental_backlog_prioritization(*, user, limit: int = 5, followup_fil
         "items": ordered_items,
         "count": len(ordered_items),
         "counts": counts,
+        "manual_review_summary": _build_incremental_backlog_manual_review_summary(decision_counts),
         "top_item": top_item,
         "economic_leader": _build_incremental_backlog_focus_item(economic_leader, focus="economic"),
         "tactical_leader": _build_incremental_backlog_focus_item(tactical_leader, focus="tactical"),
