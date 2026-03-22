@@ -1,0 +1,8 @@
+{% if proposal.execution_readiness.label %}
+<div class="small mt-2">
+    <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
+</div>
+{% endif %}
+{% if proposal.execution_readiness.summary %}
+<div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
+{% endif %}

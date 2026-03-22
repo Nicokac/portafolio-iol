@@ -1,0 +1,58 @@
+{% if summary %}
+    {% if summary.has_best_label %}
+    <p class="text-muted mb-3">{{ summary.headline }}</p>
+    {% endif %}
+    {% if summary.has_execution_summary %}
+    <div class="alert alert-light border mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <strong>{{ execution_title }}</strong>
+            <span class="badge text-bg-{{ summary.best_execution_readiness.tone }}">{{ summary.best_execution_readiness.label }}</span>
+        </div>
+        <div class="small text-muted">{{ summary.best_execution_readiness.headline }}</div>
+        {% if summary.best_execution_readiness.summary %}
+        <div class="small text-muted mt-1">{{ summary.best_execution_readiness.summary }}</div>
+        {% endif %}
+        {% if summary.has_tiebreak %}
+        <div class="small text-muted mt-2">
+            <strong>{{ summary.operational_tiebreak.headline }}:</strong>
+            {{ summary.operational_tiebreak.summary }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+{% elif fallback_summary %}
+    {% if fallback_summary.best_label %}
+    <p class="text-muted mb-3">
+        {% if fallback_summary.selected_label %}
+            {{ execution_title|cut:"Lectura operativa del "|cut:"Lectura operativa de la "|cut:"Lectura operativa " }}
+        {% endif %}
+        {{ fallback_summary.display_headline|default_if_none:"" }}
+        {% if not fallback_summary.display_headline %}
+            {% if fallback_summary.selected_label %}
+                Mejor balance actual para <strong>{{ fallback_summary.selected_label }}</strong>:
+                <strong>{{ fallback_summary.best_label }}</strong>
+            {% else %}
+                {{ fallback_summary.best_label }}
+            {% endif %}
+        {% endif %}
+    </p>
+    {% endif %}
+    {% if fallback_summary.best_execution_readiness.has_summary %}
+    <div class="alert alert-light border mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <strong>{{ execution_title }}</strong>
+            <span class="badge text-bg-{{ fallback_summary.best_execution_readiness.tone }}">{{ fallback_summary.best_execution_readiness.label }}</span>
+        </div>
+        <div class="small text-muted">{{ fallback_summary.best_execution_readiness.headline }}</div>
+        {% if fallback_summary.best_execution_readiness.summary %}
+        <div class="small text-muted mt-1">{{ fallback_summary.best_execution_readiness.summary }}</div>
+        {% endif %}
+        {% if fallback_summary.operational_tiebreak.has_tiebreak %}
+        <div class="small text-muted mt-2">
+            <strong>{{ fallback_summary.operational_tiebreak.headline }}:</strong>
+            {{ fallback_summary.operational_tiebreak.summary }}
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+{% endif %}

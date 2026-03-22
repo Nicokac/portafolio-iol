@@ -2856,6 +2856,9 @@ class TestDashboardSelectors(TestCase):
         warning_item = next(item for item in detail["proposals"] if item["proposal_key"] == "runner_up_when_available")
         assert ready_item["execution_readiness"]["label"] == "Listo para ejecutar"
         assert warning_item["execution_readiness"]["label"] == "Validar ejecucion"
+        assert detail["display_summary"]["has_best_label"] is True
+        assert detail["display_summary"]["best_label"] == detail["best_label"]
+        assert detail["display_summary"]["has_execution_summary"] is True
 
     def test_get_manual_incremental_portfolio_simulation_comparison_ranks_manual_plans(self):
         cache.clear()
@@ -3033,6 +3036,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["best_execution_readiness"]["status"] == "review_execution"
         assert detail["best_execution_readiness"]["label"] == "Validar ejecucion"
         assert "lidera el comparador manual" in detail["best_execution_readiness"]["headline"]
+        assert detail["display_summary"]["headline"] == "Mejor balance manual: Plan manual A"
+        assert detail["display_summary"]["has_execution_summary"] is True
 
     def test_get_manual_incremental_portfolio_simulation_comparison_uses_operational_tiebreak_when_scores_are_close(self):
         cache.clear()
@@ -5192,6 +5197,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["candidate_asset_ranking"]["candidate_assets_count"] == 2
         assert detail["incremental_portfolio_simulation"]["interpretation"] == "ok"
         assert detail["incremental_portfolio_simulation_comparison"]["best_label"] == "Top candidato por bloque"
+        assert detail["incremental_portfolio_simulation_comparison"]["display_summary"]["headline"] == "Mejor balance actual: Top candidato por bloque"
+        assert detail["candidate_incremental_portfolio_comparison"]["display_summary"]["selected_label"] == "defensive" or detail["candidate_incremental_portfolio_comparison"]["selected_block"] == "defensive"
         assert detail["candidate_incremental_portfolio_comparison"]["selected_block"] == "defensive"
         assert detail["candidate_split_incremental_portfolio_comparison"]["selected_block"] == "defensive"
         assert detail["manual_incremental_portfolio_simulation_comparison"]["submitted"] is False

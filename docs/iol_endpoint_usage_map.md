@@ -306,3 +306,6 @@ Documento vigente para el estado actual de integracion IOL del proyecto.
 - La huella de `OperacionIOL` ya no solo decide el lider de cada comparador: tambien se expone por fila en candidato, split y manual dentro de `Planeacion`.
 
 - La huella de `OperacionIOL` ya tambien informa el comparador incremental general, no solo los comparadores por candidato, split y manual.
+
+- La lectura operativa de comparadores incrementales en `Planeacion` ahora se renderiza bajo partials comunes y un payload `display_summary` consistente entre comparadores.
+- Esa unificacion de render mantiene compatibilidad hacia atras con contextos minimos del dashboard para no acoplar la vista a una sola forma de payload.

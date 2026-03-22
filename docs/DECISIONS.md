@@ -232,3 +232,6 @@ Efecto actual:
 - Los comparadores por candidato, split y manual ahora muestran la readiness operativa por fila para no depender solo del resumen superior.
 
 - El comparador incremental general tambien expone readiness operativa por fila para las variantes automaticas del aporte mensual.
+
+- Los cuatro comparadores incrementales ahora comparten un mismo payload de summary y partials de template para reducir duplicacion de labels, badges y bloques de readiness.
+- La unificacion mantiene fallback sobre los contratos previos del contexto para no romper tests de vista ni ramas con payload minimo.

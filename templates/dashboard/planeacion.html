@@ -1817,9 +1817,9 @@
                 <small class="text-muted">Contraste simple entre variantes del mismo aporte mensual usando el simulador incremental.</small>
             </div>
             <div class="card-body">
-                {% if incremental_portfolio_simulation_comparison.best_label %}
-                <p class="text-muted mb-3">Mejor balance actual: <strong>{{ incremental_portfolio_simulation_comparison.best_label }}</strong></p>
-                {% endif %}
+                {% with summary=incremental_portfolio_simulation_comparison.display_summary fallback_summary=incremental_portfolio_simulation_comparison execution_title="Lectura operativa del mejor balance actual" %}
+                {% include "dashboard/partials/incremental_comparator_summary.html" %}
+                {% endwith %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -1840,14 +1840,7 @@
                                     {% if proposal.proposal_key == incremental_portfolio_simulation_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
                                     {% endif %}
-                                    {% if proposal.execution_readiness.label %}
-                                    <div class="small mt-2">
-                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if proposal.execution_readiness.summary %}
-                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
-                                    {% endif %}
+                                    {% include "dashboard/partials/incremental_comparator_readiness.html" %}
                                 </td>
                                 <td>
                                     {% if proposal.selected_candidates %}
@@ -1912,30 +1905,9 @@
                         </div>
                     </div>
                 </form>
-                {% if candidate_incremental_portfolio_comparison.best_label %}
-                <p class="text-muted mb-3">
-                    Mejor candidato actual para <strong>{{ candidate_incremental_portfolio_comparison.selected_label }}</strong>:
-                    <strong>{{ candidate_incremental_portfolio_comparison.best_label }}</strong>
-                </p>
-                {% endif %}
-                {% if candidate_incremental_portfolio_comparison.best_execution_readiness.has_summary %}
-                <div class="alert alert-light border mb-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <strong>Lectura operativa del mejor candidato</strong>
-                        <span class="badge text-bg-{{ candidate_incremental_portfolio_comparison.best_execution_readiness.tone }}">{{ candidate_incremental_portfolio_comparison.best_execution_readiness.label }}</span>
-                    </div>
-                    <div class="small text-muted">{{ candidate_incremental_portfolio_comparison.best_execution_readiness.headline }}</div>
-                    {% if candidate_incremental_portfolio_comparison.best_execution_readiness.summary %}
-                    <div class="small text-muted mt-1">{{ candidate_incremental_portfolio_comparison.best_execution_readiness.summary }}</div>
-                    {% endif %}
-                    {% if candidate_incremental_portfolio_comparison.operational_tiebreak.has_tiebreak %}
-                    <div class="small text-muted mt-2">
-                        <strong>{{ candidate_incremental_portfolio_comparison.operational_tiebreak.headline }}:</strong>
-                        {{ candidate_incremental_portfolio_comparison.operational_tiebreak.summary }}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
+                {% with summary=candidate_incremental_portfolio_comparison.display_summary fallback_summary=candidate_incremental_portfolio_comparison execution_title="Lectura operativa del mejor candidato" %}
+                {% include "dashboard/partials/incremental_comparator_summary.html" %}
+                {% endwith %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -1957,14 +1929,7 @@
                                     {% if proposal.proposal_key == candidate_incremental_portfolio_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
                                     {% endif %}
-                                    {% if proposal.execution_readiness.label %}
-                                    <div class="small mt-2">
-                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if proposal.execution_readiness.summary %}
-                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
-                                    {% endif %}
+                                    {% include "dashboard/partials/incremental_comparator_readiness.html" %}
                                 </td>
                                 <td>{{ proposal.candidate.main_reason|default:"-" }}</td>
                                 <td class="text-end">{{ proposal.candidate.score|default:"-" }}</td>
@@ -2027,30 +1992,9 @@
                         </div>
                     </div>
                 </form>
-                {% if candidate_split_incremental_portfolio_comparison.best_label %}
-                <p class="text-muted mb-3">
-                    Mejor construcción actual para <strong>{{ candidate_split_incremental_portfolio_comparison.selected_label }}</strong>:
-                    <strong>{{ candidate_split_incremental_portfolio_comparison.best_label }}</strong>
-                </p>
-                {% endif %}
-                {% if candidate_split_incremental_portfolio_comparison.best_execution_readiness.has_summary %}
-                <div class="alert alert-light border mb-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <strong>Lectura operativa de la mejor construcción</strong>
-                        <span class="badge text-bg-{{ candidate_split_incremental_portfolio_comparison.best_execution_readiness.tone }}">{{ candidate_split_incremental_portfolio_comparison.best_execution_readiness.label }}</span>
-                    </div>
-                    <div class="small text-muted">{{ candidate_split_incremental_portfolio_comparison.best_execution_readiness.headline }}</div>
-                    {% if candidate_split_incremental_portfolio_comparison.best_execution_readiness.summary %}
-                    <div class="small text-muted mt-1">{{ candidate_split_incremental_portfolio_comparison.best_execution_readiness.summary }}</div>
-                    {% endif %}
-                    {% if candidate_split_incremental_portfolio_comparison.operational_tiebreak.has_tiebreak %}
-                    <div class="small text-muted mt-2">
-                        <strong>{{ candidate_split_incremental_portfolio_comparison.operational_tiebreak.headline }}:</strong>
-                        {{ candidate_split_incremental_portfolio_comparison.operational_tiebreak.summary }}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
+                {% with summary=candidate_split_incremental_portfolio_comparison.display_summary fallback_summary=candidate_split_incremental_portfolio_comparison execution_title="Lectura operativa de la mejor construcción" %}
+                {% include "dashboard/partials/incremental_comparator_summary.html" %}
+                {% endwith %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -2071,14 +2015,7 @@
                                     {% if proposal.proposal_key == candidate_split_incremental_portfolio_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
                                     {% endif %}
-                                    {% if proposal.execution_readiness.label %}
-                                    <div class="small mt-2">
-                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if proposal.execution_readiness.summary %}
-                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
-                                    {% endif %}
+                                    {% include "dashboard/partials/incremental_comparator_readiness.html" %}
                                 </td>
                                 <td>
                                     {% for item in proposal.purchase_plan %}
@@ -2198,27 +2135,9 @@
 
                 {% if manual_incremental_portfolio_simulation_comparison.proposals %}
                 <hr>
-                {% if manual_incremental_portfolio_simulation_comparison.best_label %}
-                <p class="text-muted mb-3">Mejor balance manual: <strong>{{ manual_incremental_portfolio_simulation_comparison.best_label }}</strong></p>
-                {% endif %}
-                {% if manual_incremental_portfolio_simulation_comparison.best_execution_readiness.has_summary %}
-                <div class="alert alert-light border mb-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <strong>Lectura operativa del mejor plan manual</strong>
-                        <span class="badge text-bg-{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.tone }}">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.label }}</span>
-                    </div>
-                    <div class="small text-muted">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.headline }}</div>
-                    {% if manual_incremental_portfolio_simulation_comparison.best_execution_readiness.summary %}
-                    <div class="small text-muted mt-1">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.summary }}</div>
-                    {% endif %}
-                    {% if manual_incremental_portfolio_simulation_comparison.operational_tiebreak.has_tiebreak %}
-                    <div class="small text-muted mt-2">
-                        <strong>{{ manual_incremental_portfolio_simulation_comparison.operational_tiebreak.headline }}:</strong>
-                        {{ manual_incremental_portfolio_simulation_comparison.operational_tiebreak.summary }}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
+                {% with summary=manual_incremental_portfolio_simulation_comparison.display_summary fallback_summary=manual_incremental_portfolio_simulation_comparison execution_title="Lectura operativa del mejor plan manual" %}
+                {% include "dashboard/partials/incremental_comparator_summary.html" %}
+                {% endwith %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -2239,14 +2158,7 @@
                                     {% if proposal.proposal_key == manual_incremental_portfolio_simulation_comparison.best_proposal_key %}
                                     <span class="badge bg-success ms-1">Mejor balance</span>
                                     {% endif %}
-                                    {% if proposal.execution_readiness.label %}
-                                    <div class="small mt-2">
-                                        <span class="badge text-bg-{{ proposal.execution_readiness.tone }}">{{ proposal.execution_readiness.label }}</span>
-                                    </div>
-                                    {% endif %}
-                                    {% if proposal.execution_readiness.summary %}
-                                    <div class="small text-muted mt-2">{{ proposal.execution_readiness.summary }}</div>
-                                    {% endif %}
+                                    {% include "dashboard/partials/incremental_comparator_readiness.html" %}
                                     {% if proposal.execution_order_summary %}
                                     <div class="small text-muted mt-2">
                                         <strong>{{ proposal.execution_order_label }}:</strong>
