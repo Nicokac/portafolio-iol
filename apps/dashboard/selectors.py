@@ -2613,6 +2613,7 @@ def get_incremental_proposal_history(
         future_purchase_source_counts,
         active_filter=normalized_future_purchase_source_filter,
     )
+    future_purchase_source_quality_summary = _build_incremental_future_purchase_source_quality_summary(items)
 
     return {
         "items": items,
@@ -2651,6 +2652,7 @@ def get_incremental_proposal_history(
         "deferred_fit_counts": deferred_fit_counts,
         "future_purchase_source_counts": future_purchase_source_counts,
         "future_purchase_source_summary": future_purchase_source_summary,
+        "future_purchase_source_quality_summary": future_purchase_source_quality_summary,
         "headline": _build_incremental_history_headline(
             normalized_filter,
             counts,
@@ -2988,6 +2990,122 @@ def _build_incremental_future_purchase_source_summary(
         "headline": headline,
         "summary": summary,
         "has_visible_sources": total > 0,
+    }
+
+
+def _is_incremental_history_tactical_clean(item: Dict) -> bool:
+    tactical_trace = dict(item.get("tactical_trace") or {})
+    if not tactical_trace.get("has_trace"):
+        return True
+    return any(
+        str(badge.get("label") or "").strip() == "Alternativa promovida"
+        for badge in list(tactical_trace.get("badges") or [])
+    )
+
+
+def _build_incremental_future_purchase_source_quality_item(source: str, items: list[Dict]) -> Dict:
+    relevant_items = [
+        item
+        for item in items
+        if str((item.get("future_purchase_context") or {}).get("source") or "") == source
+    ]
+    count = len(relevant_items)
+    if source == "backlog_nuevo":
+        label = "Backlog nuevo"
+    else:
+        label = "Reactivadas"
+
+    if count == 0:
+        return {
+            "source": source,
+            "label": label,
+            "count": 0,
+            "priority_fit_pct": 0.0,
+            "economic_fit_pct": 0.0,
+            "tactical_clean_pct": 0.0,
+            "average_comparison_score": None,
+            "quality_score": 0.0,
+            "has_items": False,
+        }
+
+    priority_fit_count = sum(
+        1
+        for item in relevant_items
+        if str((item.get("history_priority") or {}).get("priority") or "") in {"high", "medium"}
+    )
+    economic_fit_count = sum(
+        1
+        for item in relevant_items
+        if (item.get("simulation_delta") or {}).get("expected_return_change") is not None
+        and float((item.get("simulation_delta") or {}).get("expected_return_change") or 0.0) > 0
+        and float((item.get("simulation_delta") or {}).get("fragility_change") or 0.0) <= 0
+    )
+    tactical_clean_count = sum(1 for item in relevant_items if _is_incremental_history_tactical_clean(item))
+    comparable_scores = [
+        float(item.get("comparison_score"))
+        for item in relevant_items
+        if item.get("comparison_score") is not None
+    ]
+
+    priority_fit_pct = round((priority_fit_count / count) * 100, 1)
+    economic_fit_pct = round((economic_fit_count / count) * 100, 1)
+    tactical_clean_pct = round((tactical_clean_count / count) * 100, 1)
+    average_comparison_score = round(sum(comparable_scores) / len(comparable_scores), 2) if comparable_scores else None
+    quality_score = round(priority_fit_pct + economic_fit_pct + tactical_clean_pct, 1)
+
+    return {
+        "source": source,
+        "label": label,
+        "count": count,
+        "priority_fit_pct": priority_fit_pct,
+        "economic_fit_pct": economic_fit_pct,
+        "tactical_clean_pct": tactical_clean_pct,
+        "average_comparison_score": average_comparison_score,
+        "quality_score": quality_score,
+        "has_items": True,
+    }
+
+
+def _build_incremental_future_purchase_source_quality_summary(items: list[Dict]) -> Dict:
+    backlog_item = _build_incremental_future_purchase_source_quality_item("backlog_nuevo", items)
+    reactivated_item = _build_incremental_future_purchase_source_quality_item("reactivadas", items)
+
+    comparable = [item for item in [backlog_item, reactivated_item] if item.get("has_items")]
+    if not comparable:
+        dominant_source = "none"
+        dominant_label = "Sin calidad comparable"
+        headline = "Todavía no hay futuras compras visibles para comparar calidad promedio por fuente."
+    elif len(comparable) == 1:
+        dominant_source = str(comparable[0].get("source") or "none")
+        dominant_label = f"Mejor calidad promedio: {comparable[0].get('label')}"
+        headline = f"{comparable[0].get('label')} hoy concentra la mejor calidad promedio del historial visible."
+    else:
+        sorted_items = sorted(
+            comparable,
+            key=lambda item: (
+                -float(item.get("quality_score") or 0.0),
+                -float(item.get("average_comparison_score") or float("-inf")),
+                str(item.get("label") or ""),
+            ),
+        )
+        top = sorted_items[0]
+        second = sorted_items[1]
+        if abs(float(top.get("quality_score") or 0.0) - float(second.get("quality_score") or 0.0)) < 0.1:
+            dominant_source = "mixto"
+            dominant_label = "Calidad pareja"
+            headline = "Backlog nuevo y reactivadas hoy muestran una calidad promedio muy similar."
+        else:
+            dominant_source = str(top.get("source") or "none")
+            dominant_label = f"Mejor calidad promedio: {top.get('label')}"
+            headline = f"{top.get('label')} hoy muestra mejor calidad promedio que la fuente alternativa."
+
+    return {
+        "backlog_nuevo": backlog_item,
+        "reactivadas": reactivated_item,
+        "dominant_source": dominant_source,
+        "dominant_label": dominant_label,
+        "headline": headline,
+        "has_quality": bool(comparable),
     }
 
 

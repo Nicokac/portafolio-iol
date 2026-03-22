@@ -3143,6 +3143,89 @@ class TestDashboardSelectors(TestCase):
         assert detail["future_purchase_source_summary"]["dominant_label"] == "Domina backlog nuevo"
         assert "2 provienen de backlog nuevo y 1 de reactivadas" in detail["future_purchase_source_summary"]["summary"]
 
+    def test_get_incremental_proposal_history_builds_future_purchase_source_quality_summary(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "id": 1,
+                    "proposal_label": "Reactivada vigente",
+                    "comparison_score": 4.1,
+                    "purchase_plan": [{"symbol": "KO", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.2,
+                        "fragility_change": 0.3,
+                        "scenario_loss_change": -0.1,
+                    },
+                    "decision_explanation": ["Quedo condicionada por liquidez reciente."],
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 2,
+                    "proposal_label": "Backlog nuevo fuerte",
+                    "comparison_score": 4.8,
+                    "purchase_plan": [{"symbol": "MCD", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.7,
+                        "fragility_change": -1.5,
+                        "scenario_loss_change": 0.4,
+                    },
+                    "decision_explanation": [],
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 3,
+                    "proposal_label": "Backlog nuevo dos",
+                    "comparison_score": 4.5,
+                    "purchase_plan": [{"symbol": "PEP", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.5,
+                        "fragility_change": -1.2,
+                        "scenario_loss_change": 0.3,
+                    },
+                    "decision_explanation": [],
+                    "manual_decision_status": "pending",
+                },
+            ],
+        ), patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 3, "pending": 3, "accepted": 0, "deferred": 0, "rejected": 0},
+        ), patch(
+            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            return_value={
+                "item": {
+                    "id": 10,
+                    "proposal_label": "Baseline activo",
+                    "comparison_score": 4.0,
+                    "purchase_plan": [{"symbol": "SPY", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.4,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                    },
+                },
+                "has_baseline": True,
+            },
+        ):
+            detail = get_incremental_proposal_history(
+                user=user,
+                limit=5,
+                reactivated_snapshot_ids=[1],
+            )
+
+        quality_summary = detail["future_purchase_source_quality_summary"]
+        assert quality_summary["backlog_nuevo"]["priority_fit_pct"] == 100.0
+        assert quality_summary["backlog_nuevo"]["economic_fit_pct"] == 100.0
+        assert quality_summary["backlog_nuevo"]["tactical_clean_pct"] == 100.0
+        assert quality_summary["reactivadas"]["tactical_clean_pct"] == 0.0
+        assert quality_summary["dominant_source"] == "backlog_nuevo"
+        assert quality_summary["dominant_label"] == "Mejor calidad promedio: Backlog nuevo"
+
     def test_get_incremental_proposal_history_supports_deferred_fit_filter(self):
         class DummyUser:
             is_authenticated = True

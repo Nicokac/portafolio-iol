@@ -1256,6 +1256,31 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-lg-4">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="small text-muted">Calidad promedio backlog nuevo</div>
+                                        <div class="small text-muted mt-2">Prioridad útil: {{ incremental_proposal_history.future_purchase_source_quality_summary.backlog_nuevo.priority_fit_pct }}%</div>
+                                        <div class="small text-muted">Fit económico: {{ incremental_proposal_history.future_purchase_source_quality_summary.backlog_nuevo.economic_fit_pct }}%</div>
+                                        <div class="small text-muted">Táctica limpia: {{ incremental_proposal_history.future_purchase_source_quality_summary.backlog_nuevo.tactical_clean_pct }}%</div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="small text-muted">Calidad promedio reactivadas</div>
+                                        <div class="small text-muted mt-2">Prioridad útil: {{ incremental_proposal_history.future_purchase_source_quality_summary.reactivadas.priority_fit_pct }}%</div>
+                                        <div class="small text-muted">Fit económico: {{ incremental_proposal_history.future_purchase_source_quality_summary.reactivadas.economic_fit_pct }}%</div>
+                                        <div class="small text-muted">Táctica limpia: {{ incremental_proposal_history.future_purchase_source_quality_summary.reactivadas.tactical_clean_pct }}%</div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="small text-muted">Fuente más sólida</div>
+                                        <div><strong>{{ incremental_proposal_history.future_purchase_source_quality_summary.dominant_label }}</strong></div>
+                                        <div class="small text-muted mt-2">{{ incremental_proposal_history.future_purchase_source_quality_summary.headline }}</div>
+                                    </div>
+                                </div>
+                            </div>
                             <p class="text-muted mb-3">{{ incremental_proposal_history.headline }}</p>
                             {% if incremental_proposal_history.decision_counts.total %}
                             <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">

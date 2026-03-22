@@ -853,6 +853,34 @@ class TestDashboardView:
                         'summary': '1 provienen de backlog nuevo y 0 de reactivadas dentro del historial filtrado.',
                         'has_visible_sources': True,
                     },
+                    'future_purchase_source_quality_summary': {
+                        'backlog_nuevo': {
+                            'source': 'backlog_nuevo',
+                            'label': 'Backlog nuevo',
+                            'count': 1,
+                            'priority_fit_pct': 100.0,
+                            'economic_fit_pct': 100.0,
+                            'tactical_clean_pct': 100.0,
+                            'average_comparison_score': 4.8,
+                            'quality_score': 300.0,
+                            'has_items': True,
+                        },
+                        'reactivadas': {
+                            'source': 'reactivadas',
+                            'label': 'Reactivadas',
+                            'count': 0,
+                            'priority_fit_pct': 0.0,
+                            'economic_fit_pct': 0.0,
+                            'tactical_clean_pct': 0.0,
+                            'average_comparison_score': None,
+                            'quality_score': 0.0,
+                            'has_items': False,
+                        },
+                        'dominant_source': 'backlog_nuevo',
+                        'dominant_label': 'Mejor calidad promedio: Backlog nuevo',
+                        'headline': 'Backlog nuevo hoy muestra mejor calidad promedio que la fuente alternativa.',
+                        'has_quality': True,
+                    },
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
                 'incremental_proposal_tracking_baseline': {
@@ -1047,6 +1075,10 @@ class TestDashboardView:
         assert 'Reactivadas visibles' in body
         assert 'Lectura dominante' in body
         assert 'Domina backlog nuevo' in body
+        assert 'Calidad promedio backlog nuevo' in body
+        assert 'Calidad promedio reactivadas' in body
+        assert 'Fuente más sólida' in body
+        assert 'Mejor calidad promedio: Backlog nuevo' in body
         assert 'Diferidas reactivables' in body
         assert 'Diferidas archivables' in body
         assert 'Revisar ya' in body
