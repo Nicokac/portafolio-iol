@@ -2531,6 +2531,7 @@ def get_incremental_proposal_history(
     limit: int = 5,
     decision_status: str | None = None,
     priority_filter: str | None = None,
+    deferred_fit_filter: str | None = None,
     sort_mode: str | None = None,
 ) -> Dict:
     """Retorna historial reciente de propuestas incrementales guardadas por el usuario."""
@@ -2538,6 +2539,7 @@ def get_incremental_proposal_history(
     service = IncrementalProposalHistoryService()
     normalized_filter = _normalize_incremental_history_decision_filter(decision_status)
     normalized_priority_filter = _normalize_incremental_history_priority_filter(priority_filter)
+    normalized_deferred_fit_filter = _normalize_incremental_history_deferred_fit_filter(deferred_fit_filter)
     normalized_sort_mode = _normalize_incremental_history_sort_mode(sort_mode)
     fetch_limit = max(int(limit), getattr(service, "MAX_SNAPSHOTS_PER_USER", 10))
     raw_items = service.list_recent(user=user, limit=fetch_limit, decision_status=normalized_filter)
@@ -2563,14 +2565,21 @@ def get_incremental_proposal_history(
             item,
             tactical_trace=enriched["tactical_trace"],
         )
+        enriched["deferred_fit"] = _build_incremental_history_deferred_fit(enriched)
         enriched.update(reapply)
         items.append(enriched)
 
     priority_counts = _build_incremental_history_priority_counts(items)
+    deferred_fit_counts = _build_incremental_history_deferred_fit_counts(items)
     if normalized_priority_filter:
         items = [
             item for item in items
             if str((item.get("history_priority") or {}).get("priority") or "") == normalized_priority_filter
+        ]
+    if normalized_deferred_fit_filter:
+        items = [
+            item for item in items
+            if str((item.get("deferred_fit") or {}).get("status") or "") == normalized_deferred_fit_filter
         ]
 
     items = _sort_incremental_history_items(items, sort_mode=normalized_sort_mode)
@@ -2584,6 +2593,10 @@ def get_incremental_proposal_history(
         "active_filter_label": _format_incremental_history_decision_filter_label(normalized_filter),
         "active_priority_filter": normalized_priority_filter or "all",
         "active_priority_filter_label": _format_incremental_history_priority_filter_label(normalized_priority_filter),
+        "active_deferred_fit_filter": normalized_deferred_fit_filter or "all",
+        "active_deferred_fit_filter_label": _format_incremental_history_deferred_fit_filter_label(
+            normalized_deferred_fit_filter
+        ),
         "active_sort_mode": normalized_sort_mode,
         "active_sort_mode_label": _format_incremental_history_sort_mode_label(normalized_sort_mode),
         "decision_counts": counts,
@@ -2592,13 +2605,19 @@ def get_incremental_proposal_history(
             normalized_priority_filter,
             priority_counts,
         ),
+        "available_deferred_fit_filters": _build_incremental_history_deferred_fit_filter_options(
+            normalized_deferred_fit_filter,
+            deferred_fit_counts,
+        ),
         "available_sort_modes": _build_incremental_history_sort_options(normalized_sort_mode),
         "priority_counts": priority_counts,
+        "deferred_fit_counts": deferred_fit_counts,
         "headline": _build_incremental_history_headline(
             normalized_filter,
             counts,
             len(items),
             priority_filter=normalized_priority_filter,
+            deferred_fit_filter=normalized_deferred_fit_filter,
             sort_mode=normalized_sort_mode,
         ),
     }
@@ -2779,6 +2798,11 @@ def _normalize_incremental_history_priority_filter(priority_filter: str | None) 
     return normalized if normalized in {"high", "medium", "watch", "low"} else None
 
 
+def _normalize_incremental_history_deferred_fit_filter(deferred_fit_filter: str | None) -> str | None:
+    normalized = str(deferred_fit_filter or "").strip().lower()
+    return normalized if normalized in {"reactivable", "archivable"} else None
+
+
 def _normalize_incremental_history_sort_mode(sort_mode: str | None) -> str:
     normalized = str(sort_mode or "").strip().lower()
     if normalized == "priority":
@@ -2790,6 +2814,14 @@ def _format_incremental_history_priority_filter_label(priority_filter: str | Non
     if not priority_filter:
         return "Todas las prioridades"
     return _format_incremental_backlog_priority(priority_filter)
+
+
+def _format_incremental_history_deferred_fit_filter_label(deferred_fit_filter: str | None) -> str:
+    if not deferred_fit_filter:
+        return "Todas las diferidas"
+    if deferred_fit_filter == "reactivable":
+        return "Diferidas reactivables"
+    return "Diferidas archivables"
 
 
 def _format_incremental_history_sort_mode_label(sort_mode: str | None) -> str:
@@ -2807,6 +2839,38 @@ def _build_incremental_history_priority_counts(items: list[Dict]) -> Dict[str, i
     }
 
 
+def _build_incremental_history_deferred_fit(item: Dict) -> Dict:
+    if str(item.get("manual_decision_status") or "") != "deferred":
+        return {
+            "status": "",
+            "label": "",
+            "summary": "",
+            "is_deferred": False,
+        }
+
+    priority = str((item.get("history_priority") or {}).get("priority") or "")
+    if priority in {"high", "medium"}:
+        return {
+            "status": "reactivable",
+            "label": "Reactivable",
+            "summary": "Sigue mostrando fit suficiente para reabrirse como futura compra.",
+            "is_deferred": True,
+        }
+    return {
+        "status": "archivable",
+        "label": "Archivable",
+        "summary": "Hoy ya no conserva suficiente fit economico o tactico para reactivarse primero.",
+        "is_deferred": True,
+    }
+
+
+def _build_incremental_history_deferred_fit_counts(items: list[Dict]) -> Dict[str, int]:
+    return {
+        "reactivable": sum(1 for item in items if str((item.get("deferred_fit") or {}).get("status") or "") == "reactivable"),
+        "archivable": sum(1 for item in items if str((item.get("deferred_fit") or {}).get("status") or "") == "archivable"),
+    }
+
+
 def _build_incremental_history_priority_filter_options(active_priority_filter: str | None, counts: Dict[str, int]) -> list[Dict]:
     options = [{"key": "all", "label": "Todas las prioridades", "count": sum(int(value or 0) for value in counts.values())}]
     for key, label in (
@@ -2818,6 +2882,17 @@ def _build_incremental_history_priority_filter_options(active_priority_filter: s
         options.append({"key": key, "label": label, "count": int(counts.get(key, 0))})
     for option in options:
         option["selected"] = (active_priority_filter or "all") == option["key"]
+    return options
+
+
+def _build_incremental_history_deferred_fit_filter_options(active_filter: str | None, counts: Dict[str, int]) -> list[Dict]:
+    options = [
+        {"key": "all", "label": "Todas las diferidas", "count": sum(int(value or 0) for value in counts.values())},
+        {"key": "reactivable", "label": "Diferidas reactivables", "count": int(counts.get("reactivable", 0))},
+        {"key": "archivable", "label": "Diferidas archivables", "count": int(counts.get("archivable", 0))},
+    ]
+    for option in options:
+        option["selected"] = (active_filter or "all") == option["key"]
     return options
 
 
@@ -3542,6 +3617,7 @@ def get_planeacion_incremental_context(
             limit=history_limit,
             decision_status=_query_param_value(query_params, "decision_status_filter"),
             priority_filter=_query_param_value(query_params, "history_priority_filter"),
+            deferred_fit_filter=_query_param_value(query_params, "history_deferred_fit_filter"),
             sort_mode=_query_param_value(query_params, "history_sort"),
         ),
         "incremental_proposal_tracking_baseline": get_incremental_proposal_tracking_baseline(
@@ -4028,6 +4104,7 @@ def _build_incremental_history_headline(
     visible_count: int,
     *,
     priority_filter: str | None = None,
+    deferred_fit_filter: str | None = None,
     sort_mode: str | None = None,
 ) -> str:
     total = int(counts.get("total", 0))
@@ -4042,6 +4119,8 @@ def _build_incremental_history_headline(
     suffix = []
     if priority_filter:
         suffix.append(f"Prioridad: {_format_incremental_history_priority_filter_label(priority_filter)}")
+    if deferred_fit_filter:
+        suffix.append(f"Diferidas: {_format_incremental_history_deferred_fit_filter_label(deferred_fit_filter)}")
     if str(sort_mode or "").strip().lower() == "priority":
         suffix.append("Ordenados por prioridad operativa")
     if suffix:

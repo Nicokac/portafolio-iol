@@ -499,6 +499,7 @@ class TestDashboardView:
         def fake_planeacion_context(query_params, user, capital_amount=600000, history_limit=5):
             captured["decision_status_filter"] = query_params.get("decision_status_filter")
             captured["history_priority_filter"] = query_params.get("history_priority_filter")
+            captured["history_deferred_fit_filter"] = query_params.get("history_deferred_fit_filter")
             captured["history_sort"] = query_params.get("history_sort")
             captured["backlog_followup_filter"] = query_params.get("backlog_followup_filter")
             captured["user_id"] = user.id
@@ -521,11 +522,14 @@ class TestDashboardView:
                     "active_filter_label": "Pendientes",
                     "active_priority_filter": "all",
                     "active_priority_filter_label": "Todas las prioridades",
+                    "active_deferred_fit_filter": "all",
+                    "active_deferred_fit_filter_label": "Todas las diferidas",
                     "active_sort_mode": "newest",
                     "active_sort_mode_label": "Más recientes",
                     "decision_counts": {"total": 0, "pending": 0, "accepted": 0, "deferred": 0, "rejected": 0},
                     "available_filters": [],
                     "available_priority_filters": [],
+                    "available_deferred_fit_filters": [],
                     "available_sort_modes": [],
                     "headline": "",
                 },
@@ -541,6 +545,7 @@ class TestDashboardView:
             {
                 "decision_status_filter": "pending",
                 "history_priority_filter": "high",
+                "history_deferred_fit_filter": "reactivable",
                 "history_sort": "priority",
                 "backlog_followup_filter": "monitor",
             },
@@ -550,6 +555,7 @@ class TestDashboardView:
         assert captured == {
             "decision_status_filter": "pending",
             "history_priority_filter": "high",
+            "history_deferred_fit_filter": "reactivable",
             "history_sort": "priority",
             "backlog_followup_filter": "monitor",
             "user_id": int(auth_client.session["_auth_user_id"]),
@@ -819,11 +825,14 @@ class TestDashboardView:
                     'active_filter_label': 'Todos',
                     'active_priority_filter': 'all',
                     'active_priority_filter_label': 'Todas las prioridades',
+                    'active_deferred_fit_filter': 'all',
+                    'active_deferred_fit_filter_label': 'Todas las diferidas',
                     'active_sort_mode': 'newest',
                     'active_sort_mode_label': 'Más recientes',
                     'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
                     'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
                     'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
+                    'available_deferred_fit_filters': [{'key': 'all', 'label': 'Todas las diferidas', 'count': 2, 'selected': True}, {'key': 'reactivable', 'label': 'Diferidas reactivables', 'count': 1, 'selected': False}, {'key': 'archivable', 'label': 'Diferidas archivables', 'count': 1, 'selected': False}],
                     'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': True}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}],
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
@@ -865,6 +874,7 @@ class TestDashboardView:
                         'headline': 'Parte de las diferidas todavia conserva fit suficiente para reactivarse como futura compra.',
                     },
                     'counts': {'high': 1, 'medium': 1, 'watch': 1, 'low': 0},
+                    'deferred_fit_counts': {'reactivable': 1, 'archivable': 1},
                     'headline': 'Backlog priorizado: 1 alta, 1 media y 0 baja. Primero revisar Plan guardado 1.',
                     'explanation': 'El backlog ya contiene alternativas que superan el baseline activo con mejor retorno esperado, sin deterioro material de fragilidad y con buena ejecutabilidad tactica; Plan guardado 1 queda arriba por prioridad.',
                     'top_item': {
@@ -983,6 +993,9 @@ class TestDashboardView:
         assert 'Recuperables' in body
         assert 'En observación' in body or 'En observaci?n' in body
         assert 'Filtrar shortlist por seguimiento' in body
+        assert 'Filtrar diferidas' in body
+        assert 'Diferidas reactivables' in body
+        assert 'Diferidas archivables' in body
         assert 'Revisar ya' in body
         assert 'En espera' in body
         assert 'Vigentes' in body
@@ -1583,11 +1596,14 @@ class TestDashboardView:
                     'active_filter_label': 'Todos',
                     'active_priority_filter': 'all',
                     'active_priority_filter_label': 'Todas las prioridades',
+                    'active_deferred_fit_filter': 'all',
+                    'active_deferred_fit_filter_label': 'Todas las diferidas',
                     'active_sort_mode': 'newest',
                     'active_sort_mode_label': 'Más recientes',
                     'decision_counts': {'total': 1, 'pending': 1, 'accepted': 0, 'deferred': 0, 'rejected': 0},
                     'available_filters': [{'key': 'all', 'label': 'Todos', 'count': 1, 'selected': True}],
                     'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
+                    'available_deferred_fit_filters': [{'key': 'all', 'label': 'Todas las diferidas', 'count': 2, 'selected': True}, {'key': 'reactivable', 'label': 'Diferidas reactivables', 'count': 1, 'selected': False}, {'key': 'archivable', 'label': 'Diferidas archivables', 'count': 1, 'selected': False}],
                     'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': True}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}],
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
@@ -2633,16 +2649,18 @@ class TestDashboardView:
                 'decision_status': 'accepted',
                 'decision_status_filter': 'pending',
                 'history_priority_filter': 'high',
+                'history_deferred_fit_filter': 'reactivable',
                 'history_sort': 'priority',
             },
         )
 
         assert response.status_code == 302
         assert response.url.endswith(
-            '?decision_status_filter=pending&history_priority_filter=high&history_sort=priority#planeacion-aportes'
+            '?decision_status_filter=pending&history_priority_filter=high&history_deferred_fit_filter=reactivable&history_sort=priority#planeacion-aportes'
         )
         assert captured['history_kwargs']['decision_status'] == 'pending'
         assert captured['history_kwargs']['priority_filter'] == 'high'
+        assert captured['history_kwargs']['deferred_fit_filter'] == 'reactivable'
         assert captured['history_kwargs']['sort_mode'] == 'priority'
         assert captured['service_kwargs']['snapshot_ids'] == [10]
 

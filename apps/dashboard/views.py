@@ -71,12 +71,15 @@ def _build_planeacion_history_redirect_url(post_data) -> str:
 
     decision_status_filter = str(post_data.get('decision_status_filter', '') or '').strip()
     history_priority_filter = str(post_data.get('history_priority_filter', '') or '').strip()
+    history_deferred_fit_filter = str(post_data.get('history_deferred_fit_filter', '') or '').strip()
     history_sort = str(post_data.get('history_sort', '') or '').strip()
 
     if decision_status_filter:
         query['decision_status_filter'] = decision_status_filter
     if history_priority_filter:
         query['history_priority_filter'] = history_priority_filter
+    if history_deferred_fit_filter:
+        query['history_deferred_fit_filter'] = history_deferred_fit_filter
     if history_sort:
         query['history_sort'] = history_sort
 
@@ -450,12 +453,14 @@ class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
         decision_status = request.POST.get('decision_status')
         decision_status_filter = request.POST.get('decision_status_filter', '')
         priority_filter = request.POST.get('history_priority_filter', '')
+        deferred_fit_filter = request.POST.get('history_deferred_fit_filter', '')
         sort_mode = request.POST.get('history_sort', '')
         history = get_incremental_proposal_history(
             user=request.user,
             limit=5,
             decision_status=decision_status_filter or None,
             priority_filter=priority_filter or None,
+            deferred_fit_filter=deferred_fit_filter or None,
             sort_mode=sort_mode or None,
         )
         snapshot_ids = [item.get('id') for item in history.get('items', []) if item.get('id') is not None]
@@ -477,6 +482,7 @@ class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
                     'decision_status': decision_status,
                     'filter': decision_status_filter,
                     'priority_filter': priority_filter or 'all',
+                    'deferred_fit_filter': deferred_fit_filter or 'all',
                     'sort_mode': sort_mode or 'newest',
                 },
             )
@@ -492,6 +498,7 @@ class BulkDecideIncrementalProposalView(LoginRequiredMixin, View):
                 'updated_count': result['updated_count'],
                 'filter': decision_status_filter or 'all',
                 'priority_filter': priority_filter or 'all',
+                'deferred_fit_filter': deferred_fit_filter or 'all',
                 'sort_mode': sort_mode or 'newest',
             },
         )

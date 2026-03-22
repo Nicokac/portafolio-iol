@@ -2950,6 +2950,76 @@ class TestDashboardSelectors(TestCase):
         assert "prioridad: alta" in detail["headline"].lower()
         assert "ordenados por prioridad operativa" in detail["headline"].lower()
 
+    def test_get_incremental_proposal_history_supports_deferred_fit_filter(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "id": 1,
+                    "proposal_label": "Diferida reactivable",
+                    "comparison_score": 4.4,
+                    "purchase_plan": [{"symbol": "KO", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.6,
+                        "fragility_change": -1.2,
+                        "scenario_loss_change": 0.3,
+                    },
+                    "manual_decision_status": "deferred",
+                },
+                {
+                    "id": 2,
+                    "proposal_label": "Diferida archivable",
+                    "comparison_score": 3.5,
+                    "purchase_plan": [{"symbol": "MCD", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.1,
+                        "fragility_change": 0.3,
+                        "scenario_loss_change": -0.2,
+                    },
+                    "manual_decision_status": "deferred",
+                },
+            ],
+        ) as mocked, patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 2, "pending": 0, "accepted": 0, "deferred": 2, "rejected": 0},
+        ), patch(
+            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            return_value={
+                "item": {
+                    "id": 10,
+                    "proposal_label": "Baseline activo",
+                    "comparison_score": 4.0,
+                    "purchase_plan": [{"symbol": "SPY", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.4,
+                        "fragility_change": -1.0,
+                        "scenario_loss_change": 0.2,
+                    },
+                },
+                "has_baseline": True,
+            },
+        ):
+            detail = get_incremental_proposal_history(
+                user=user,
+                limit=5,
+                decision_status="deferred",
+                deferred_fit_filter="reactivable",
+            )
+
+        mocked.assert_called_once_with(user=user, limit=10, decision_status="deferred")
+        assert detail["active_filter"] == "deferred"
+        assert detail["active_deferred_fit_filter"] == "reactivable"
+        assert detail["count"] == 1
+        assert detail["items"][0]["proposal_label"] == "Diferida reactivable"
+        assert detail["items"][0]["deferred_fit"]["status"] == "reactivable"
+        assert detail["deferred_fit_counts"] == {"reactivable": 1, "archivable": 1}
+        assert "diferidas: diferidas reactivables" in detail["headline"].lower()
+
     def test_get_incremental_proposal_tracking_baseline_wraps_single_item(self):
         class DummyUser:
             is_authenticated = True
@@ -3939,7 +4009,14 @@ class TestDashboardSelectors(TestCase):
         manual_comparison.assert_called_once_with({"decision_status_filter": "pending"}, default_capital_amount=700000)
         preferred.assert_called_once_with({"decision_status_filter": "pending"}, capital_amount=700000)
         decision_engine.assert_called_once_with(ANY, query_params={"decision_status_filter": "pending"}, capital_amount=700000)
-        history.assert_called_once_with(user=ANY, limit=7, decision_status="pending", priority_filter="", sort_mode="")
+        history.assert_called_once_with(
+            user=ANY,
+            limit=7,
+            decision_status="pending",
+            priority_filter="",
+            deferred_fit_filter="",
+            sort_mode="",
+        )
         assert detail["incremental_backlog_prioritization"]["count"] == 1
         baseline.assert_called_once_with(user=ANY)
         decision_summary.assert_called_once_with(user=ANY)
