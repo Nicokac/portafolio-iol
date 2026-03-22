@@ -2425,12 +2425,7 @@ def get_manual_incremental_portfolio_simulation_comparison(
             )
             proposals.append(proposal)
 
-        ranked = sorted(
-            proposals,
-            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
-            reverse=True,
-        )
-        best = next((item for item in ranked if item["comparison_score"] is not None), None)
+        ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
         return {
             "submitted": form_state["submitted"],
             "form_state": form_state,
@@ -2438,6 +2433,7 @@ def get_manual_incremental_portfolio_simulation_comparison(
             "best_proposal_key": best["proposal_key"] if best else None,
             "best_label": best["label"] if best else None,
             "best_execution_readiness": _build_manual_incremental_execution_readiness_summary(best),
+            "operational_tiebreak": operational_tiebreak,
         }
 
     return _get_cached_selector_result(cache_key, build)
@@ -6229,6 +6225,92 @@ def _build_decision_operation_execution_signal(
         "tracked_symbols": tracked_symbols,
         "matched_symbols_count": matched_symbols_count,
         "missing_symbols_count": missing_symbols_count,
+    }
+
+
+def _manual_execution_readiness_rank(status: str) -> int:
+    normalized = str(status or "pending").strip()
+    if normalized == "ready":
+        return 3
+    if normalized == "monitor":
+        return 2
+    if normalized == "review_execution":
+        return 1
+    return 0
+
+
+
+def _resolve_manual_incremental_operational_tiebreak(
+    proposals: list[Dict],
+    *,
+    score_gap_threshold: float = 0.25,
+) -> tuple[list[Dict], Dict | None, Dict]:
+    ranked = sorted(
+        proposals,
+        key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
+        reverse=True,
+    )
+    leader = next((item for item in ranked if item.get("comparison_score") is not None), None)
+    if leader is None:
+        return ranked, None, {
+            "has_tiebreak": False,
+            "used_operational_tiebreak": False,
+            "headline": "",
+            "summary": "",
+        }
+
+    leader_score = float(leader.get("comparison_score") or 0.0)
+    contenders = [
+        item
+        for item in ranked
+        if item.get("comparison_score") is not None
+        and abs(float(item.get("comparison_score") or 0.0) - leader_score) <= float(score_gap_threshold)
+    ]
+    if len(contenders) < 2:
+        return ranked, leader, {
+            "has_tiebreak": False,
+            "used_operational_tiebreak": False,
+            "headline": "",
+            "summary": "",
+        }
+
+    selected = sorted(
+        contenders,
+        key=lambda item: (
+            _manual_execution_readiness_rank(str((item.get("execution_readiness") or {}).get("status") or "pending")),
+            float(item.get("comparison_score") or float("-inf")),
+        ),
+        reverse=True,
+    )[0]
+    used_operational_tiebreak = selected.get("proposal_key") != leader.get("proposal_key") and (
+        _manual_execution_readiness_rank(str((selected.get("execution_readiness") or {}).get("status") or "pending"))
+        > _manual_execution_readiness_rank(str((leader.get("execution_readiness") or {}).get("status") or "pending"))
+    )
+    if used_operational_tiebreak:
+        reordered = [selected] + [item for item in ranked if item.get("proposal_key") != selected.get("proposal_key")]
+        headline = "Desempate operativo aplicado"
+        summary = (
+            f"{selected.get('proposal_label') or selected.get('label') or 'El plan seleccionado'} queda primero porque "
+            "su ejecucion real reciente se ve mas limpia dentro de una brecha corta de score."
+        )
+        return reordered, selected, {
+            "has_tiebreak": True,
+            "used_operational_tiebreak": True,
+            "headline": headline,
+            "summary": summary,
+            "leader_label": leader.get("proposal_label") or leader.get("label") or "",
+            "selected_label": selected.get("proposal_label") or selected.get("label") or "",
+        }
+
+    return ranked, leader, {
+        "has_tiebreak": True,
+        "used_operational_tiebreak": False,
+        "headline": "Empate corto sin cambio de liderazgo",
+        "summary": (
+            f"{leader.get('proposal_label') or leader.get('label') or 'El plan lider'} sigue arriba por score y no necesit? desempate operativo adicional."
+        ),
+        "leader_label": leader.get("proposal_label") or leader.get("label") or "",
+        "selected_label": leader.get("proposal_label") or leader.get("label") or "",
     }
 
 

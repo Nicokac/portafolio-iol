@@ -2151,6 +2151,12 @@
                     {% if manual_incremental_portfolio_simulation_comparison.best_execution_readiness.summary %}
                     <div class="small text-muted mt-1">{{ manual_incremental_portfolio_simulation_comparison.best_execution_readiness.summary }}</div>
                     {% endif %}
+                    {% if manual_incremental_portfolio_simulation_comparison.operational_tiebreak.has_tiebreak %}
+                    <div class="small text-muted mt-2">
+                        <strong>{{ manual_incremental_portfolio_simulation_comparison.operational_tiebreak.headline }}:</strong>
+                        {{ manual_incremental_portfolio_simulation_comparison.operational_tiebreak.summary }}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
                 <div class="table-responsive">

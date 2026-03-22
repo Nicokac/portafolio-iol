@@ -222,3 +222,5 @@ Efecto actual:
 - La reaplicacion de propuestas al comparador manual tambien preserva el orden de ejecucion sugerido por simbolo cuando esa metadata ya existe en la propuesta preferida.
 
 - El comparador manual ahora resume la readiness operativa del mejor plan usando la misma senal de ejecucion real que la propuesta sugerida principal.
+
+- Cuando dos planes manuales quedan dentro de una brecha corta de score, el comparador puede desempatar por calidad operativa real y deja esa razon visible en UI.
