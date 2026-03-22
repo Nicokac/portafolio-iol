@@ -2664,9 +2664,111 @@ class TestDashboardView:
         assert captured['history_kwargs']['sort_mode'] == 'priority'
         assert captured['service_kwargs']['snapshot_ids'] == [10]
 
+    @pytest.mark.django_db
+    def test_reactivate_incremental_deferred_proposal_preserves_filters(self, auth_client, monkeypatch):
+        captured = {}
+
+        class DummyHistoryService:
+            def reactivate_snapshot_to_backlog(self, **kwargs):
+                captured['service_kwargs'] = kwargs
+                return {'id': 10, 'proposal_label': 'Plan diferido'}
+
+        monkeypatch.setattr('apps.dashboard.views.IncrementalProposalHistoryService', lambda: DummyHistoryService())
+
+        response = auth_client.post(
+            reverse('dashboard:reactivate_incremental_deferred_proposal'),
+            {
+                'snapshot_id': '10',
+                'decision_status_filter': 'deferred',
+                'history_priority_filter': 'medium',
+                'history_deferred_fit_filter': 'reactivable',
+                'history_sort': 'priority',
+            },
+        )
+
+        assert response.status_code == 302
+        assert response.url.endswith(
+            '?decision_status_filter=deferred&history_priority_filter=medium&history_deferred_fit_filter=reactivable&history_sort=priority#planeacion-aportes'
+        )
+        assert captured['service_kwargs']['snapshot_id'] == '10'
+        assert captured['service_kwargs']['user'].is_authenticated is True
+        messages = list(get_messages(response.wsgi_request))
+        assert any('Propuesta reactivada al backlog incremental' in str(message) for message in messages)
+        audit = SensitiveActionAudit.objects.get(action='reactivate_incremental_deferred_snapshot')
+        assert audit.status == 'success'
 
 
 
 
 
 
+
+
+    def test_planeacion_history_shows_reactivate_button_for_reactivable_deferred_snapshot(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_planeacion_incremental_context',
+            lambda query_params, user, capital_amount=600000, history_limit=5: {
+                'monthly_allocation_plan': {'recommended_blocks': [], 'avoided_blocks': [], 'explanation': ''},
+                'candidate_asset_ranking': {'candidate_assets': [], 'candidate_assets_count': 0, 'by_block': {}, 'explanation': ''},
+                'incremental_portfolio_simulation': {'selected_candidates': [], 'before': {}, 'after': {}, 'delta': {}, 'interpretation': '', 'unmapped_blocks': []},
+                'incremental_portfolio_simulation_comparison': {'proposals': [], 'best_label': None},
+                'candidate_incremental_portfolio_comparison': {'available_blocks': [], 'proposals': [], 'best_label': None},
+                'candidate_split_incremental_portfolio_comparison': {'available_blocks': [], 'proposals': [], 'best_label': None},
+                'manual_incremental_portfolio_simulation_comparison': {'submitted': False, 'proposals': [], 'form_state': {'capital_amount': 600000}},
+                'preferred_incremental_portfolio_proposal': {'preferred': None, 'explanation': '', 'has_manual_override': False},
+                'decision_engine_summary': {'score': 50, 'confidence': 'Media', 'explanation': [], 'action_suggestions': [], 'portfolio_scope': {}, 'macro_state': {'label': ''}, 'portfolio_state': {'label': ''}, 'recommendation': {'has_recommendation': False}, 'suggested_assets': [], 'preferred_proposal': None, 'expected_impact': {}, 'execution_gate': {'has_blocker': False, 'primary_cta_label': ''}},
+                'incremental_proposal_history': {
+                    'items': [{
+                        'id': 10,
+                        'proposal_label': 'Plan diferido',
+                        'source_label': 'Comparador manual',
+                        'selected_context': '',
+                        'purchase_plan': [{'symbol': 'KO', 'amount': 300000}],
+                        'simulation_delta': {'expected_return_change': 0.3, 'fragility_change': -1.0, 'scenario_loss_change': 0.2},
+                        'decision_score': 70,
+                        'decision_confidence': 'Alta',
+                        'decision_explanation': [],
+                        'history_priority': {'has_priority': True, 'priority': 'medium', 'priority_label': 'Recuperable', 'next_action': ''},
+                        'macro_state': 'normal',
+                        'portfolio_state': 'ok',
+                        'manual_decision_status': 'deferred',
+                        'manual_decision_status_label': 'Diferida',
+                        'deferred_fit': {'status': 'reactivable', 'label': 'Reactivable', 'summary': 'Sigue mostrando fit suficiente para reabrirse como futura compra.'},
+                        'is_backlog_front': False,
+                        'is_tracking_baseline': False,
+                        'reapply_querystring': '',
+                        'reapply_truncated': False,
+                        'created_at': '2026-03-17 11:00',
+                        'tactical_trace': {'has_trace': False, 'badges': [], 'headline': '', 'reasons': []},
+                    }],
+                    'count': 1,
+                    'has_history': True,
+                    'active_filter': 'deferred',
+                    'active_filter_label': 'Diferidas',
+                    'active_priority_filter': 'all',
+                    'active_priority_filter_label': 'Todas las prioridades',
+                    'active_deferred_fit_filter': 'reactivable',
+                    'active_deferred_fit_filter_label': 'Diferidas reactivables',
+                    'active_sort_mode': 'newest',
+                    'active_sort_mode_label': 'Mas recientes',
+                    'decision_counts': {'total': 1, 'pending': 0, 'accepted': 0, 'deferred': 1, 'rejected': 0},
+                    'available_filters': [{'key': 'deferred', 'label': 'Diferidas', 'count': 1, 'selected': True}],
+                    'available_priority_filters': [{'key': 'all', 'label': 'Todas las prioridades', 'count': 1, 'selected': True}],
+                    'available_deferred_fit_filters': [{'key': 'reactivable', 'label': 'Diferidas reactivables', 'count': 1, 'selected': True}],
+                    'available_sort_modes': [{'key': 'newest', 'label': 'Mas recientes', 'selected': True}],
+                    'headline': 'Se muestran 1 snapshots con decision diferida.',
+                },
+                'incremental_proposal_tracking_baseline': {'item': None, 'has_baseline': False},
+                'incremental_backlog_prioritization': {'count': 0, 'has_priorities': False, 'has_shortlist': False, 'has_focus_split': False, 'counts': {'high': 0, 'medium': 0, 'watch': 0, 'low': 0}, 'followup_counts': {'review_now': 0, 'monitor': 0, 'hold': 0}, 'active_followup_filter': 'all', 'active_followup_filter_label': 'Todas', 'available_followup_filters': [], 'manual_review_summary': {'pending_count': 0, 'deferred_count': 1, 'accepted_count': 0, 'rejected_count': 0, 'closed_count': 0, 'reviewed_count': 1, 'headline': '', 'has_manual_reviews': True}, 'deferred_review_summary': {'deferred_count': 1, 'reactivable_count': 1, 'archivable_count': 0, 'top_reactivable_label': 'Plan diferido', 'top_reactivable_priority_label': 'Recuperable', 'has_reactivable': True, 'headline': ''}, 'headline': '', 'explanation': '', 'top_item': None, 'economic_leader': None, 'tactical_leader': None},
+                'incremental_manual_decision_summary': {'item': None, 'has_decision': False, 'status': 'pending', 'status_label': 'Pendiente', 'headline': ''},
+                'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
+                'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
+            },
+        )
+
+        response = auth_client.get(reverse('dashboard:planeacion'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Reactivar al backlog' in body
+        assert 'Reactivable' in body

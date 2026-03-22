@@ -428,6 +428,49 @@ def test_decide_snapshot_persists_manual_decision():
 
 
 @pytest.mark.django_db
+def test_reactivate_snapshot_to_backlog_restores_pending_and_promotes_front():
+    user = User.objects.create_user(username="history-reactivate", password="testpass123")
+    service = IncrementalProposalHistoryService()
+    first = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_a",
+            "proposal_label": "Plan A",
+            "purchase_plan": [{"symbol": "KO", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+    second = service.save_preferred_proposal(
+        user=user,
+        preferred_payload={
+            "source_key": "manual_plan",
+            "source_label": "Comparador manual",
+            "proposal_key": "plan_b",
+            "proposal_label": "Plan B",
+            "purchase_plan": [{"symbol": "MCD", "amount": 100000}],
+            "simulation": {"delta": {}, "interpretation": ""},
+        },
+        capital_amount=100000,
+    )
+
+    service.promote_to_backlog_front(user=user, snapshot_id=first["id"])
+    service.decide_snapshot(user=user, snapshot_id=second["id"], decision_status="deferred", note="Revisar después")
+
+    reactivated = service.reactivate_snapshot_to_backlog(user=user, snapshot_id=second["id"])
+
+    first_snapshot = IncrementalProposalSnapshot.objects.get(pk=first["id"])
+    second_snapshot = IncrementalProposalSnapshot.objects.get(pk=second["id"])
+    assert reactivated["manual_decision_status"] == "pending"
+    assert reactivated["is_backlog_front"] is True
+    assert second_snapshot.manual_decision_status == "pending"
+    assert second_snapshot.is_backlog_front is True
+    assert first_snapshot.is_backlog_front is False
+
+
+@pytest.mark.django_db
 def test_get_latest_manual_decision_returns_last_decided_snapshot():
     user = User.objects.create_user(username="history-decision-latest", password="testpass123")
     service = IncrementalProposalHistoryService()

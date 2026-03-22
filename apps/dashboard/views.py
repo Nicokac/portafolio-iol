@@ -403,6 +403,41 @@ class PromoteIncrementalBacklogFrontView(LoginRequiredMixin, View):
         return redirect(redirect_url)
 
 
+class ReactivateDeferredIncrementalProposalView(LoginRequiredMixin, View):
+    http_method_names = ['post']
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        snapshot_id = request.POST.get('snapshot_id')
+        redirect_url = _build_planeacion_history_redirect_url(request.POST)
+
+        try:
+            reactivated = IncrementalProposalHistoryService().reactivate_snapshot_to_backlog(
+                user=request.user,
+                snapshot_id=snapshot_id,
+            )
+        except ValueError as exc:
+            record_sensitive_action(
+                request,
+                action='reactivate_incremental_deferred_snapshot',
+                status='failed',
+                details={'reason': str(exc), 'snapshot_id': snapshot_id},
+            )
+            messages.error(request, "No fue posible reactivar la propuesta diferida dentro del backlog incremental.")
+            return redirect(redirect_url)
+
+        record_sensitive_action(
+            request,
+            action='reactivate_incremental_deferred_snapshot',
+            status='success',
+            details={'snapshot_id': reactivated['id'], 'proposal_label': reactivated['proposal_label']},
+        )
+        messages.success(
+            request,
+            f"Propuesta reactivada al backlog incremental: {reactivated['proposal_label']}.",
+        )
+        return redirect(redirect_url)
+
+
 class DecideIncrementalProposalView(LoginRequiredMixin, View):
     http_method_names = ['post']
 

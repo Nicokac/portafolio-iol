@@ -125,6 +125,21 @@ class IncrementalProposalHistoryService:
             snapshot.save(update_fields=["is_backlog_front"])
         return self.serialize(snapshot)
 
+    def reactivate_snapshot_to_backlog(self, *, user, snapshot_id: int | str, note: str = "") -> dict:
+        if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
+            raise ValueError("authenticated_user_required")
+
+        snapshot = IncrementalProposalSnapshot.objects.filter(user=user, pk=snapshot_id).first()
+        if snapshot is None:
+            raise ValueError("snapshot_not_found")
+
+        snapshot.manual_decision_status = "pending"
+        snapshot.manual_decision_note = str(note or "").strip()[:240]
+        snapshot.manual_decided_at = timezone.now()
+        snapshot.is_backlog_front = False
+        snapshot.save(update_fields=["manual_decision_status", "manual_decision_note", "manual_decided_at", "is_backlog_front"])
+        return self.promote_to_backlog_front(user=user, snapshot_id=snapshot.pk)
+
     def get_backlog_front(self, *, user) -> dict | None:
         if user is None or isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
             return None
