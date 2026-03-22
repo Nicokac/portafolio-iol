@@ -4414,6 +4414,8 @@ class TestDashboardSelectors(TestCase):
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_actions"]["can_reapply"] is True
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_actions"]["can_promote_front"] is True
         assert detail["incremental_future_purchase_shortlist"]["items"][0]["future_purchase_recommendation_actions"]["can_promote_baseline"] is True
+        assert detail["incremental_future_purchase_workflow_summary"]["status"] == "ready_to_promote"
+        assert detail["incremental_future_purchase_workflow_summary"]["label"] == "Lista para promover"
         assert detail["incremental_future_purchase_shortlist"]["items"][1]["source_label"] == "Reactivada"
         assert detail["incremental_proposal_history"]["items"][0]["is_future_purchase_recommended"] is True
         assert detail["incremental_proposal_history"]["items"][0]["future_purchase_recommendation_label"] == "Recomendada ahora"

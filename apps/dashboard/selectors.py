@@ -3829,6 +3829,53 @@ def _annotate_incremental_future_purchase_recommended_items(
     return shortlist, history
 
 
+def _build_incremental_future_purchase_workflow_summary(
+    shortlist: Dict,
+    guidance: Dict,
+) -> Dict:
+    shortlist = dict(shortlist or {})
+    guidance = dict(guidance or {})
+    recommended_item = next(
+        (item for item in list(shortlist.get("items") or []) if item.get("is_future_purchase_recommended")),
+        None,
+    ) or {}
+    actions = dict(recommended_item.get("future_purchase_recommendation_actions") or {})
+    proposal_label = str(recommended_item.get("proposal_label") or guidance.get("proposal_label") or "").strip()
+
+    if not proposal_label:
+        return {
+            "status": "unavailable",
+            "label": "Sin propuesta recomendada",
+            "headline": "Todavia no hay una propuesta concreta marcada para el siguiente paso operativo.",
+            "next_step": "",
+            "has_summary": False,
+        }
+
+    if actions.get("can_promote_baseline"):
+        return {
+            "status": "ready_to_promote",
+            "label": "Lista para promover",
+            "headline": f"{proposal_label} ya tiene fit suficiente para evaluarla como nuevo baseline incremental.",
+            "next_step": f"Promover a baseline {proposal_label} si queres convertirla en referencia operativa principal.",
+            "has_summary": True,
+        }
+    if actions.get("can_promote_front") or actions.get("can_reapply"):
+        return {
+            "status": "ready_to_review",
+            "label": "Lista para revisar",
+            "headline": f"{proposal_label} ya esta en condiciones de revisarse como siguiente futura compra.",
+            "next_step": str(guidance.get("next_action") or f"Revisar primero {proposal_label}."),
+            "has_summary": True,
+        }
+    return {
+        "status": "monitor",
+        "label": "Lista para monitorear",
+        "headline": f"{proposal_label} sigue siendo la referencia principal, pero por ahora conviene mantener seguimiento.",
+        "next_step": str(guidance.get("next_action") or f"Monitorear {proposal_label} antes de mover el proximo aporte."),
+        "has_summary": True,
+    }
+
+
 def get_incremental_baseline_drift(
     query_params,
     *,
@@ -4373,6 +4420,10 @@ def get_planeacion_incremental_context(
         incremental_proposal_history,
         incremental_future_purchase_source_guidance,
     )
+    incremental_future_purchase_workflow_summary = _build_incremental_future_purchase_workflow_summary(
+        incremental_future_purchase_shortlist,
+        incremental_future_purchase_source_guidance,
+    )
     incremental_decision_executive_summary = get_incremental_decision_executive_summary(
         query_params,
         user=user,
@@ -4399,6 +4450,7 @@ def get_planeacion_incremental_context(
         "incremental_reactivation_vs_backlog_summary": incremental_reactivation_vs_backlog_summary,
         "incremental_future_purchase_shortlist": incremental_future_purchase_shortlist,
         "incremental_future_purchase_source_guidance": incremental_future_purchase_source_guidance,
+        "incremental_future_purchase_workflow_summary": incremental_future_purchase_workflow_summary,
         "incremental_decision_executive_summary": incremental_decision_executive_summary,
     }
 

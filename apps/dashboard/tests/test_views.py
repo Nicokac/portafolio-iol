@@ -1061,6 +1061,13 @@ class TestDashboardView:
                     'proposal_label': 'Plan guardado 1',
                     'has_guidance': True,
                 },
+                'incremental_future_purchase_workflow_summary': {
+                    'status': 'ready_to_promote',
+                    'label': 'Lista para promover',
+                    'headline': 'Plan guardado 1 ya tiene fit suficiente para evaluarla como nuevo baseline incremental.',
+                    'next_step': 'Promover a baseline Plan guardado 1 si queres convertirla en referencia operativa principal.',
+                    'has_summary': True,
+                },
                 'incremental_manual_decision_summary': {
                     'item': {'proposal_label': 'Plan manual A', 'manual_decision_status': 'accepted', 'manual_decision_note': 'Lista para ejecutar', 'manual_decided_at': '2026-03-17 12:00'},
                     'has_decision': True,
@@ -3006,6 +3013,13 @@ class TestDashboardView:
                     'proposal_label': 'Plan backlog',
                     'has_guidance': True,
                 },
+                'incremental_future_purchase_workflow_summary': {
+                    'status': 'ready_to_promote',
+                    'label': 'Lista para promover',
+                    'headline': 'Plan backlog ya tiene fit suficiente para evaluarla como nuevo baseline incremental.',
+                    'next_step': 'Promover a baseline Plan backlog si queres convertirla en referencia operativa principal.',
+                    'has_summary': True,
+                },
                 'incremental_decision_executive_summary': {'status': 'pending', 'headline': '', 'items': [], 'has_summary': False},
                 'portfolio_scope_summary': {'portfolio_total_broker': 0, 'cash_available_broker': 0, 'cash_settling_broker': 0, 'invested_portfolio': 0, 'cash_management_fci': 0},
             },
@@ -3034,5 +3048,8 @@ class TestDashboardView:
         assert 'Backlog nuevo' in body
         assert 'Reactivada' in body
         assert 'Plan reactivado' in body
+
+
+
 
 
