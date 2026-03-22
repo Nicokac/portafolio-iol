@@ -2609,6 +2609,10 @@ def get_incremental_proposal_history(
         preferred_source=preferred_source,
     )
     items = items[: max(int(limit), 0)]
+    future_purchase_source_summary = _build_incremental_future_purchase_source_summary(
+        future_purchase_source_counts,
+        active_filter=normalized_future_purchase_source_filter,
+    )
 
     return {
         "items": items,
@@ -2646,6 +2650,7 @@ def get_incremental_proposal_history(
         "priority_counts": priority_counts,
         "deferred_fit_counts": deferred_fit_counts,
         "future_purchase_source_counts": future_purchase_source_counts,
+        "future_purchase_source_summary": future_purchase_source_summary,
         "headline": _build_incremental_history_headline(
             normalized_filter,
             counts,
@@ -2929,6 +2934,60 @@ def _build_incremental_future_purchase_source_counts(items: list[Dict]) -> Dict[
         "reactivadas": sum(
             1 for item in items if str((item.get("future_purchase_context") or {}).get("source") or "") == "reactivadas"
         ),
+    }
+
+
+def _build_incremental_future_purchase_source_summary(
+    counts: Dict[str, int],
+    *,
+    active_filter: str | None = None,
+) -> Dict:
+    backlog_count = int(counts.get("backlog_nuevo", 0))
+    reactivated_count = int(counts.get("reactivadas", 0))
+    total = backlog_count + reactivated_count
+
+    if active_filter == "backlog_nuevo":
+        dominant_source = "backlog_nuevo"
+    elif active_filter == "reactivadas":
+        dominant_source = "reactivadas"
+    elif backlog_count > reactivated_count:
+        dominant_source = "backlog_nuevo"
+    elif reactivated_count > backlog_count:
+        dominant_source = "reactivadas"
+    elif total > 0:
+        dominant_source = "mixto"
+    else:
+        dominant_source = "none"
+
+    if dominant_source == "backlog_nuevo":
+        headline = "Hoy domina backlog nuevo dentro del historial filtrado."
+        dominant_label = "Domina backlog nuevo"
+    elif dominant_source == "reactivadas":
+        headline = "Hoy dominan reactivadas dentro del historial filtrado."
+        dominant_label = "Dominan reactivadas"
+    elif dominant_source == "mixto":
+        headline = "El historial filtrado hoy queda equilibrado entre backlog nuevo y reactivadas."
+        dominant_label = "Lectura mixta"
+    else:
+        headline = "Todavía no hay futuras compras visibles para resumir por fuente."
+        dominant_label = "Sin futuras compras"
+
+    if total == 0:
+        summary = "No hay snapshots visibles clasificados como backlog nuevo o reactivadas."
+    else:
+        summary = (
+            f"{backlog_count} provienen de backlog nuevo y {reactivated_count} de reactivadas dentro del historial filtrado."
+        )
+
+    return {
+        "backlog_nuevo_count": backlog_count,
+        "reactivadas_count": reactivated_count,
+        "total_count": total,
+        "dominant_source": dominant_source,
+        "dominant_label": dominant_label,
+        "headline": headline,
+        "summary": summary,
+        "has_visible_sources": total > 0,
     }
 
 

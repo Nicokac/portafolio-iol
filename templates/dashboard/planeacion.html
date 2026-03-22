@@ -1235,6 +1235,27 @@
                                 <h5 class="mb-0">Historial reciente de propuestas guardadas</h5>
                                 <small class="text-muted">Snapshots persistentes de propuestas incrementales elegidas desde Planeación.</small>
                             </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-lg-4">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="small text-muted">Backlog nuevo visible</div>
+                                        <div><strong>{{ incremental_proposal_history.future_purchase_source_summary.backlog_nuevo_count }}</strong></div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="small text-muted">Reactivadas visibles</div>
+                                        <div><strong>{{ incremental_proposal_history.future_purchase_source_summary.reactivadas_count }}</strong></div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="border rounded p-3 h-100">
+                                        <div class="small text-muted">Lectura dominante</div>
+                                        <div><strong>{{ incremental_proposal_history.future_purchase_source_summary.dominant_label }}</strong></div>
+                                        <div class="small text-muted mt-2">{{ incremental_proposal_history.future_purchase_source_summary.summary }}</div>
+                                    </div>
+                                </div>
+                            </div>
                             <p class="text-muted mb-3">{{ incremental_proposal_history.headline }}</p>
                             {% if incremental_proposal_history.decision_counts.total %}
                             <form method="get" action="{% url 'dashboard:planeacion' %}#planeacion-aportes" class="mb-3">

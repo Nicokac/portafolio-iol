@@ -843,6 +843,16 @@ class TestDashboardView:
                     'available_deferred_fit_filters': [{'key': 'all', 'label': 'Todas las diferidas', 'count': 2, 'selected': True}, {'key': 'reactivable', 'label': 'Diferidas reactivables', 'count': 1, 'selected': False}, {'key': 'archivable', 'label': 'Diferidas archivables', 'count': 1, 'selected': False}],
                     'available_future_purchase_source_filters': [{'key': 'all', 'label': 'Todas las fuentes', 'count': 1, 'selected': True}, {'key': 'backlog_nuevo', 'label': 'Backlog nuevo', 'count': 1, 'selected': False}, {'key': 'reactivadas', 'label': 'Reactivadas', 'count': 0, 'selected': False}],
                     'available_sort_modes': [{'key': 'newest', 'label': 'Más recientes', 'selected': False}, {'key': 'priority', 'label': 'Prioridad operativa', 'selected': False}, {'key': 'future_purchase', 'label': 'Futuras compras', 'selected': True}],
+                    'future_purchase_source_summary': {
+                        'backlog_nuevo_count': 1,
+                        'reactivadas_count': 0,
+                        'total_count': 1,
+                        'dominant_source': 'backlog_nuevo',
+                        'dominant_label': 'Domina backlog nuevo',
+                        'headline': 'Hoy domina backlog nuevo dentro del historial filtrado.',
+                        'summary': '1 provienen de backlog nuevo y 0 de reactivadas dentro del historial filtrado.',
+                        'has_visible_sources': True,
+                    },
                     'headline': 'Se muestran 1 snapshots recientes sobre un total de 1 propuestas guardadas.',
                 },
                 'incremental_proposal_tracking_baseline': {
@@ -1033,6 +1043,10 @@ class TestDashboardView:
         assert 'Filtrar shortlist por seguimiento' in body
         assert 'Filtrar diferidas' in body
         assert 'Filtrar por fuente futura' in body
+        assert 'Backlog nuevo visible' in body
+        assert 'Reactivadas visibles' in body
+        assert 'Lectura dominante' in body
+        assert 'Domina backlog nuevo' in body
         assert 'Diferidas reactivables' in body
         assert 'Diferidas archivables' in body
         assert 'Revisar ya' in body

@@ -3078,6 +3078,71 @@ class TestDashboardSelectors(TestCase):
         assert detail["items"][0]["proposal_label"] == "Reactivada vigente"
         assert "fuente: reactivadas" in detail["headline"].lower()
 
+    def test_get_incremental_proposal_history_builds_future_purchase_source_summary(self):
+        class DummyUser:
+            is_authenticated = True
+
+        user = DummyUser()
+
+        with patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            return_value=[
+                {
+                    "id": 1,
+                    "proposal_label": "Reactivada vigente",
+                    "comparison_score": 4.2,
+                    "purchase_plan": [{"symbol": "KO", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.5,
+                        "fragility_change": -1.1,
+                        "scenario_loss_change": 0.2,
+                    },
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 2,
+                    "proposal_label": "Backlog nuevo fuerte",
+                    "comparison_score": 4.6,
+                    "purchase_plan": [{"symbol": "MCD", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.7,
+                        "fragility_change": -1.5,
+                        "scenario_loss_change": 0.4,
+                    },
+                    "manual_decision_status": "pending",
+                },
+                {
+                    "id": 3,
+                    "proposal_label": "Backlog nuevo dos",
+                    "comparison_score": 4.4,
+                    "purchase_plan": [{"symbol": "PEP", "amount": 400000}],
+                    "simulation_delta": {
+                        "expected_return_change": 0.6,
+                        "fragility_change": -1.3,
+                        "scenario_loss_change": 0.3,
+                    },
+                    "manual_decision_status": "pending",
+                },
+            ],
+        ), patch(
+            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            return_value={"total": 3, "pending": 3, "accepted": 0, "deferred": 0, "rejected": 0},
+        ), patch(
+            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            return_value={"item": None, "has_baseline": False},
+        ):
+            detail = get_incremental_proposal_history(
+                user=user,
+                limit=5,
+                reactivated_snapshot_ids=[1],
+            )
+
+        assert detail["future_purchase_source_summary"]["backlog_nuevo_count"] == 2
+        assert detail["future_purchase_source_summary"]["reactivadas_count"] == 1
+        assert detail["future_purchase_source_summary"]["dominant_source"] == "backlog_nuevo"
+        assert detail["future_purchase_source_summary"]["dominant_label"] == "Domina backlog nuevo"
+        assert "2 provienen de backlog nuevo y 1 de reactivadas" in detail["future_purchase_source_summary"]["summary"]
+
     def test_get_incremental_proposal_history_supports_deferred_fit_filter(self):
         class DummyUser:
             is_authenticated = True
