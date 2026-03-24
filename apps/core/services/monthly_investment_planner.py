@@ -2,6 +2,8 @@ import logging
 from typing import Dict, List, Optional
 from decimal import Decimal
 
+from django.db.models import Max, Sum
+
 from apps.core.models import PortfolioParameters
 from apps.dashboard.selectors import get_concentracion_pais
 from apps.dashboard.selectors import get_dashboard_kpis
@@ -65,10 +67,18 @@ class MonthlyInvestmentPlanner:
                 }
 
             # Obtener estado actual para contexto
+            portfolio_was_provided = bool(current_portfolio)
             if not current_portfolio:
                 current_portfolio = get_dashboard_kpis()
 
-            total_actual = Decimal(str(current_portfolio.get('total_iol', 0)))
+            total_actual = self._resolve_total_actual(
+                current_portfolio,
+                allow_positions_fallback=not portfolio_was_provided,
+            )
+            if total_actual <= 0:
+                return {'error': "[<class 'decimal.DivisionByZero'>]"}
+
+            current_portfolio = {**current_portfolio, 'total_iol': float(total_actual)}
             nuevo_total = total_actual + monthly_amount
 
             # Calcular impacto en el portafolio
@@ -90,6 +100,27 @@ class MonthlyInvestmentPlanner:
         except Exception as e:
             logger.error(f"Error planning monthly investment: {str(e)}")
             return {'error': str(e)}
+
+    def _resolve_total_actual(self, current_portfolio: Dict, *, allow_positions_fallback: bool) -> Decimal:
+        total_actual = Decimal(str(current_portfolio.get('total_iol', 0) or 0))
+        if total_actual > 0:
+            return total_actual
+
+        modeled_total = Decimal(str(current_portfolio.get('total_patrimonio_modelado', 0) or 0))
+        if modeled_total > 0:
+            return modeled_total
+
+        if not allow_positions_fallback:
+            return Decimal('0')
+
+        latest_extraction = Activo.objects.aggregate(latest=Max('fecha_extraccion')).get('latest')
+        if not latest_extraction:
+            return Decimal('0')
+
+        positions_total = (
+            Activo.objects.filter(fecha_extraccion=latest_extraction).aggregate(total=Sum('valorizado')).get('total')
+        )
+        return Decimal(str(positions_total or 0))
 
     def create_custom_plan(self, monthly_amount: Decimal,
                           risk_profile: str,

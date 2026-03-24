@@ -210,6 +210,18 @@ def test_pipeline_observability_service_builds_unified_summary():
                 },
             ]
 
+        def summarize_market_snapshot_rows(self, rows):
+            return {
+                "total_symbols": len(rows),
+                "available_count": sum(1 for row in rows if row.get("snapshot_status") == "available"),
+                "missing_count": sum(1 for row in rows if row.get("snapshot_status") == "missing"),
+                "unsupported_count": sum(1 for row in rows if row.get("snapshot_status") == "unsupported"),
+                "detail_count": sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion_detalle"),
+                "fallback_count": sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion"),
+                "order_book_count": sum(1 for row in rows if int(row.get("puntas_count") or 0) > 0),
+                "overall_status": "partial",
+            }
+
     class DummyLocalMacroService:
         def get_status_summary(self):
             return [
@@ -351,6 +363,18 @@ def test_pipeline_observability_service_handles_missing_sync_and_history():
         def get_current_portfolio_market_snapshot_rows(self, limit=8):
             assert limit == 8
             return []
+
+        def summarize_market_snapshot_rows(self, rows):
+            return {
+                "total_symbols": 0,
+                "available_count": 0,
+                "missing_count": 0,
+                "unsupported_count": 0,
+                "detail_count": 0,
+                "fallback_count": 0,
+                "order_book_count": 0,
+                "overall_status": "missing",
+            }
 
     class DummyLocalMacroService:
         def get_status_summary(self):

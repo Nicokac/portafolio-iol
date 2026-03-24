@@ -98,6 +98,17 @@ class TestDecisionEngineSummary:
                     "interpretation": "La propuesta mejora el perfil sin aumentar la fragilidad.",
                 },
             ),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "tracked_symbols": ["KO"],
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": 100,
+                    "rows": [],
+                    "execution_analytics": {"fragmented_pct": 0},
+                },
+            ),
         ):
             detail = get_decision_engine_summary(DummyUser(), capital_amount=600000)
 

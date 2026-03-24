@@ -1044,8 +1044,7 @@ def monthly_plan_basic(request):
 
     try:
         planner = MonthlyInvestmentPlanner()
-        current_portfolio = get_dashboard_kpis()
-        result = planner.plan_monthly_investment(monthly_amount, current_portfolio)
+        result = planner.plan_monthly_investment(monthly_amount)
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "monthly_plan_basic")
@@ -1067,9 +1066,8 @@ def monthly_plan_custom(request):
 
     try:
         planner = MonthlyInvestmentPlanner()
-        current_portfolio = get_dashboard_kpis()
         result = planner.create_custom_plan(
-            monthly_amount, risk_profile, investment_horizon, current_portfolio
+            monthly_amount, risk_profile, investment_horizon
         )
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:

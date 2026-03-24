@@ -108,6 +108,26 @@ def test_normalize_operation_filters_accepts_internal_and_explicit_keys():
     }
 
 
+def test_normalize_operation_filters_falls_back_for_invalid_state_and_country():
+    filters = normalize_operation_filters(
+        {
+            "numero": "",
+            "estado": "desconocido",
+            "fechaDesde": "",
+            "fechaHasta": None,
+            "pais": "brasil",
+        }
+    )
+
+    assert filters == {
+        "numero": "",
+        "estado": "todas",
+        "fecha_desde": "",
+        "fecha_hasta": "",
+        "pais": "argentina",
+    }
+
+
 @pytest.mark.django_db
 def test_apply_operation_filters_filters_by_number_state_and_dates():
     OperacionIOL.objects.create(
@@ -160,6 +180,14 @@ def test_build_operation_filter_context_tracks_active_filters():
     assert "numero=167788363" in context["query_string"]
     assert "estado=terminada" in context["query_string"]
     assert "pais=estados_Unidos" in context["query_string"]
+
+
+def test_build_operation_filter_context_omits_default_filters_from_query_string():
+    context = build_operation_filter_context({})
+
+    assert context["has_active_filters"] is False
+    assert context["active_count"] == 0
+    assert context["query_string"] == ""
 
 
 @pytest.mark.django_db
@@ -455,6 +483,32 @@ def test_build_operation_execution_analytics_context_tracks_fragmentation_inside
     assert groups["buy_trade"]["fee_over_visible_amount_pct"] == Decimal("1.00")
     assert groups["sell_trade"]["fragmented_count"] == 1
     assert groups["sell_trade"]["fragmented_pct"] == Decimal("100.00")
+
+
+@pytest.mark.django_db
+def test_build_operation_list_context_handles_single_fill_unknown_status_and_other_type():
+    OperacionIOL.objects.create(
+        numero="OTHER-1",
+        pais_consulta="argentina",
+        fecha_orden=timezone.now(),
+        tipo="Transferencia interna",
+        estado="Desconocido",
+        mercado="BCBA",
+        simbolo="CASH",
+        modalidad="precio_Mercado",
+        moneda="peso_Argentino",
+        operaciones_detalle=[{"fecha": "2026-03-18T14:05:57", "cantidad": 1, "precio": 100}],
+    )
+
+    context = build_operation_list_context(OperacionIOL.objects.all())
+    row = context["rows"][0]
+
+    assert row["execution_label"] == "Fill unico"
+    assert row["status_tone"] == "secondary"
+    assert context["summary"]["type_breakdown"][0]["tipo"] == "Transferencia interna"
+    assert context["summary"]["type_breakdown"][0]["pct"] == Decimal("100.00")
+
+
 @pytest.mark.django_db
 def test_build_operation_audit_summary_context_returns_latest_rows_per_action(django_user_model):
     user = django_user_model.objects.create_user(username="audit-ops-user", password="testpass123")
@@ -526,3 +580,35 @@ def test_build_operation_audit_summary_context_formats_filters_and_failures(djan
     assert "Fechas 2026-03-01 a 2026-03-21" in enrich_row["filters_label"]
     assert enrich_row["summary_label"] == "Seleccionadas 2 · enriquecidas 1"
     assert enrich_row["failed_items_label"] == "Fallidas: A, B, C"
+@pytest.mark.django_db
+def test_build_operation_audit_summary_context_covers_backfill_failures_and_limit():
+    SensitiveActionAudit.objects.create(
+        action="sync_operaciones_filtered",
+        status="success",
+        details={"filters": {"estado": "todas"}},
+    )
+    SensitiveActionAudit.objects.create(
+        action="enrich_operaciones_filtered_details",
+        status="success",
+        details={"selected_count": 2, "success_count": 2},
+    )
+    SensitiveActionAudit.objects.create(
+        action="backfill_operaciones_filtered_country",
+        status="failed",
+        details={
+            "selected_count": 4,
+            "resolved_count": 1,
+            "unresolved_numbers": ["OP-1", "OP-2", "OP-3", "OP-4"],
+        },
+    )
+
+    context = build_operation_audit_summary_context(limit=3)
+
+    assert context["summary"]["tracked_count"] == 3
+    assert context["summary"]["success_count"] == 2
+    assert context["summary"]["failed_count"] == 1
+    backfill_row = next(row for row in context["rows"] if row["action"] == "backfill_operaciones_filtered_country")
+    assert backfill_row["user_label"] == "system"
+    assert "Seleccionadas 4" in backfill_row["summary_label"]
+    assert "resueltas 1" in backfill_row["summary_label"]
+    assert backfill_row["failed_items_label"] == "Sin resolver: OP-1, OP-2, OP-3"

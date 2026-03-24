@@ -9,6 +9,16 @@ from apps.core.services.risk.volatility_service import VolatilityService
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 
 
+def _recent_business_dates(end_date, count):
+    dates = []
+    cursor = end_date
+    while len(dates) < count:
+        if cursor.weekday() < 5:
+            dates.append(cursor)
+        cursor -= timedelta(days=1)
+    return list(reversed(dates))
+
+
 @pytest.mark.django_db
 def test_volatility_service_returns_annualized_volatility():
     today = timezone.now().date()
@@ -124,12 +134,13 @@ def test_volatility_service_uses_iol_historical_proxy_when_snapshot_history_is_i
         plazo="T0",
         moneda="ARS",
     )
-    for offset, close in enumerate([100, 101, 103, 102, 104, 106]):
+    business_dates = _recent_business_dates(today, count=7)
+    for snapshot_date, close in zip(business_dates, [100, 101, 103, 102, 104, 106, 108], strict=True):
         IOLHistoricalPriceSnapshot.objects.create(
             simbolo="GGAL",
             mercado="BCBA",
             source="iol",
-            fecha=today - timedelta(days=5 - offset),
+            fecha=snapshot_date,
             close=close,
         )
 
@@ -201,12 +212,13 @@ def test_volatility_service_reports_partial_iol_proxy_coverage():
         plazo="T0",
         moneda="ARS",
     )
-    for offset, close in enumerate([100, 101, 103, 102, 104, 106]):
+    business_dates = _recent_business_dates(today, count=7)
+    for snapshot_date, close in zip(business_dates, [100, 101, 103, 102, 104, 106, 108], strict=True):
         IOLHistoricalPriceSnapshot.objects.create(
             simbolo="GGAL",
             mercado="BCBA",
             source="iol",
-            fecha=today - timedelta(days=5 - offset),
+            fecha=snapshot_date,
             close=close,
         )
 

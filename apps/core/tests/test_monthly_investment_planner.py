@@ -76,6 +76,43 @@ def test_plan_monthly_investment_returns_error_on_zero_total(planner):
     assert "divisionbyzero" in result["error"].lower()
 
 
+@pytest.mark.django_db
+def test_plan_monthly_investment_falls_back_to_latest_positions_when_dashboard_total_is_zero(planner, monkeypatch):
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion="2026-03-13T10:00:00Z",
+        pais_consulta="argentina",
+        simbolo="SPY",
+        descripcion="SPY",
+        cantidad=10,
+        comprometido=0,
+        disponible_inmediato=10,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=200,
+        ppc=180,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=2000,
+        pais_titulo="USA",
+        mercado="BCBA",
+        tipo="CEDEAR",
+        moneda="ARS",
+    )
+    monkeypatch.setattr(
+        "apps.core.services.monthly_investment_planner.get_dashboard_kpis",
+        lambda: {"total_iol": 0, "liquidez_operativa": 0},
+    )
+    monkeypatch.setattr(planner, "_estimate_quantity", lambda asset, amount: None)
+    monkeypatch.setattr(planner, "_calculate_portfolio_impact", lambda distribution, current, nuevo: {"ok": True})
+    monkeypatch.setattr(planner, "_generate_additional_recommendations", lambda distribution, current: ["ok"])
+
+    result = planner.plan_monthly_investment(Decimal("100000"))
+
+    assert result["total_portafolio_actual"] == 2000.0
+    assert result["total_portafolio_nuevo"] == 102000.0
+    assert result["incremento_porcentual"] == 5000.0
+
+
 def test_create_custom_plan_applies_short_horizon_adjustments(planner, monkeypatch):
     monkeypatch.setattr(
         planner,
