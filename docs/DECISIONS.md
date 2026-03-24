@@ -118,6 +118,30 @@ Cachear tambien el `data_stamp` durante la misma ventana TTL de los selectors.
 Con esto:
 
 - la primera llamada sigue calculando el stamp desde base
+
+---
+
+## D-006 - Planeacion incorpora costo operativo observado como senal tactica
+
+**Issue relacionada:** P-OPS-01  
+**Fecha:** 2026-03-24  
+**Estado:** Implementado
+
+### Contexto
+`Planeacion` ya usaba huella operativa reciente para cobertura y fragmentacion, pero seguia faltando una lectura compacta del costo observado en ejecuciones comparables.
+
+### Decision
+Agregar una senal tactica de costo visible usando `aranceles visibles / monto ejecutado comparable` sobre operaciones terminadas recientes de `OperacionIOL`.
+
+La decision engine ahora diferencia entre:
+
+- falta de cobertura operativa
+- fragmentacion operativa
+- costo observado alto o a vigilar
+
+### Riesgo aceptado
+La metrica usa aranceles visibles y monto ejecutado como proxy operativo simple.
+No modela todavia spread, slippage ni conversion FX implicita, por lo que se interpreta como friccion observada minima y no como costo total de ejecucion.
 - las siguientes llamadas dentro de la ventana reutilizan ese stamp sin nuevas queries
 - se reduce el costo repetido de invalidacion en cargas consecutivas del dashboard
 

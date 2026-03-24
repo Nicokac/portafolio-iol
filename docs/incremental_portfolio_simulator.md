@@ -69,6 +69,7 @@ Jerarquia actual en `Planeacion`:
 - el seguimiento y governance permanece en la misma hoja, pero el historial accionable queda subordinado como trazabilidad operativa
 - los snapshots incrementales guardados preservan tambien la causa tactica de gobierno visible en `Modo decision`, incluyendo reglas de `parking` y liquidez reciente observada desde `CotizacionDetalle`
 - el backlog incremental ya no se prioriza solo por score: una propuesta pendiente sube primero cuando mejora baseline en retorno esperado, no deteriora fragilidad materialmente y mantiene mejor ejecutabilidad tactica
+- la ejecutabilidad tactica ya no mira solo cobertura y fragmentacion: cuando hay huella reciente de `OperacionIOL`, tambien incorpora costo observado visible mediante `aranceles / monto ejecutado comparable`
 - la capa superior de futuras compras ya sintetiza:
   - fuente mas solida entre backlog nuevo y reactivadas
   - propuesta `Recomendada ahora`

@@ -341,6 +341,9 @@ def test_build_operation_execution_analytics_context_summarizes_cost_and_fragmen
     assert context["avg_fills_per_visible"] == Decimal("1.50")
     assert context["executed_amount_total"] == Decimal("78720.15")
     assert context["executed_amount_visible_count"] == 2
+    assert context["fee_over_visible_amount_pct"] == Decimal("0.67")
+    assert context["observed_cost_status"] == "watch"
+    assert context["observed_cost_label"] == "Costo a vigilar"
     assert context["type_groups"][0]["label"] in {"Compras", "Dividendos"}
 
 

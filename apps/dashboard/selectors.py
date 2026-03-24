@@ -2042,6 +2042,17 @@ def get_monthly_allocation_plan(capital_amount: int | float = 600000) -> Dict:
     return _get_cached_selector_result(cache_key, build)
 
 
+def _classify_observed_operation_cost(fee_over_amount_pct: Decimal | None) -> tuple[str, str, str]:
+    pct = Decimal(str(fee_over_amount_pct or 0))
+    if pct >= Decimal("1.00"):
+        return ("high", "Costo alto", "warning")
+    if pct >= Decimal("0.40"):
+        return ("watch", "Costo a vigilar", "secondary")
+    if pct > 0:
+        return ("low", "Costo visible", "success")
+    return ("missing", "Costo no visible", "secondary")
+
+
 def get_operation_execution_feature_context(
     *,
     purchase_plan: list[dict] | None = None,
@@ -2091,6 +2102,8 @@ def get_operation_execution_feature_context(
             if _classify_operation_type(getattr(operacion, "tipo", None)) in {"buy", "sell"}
         ]
         execution_analytics = build_operation_execution_analytics_context(operations)
+        observed_cost_status = str(execution_analytics.get("observed_cost_status") or "missing")
+        observed_cost_pct = Decimal(str(execution_analytics.get("fee_over_visible_amount_pct") or 0))
 
         latest_by_symbol = {}
         for operacion in operations:
@@ -2117,6 +2130,7 @@ def get_operation_execution_feature_context(
                 fee_over_amount_pct = (
                     (fees_ars + fees_usd) / executed_amount * Decimal("100")
                 ).quantize(Decimal("0.01"))
+            cost_status, cost_label, cost_tone = _classify_observed_operation_cost(fee_over_amount_pct)
 
             rows.append(
                 {
@@ -2131,6 +2145,9 @@ def get_operation_execution_feature_context(
                     "is_fragmented": fills_count > 1,
                     "has_detail": fills_count > 0 or fees_ars > 0 or fees_usd > 0,
                     "fee_over_amount_pct": fee_over_amount_pct,
+                    "cost_status": cost_status,
+                    "cost_label": cost_label,
+                    "cost_tone": cost_tone,
                 }
             )
 
@@ -2170,6 +2187,32 @@ def get_operation_execution_feature_context(
                     "tone": "info",
                     "title": "Fragmentacion visible",
                     "message": f"{execution_analytics.get('fragmented_count', 0)} operacion(es) comparables tuvieron multiples fills.",
+                }
+            )
+        elif observed_cost_status == "high":
+            headline = "La propuesta tiene huella reciente, pero con costo observado alto."
+            summary = (
+                f"Los aranceles visibles recientes equivalen a {observed_cost_pct}% del monto comparable y conviene "
+                "validar mejor el costo real antes de priorizar la compra."
+            )
+            alerts.append(
+                {
+                    "tone": "warning",
+                    "title": "Costo observado alto",
+                    "message": f"El costo visible reciente equivale a {observed_cost_pct}% del monto ejecutado comparable.",
+                }
+            )
+        elif observed_cost_status == "watch":
+            headline = "La propuesta tiene huella reciente, aunque con costo observado a vigilar."
+            summary = (
+                f"Los aranceles visibles recientes equivalen a {observed_cost_pct}% del monto comparable y suman una "
+                "friccion tactica moderada."
+            )
+            alerts.append(
+                {
+                    "tone": "secondary",
+                    "title": "Costo observado a vigilar",
+                    "message": f"El costo visible reciente equivale a {observed_cost_pct}% del monto ejecutado comparable.",
                 }
             )
         else:
@@ -6585,6 +6628,10 @@ def _compute_decision_score(
         total -= 4
     elif (operation_execution_signal or {}).get("status") == "fragmented":
         total -= 2
+    elif (operation_execution_signal or {}).get("status") == "costly":
+        total -= 3
+    elif (operation_execution_signal or {}).get("status") == "watch_cost":
+        total -= 1
     return max(0, min(100, total))
 
 
@@ -6706,6 +6753,8 @@ def _build_decision_operation_execution_signal(
     missing_symbols_count = int(operation_execution_feature.get("missing_symbols_count") or 0)
     execution_analytics = operation_execution_feature.get("execution_analytics") or {}
     fragmented_pct = Decimal(str(execution_analytics.get("fragmented_pct") or 0))
+    observed_cost_status = str(execution_analytics.get("observed_cost_status") or "missing").strip()
+    observed_cost_pct = Decimal(str(execution_analytics.get("fee_over_visible_amount_pct") or 0))
     coverage_pct = Decimal(str(operation_execution_feature.get("coverage_pct") or 0))
 
     if not preferred_proposal or not tracked_symbols:
@@ -6751,6 +6800,30 @@ def _build_decision_operation_execution_signal(
             "title": "Ejecucion reciente fragmentada",
             "summary": "La propuesta tiene referencia operativa reciente, pero con multiples fills en una parte relevante de las operaciones comparables.",
             "status": "fragmented",
+            "tracked_symbols": tracked_symbols,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+        }
+
+    if observed_cost_status == "high":
+        return {
+            "has_signal": True,
+            "severity": "warning",
+            "title": "Costo observado alto",
+            "summary": f"La huella operativa reciente muestra aranceles visibles cercanos a {observed_cost_pct}% del monto comparable.",
+            "status": "costly",
+            "tracked_symbols": tracked_symbols,
+            "matched_symbols_count": matched_symbols_count,
+            "missing_symbols_count": missing_symbols_count,
+        }
+
+    if observed_cost_status == "watch":
+        return {
+            "has_signal": True,
+            "severity": "info",
+            "title": "Costo observado a vigilar",
+            "summary": f"La huella operativa reciente muestra aranceles visibles cercanos a {observed_cost_pct}% del monto comparable.",
+            "status": "watch_cost",
             "tracked_symbols": tracked_symbols,
             "matched_symbols_count": matched_symbols_count,
             "missing_symbols_count": missing_symbols_count,
@@ -6873,12 +6946,12 @@ def _build_manual_incremental_execution_readiness(
             "tone": "warning",
             "summary": execution_order_summary or f"{proposal_label} necesita validar mejor su ejecucion real antes de pasar a compra.",
         }
-    if signal_status == "fragmented":
+    if signal_status in {"fragmented", "costly", "watch_cost"}:
         return {
             "status": "monitor",
             "label": "Seguir observando",
             "tone": "secondary",
-            "summary": execution_order_summary or f"{proposal_label} tiene referencia operativa, pero conviene cuidar la forma de entrada.",
+            "summary": (operation_execution_signal.get("summary") or execution_order_summary or f"{proposal_label} tiene referencia operativa, pero conviene cuidar la forma de entrada."),
         }
     if proposal:
         return {
@@ -6953,6 +7026,12 @@ def _annotate_preferred_proposal_with_execution_quality(
             if operation_row.get("is_fragmented"):
                 execution_label = "Fragmentada"
                 execution_tone = "warning"
+            elif str(operation_row.get("cost_status") or "") == "high":
+                execution_label = "Costo alto"
+                execution_tone = "warning"
+            elif str(operation_row.get("cost_status") or "") == "watch":
+                execution_label = "Costo a vigilar"
+                execution_tone = "secondary"
             elif (operation_row.get("fees_ars") or 0) or (operation_row.get("fees_usd") or 0):
                 execution_label = "Costo visible"
                 execution_tone = "success"
@@ -6976,6 +7055,7 @@ def _annotate_preferred_proposal_with_execution_quality(
                 "execution_tone": execution_tone,
                 "fills_count": int((operation_row or {}).get("fills_count") or 0),
                 "fee_over_amount_pct": (operation_row or {}).get("fee_over_amount_pct"),
+                "cost_status": (operation_row or {}).get("cost_status") or "",
                 "executed_amount": (operation_row or {}).get("executed_amount"),
                 "fecha_label": (operation_row or {}).get("fecha_label") or "",
             }
@@ -7076,6 +7156,14 @@ def _build_decision_action_suggestions(
                 "suggestion": "Conviene validar costo observado y forma real de ejecucion antes de tomarla como compra prioritaria.",
             }
         )
+    elif (operation_execution_signal or {}).get("status") in {"costly", "watch_cost"}:
+        suggestions.append(
+            {
+                "type": "operation_cost",
+                "message": "La huella reciente muestra friccion operativa visible",
+                "suggestion": "Conviene revisar aranceles observados y tamano de orden antes de priorizar esta compra.",
+            }
+        )
     return suggestions
 
 
@@ -7156,7 +7244,7 @@ def _compute_decision_confidence(
         or (preferred_proposal or {}).get("is_conditioned_by_parking")
         or (market_history_signal or {}).get("has_signal")
         or (preferred_proposal or {}).get("is_conditioned_by_market_history")
-        or (operation_execution_signal or {}).get("status") in {"missing", "partial", "fragmented"}
+        or (operation_execution_signal or {}).get("status") in {"missing", "partial", "fragmented", "costly", "watch_cost"}
     ):
         if confidence == "Alta":
             return "Media"
@@ -7207,6 +7295,10 @@ def _build_decision_explanation(
         bullets.append("La propuesta solo tiene cobertura operativa parcial y pide confirmar la ejecucion real de todos los simbolos sugeridos.")
     elif (operation_execution_signal or {}).get("status") == "fragmented":
         bullets.append("La referencia operativa reciente existe, pero muestra fragmentacion y conviene cuidar la forma de entrada.")
+    elif (operation_execution_signal or {}).get("status") == "costly":
+        bullets.append("La huella operativa reciente muestra costo observado alto y conviene revisar aranceles reales antes de comprar.")
+    elif (operation_execution_signal or {}).get("status") == "watch_cost":
+        bullets.append("La huella operativa reciente muestra una friccion moderada y conviene monitorear mejor el costo visible de ejecucion.")
     if (preferred_proposal or {}).get("was_reprioritized_by_parking"):
         bullets.append("La propuesta preferida guardable fue reemplazada por una alternativa mas limpia frente a parking visible.")
     elif (preferred_proposal or {}).get("was_reprioritized_by_market_history"):

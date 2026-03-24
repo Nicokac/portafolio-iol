@@ -30,6 +30,9 @@ _DEFAULT_FILTERS = {
     'pais': 'argentina',
 }
 
+_OBSERVED_COST_HIGH_PCT = Decimal('1.00')
+_OBSERVED_COST_WATCH_PCT = Decimal('0.40')
+
 
 def build_operation_list_context(operaciones: Iterable[OperacionIOL]) -> dict:
     rows = [build_operation_list_row(operacion) for operacion in operaciones]
@@ -130,6 +133,11 @@ def build_operation_execution_analytics_context(queryset: QuerySet[OperacionIOL]
         avg_fills_per_visible = (Decimal(sum(len(list(operacion.operaciones_detalle or [])) for operacion in operaciones if operacion.operaciones_detalle)) / Decimal(fills_visible_count)).quantize(Decimal('0.01'))
 
     type_groups = _build_operation_type_groups(operaciones)
+    observed_cost_summary = _build_observed_cost_summary(
+        total_fees=fees_ars_total + fees_usd_total,
+        executed_amount_total=executed_amount_total,
+        fee_visible_count=fee_visible_count,
+    )
 
     return {
         'total_count': total_count,
@@ -143,6 +151,10 @@ def build_operation_execution_analytics_context(queryset: QuerySet[OperacionIOL]
         'avg_fills_per_visible': avg_fills_per_visible,
         'executed_amount_total': executed_amount_total,
         'executed_amount_visible_count': executed_amount_visible_count,
+        'fee_over_visible_amount_pct': observed_cost_summary['fee_over_visible_amount_pct'],
+        'observed_cost_status': observed_cost_summary['status'],
+        'observed_cost_label': observed_cost_summary['label'],
+        'observed_cost_summary': observed_cost_summary['summary'],
         'type_groups': type_groups,
     }
 
@@ -541,6 +553,12 @@ def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
                 total_fees / group['executed_amount_total'] * Decimal('100')
             ).quantize(Decimal('0.01'))
 
+        observed_cost_summary = _build_observed_cost_summary(
+            total_fees=group['fees_ars_total'] + group['fees_usd_total'],
+            executed_amount_total=group['executed_amount_total'],
+            fee_visible_count=group['fee_visible_count'],
+        )
+
         rows.append(
             {
                 **group,
@@ -551,9 +569,48 @@ def _build_operation_type_groups(operaciones: list[OperacionIOL]) -> list[dict]:
                 'avg_visible_amount': avg_visible_amount,
                 'avg_fills_per_visible': avg_fills_per_visible,
                 'fee_over_visible_amount_pct': fee_over_visible_amount_pct,
+                'observed_cost_status': observed_cost_summary['status'],
+                'observed_cost_label': observed_cost_summary['label'],
             }
         )
     return rows
+
+
+def _build_observed_cost_summary(
+    *,
+    total_fees: Decimal,
+    executed_amount_total: Decimal,
+    fee_visible_count: int,
+) -> dict:
+    fee_over_visible_amount_pct = Decimal('0.00')
+    if executed_amount_total > 0 and fee_visible_count > 0:
+        fee_over_visible_amount_pct = (
+            total_fees / executed_amount_total * Decimal('100')
+        ).quantize(Decimal('0.01'))
+
+    if fee_visible_count <= 0 or executed_amount_total <= 0:
+        status = 'missing'
+        label = 'Costo no visible'
+        summary = 'Todavia no hay aranceles visibles suficientes para leer costo observado.'
+    elif fee_over_visible_amount_pct >= _OBSERVED_COST_HIGH_PCT:
+        status = 'high'
+        label = 'Costo alto'
+        summary = f'El costo visible reciente equivale a {fee_over_visible_amount_pct}% del monto ejecutado comparable.'
+    elif fee_over_visible_amount_pct >= _OBSERVED_COST_WATCH_PCT:
+        status = 'watch'
+        label = 'Costo a vigilar'
+        summary = f'El costo visible reciente equivale a {fee_over_visible_amount_pct}% del monto ejecutado comparable.'
+    else:
+        status = 'low'
+        label = 'Costo controlado'
+        summary = f'El costo visible reciente equivale a {fee_over_visible_amount_pct}% del monto ejecutado comparable.'
+
+    return {
+        'status': status,
+        'label': label,
+        'summary': summary,
+        'fee_over_visible_amount_pct': fee_over_visible_amount_pct,
+    }
 
 
 def _classify_operation_type(raw_tipo: str) -> tuple[str, str]:

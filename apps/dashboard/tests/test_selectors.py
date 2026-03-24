@@ -174,6 +174,36 @@ class TestDashboardSelectors(TestCase):
         assert context["rows"][0]["is_fragmented"] is True
         assert "sin huella reciente" in context["summary"].lower() or "sin una ejecucion comparable visible" in context["summary"].lower()
 
+    def test_get_operation_execution_feature_context_surfaces_high_observed_cost(self):
+        now = timezone.now()
+        OperacionIOL.objects.create(
+            numero="EXEC-KO-COST",
+            fecha_orden=now - timedelta(days=2),
+            fecha_operada=now - timedelta(days=2),
+            tipo="Compra",
+            estado="Terminada",
+            estado_actual="Terminada",
+            mercado="BCBA",
+            simbolo="KO",
+            modalidad="precio_Mercado",
+            monto_operacion=Decimal("100000"),
+            aranceles_ars=Decimal("1500"),
+            operaciones_detalle=[{"fecha": "2026-03-20T11:00:00", "cantidad": 1, "precio": 100000}],
+        )
+
+        context = get_operation_execution_feature_context(
+            purchase_plan=[{"symbol": "KO", "amount": 100000}],
+            lookback_days=180,
+            symbol_limit=3,
+        )
+
+        assert context["matched_symbols_count"] == 1
+        assert context["execution_analytics"]["fee_over_visible_amount_pct"] == Decimal("1.50")
+        assert context["execution_analytics"]["observed_cost_status"] == "high"
+        assert context["headline"].lower().startswith("la propuesta tiene huella reciente, pero con costo observado alto")
+        assert context["rows"][0]["cost_status"] == "high"
+        assert context["rows"][0]["cost_label"] == "Costo alto"
+
     def test_get_operation_execution_feature_context_returns_empty_contract_without_symbols(self):
         context = get_operation_execution_feature_context(purchase_plan=[])
 
@@ -635,6 +665,57 @@ class TestDashboardSelectors(TestCase):
         assert detail["execution_gate"]["status"] == "ready"
         assert detail["confidence"] == "Baja"
         assert any("fragmentacion" in bullet.lower() for bullet in detail["explanation"])
+
+    def test_get_decision_engine_summary_flags_high_observed_operation_cost(self):
+        class DummyUser:
+            pk = 10_4
+
+        cache.clear()
+
+        with (
+            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
+            patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
+            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(
+                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                return_value={
+                    "preferred": {
+                        "proposal_label": "Plan KO",
+                        "source_label": "Comparador manual",
+                        "purchase_plan": [{"symbol": "KO", "amount": 600000}],
+                    }
+                },
+            ),
+            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
+            patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
+            patch(
+                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                return_value={
+                    "has_context": True,
+                    "has_symbols": True,
+                    "tracked_symbols": ["KO"],
+                    "tracked_symbols_count": 1,
+                    "matched_symbols_count": 1,
+                    "missing_symbols_count": 0,
+                    "coverage_pct": Decimal("100"),
+                    "execution_analytics": {
+                        "fragmented_pct": Decimal("0"),
+                        "observed_cost_status": "high",
+                        "fee_over_visible_amount_pct": Decimal("1.20"),
+                    },
+                },
+            ),
+        ):
+            detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
+
+        assert detail["operation_execution_signal"]["status"] == "costly"
+        assert detail["execution_gate"]["status"] == "ready"
+        assert detail["confidence"] == "Baja"
+        assert any(item["type"] == "operation_cost" for item in detail["action_suggestions"])
+        assert any("costo observado alto" in bullet.lower() for bullet in detail["explanation"])
 
     def test_get_decision_engine_summary_promotes_clean_preferred_alternative_when_conditioned_one_is_close(self):
         class DummyUser:
