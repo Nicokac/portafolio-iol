@@ -217,6 +217,11 @@ from apps.dashboard.portfolio_distribution import (
     build_distribucion_tipo_patrimonial,
     build_resumen_cash_distribution_by_country,
 )
+from apps.dashboard.portfolio_risk import (
+    build_riesgo_portafolio,
+    build_riesgo_portafolio_detallado,
+)
+
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -786,151 +791,25 @@ def get_concentracion_moneda_operativa() -> Dict[str, float]:
 
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
-    """Calcula mÃƒÆ’Ã‚Â©tricas detalladas de riesgo del portafolio."""
     portafolio = [item['activo'] for item in _get_activos_invertidos()]
-    resumen = get_latest_resumen_data()
-    portafolio_clasificado = get_portafolio_enriquecido_actual()
     kpis = get_dashboard_kpis()
-
-    total_portafolio = sum(activo.valorizado for activo in portafolio)
-    total_iol = kpis.get('total_iol', 0)
-
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-
-    # ExposiciÃƒÆ’Ã‚Â³n geogrÃƒÆ’Ã‚Â¡fica
-    exposicion_usa = 0
-    exposicion_argentina = 0
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            exposicion_usa += activo.valorizado
-        elif parametro and parametro.pais_exposicion == 'Argentina':
-            exposicion_argentina += activo.valorizado
-
-    # ExposiciÃƒÆ’Ã‚Â³n por tipo
-    exposicion_tech = 0
-    exposicion_renta_fija_ar = 0
-    exposicion_defensivo = 0
-    exposicion_growth = 0
-
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        if parametro:
-            if _is_technology_sector(parametro.sector):
-                exposicion_tech += activo.valorizado
-            if parametro.tipo_patrimonial == 'Bond' and parametro.pais_exposicion == 'Argentina':
-                exposicion_renta_fija_ar += activo.valorizado
-            if parametro.bloque_estrategico == 'Defensivo':
-                exposicion_defensivo += activo.valorizado
-            if parametro.bloque_estrategico == 'Growth':
-                exposicion_growth += activo.valorizado
-
-    # Liquidez total
-    liquidez_total = kpis.get('liquidez_operativa', 0)
-
-
-    # Calcular porcentajes
-    pct_usa = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_argentina = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_tech = (exposicion_tech / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_renta_fija_ar = (exposicion_renta_fija_ar / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_defensivo = (exposicion_defensivo / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_growth = (exposicion_growth / total_portafolio * 100) if total_portafolio > 0 else 0
-    pct_liquidez = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
-
-    return {
-        'pct_usa': pct_usa,
-        'pct_argentina': pct_argentina,
-        'pct_tech': pct_tech,
-        'pct_bonos_soberanos': pct_renta_fija_ar,
-        'pct_renta_fija_ar': pct_renta_fija_ar,
-        'pct_defensivo': pct_defensivo,
-        'pct_growth': pct_growth,
-        'pct_liquidez': pct_liquidez,
-        'methodology': {
-            'pct_usa': 'exposicion USA / portafolio invertido',
-            'pct_argentina': 'exposicion Argentina / portafolio invertido',
-            'pct_tech': 'sectores que comienzan con TecnologÃƒÆ’Ã‚Â­a / portafolio invertido',
-            'pct_renta_fija_ar': 'Bonos argentinos (soberanos, CER y corporativos) / portafolio invertido',
-            'pct_defensivo': 'bloque Defensivo / portafolio invertido',
-            'pct_growth': 'bloque Growth / portafolio invertido',
-            'pct_liquidez': 'liquidez operativa / total iol',
-        },
-    }
+    return build_riesgo_portafolio_detallado(
+        portafolio=portafolio,
+        total_portafolio=sum(activo.valorizado for activo in portafolio),
+        liquidez_operativa=kpis.get('liquidez_operativa', 0),
+        total_iol=kpis.get('total_iol', 0),
+    )
 
 
 def get_riesgo_portafolio() -> Dict[str, float]:
-    """Calcula mÃƒÆ’Ã‚Â©tricas de riesgo del portafolio (versiÃƒÆ’Ã‚Â³n simplificada para compatibilidad)."""
     portafolio = [item['activo'] for item in _get_activos_invertidos()]
-    resumen = get_latest_resumen_data()
-    portafolio_clasificado = get_portafolio_enriquecido_actual()
     kpis = get_dashboard_kpis()
-
-    total_portafolio = sum(activo.valorizado for activo in portafolio)
-    total_iol = kpis.get('total_iol', 0)
-
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-
-    # ExposiciÃƒÆ’Ã‚Â³n USA
-    exposicion_usa = 0
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            exposicion_usa += activo.valorizado
-    exposicion_usa_pct = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
-
-    # ExposiciÃƒÆ’Ã‚Â³n Argentina
-    exposicion_argentina = 0
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-        if parametro and parametro.pais_exposicion == 'Argentina':
-            exposicion_argentina += activo.valorizado
-    exposicion_argentina_pct = (exposicion_argentina / total_portafolio * 100) if total_portafolio > 0 else 0
-
-    # Liquidez total
-    liquidez_total = kpis.get('liquidez_operativa', 0)
-
-    liquidez_pct = (liquidez_total / total_iol * 100) if total_iol > 0 else 0
-
-    volatility_metrics = VolatilityService().calculate_volatility(days=90)
-    var_metrics = VaRService().calculate_var_set(confidence=0.95, lookback_days=252)
-    cvar_metrics = CVaRService().calculate_cvar_set(confidence=0.95, lookback_days=252)
-    stress_metrics = StressTestService().run_all()
-    benchmarking = TrackingErrorService().calculate(days=90)
-    liquidity = LiquidityService().analyze_portfolio_liquidity()
-    metadata_quality = MetadataAuditService().run_audit()
-    volatilidad_pct = volatility_metrics.get('annualized_volatility')
-
-    result = {
-        'volatilidad_estimada': volatilidad_pct,
-        'volatilidad_status': 'ok' if volatilidad_pct is not None else 'insufficient_history',
-        'volatilidad_warning': volatility_metrics.get('warning'),
-        'volatilidad_observations': volatility_metrics.get('observations'),
-        'volatilidad_required_min_observations': volatility_metrics.get('required_min_observations'),
-        'exposicion_usa': exposicion_usa_pct,
-        'exposicion_argentina': exposicion_argentina_pct,
-        'liquidez': liquidez_pct,
-    }
-    result.update(var_metrics)
-    result.update(cvar_metrics)
-    result.update(benchmarking)
-    if liquidity:
-        result["liquidity_score"] = liquidity.get("portfolio_liquidity_score")
-        result["days_to_liquidate"] = liquidity.get("days_to_liquidate")
-    if metadata_quality:
-        result["metadata_unclassified_count"] = metadata_quality.get("unclassified_assets_count", 0)
-        result["metadata_inconsistent_count"] = metadata_quality.get("inconsistent_assets_count", 0)
-    if stress_metrics:
-        worst_case = min(
-            stress_metrics.values(),
-            key=lambda scenario: scenario.get("impact_portfolio_pct", 0)
-        )
-        result["stress_worst_case_label"] = worst_case["label"]
-        result["stress_worst_case_pct"] = worst_case["impact_portfolio_pct"]
-    return result
-
+    return build_riesgo_portafolio(
+        portafolio=portafolio,
+        total_portafolio=sum(activo.valorizado for activo in portafolio),
+        liquidez_operativa=kpis.get('liquidez_operativa', 0),
+        total_iol=kpis.get('total_iol', 0),
+    )
 
 def get_analytics_mensual() -> Dict[str, float]:
     """Calcula m?tricas operativas del mes actual a partir de operaciones ejecutadas."""
