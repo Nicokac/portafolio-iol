@@ -1,35 +1,8 @@
 from apps.dashboard.incremental_future_purchases import (
     _annotate_incremental_future_purchase_recommended_items,
-    _build_incremental_future_purchase_source_summary,
     _build_incremental_future_purchase_workflow_summary,
     _build_incremental_reactivation_vs_backlog_summary,
-    _build_incremental_tactical_trace,
 )
-
-
-def test_build_incremental_tactical_trace_detects_alternative_promotion():
-    trace = _build_incremental_tactical_trace(
-        {
-            "decision_explanation": [
-                "La propuesta fue reemplazada por una alternativa mas limpia.",
-                "Liquidez reciente insuficiente para el simbolo lider.",
-            ]
-        }
-    )
-
-    assert trace["has_trace"] is True
-    assert trace["headline"] == "Se promovio una alternativa mas limpia por liquidez reciente."
-    assert any(badge["key"] == "alternative_promoted" for badge in trace["badges"])
-
-
-def test_build_incremental_future_purchase_source_summary_respects_active_filter():
-    summary = _build_incremental_future_purchase_source_summary(
-        {"backlog_nuevo": 1, "reactivadas": 3},
-        active_filter="backlog_nuevo",
-    )
-
-    assert summary["dominant_source"] == "backlog_nuevo"
-    assert summary["dominant_label"] == "Domina backlog nuevo"
 
 
 def test_annotate_incremental_future_purchase_recommended_items_marks_matching_rows():

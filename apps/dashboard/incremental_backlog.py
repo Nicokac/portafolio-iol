@@ -21,6 +21,11 @@ from apps.dashboard.incremental_future_purchases import (
     _build_incremental_backlog_followup_filter_options,
     _build_incremental_backlog_manual_review_summary,
     _build_incremental_backlog_shortlist_item,
+    _format_incremental_backlog_followup_filter_label,
+    _normalize_incremental_backlog_followup_filter,
+    get_incremental_proposal_tracking_baseline,
+)
+from apps.dashboard.incremental_history_enrichment import (
     _build_incremental_future_purchase_history_context,
     _build_incremental_future_purchase_source_counts,
     _build_incremental_future_purchase_source_filter_options,
@@ -35,10 +40,7 @@ from apps.dashboard.incremental_future_purchases import (
     _build_incremental_history_priority_filter_options,
     _build_incremental_history_sort_options,
     _build_incremental_tactical_trace,
-    _format_incremental_backlog_followup_filter_label,
-    _normalize_incremental_backlog_followup_filter,
     _sort_incremental_history_items,
-    get_incremental_proposal_tracking_baseline,
 )
 from apps.dashboard.incremental_history import (
     _build_incremental_backlog_front_summary_headline,
