@@ -219,10 +219,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "plan_ko_mcd",
@@ -232,11 +232,11 @@ class TestDashboardSelectors(TestCase):
                     }
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": True,
                     "has_symbols": True,
@@ -343,16 +343,16 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [
                         {"label": "Defensive / resiliente", "suggested_amount": 600000, "reason": "Se prioriza resiliencia."}
                     ]
                 },
             ),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch(
                 "apps.dashboard.selectors.get_portfolio_parking_feature_context",
                 return_value={
@@ -382,16 +382,16 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [
                         {"label": "Growth USA", "suggested_amount": 600000, "reason": "Se prioriza crecimiento."}
                     ]
                 },
             ),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -405,7 +405,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": False,
                     "has_symbols": False,
@@ -437,7 +437,7 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [
                         {"label": "Growth USA", "suggested_amount": 350000, "reason": "Se prioriza crecimiento."},
@@ -445,9 +445,9 @@ class TestDashboardSelectors(TestCase):
                     ]
                 },
             ),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -461,7 +461,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": False,
                     "has_symbols": False,
@@ -492,9 +492,9 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
             patch(
-                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                "apps.dashboard.incremental_planeacion.get_candidate_asset_ranking",
                 return_value={
                     "candidate_assets": [
                         {"asset": "KO", "block_label": "Defensive / resiliente", "score": 8.4, "main_reason": "defensive_sector_match"},
@@ -502,8 +502,8 @@ class TestDashboardSelectors(TestCase):
                     ]
                 },
             ),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch(
                 "apps.dashboard.selectors.get_portfolio_parking_feature_context",
                 return_value={
@@ -540,10 +540,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Plan KO",
@@ -552,7 +552,7 @@ class TestDashboardSelectors(TestCase):
                     }
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch(
                 "apps.dashboard.selectors.get_portfolio_parking_feature_context",
                 return_value={
@@ -580,10 +580,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Plan KO",
@@ -592,11 +592,11 @@ class TestDashboardSelectors(TestCase):
                     }
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": True,
                     "has_symbols": True,
@@ -630,10 +630,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Plan KO",
@@ -642,11 +642,11 @@ class TestDashboardSelectors(TestCase):
                     }
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": True,
                     "has_symbols": True,
@@ -676,10 +676,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Plan KO",
@@ -688,11 +688,11 @@ class TestDashboardSelectors(TestCase):
                     }
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch("apps.dashboard.selectors.get_market_snapshot_history_feature_context", return_value={"summary": {}, "rows": [], "weak_blocks": [], "alerts": [], "has_history": False, "lookback_days": 7}),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": True,
                     "has_symbols": True,
@@ -741,10 +741,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "plan_ko",
@@ -774,7 +774,7 @@ class TestDashboardSelectors(TestCase):
                     ],
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch(
                 "apps.dashboard.selectors.get_portfolio_parking_feature_context",
                 return_value={
@@ -819,13 +819,13 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [{"label": "Indice global", "suggested_amount": 600000, "reason": "prioridad limpia"}]
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                "apps.dashboard.incremental_planeacion.get_candidate_asset_ranking",
                 return_value={
                     "candidate_assets": [
                         {"asset": "SPY", "block_label": "Indice global", "score": 7.0, "main_reason": "stable_global_exposure"},
@@ -833,7 +833,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "plan_spy",
@@ -856,7 +856,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_portfolio_simulation",
+                "apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation",
                 return_value={
                     "delta": {
                         "expected_return_change": 0.4,
@@ -877,7 +877,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": False,
                     "has_symbols": False,
@@ -1030,12 +1030,12 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 20}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
-            patch("apps.dashboard.selectors._build_decision_macro_state", return_value={"key": "normal", "label": "Normal", "summary": ""}),
-            patch("apps.dashboard.selectors._build_decision_portfolio_state", return_value={"key": "ok", "label": "OK", "summary": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion._build_decision_macro_state", return_value={"key": "normal", "label": "Normal", "summary": ""}),
+            patch("apps.dashboard.incremental_planeacion._build_decision_portfolio_state", return_value={"key": "ok", "label": "OK", "summary": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -1049,7 +1049,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors._build_decision_recommendation",
+                "apps.dashboard.incremental_planeacion._build_decision_recommendation",
                 return_value={
                     "block": "Growth USA",
                     "amount": 600000,
@@ -1059,13 +1059,13 @@ class TestDashboardSelectors(TestCase):
                     "priority_tone": "success",
                 },
             ),
-            patch("apps.dashboard.selectors._build_decision_suggested_assets", return_value=[]),
-            patch("apps.dashboard.selectors._build_decision_preferred_proposal", return_value=None),
-            patch("apps.dashboard.selectors._build_decision_expected_impact", return_value={"status": "neutral", "summary": ""}),
-            patch("apps.dashboard.selectors._build_decision_recommendation_context", return_value="high_cash"),
-            patch("apps.dashboard.selectors._build_decision_strategy_bias", return_value="deploy_cash"),
-            patch("apps.dashboard.selectors._build_decision_explanation", return_value=[]),
-            patch("apps.dashboard.selectors._build_decision_tracking_payload", return_value={}),
+            patch("apps.dashboard.incremental_planeacion._build_decision_suggested_assets", return_value=[]),
+            patch("apps.dashboard.incremental_planeacion._build_decision_preferred_proposal", return_value=None),
+            patch("apps.dashboard.incremental_planeacion._build_decision_expected_impact", return_value={"status": "neutral", "summary": ""}),
+            patch("apps.dashboard.incremental_planeacion._build_decision_recommendation_context", return_value="high_cash"),
+            patch("apps.dashboard.incremental_planeacion._build_decision_strategy_bias", return_value="deploy_cash"),
+            patch("apps.dashboard.incremental_planeacion._build_decision_explanation", return_value=[]),
+            patch("apps.dashboard.incremental_planeacion._build_decision_tracking_payload", return_value={}),
         ):
             detail = get_decision_engine_summary(DummyUser(), query_params={}, capital_amount=600000)
 
@@ -1083,9 +1083,9 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
             patch(
-                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                "apps.dashboard.incremental_planeacion.get_candidate_asset_ranking",
                 return_value={
                     "candidate_assets": [
                         {"asset": "MELI", "block_label": "Growth USA", "score": 8.4, "main_reason": "growth_quality"},
@@ -1093,8 +1093,8 @@ class TestDashboardSelectors(TestCase):
                     ]
                 },
             ),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -1132,10 +1132,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Plan MELI",
@@ -1144,7 +1144,7 @@ class TestDashboardSelectors(TestCase):
                     }
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -1189,10 +1189,10 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "plan_meli",
@@ -1222,7 +1222,7 @@ class TestDashboardSelectors(TestCase):
                     ],
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -1236,7 +1236,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": False,
                     "has_symbols": False,
@@ -1282,7 +1282,7 @@ class TestDashboardSelectors(TestCase):
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [
                         {"label": "Growth USA", "suggested_amount": 350000, "reason": "Se prioriza crecimiento."},
@@ -1290,9 +1290,9 @@ class TestDashboardSelectors(TestCase):
                     ]
                 },
             ),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch("apps.dashboard.incremental_planeacion.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "plan_meli",
@@ -1322,7 +1322,7 @@ class TestDashboardSelectors(TestCase):
                     ],
                 },
             ),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
+            patch("apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation", return_value={"delta": {}, "interpretation": ""}),
             patch("apps.dashboard.selectors.get_portfolio_parking_feature_context", return_value={"has_visible_parking": False, "summary": {}, "parking_blocks": [], "top_rows": [], "alerts": []}),
             patch(
                 "apps.dashboard.selectors.get_market_snapshot_history_feature_context",
@@ -1336,7 +1336,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                "apps.dashboard.incremental_planeacion.get_operation_execution_feature_context",
                 return_value={
                     "has_context": False,
                     "has_symbols": False,
@@ -1398,7 +1398,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+                "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.list_recent",
                 return_value=[
                     {
                         "id": 2,
@@ -1420,11 +1420,11 @@ class TestDashboardSelectors(TestCase):
                 ],
             ),
             patch(
-                "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+                "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.get_decision_counts",
                 return_value={"total": 1, "pending": 1, "accepted": 0, "deferred": 0, "rejected": 0},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={
                     "item": {
                         "id": 1,
@@ -1456,7 +1456,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+                "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.list_recent",
                 return_value=[
                     {
                         "id": 2,
@@ -1478,11 +1478,11 @@ class TestDashboardSelectors(TestCase):
                 ],
             ),
             patch(
-                "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+                "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.get_decision_counts",
                 return_value={"total": 1, "pending": 1, "accepted": 0, "deferred": 0, "rejected": 0},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={
                     "item": {
                         "id": 1,
@@ -1529,13 +1529,13 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [{"label": "Growth USA", "suggested_amount": 600000, "reason": "prioridad limpia"}]
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                "apps.dashboard.incremental_planeacion.get_candidate_asset_ranking",
                 return_value={
                     "candidate_assets": [
                         {"asset": "MELI", "block_label": "Growth USA", "score": 7.0, "main_reason": "growth_quality"},
@@ -1543,7 +1543,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "plan_meli",
@@ -1566,7 +1566,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_portfolio_simulation",
+                "apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation",
                 return_value={
                     "delta": {
                         "expected_return_change": 0.4,
@@ -2660,7 +2660,7 @@ class TestDashboardSelectors(TestCase):
                 assert capital_amount == 600000
                 return expected_plan
 
-        with patch("apps.dashboard.selectors.MonthlyAllocationService", DummyMonthlyAllocationService):
+        with patch("apps.dashboard.incremental_simulation.MonthlyAllocationService", DummyMonthlyAllocationService):
             detail = get_monthly_allocation_plan()
 
         assert detail["capital_total"] == 600000
@@ -2704,7 +2704,7 @@ class TestDashboardSelectors(TestCase):
                 assert capital_amount == 600000
                 return expected_ranking
 
-        with patch("apps.dashboard.selectors.CandidateAssetRankingService", DummyCandidateAssetRankingService):
+        with patch("apps.dashboard.incremental_simulation.CandidateAssetRankingService", DummyCandidateAssetRankingService):
             detail = get_candidate_asset_ranking()
 
         assert detail["capital_total"] == 600000
@@ -2763,9 +2763,9 @@ class TestDashboardSelectors(TestCase):
                 return simulator_result
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
         ):
             detail = get_incremental_portfolio_simulation()
 
@@ -2846,9 +2846,9 @@ class TestDashboardSelectors(TestCase):
                 }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
         ):
             detail = get_incremental_portfolio_simulation_comparison()
 
@@ -2926,10 +2926,10 @@ class TestDashboardSelectors(TestCase):
             }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_incremental_portfolio_simulation_comparison()
 
@@ -3008,10 +3008,10 @@ class TestDashboardSelectors(TestCase):
             }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_incremental_portfolio_simulation_comparison(
                 {"comparison_readiness_filter": "ready"}
@@ -3069,7 +3069,7 @@ class TestDashboardSelectors(TestCase):
             "plan_b_amount_1": "600000",
         }
 
-        with patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator):
+        with patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator):
             detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
 
         assert detail["submitted"] is True
@@ -3259,8 +3259,8 @@ class TestDashboardSelectors(TestCase):
         }
 
         with (
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
 
@@ -3359,8 +3359,8 @@ class TestDashboardSelectors(TestCase):
         }
 
         with (
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_manual_incremental_portfolio_simulation_comparison(query_params)
 
@@ -3454,9 +3454,9 @@ class TestDashboardSelectors(TestCase):
                 }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
         ):
             detail = get_candidate_incremental_portfolio_comparison(
                 {"candidate_compare": "1", "candidate_compare_block": "defensive"}
@@ -3554,10 +3554,10 @@ class TestDashboardSelectors(TestCase):
             }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_candidate_incremental_portfolio_comparison(
                 {"candidate_compare": "1", "candidate_compare_block": "defensive"}
@@ -3629,10 +3629,10 @@ class TestDashboardSelectors(TestCase):
             }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_candidate_incremental_portfolio_comparison(
                 {"candidate_compare": "1", "candidate_compare_block": "defensive", "candidate_compare_readiness_filter": "ready"}
@@ -3709,9 +3709,9 @@ class TestDashboardSelectors(TestCase):
                 }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
         ):
             detail = get_candidate_split_incremental_portfolio_comparison(
                 {"candidate_split_compare": "1", "candidate_split_block": "defensive"}
@@ -3818,10 +3818,10 @@ class TestDashboardSelectors(TestCase):
             }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_candidate_split_incremental_portfolio_comparison(
                 {"candidate_split_compare": "1", "candidate_split_block": "defensive"}
@@ -3895,10 +3895,10 @@ class TestDashboardSelectors(TestCase):
             }
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
-            patch("apps.dashboard.selectors.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
-            patch("apps.dashboard.selectors.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
+            patch("apps.dashboard.incremental_simulation.get_monthly_allocation_plan", lambda capital_amount=600000: monthly_plan),
+            patch("apps.dashboard.incremental_simulation.get_candidate_asset_ranking", lambda capital_amount=600000: candidate_ranking),
+            patch("apps.dashboard.incremental_simulation.IncrementalPortfolioSimulator", DummyIncrementalPortfolioSimulator),
+            patch("apps.dashboard.incremental_simulation.get_operation_execution_feature_context", side_effect=fake_operation_execution_feature_context),
         ):
             detail = get_candidate_split_incremental_portfolio_comparison(
                 {"candidate_split_compare": "1", "candidate_split_block": "defensive", "candidate_split_readiness_filter": "ready"}
@@ -3926,7 +3926,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation_comparison", lambda capital_amount=600000: {
+            patch("apps.dashboard.incremental_simulation.get_incremental_portfolio_simulation_comparison", lambda capital_amount=600000: {
                 "best_proposal_key": "auto",
                 "proposals": [
                     {
@@ -3938,7 +3938,7 @@ class TestDashboardSelectors(TestCase):
                     }
                 ],
             }),
-            patch("apps.dashboard.selectors.get_candidate_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {
+            patch("apps.dashboard.incremental_simulation.get_candidate_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {
                 "best_proposal_key": "KO",
                 "selected_label": "Defensive / resiliente",
                 "proposals": [
@@ -3951,7 +3951,7 @@ class TestDashboardSelectors(TestCase):
                     }
                 ],
             }),
-            patch("apps.dashboard.selectors.get_candidate_split_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {
+            patch("apps.dashboard.incremental_simulation.get_candidate_split_incremental_portfolio_comparison", lambda query_params, capital_amount=600000: {
                 "best_proposal_key": "split_top_two",
                 "selected_label": "Defensive / resiliente",
                 "proposals": [
@@ -3964,7 +3964,7 @@ class TestDashboardSelectors(TestCase):
                     }
                 ],
             }),
-            patch("apps.dashboard.selectors.get_manual_incremental_portfolio_simulation_comparison", lambda query_params, default_capital_amount=600000: {
+            patch("apps.dashboard.incremental_simulation.get_manual_incremental_portfolio_simulation_comparison", lambda query_params, default_capital_amount=600000: {
                 "submitted": True,
                 "best_proposal_key": "plan_a",
                 "proposals": [
@@ -4077,7 +4077,7 @@ class TestDashboardSelectors(TestCase):
         user = DummyUser()
 
         with patch(
-            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.list_recent",
             return_value=[
                 {
                     "id": 1,
@@ -4105,10 +4105,10 @@ class TestDashboardSelectors(TestCase):
                 },
             ],
         ) as mocked, patch(
-            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.get_decision_counts",
             return_value={"total": 2, "pending": 2, "accepted": 0, "deferred": 0, "rejected": 0},
         ), patch(
-            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
             return_value={
                 "item": {
                     "id": 10,
@@ -4338,7 +4338,7 @@ class TestDashboardSelectors(TestCase):
         user = DummyUser()
 
         with patch(
-            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.list_recent",
             return_value=[
                 {
                     "id": 1,
@@ -4381,10 +4381,10 @@ class TestDashboardSelectors(TestCase):
                 },
             ],
         ), patch(
-            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.get_decision_counts",
             return_value={"total": 3, "pending": 3, "accepted": 0, "deferred": 0, "rejected": 0},
         ), patch(
-            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
             return_value={
                 "item": {
                     "id": 10,
@@ -4421,7 +4421,7 @@ class TestDashboardSelectors(TestCase):
         user = DummyUser()
 
         with patch(
-            "apps.dashboard.selectors.IncrementalProposalHistoryService.list_recent",
+            "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.list_recent",
             return_value=[
                 {
                     "id": 1,
@@ -4449,10 +4449,10 @@ class TestDashboardSelectors(TestCase):
                 },
             ],
         ) as mocked, patch(
-            "apps.dashboard.selectors.IncrementalProposalHistoryService.get_decision_counts",
+            "apps.dashboard.incremental_backlog.IncrementalProposalHistoryService.get_decision_counts",
             return_value={"total": 2, "pending": 0, "accepted": 0, "deferred": 2, "rejected": 0},
         ), patch(
-            "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+            "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
             return_value={
                 "item": {
                     "id": 10,
@@ -4505,7 +4505,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={
                     "item": {
                         "proposal_label": "Baseline defensivo",
@@ -4522,7 +4522,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_backlog.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Propuesta actual",
@@ -4562,11 +4562,11 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={"item": None, "has_baseline": False},
             ),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_backlog.get_preferred_incremental_portfolio_proposal",
                 return_value={"preferred": {"proposal_label": "Propuesta actual"}},
             ),
         ):
@@ -4583,7 +4583,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_backlog.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Propuesta actual",
@@ -4592,7 +4592,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={
                     "item": {
                         "proposal_label": "Baseline defensivo",
@@ -4602,7 +4602,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                "apps.dashboard.incremental_backlog.get_incremental_baseline_drift",
                 return_value={
                     "summary": {
                         "status": "unfavorable",
@@ -4653,7 +4653,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_backlog.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Propuesta actual",
@@ -4662,18 +4662,18 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={"item": {"proposal_label": "Baseline activo"}, "has_baseline": True},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                "apps.dashboard.incremental_backlog.get_incremental_baseline_drift",
                 return_value={
                     "summary": {"status": "unfavorable"},
                     "alerts": [{"severity": "critical", "title": "Drift critico"}],
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_followup_executive_summary",
                 return_value={"headline": "Conviene revisarla antes de adoptarla."},
             ),
         ):
@@ -4694,7 +4694,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_backlog.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_label": "Propuesta actual",
@@ -4703,18 +4703,18 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={"item": {"proposal_label": "Baseline activo"}, "has_baseline": True},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                "apps.dashboard.incremental_backlog.get_incremental_baseline_drift",
                 return_value={
                     "summary": {"status": "favorable"},
                     "alerts": [{"severity": "info", "title": "Sin drift material"}],
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_followup_executive_summary",
                 return_value={"headline": "La propuesta actual supera el checklist."},
             ),
         ):
@@ -4832,7 +4832,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={
                     "item": {
                         "proposal_label": "Baseline activo",
@@ -4849,7 +4849,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={
                     "items": [
                         {
@@ -4898,11 +4898,11 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={"item": None, "has_baseline": False},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={
                     "items": [{"proposal_label": "Pendiente A", "comparison_score": 5.1, "simulation_delta": {}}],
                     "count": 1,
@@ -4925,7 +4925,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_pending_backlog_vs_baseline",
                 return_value={
                     "baseline": {"proposal_label": "Baseline activo"},
                     "items": [
@@ -4965,7 +4965,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={"items": [], "decision_counts": {"deferred": 0}},
             ),
         ):
@@ -5011,7 +5011,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_pending_backlog_vs_baseline",
                 return_value={
                     "baseline": {"proposal_label": "Baseline activo"},
                     "items": [
@@ -5031,7 +5031,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={"items": [], "decision_counts": {"deferred": 0}},
             ),
         ):
@@ -5052,7 +5052,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_pending_backlog_vs_baseline",
                 return_value={
                     "baseline": {"proposal_label": "Baseline activo"},
                     "items": [
@@ -5092,7 +5092,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={"items": [], "decision_counts": {"deferred": 0}},
             ),
         ):
@@ -5110,7 +5110,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_pending_backlog_vs_baseline",
                 return_value={
                     "baseline": {"proposal_label": "Baseline activo"},
                     "items": [],
@@ -5120,7 +5120,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={
                     "items": [
                         {"proposal_label": "Diferida reactiva", "history_priority": {"priority": "medium", "priority_label": "Recuperable"}},
@@ -5147,7 +5147,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_pending_backlog_vs_baseline",
                 return_value={
                     "baseline": None,
                     "items": [],
@@ -5156,7 +5156,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={"items": [], "decision_counts": {"deferred": 0}},
             ),
         ):
@@ -5173,7 +5173,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_pending_backlog_vs_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_pending_backlog_vs_baseline",
                 return_value={
                     "baseline": {"proposal_label": "Baseline activo"},
                     "items": [
@@ -5197,7 +5197,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_history",
                 return_value={"items": [], "decision_counts": {"deferred": 0}},
             ),
         ):
@@ -5214,11 +5214,11 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={"item": {"proposal_label": "Baseline activo"}, "has_baseline": True},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_prioritization",
                 return_value={
                     "counts": {"high": 1, "medium": 0, "low": 1},
                     "top_item": {
@@ -5244,11 +5244,11 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_backlog.get_incremental_proposal_tracking_baseline",
                 return_value={"item": None, "has_baseline": False},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_prioritization",
                 return_value={"counts": {"high": 0, "medium": 0, "low": 0}, "top_item": None},
             ),
         ):
@@ -5264,7 +5264,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                "apps.dashboard.incremental_backlog.get_incremental_baseline_drift",
                 return_value={
                     "summary": {"status": "unfavorable"},
                     "has_baseline": True,
@@ -5272,11 +5272,11 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_front_summary",
                 return_value={"status": "baseline_only", "has_summary": True, "front_item": None, "headline": "Baseline activo sin backlog urgente."},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_prioritization",
                 return_value={"counts": {"high": 0, "medium": 0, "low": 0}},
             ),
         ):
@@ -5292,7 +5292,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                "apps.dashboard.incremental_backlog.get_incremental_baseline_drift",
                 return_value={
                     "summary": {"status": "stable"},
                     "has_baseline": True,
@@ -5300,7 +5300,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_front_summary",
                 return_value={
                     "status": "candidate_over_baseline",
                     "has_summary": True,
@@ -5309,7 +5309,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_prioritization",
                 return_value={"counts": {"high": 1, "medium": 0, "low": 0}},
             ),
         ):
@@ -5325,7 +5325,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_baseline_drift",
+                "apps.dashboard.incremental_backlog.get_incremental_baseline_drift",
                 return_value={
                     "summary": {"status": "favorable"},
                     "has_baseline": True,
@@ -5333,11 +5333,11 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_front_summary",
                 return_value={"status": "baseline_only", "has_summary": True, "front_item": None, "headline": "Baseline activo sin backlog urgente."},
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_prioritization",
                 return_value={"counts": {"high": 0, "medium": 0, "low": 0}},
             ),
         ):
@@ -5353,7 +5353,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_operational_semaphore",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_operational_semaphore",
                 return_value={
                     "status": "green",
                     "label": "Verde",
@@ -5363,7 +5363,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_followup_executive_summary",
                 return_value={
                     "status": "aligned",
                     "headline": "La propuesta actual sigue alineada.",
@@ -5371,7 +5371,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_adoption_checklist",
+                "apps.dashboard.incremental_backlog.get_incremental_adoption_checklist",
                 return_value={
                     "status": "ready",
                     "passed_count": 5,
@@ -5380,7 +5380,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_front_summary",
                 return_value={
                     "has_summary": True,
                     "front_item": {"snapshot": {"proposal_label": "Pendiente A"}},
@@ -5401,7 +5401,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_operational_semaphore",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_operational_semaphore",
                 return_value={
                     "status": "yellow",
                     "label": "Amarillo",
@@ -5411,7 +5411,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_followup_executive_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_followup_executive_summary",
                 return_value={
                     "status": "watch",
                     "headline": "Seguir de cerca la propuesta actual.",
@@ -5419,7 +5419,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_adoption_checklist",
+                "apps.dashboard.incremental_backlog.get_incremental_adoption_checklist",
                 return_value={
                     "status": "review",
                     "passed_count": 3,
@@ -5428,7 +5428,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_front_summary",
+                "apps.dashboard.incremental_backlog.get_incremental_backlog_front_summary",
                 return_value={
                     "headline": "Pendiente A lidera el backlog frente al baseline.",
                     "has_summary": True,
@@ -5452,43 +5452,43 @@ class TestDashboardSelectors(TestCase):
                 return_value={"portfolio_total_broker": 1500000.0, "cash_available_broker": 250000.0},
             ) as portfolio_scope,
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                "apps.dashboard.incremental_planeacion.get_monthly_allocation_plan",
                 return_value={"capital_total": 600000},
             ) as monthly_plan,
             patch(
-                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                "apps.dashboard.incremental_planeacion.get_candidate_asset_ranking",
                 return_value={"candidate_assets_count": 2},
             ) as candidate_ranking,
             patch(
-                "apps.dashboard.selectors.get_incremental_portfolio_simulation",
+                "apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation",
                 return_value={"interpretation": "ok"},
             ) as simulation,
             patch(
-                "apps.dashboard.selectors.get_incremental_portfolio_simulation_comparison",
+                "apps.dashboard.incremental_planeacion.get_incremental_portfolio_simulation_comparison",
                 return_value={"best_label": "Top candidato por bloque"},
             ) as simulation_comparison,
             patch(
-                "apps.dashboard.selectors.get_candidate_incremental_portfolio_comparison",
+                "apps.dashboard.incremental_planeacion.get_candidate_incremental_portfolio_comparison",
                 return_value={"selected_block": "defensive"},
             ) as candidate_comparison,
             patch(
-                "apps.dashboard.selectors.get_candidate_split_incremental_portfolio_comparison",
+                "apps.dashboard.incremental_planeacion.get_candidate_split_incremental_portfolio_comparison",
                 return_value={"selected_block": "defensive"},
             ) as split_comparison,
             patch(
-                "apps.dashboard.selectors.get_manual_incremental_portfolio_simulation_comparison",
+                "apps.dashboard.incremental_planeacion.get_manual_incremental_portfolio_simulation_comparison",
                 return_value={"submitted": False},
             ) as manual_comparison,
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                "apps.dashboard.incremental_planeacion.get_preferred_incremental_portfolio_proposal",
                 return_value={"preferred": {"proposal_label": "Split KO + MCD"}},
             ) as preferred,
             patch(
-                "apps.dashboard.selectors.get_decision_engine_summary",
+                "apps.dashboard.incremental_planeacion.get_decision_engine_summary",
                 return_value={"score": 78, "confidence": "Alta"},
             ) as decision_engine,
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_history",
+                "apps.dashboard.incremental_planeacion.get_incremental_proposal_history",
                 return_value={
                     "count": 1,
                     "active_filter": "pending",
@@ -5506,11 +5506,11 @@ class TestDashboardSelectors(TestCase):
                 },
             ) as history,
             patch(
-                "apps.dashboard.selectors.get_incremental_proposal_tracking_baseline",
+                "apps.dashboard.incremental_planeacion.get_incremental_proposal_tracking_baseline",
                 return_value={"has_baseline": True},
             ) as baseline,
             patch(
-                "apps.dashboard.selectors.get_incremental_backlog_prioritization",
+                "apps.dashboard.incremental_planeacion.get_incremental_backlog_prioritization",
                 return_value={
                     "count": 1,
                     "has_priorities": True,
@@ -5541,11 +5541,11 @@ class TestDashboardSelectors(TestCase):
                 },
             ) as backlog_prioritization,
             patch(
-                "apps.dashboard.selectors.get_incremental_manual_decision_summary",
+                "apps.dashboard.incremental_planeacion.get_incremental_manual_decision_summary",
                 return_value={"has_decision": True},
             ) as decision_summary,
             patch(
-                "apps.dashboard.selectors.get_incremental_reactivation_summary",
+                "apps.dashboard.incremental_planeacion.get_incremental_reactivation_summary",
                 return_value={
                     "count": 1,
                     "has_reactivations": True,
@@ -5562,7 +5562,7 @@ class TestDashboardSelectors(TestCase):
                 },
             ) as reactivation_summary,
             patch(
-                "apps.dashboard.selectors.get_incremental_decision_executive_summary",
+                "apps.dashboard.incremental_planeacion.get_incremental_decision_executive_summary",
                 return_value={"status": "review_backlog"},
             ) as executive_summary,
         ):
