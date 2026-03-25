@@ -1,3 +1,4 @@
+import math
 from datetime import timedelta
 
 import pandas as pd
@@ -78,6 +79,7 @@ class SnapshotIntegrityService:
         return [
             {"fecha": row["fecha"], "change_pct": round(float(row["ret"]), 2)}
             for _, row in extremes.iterrows()
+            if math.isfinite(float(row["ret"]))
         ]
 
     @staticmethod
