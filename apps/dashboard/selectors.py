@@ -203,6 +203,20 @@ from apps.dashboard.market_signals import (
     build_market_snapshot_history_feature_context,
     build_portfolio_parking_feature_context,
 )
+from apps.dashboard.portfolio_distribution import (
+    _aggregate_sector_labels,
+    _is_technology_sector,
+    _normalize_account_currency,
+    build_concentracion_from_distribucion,
+    build_concentracion_patrimonial,
+    build_concentracion_sectorial,
+    build_distribucion_moneda,
+    build_distribucion_moneda_operativa,
+    build_distribucion_pais,
+    build_distribucion_sector,
+    build_distribucion_tipo_patrimonial,
+    build_resumen_cash_distribution_by_country,
+)
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -399,54 +413,6 @@ def _get_activos_valorizados_con_metadata() -> List[Dict]:
     portafolio = get_portafolio_enriquecido_actual()
     return portafolio['liquidez'] + portafolio['fci_cash_management'] + portafolio['inversion']
 
-
-def _build_distribution_from_items(items: List[Dict], field: str) -> Dict[str, float]:
-    distribucion: Dict[str, float] = {}
-    for item in items:
-        key = item.get(field) or 'Sin clasificar'
-        if field == 'pais_exposicion' and key in {'Estados Unidos', 'USA'}:
-            key = 'USA'
-        distribucion[key] = distribucion.get(key, 0) + float(item['activo'].valorizado)
-    return distribucion
-
-
-def _is_technology_sector(sector: str | None) -> bool:
-    if not sector:
-        return False
-    normalized = str(sector).strip().lower()
-    return normalized.startswith('tecnolog')
-
-
-
-
-def _aggregate_sector_labels(distribucion: Dict[str, float]) -> Dict[str, float]:
-    aggregated: Dict[str, float] = {}
-    for sector, valor in distribucion.items():
-        label = 'Tecnologia Total' if _is_technology_sector(sector) else sector
-        aggregated[label] = aggregated.get(label, 0) + float(valor)
-    return aggregated
-
-
-def _get_resumen_cash_distribution_by_country() -> Dict[str, float]:
-    distribucion: Dict[str, float] = {}
-    for cuenta in get_latest_resumen_data():
-        monto = float(cuenta.disponible)
-        if monto <= 0:
-            continue
-        pais = 'USA' if _normalize_account_currency(cuenta.moneda) == 'USD' else 'Argentina'
-        distribucion[pais] = distribucion.get(pais, 0) + monto
-    return distribucion
-
-
-def _normalize_account_currency(moneda: str | None) -> str:
-    normalized = str(moneda or '').strip()
-    mapping = {
-        'ARS': 'ARS',
-        'peso_Argentino': 'ARS',
-        'USD': 'USD',
-        'dolar_Estadounidense': 'USD',
-    }
-    return mapping.get(normalized, normalized)
 
 
 def _extract_resumen_cash_components(resumen: List[ResumenCuentaSnapshot]) -> Dict[str, Decimal]:
@@ -745,185 +711,78 @@ def _build_portfolio_scope_summary() -> Dict:
 
 
 def get_distribucion_sector(base: str = 'total_activos') -> Dict[str, float]:
-    """Obtiene la distribuci?n por sector o bloque patrimonial seg?n la base."""
-    if base == 'portafolio_invertido':
-        return _build_distribution_from_items(_get_activos_invertidos(), 'sector')
-    return _build_distribution_from_items(_get_activos_valorizados_con_metadata(), 'sector')
+    return build_distribucion_sector(
+        activos_invertidos=_get_activos_invertidos(),
+        activos_con_metadata=_get_activos_valorizados_con_metadata(),
+        base=base,
+    )
 
 
 def get_distribucion_pais(base: str = 'portafolio_invertido') -> Dict[str, float]:
-    """Obtiene la distribuci?n por pa?s de exposici?n real."""
-    if base == 'total_iol':
-        distribucion = _build_distribution_from_items(_get_activos_valorizados_con_metadata(), 'pais_exposicion')
-        for pais, monto in _get_resumen_cash_distribution_by_country().items():
-            distribucion[pais] = distribucion.get(pais, 0) + monto
-        return distribucion
-    return _build_distribution_from_items(_get_activos_invertidos(), 'pais_exposicion')
+    return build_distribucion_pais(
+        activos_invertidos=_get_activos_invertidos(),
+        activos_con_metadata=_get_activos_valorizados_con_metadata(),
+        resumen_cash_by_country=build_resumen_cash_distribution_by_country(get_latest_resumen_data()),
+        base=base,
+    )
 
 
 def get_distribucion_tipo_patrimonial(base: str = 'total_activos') -> Dict[str, float]:
-    """Obtiene la distribuci?n por tipo patrimonial."""
-    if base == 'portafolio_invertido':
-        return _build_distribution_from_items(_get_activos_invertidos(), 'tipo_patrimonial')
-    return _build_distribution_from_items(_get_activos_valorizados_con_metadata(), 'tipo_patrimonial')
+    return build_distribucion_tipo_patrimonial(
+        activos_invertidos=_get_activos_invertidos(),
+        activos_con_metadata=_get_activos_valorizados_con_metadata(),
+        base=base,
+    )
 
 
 def get_distribucion_moneda() -> Dict[str, float]:
-    """Obtiene la distribuciÃƒÆ’Ã‚Â³n por moneda de exposiciÃƒÆ’Ã‚Â³n real/econÃƒÆ’Ã‚Â³mica."""
-    portafolio = get_latest_portafolio_data()
-    resumen = get_latest_resumen_data()
-    simbolos = [activo.simbolo for activo in portafolio]
-    parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-    distribucion = {}
-    # Agregar activos del portafolio
-    for activo in portafolio:
-        parametro = parametros.get(activo.simbolo)
-
-        # Moneda econÃƒÆ’Ã‚Â³mica/subyacente (exposiciÃƒÆ’Ã‚Â³n real)
-        if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
-            moneda = 'USD'
-        elif activo.moneda == 'dolar_Estadounidense':
-            moneda = 'USD'
-        elif activo.moneda == 'peso_Argentino':
-            moneda = 'ARS'
-        else:
-            # Para otros casos, intentar inferir de tipo_patrimonial
-            if parametro and parametro.tipo_patrimonial == 'Hard Assets':
-                moneda = 'Hard Assets'
-            else:
-                moneda = 'ARS'  # Default a ARS
-
-        distribucion[moneda] = distribucion.get(moneda, 0) + float(activo.valorizado)
-
-    # Agregar cash disponible
-    for cuenta in resumen:
-        if cuenta.moneda == 'ARS':
-            distribucion['ARS'] = distribucion.get('ARS', 0) + float(cuenta.disponible)
-        elif cuenta.moneda == 'USD':
-            distribucion['USD'] = distribucion.get('USD', 0) + float(cuenta.disponible)
-
-    return distribucion
+    return build_distribucion_moneda(
+        portafolio=get_latest_portafolio_data(),
+        resumen=get_latest_resumen_data(),
+    )
 
 
 def get_distribucion_moneda_operativa() -> Dict[str, float]:
-    """Obtiene la distribuciÃƒÆ’Ã‚Â³n por moneda operativa (de cotizaciÃƒÆ’Ã‚Â³n)."""
-    portafolio = get_latest_portafolio_data()
-    resumen = get_latest_resumen_data()
-    distribucion = {}
-
-    # Agregar activos del portafolio por moneda de cotizaciÃƒÆ’Ã‚Â³n
-    for activo in portafolio:
-        if activo.moneda == 'dolar_Estadounidense':
-            moneda = 'USD'
-        elif activo.moneda == 'peso_Argentino':
-            moneda = 'ARS'
-        else:
-            moneda = 'ARS'  # Default
-
-        distribucion[moneda] = distribucion.get(moneda, 0) + float(activo.valorizado)
-
-    # Agregar cash disponible
-    for cuenta in resumen:
-        if cuenta.moneda == 'ARS':
-            distribucion['ARS'] = distribucion.get('ARS', 0) + float(cuenta.disponible)
-        elif cuenta.moneda == 'USD':
-            distribucion['USD'] = distribucion.get('USD', 0) + float(cuenta.disponible)
-
-    return distribucion
+    return build_distribucion_moneda_operativa(
+        portafolio=get_latest_portafolio_data(),
+        resumen=get_latest_resumen_data(),
+    )
 
 
 def get_concentracion_patrimonial() -> Dict[str, float]:
-    """Obtiene la concentraciÃƒÆ’Ã‚Â³n por bloque patrimonial (Liquidez, Cash Management, Invertido)."""
-    kpis = get_dashboard_kpis()
-    total_iol = kpis['total_iol']
-
-    if total_iol == 0:
-        return {}
-
-    return {
-        'Liquidez': (kpis['liquidez_operativa'] / total_iol * 100),
-        'Cash Management': (kpis['fci_cash_management'] / total_iol * 100),
-        'Invertido': (kpis['portafolio_invertido'] / total_iol * 100),
-    }
+    return build_concentracion_patrimonial(kpis=get_dashboard_kpis())
 
 
 def get_concentracion_sectorial() -> Dict[str, float]:
-    """Obtiene la concentraciÃƒÆ’Ã‚Â³n por sector econÃƒÆ’Ã‚Â³mico (excluyendo liquidez)."""
-    # Solo considerar activos de inversiÃƒÆ’Ã‚Â³n (excluir liquidez y cash management)
-    portafolio_invertido = get_portafolio_enriquecido_actual()['inversion']
-    distribucion = {}
-
-    for item in portafolio_invertido:
-        sector = item['sector']
-        if sector and sector != 'N/A':
-            distribucion[sector] = distribucion.get(sector, 0) + float(item['activo'].valorizado)
-
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-    return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
+    return build_concentracion_sectorial(
+        portafolio_inversion=get_portafolio_enriquecido_actual()['inversion']
+    )
 
 
 def get_concentracion_sector() -> Dict[str, float]:
-    """Calcula la concentraci?n sectorial pura del capital invertido."""
-    distribucion = get_distribucion_sector(base='portafolio_invertido')
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-
-    return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
-
-
+    return build_concentracion_from_distribucion(get_distribucion_sector(base='portafolio_invertido'))
 
 
 def get_concentracion_sector_agregado() -> Dict[str, float]:
-    """Calcula concentracion sectorial agregando subsectores tecnol?gicos."""
-    distribucion = _aggregate_sector_labels(get_distribucion_sector(base='portafolio_invertido'))
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-
-    return {sector: (valor / total * 100) for sector, valor in distribucion.items()}
+    return build_concentracion_from_distribucion(
+        _aggregate_sector_labels(get_distribucion_sector(base='portafolio_invertido'))
+    )
 
 
 def get_concentracion_pais(base: str = 'portafolio_invertido') -> Dict[str, float]:
-    """Calcula la concentraci?n por pa?s en porcentajes."""
-    distribucion = get_distribucion_pais(base=base)
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-
-    return {pais: (valor / total * 100) for pais, valor in distribucion.items()}
+    return build_concentracion_from_distribucion(get_distribucion_pais(base=base))
 
 
 def get_concentracion_tipo_patrimonial(base: str = 'total_activos') -> Dict[str, float]:
-    """Calcula la concentraci?n por tipo patrimonial en porcentajes."""
-    distribucion = get_distribucion_tipo_patrimonial(base=base)
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-
-    return {tipo: (valor / total * 100) for tipo, valor in distribucion.items()}
+    return build_concentracion_from_distribucion(get_distribucion_tipo_patrimonial(base=base))
 
 
 def get_concentracion_moneda() -> Dict[str, float]:
-    """Calcula la concentracion por moneda economica en porcentajes."""
-    distribucion = get_distribucion_moneda()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-
-    return {moneda: (valor / total * 100) for moneda, valor in distribucion.items()}
+    return build_concentracion_from_distribucion(get_distribucion_moneda())
 
 
 def get_concentracion_moneda_operativa() -> Dict[str, float]:
-    """Calcula la concentracion por moneda operativa en porcentajes."""
-    distribucion = get_distribucion_moneda_operativa()
-    total = sum(distribucion.values())
-    if total == 0:
-        return {}
-
-    return {moneda: (valor / total * 100) for moneda, valor in distribucion.items()}
+    return build_concentracion_from_distribucion(get_distribucion_moneda_operativa())
 
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
