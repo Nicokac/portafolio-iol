@@ -30,8 +30,13 @@ from apps.dashboard.incremental_comparators import (
     _normalize_incremental_readiness_filter,
     _preferred_source_priority_rank,
     _query_param_value,
-    _resolve_manual_incremental_operational_tiebreak,
     _score_incremental_simulation,
+)
+from apps.dashboard.incremental_simulation_comparison import (
+    build_empty_incremental_comparison_payload,
+    build_empty_operational_tiebreak,
+    build_incremental_comparison_payload,
+    build_simulated_incremental_proposal,
 )
 from apps.dashboard.operation_execution import (
     build_operation_execution_feature_context as _build_operation_execution_feature_context,
@@ -95,6 +100,7 @@ def get_incremental_portfolio_simulation(capital_amount: int | float = 600000) -
     def build():
         monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
         candidate_ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
+        simulator = IncrementalPortfolioSimulator()
         proposal = _build_top_candidate_purchase_plan(monthly_plan, candidate_ranking)
         if not proposal["purchase_plan"]:
             return {
@@ -183,80 +189,40 @@ def get_incremental_portfolio_simulation_comparison(
                 )
                 continue
 
-            simulation = simulator.simulate(
-                {
-                    "capital_amount": capital_amount,
-                    "purchase_plan": proposal["purchase_plan"],
-                }
-            )
-            operation_execution_feature = get_operation_execution_feature_context(
+            enriched = build_simulated_incremental_proposal(
+                base_payload={
+                    "proposal_key": proposal_key,
+                    "label": label,
+                    "selected_candidates": proposal["selected_candidates"],
+                    "unmapped_blocks": proposal["unmapped_blocks"],
+                },
+                capital_amount=capital_amount,
                 purchase_plan=proposal["purchase_plan"],
-                lookback_days=180,
-                symbol_limit=3,
-            )
-            enriched = _annotate_preferred_proposal_with_execution_quality(
-                _normalize_incremental_proposal_item(
-                    {
-                        "proposal_key": proposal_key,
-                        "label": label,
-                        "purchase_plan": proposal["purchase_plan"],
-                        "selected_candidates": proposal["selected_candidates"],
-                        "unmapped_blocks": proposal["unmapped_blocks"],
-                        "simulation": {
-                            "before": simulation["before"],
-                            "after": simulation["after"],
-                            "delta": simulation["delta"],
-                            "interpretation": simulation["interpretation"],
-                        },
-                        "comparison_score": _score_incremental_simulation(simulation),
-                    }
-                ),
-                operation_execution_feature=operation_execution_feature,
-            )
-            operation_execution_signal = _build_decision_operation_execution_signal(
-                operation_execution_feature=operation_execution_feature,
-                preferred_proposal=enriched,
-            )
-            enriched["operation_execution_signal"] = operation_execution_signal
-            enriched["execution_readiness"] = _build_manual_incremental_execution_readiness(
-                proposal=enriched,
-                operation_execution_signal=operation_execution_signal,
+                operation_execution_feature_getter=get_operation_execution_feature_context,
+                simulator=simulator,
             )
             proposals.append(enriched)
-
-        ranked = sorted(
-            proposals,
-            key=lambda item: float("-inf") if item["comparison_score"] is None else float(item["comparison_score"]),
-            reverse=True,
-        )
-        filter_metadata = _build_incremental_readiness_filter_metadata(
-            proposals=ranked,
-            readiness_filter=readiness_filter,
-        )
-        visible_ranked = filter_metadata["filtered_proposals"]
-        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
-        best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
-        operational_tiebreak = {"has_tiebreak": False, "used_operational_tiebreak": False, "headline": "", "summary": ""}
-        return {
-            "capital_amount": float(capital_amount),
-            "proposals": visible_ranked,
-            "best_proposal_key": best["proposal_key"] if best else None,
-            "best_label": best["label"] if best else None,
-            "best_execution_readiness": best_execution_readiness,
-            "operational_tiebreak": operational_tiebreak,
-            "active_readiness_filter": filter_metadata["active_readiness_filter"],
-            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
-            "available_readiness_filters": filter_metadata["available_readiness_filters"],
-            "visible_count": filter_metadata["visible_count"],
-            "total_count": filter_metadata["total_count"],
-            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor balance actual",
-                best_label=best["label"] if best else None,
-                best_execution_readiness=best_execution_readiness,
-                operational_tiebreak=operational_tiebreak,
+        payload = build_incremental_comparison_payload(
+            proposals=sorted(
+                proposals,
+                key=lambda item: float("-inf")
+                if item["comparison_score"] is None
+                else float(item["comparison_score"]),
+                reverse=True,
             ),
-        }
+            readiness_filter=readiness_filter,
+            lead_label="Mejor balance actual",
+            use_operational_tiebreak=False,
+        )
+        payload["capital_amount"] = float(capital_amount)
+        payload["operational_tiebreak"] = build_empty_operational_tiebreak()
+        payload["display_summary"] = _build_incremental_comparator_summary(
+            lead_label="Mejor balance actual",
+            best_label=payload["best_label"],
+            best_execution_readiness=payload["best_execution_readiness"],
+            operational_tiebreak=payload["operational_tiebreak"],
+        )
+        return payload
 
     return _get_cached_selector_result(cache_key, build)
 
@@ -276,34 +242,12 @@ def get_manual_incremental_portfolio_simulation_comparison(
     )
     normalized_plans = form_state["normalized_plans"]
     if not normalized_plans:
-        empty_readiness = _build_manual_incremental_execution_readiness_summary(None)
-        empty_tiebreak = {
-            "has_tiebreak": False,
-            "used_operational_tiebreak": False,
-            "headline": "",
-            "summary": "",
-        }
-        return {
-            "submitted": form_state["submitted"],
-            "form_state": form_state,
-            "proposals": [],
-            "best_proposal_key": None,
-            "best_label": None,
-            "best_execution_readiness": empty_readiness,
-            "operational_tiebreak": empty_tiebreak,
-            "active_readiness_filter": readiness_filter,
-            "active_readiness_filter_label": _format_incremental_readiness_filter_label(readiness_filter),
-            "available_readiness_filters": _build_incremental_readiness_filter_options(readiness_filter),
-            "visible_count": 0,
-            "total_count": 0,
-            "has_active_readiness_filter": readiness_filter != "all",
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor balance manual",
-                best_label=None,
-                best_execution_readiness=empty_readiness,
-                operational_tiebreak=empty_tiebreak,
-            ),
-        }
+        return build_empty_incremental_comparison_payload(
+            submitted=form_state["submitted"],
+            readiness_filter=readiness_filter,
+            lead_label="Mejor balance manual",
+            form_state=form_state,
+        )
 
     signature = hashlib.md5(
         json.dumps(
@@ -324,86 +268,30 @@ def get_manual_incremental_portfolio_simulation_comparison(
         simulator = IncrementalPortfolioSimulator()
         proposals = []
         for plan in normalized_plans:
-            simulation = simulator.simulate(
-                {
+            proposal = build_simulated_incremental_proposal(
+                base_payload={
+                    "proposal_key": plan["proposal_key"],
+                    "label": plan["label"],
                     "capital_amount": plan["capital_amount"],
-                    "purchase_plan": plan["purchase_plan"],
-                }
-            )
-            operation_execution_feature = get_operation_execution_feature_context(
+                    "input_warnings": plan["warnings"],
+                    "execution_order_label": plan.get("execution_order_label") or "",
+                    "execution_order_summary": plan.get("execution_order_summary") or "",
+                },
+                capital_amount=plan["capital_amount"],
                 purchase_plan=plan["purchase_plan"],
-                lookback_days=180,
-                symbol_limit=3,
-            )
-            proposal = _annotate_preferred_proposal_with_execution_quality(
-                _normalize_incremental_proposal_item(
-                    {
-                        "proposal_key": plan["proposal_key"],
-                        "label": plan["label"],
-                        "purchase_plan": plan["purchase_plan"],
-                        "capital_amount": plan["capital_amount"],
-                        "input_warnings": plan["warnings"],
-                        "execution_order_label": plan.get("execution_order_label") or "",
-                        "execution_order_summary": plan.get("execution_order_summary") or "",
-                        "simulation": {
-                            "before": simulation["before"],
-                            "after": simulation["after"],
-                            "delta": simulation["delta"],
-                            "interpretation": simulation["interpretation"],
-                            "warnings": simulation.get("warnings", []),
-                        },
-                        "comparison_score": _score_incremental_simulation(simulation),
-                    }
-                ),
-                operation_execution_feature=operation_execution_feature,
-            )
-            operation_execution_signal = _build_decision_operation_execution_signal(
-                operation_execution_feature=operation_execution_feature,
-                preferred_proposal=proposal,
-            )
-            proposal["operation_execution_signal"] = operation_execution_signal
-            proposal["execution_readiness"] = _build_manual_incremental_execution_readiness(
-                proposal=proposal,
-                operation_execution_signal=operation_execution_signal,
+                operation_execution_feature_getter=get_operation_execution_feature_context,
+                simulator=simulator,
             )
             proposals.append(proposal)
-
-        ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
-        filter_metadata = _build_incremental_readiness_filter_metadata(
-            proposals=ranked,
+        payload = build_incremental_comparison_payload(
+            proposals=proposals,
             readiness_filter=readiness_filter,
+            lead_label="Mejor balance manual",
+            submitted=form_state["submitted"],
+            form_state=form_state,
+            use_operational_tiebreak=True,
         )
-        visible_ranked = filter_metadata["filtered_proposals"]
-        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
-        if filter_metadata["has_active_readiness_filter"]:
-            operational_tiebreak = {
-                "has_tiebreak": False,
-                "used_operational_tiebreak": False,
-                "headline": "",
-                "summary": "",
-            }
-        best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
-        return {
-            "submitted": form_state["submitted"],
-            "form_state": form_state,
-            "proposals": visible_ranked,
-            "best_proposal_key": best["proposal_key"] if best else None,
-            "best_label": best["label"] if best else None,
-            "best_execution_readiness": best_execution_readiness,
-            "operational_tiebreak": operational_tiebreak,
-            "active_readiness_filter": filter_metadata["active_readiness_filter"],
-            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
-            "available_readiness_filters": filter_metadata["available_readiness_filters"],
-            "visible_count": filter_metadata["visible_count"],
-            "total_count": filter_metadata["total_count"],
-            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor balance manual",
-                best_label=best["label"] if best else None,
-                best_execution_readiness=best_execution_readiness,
-                operational_tiebreak=operational_tiebreak,
-            ),
-        }
+        return payload
 
     return _get_cached_selector_result(cache_key, build)
 
@@ -428,37 +316,15 @@ def get_candidate_incremental_portfolio_comparison(
         selected_block = comparable_blocks[0]["bucket"]
 
     if selected_block is None:
-        empty_readiness = _build_manual_incremental_execution_readiness_summary(None)
-        empty_tiebreak = {
-            "has_tiebreak": False,
-            "used_operational_tiebreak": False,
-            "headline": "",
-            "summary": "",
-        }
-        return {
-            "submitted": submitted,
-            "available_blocks": comparable_blocks,
-            "selected_block": None,
-            "selected_label": None,
-            "block_amount": None,
-            "proposals": [],
-            "best_proposal_key": None,
-            "best_label": None,
-            "best_execution_readiness": empty_readiness,
-            "operational_tiebreak": empty_tiebreak,
-            "active_readiness_filter": readiness_filter,
-            "active_readiness_filter_label": _format_incremental_readiness_filter_label(readiness_filter),
-            "available_readiness_filters": _build_incremental_readiness_filter_options(readiness_filter),
-            "visible_count": 0,
-            "total_count": 0,
-            "has_active_readiness_filter": readiness_filter != "all",
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor candidato actual",
-                best_label=None,
-                best_execution_readiness=empty_readiness,
-                operational_tiebreak=empty_tiebreak,
-            ),
-        }
+        return build_empty_incremental_comparison_payload(
+            submitted=submitted,
+            readiness_filter=readiness_filter,
+            lead_label="Mejor candidato actual",
+            available_blocks=comparable_blocks,
+            selected_block=None,
+            selected_label=None,
+            block_amount=None,
+        )
 
     selected_block_data = next(item for item in comparable_blocks if item["bucket"] == selected_block)
     signature = hashlib.md5(
@@ -483,87 +349,29 @@ def get_candidate_incremental_portfolio_comparison(
                     "amount": round(float(selected_block_data["suggested_amount"]), 2),
                 }
             ]
-            simulation = simulator.simulate(
-                {
-                    "capital_amount": float(selected_block_data["suggested_amount"]),
-                    "purchase_plan": purchase_plan,
-                }
-            )
-            operation_execution_feature = get_operation_execution_feature_context(
+            proposal = build_simulated_incremental_proposal(
+                base_payload={
+                    "proposal_key": candidate["asset"],
+                    "label": candidate["asset"],
+                    "candidate": candidate,
+                },
+                capital_amount=float(selected_block_data["suggested_amount"]),
                 purchase_plan=purchase_plan,
-                lookback_days=180,
-                symbol_limit=3,
-            )
-            proposal = _annotate_preferred_proposal_with_execution_quality(
-                _normalize_incremental_proposal_item(
-                    {
-                        "proposal_key": candidate["asset"],
-                        "label": candidate["asset"],
-                        "candidate": candidate,
-                        "purchase_plan": purchase_plan,
-                        "simulation": {
-                            "before": simulation["before"],
-                            "after": simulation["after"],
-                            "delta": simulation["delta"],
-                            "interpretation": simulation["interpretation"],
-                            "warnings": simulation.get("warnings", []),
-                        },
-                        "comparison_score": _score_incremental_simulation(simulation),
-                    }
-                ),
-                operation_execution_feature=operation_execution_feature,
-            )
-            operation_execution_signal = _build_decision_operation_execution_signal(
-                operation_execution_feature=operation_execution_feature,
-                preferred_proposal=proposal,
-            )
-            proposal["operation_execution_signal"] = operation_execution_signal
-            proposal["execution_readiness"] = _build_manual_incremental_execution_readiness(
-                proposal=proposal,
-                operation_execution_signal=operation_execution_signal,
+                operation_execution_feature_getter=get_operation_execution_feature_context,
+                simulator=simulator,
             )
             proposals.append(proposal)
-
-        ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
-        filter_metadata = _build_incremental_readiness_filter_metadata(
-            proposals=ranked,
+        return build_incremental_comparison_payload(
+            proposals=proposals,
             readiness_filter=readiness_filter,
+            lead_label="Mejor candidato actual",
+            selected_label=selected_block_data["label"],
+            submitted=submitted,
+            available_blocks=comparable_blocks,
+            selected_block=selected_block,
+            block_amount=selected_block_data["suggested_amount"],
+            use_operational_tiebreak=True,
         )
-        visible_ranked = filter_metadata["filtered_proposals"]
-        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
-        if filter_metadata["has_active_readiness_filter"]:
-            operational_tiebreak = {
-                "has_tiebreak": False,
-                "used_operational_tiebreak": False,
-                "headline": "",
-                "summary": "",
-            }
-        best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
-        return {
-            "submitted": submitted,
-            "available_blocks": comparable_blocks,
-            "selected_block": selected_block,
-            "selected_label": selected_block_data["label"],
-            "block_amount": selected_block_data["suggested_amount"],
-            "proposals": visible_ranked,
-            "best_proposal_key": best["proposal_key"] if best else None,
-            "best_label": best["label"] if best else None,
-            "best_execution_readiness": best_execution_readiness,
-            "operational_tiebreak": operational_tiebreak,
-            "active_readiness_filter": filter_metadata["active_readiness_filter"],
-            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
-            "available_readiness_filters": filter_metadata["available_readiness_filters"],
-            "visible_count": filter_metadata["visible_count"],
-            "total_count": filter_metadata["total_count"],
-            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor candidato actual",
-                best_label=best["label"] if best else None,
-                selected_label=selected_block_data["label"],
-                best_execution_readiness=best_execution_readiness,
-                operational_tiebreak=operational_tiebreak,
-            ),
-        }
 
     return _get_cached_selector_result(cache_key, build)
 
@@ -589,37 +397,15 @@ def get_candidate_split_incremental_portfolio_comparison(
         selected_block = split_blocks[0]["bucket"]
 
     if selected_block is None:
-        empty_readiness = _build_manual_incremental_execution_readiness_summary(None)
-        empty_tiebreak = {
-            "has_tiebreak": False,
-            "used_operational_tiebreak": False,
-            "headline": "",
-            "summary": "",
-        }
-        return {
-            "submitted": submitted,
-            "available_blocks": split_blocks,
-            "selected_block": None,
-            "selected_label": None,
-            "block_amount": None,
-            "proposals": [],
-            "best_proposal_key": None,
-            "best_label": None,
-            "best_execution_readiness": empty_readiness,
-            "operational_tiebreak": empty_tiebreak,
-            "active_readiness_filter": readiness_filter,
-            "active_readiness_filter_label": _format_incremental_readiness_filter_label(readiness_filter),
-            "available_readiness_filters": _build_incremental_readiness_filter_options(readiness_filter),
-            "visible_count": 0,
-            "total_count": 0,
-            "has_active_readiness_filter": readiness_filter != "all",
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor construccion actual",
-                best_label=None,
-                best_execution_readiness=empty_readiness,
-                operational_tiebreak=empty_tiebreak,
-            ),
-        }
+        return build_empty_incremental_comparison_payload(
+            submitted=submitted,
+            readiness_filter=readiness_filter,
+            lead_label="Mejor construccion actual",
+            available_blocks=split_blocks,
+            selected_block=None,
+            selected_label=None,
+            block_amount=None,
+        )
 
     selected_block_data = next(item for item in split_blocks if item["bucket"] == selected_block)
     signature = hashlib.md5(
@@ -662,87 +448,29 @@ def get_candidate_split_incremental_portfolio_comparison(
 
         proposals = []
         for variant in variants:
-            simulation = simulator.simulate(
-                {
-                    "capital_amount": total_amount,
-                    "purchase_plan": variant["purchase_plan"],
-                }
-            )
-            operation_execution_feature = get_operation_execution_feature_context(
+            proposal = build_simulated_incremental_proposal(
+                base_payload={
+                    "proposal_key": variant["proposal_key"],
+                    "label": variant["label"],
+                    "composition": variant["composition"],
+                },
+                capital_amount=total_amount,
                 purchase_plan=variant["purchase_plan"],
-                lookback_days=180,
-                symbol_limit=3,
-            )
-            proposal = _annotate_preferred_proposal_with_execution_quality(
-                _normalize_incremental_proposal_item(
-                    {
-                        "proposal_key": variant["proposal_key"],
-                        "label": variant["label"],
-                        "purchase_plan": variant["purchase_plan"],
-                        "composition": variant["composition"],
-                        "simulation": {
-                            "before": simulation["before"],
-                            "after": simulation["after"],
-                            "delta": simulation["delta"],
-                            "interpretation": simulation["interpretation"],
-                            "warnings": simulation.get("warnings", []),
-                        },
-                        "comparison_score": _score_incremental_simulation(simulation),
-                    }
-                ),
-                operation_execution_feature=operation_execution_feature,
-            )
-            operation_execution_signal = _build_decision_operation_execution_signal(
-                operation_execution_feature=operation_execution_feature,
-                preferred_proposal=proposal,
-            )
-            proposal["operation_execution_signal"] = operation_execution_signal
-            proposal["execution_readiness"] = _build_manual_incremental_execution_readiness(
-                proposal=proposal,
-                operation_execution_signal=operation_execution_signal,
+                operation_execution_feature_getter=get_operation_execution_feature_context,
+                simulator=simulator,
             )
             proposals.append(proposal)
-
-        ranked, best, operational_tiebreak = _resolve_manual_incremental_operational_tiebreak(proposals)
-        filter_metadata = _build_incremental_readiness_filter_metadata(
-            proposals=ranked,
+        return build_incremental_comparison_payload(
+            proposals=proposals,
             readiness_filter=readiness_filter,
+            lead_label="Mejor construccion actual",
+            selected_label=selected_block_data["label"],
+            submitted=submitted,
+            available_blocks=split_blocks,
+            selected_block=selected_block,
+            block_amount=total_amount,
+            use_operational_tiebreak=True,
         )
-        visible_ranked = filter_metadata["filtered_proposals"]
-        best = next((item for item in visible_ranked if item["comparison_score"] is not None), None)
-        if filter_metadata["has_active_readiness_filter"]:
-            operational_tiebreak = {
-                "has_tiebreak": False,
-                "used_operational_tiebreak": False,
-                "headline": "",
-                "summary": "",
-            }
-        best_execution_readiness = _build_manual_incremental_execution_readiness_summary(best)
-        return {
-            "submitted": submitted,
-            "available_blocks": split_blocks,
-            "selected_block": selected_block,
-            "selected_label": selected_block_data["label"],
-            "block_amount": total_amount,
-            "proposals": visible_ranked,
-            "best_proposal_key": best["proposal_key"] if best else None,
-            "best_label": best["label"] if best else None,
-            "best_execution_readiness": best_execution_readiness,
-            "operational_tiebreak": operational_tiebreak,
-            "active_readiness_filter": filter_metadata["active_readiness_filter"],
-            "active_readiness_filter_label": filter_metadata["active_readiness_filter_label"],
-            "available_readiness_filters": filter_metadata["available_readiness_filters"],
-            "visible_count": filter_metadata["visible_count"],
-            "total_count": filter_metadata["total_count"],
-            "has_active_readiness_filter": filter_metadata["has_active_readiness_filter"],
-            "display_summary": _build_incremental_comparator_summary(
-                lead_label="Mejor construccion actual",
-                best_label=best["label"] if best else None,
-                selected_label=selected_block_data["label"],
-                best_execution_readiness=best_execution_readiness,
-                operational_tiebreak=operational_tiebreak,
-            ),
-        }
 
     return _get_cached_selector_result(cache_key, build)
 
