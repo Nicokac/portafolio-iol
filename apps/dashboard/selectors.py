@@ -94,13 +94,15 @@ from apps.dashboard.incremental_comparators import (
     _score_incremental_simulation,
 )
 from apps.dashboard.incremental_future_purchases import (
+    get_incremental_manual_decision_summary,
+    get_incremental_proposal_tracking_baseline,
+)
+from apps.dashboard.incremental_reactivation_workflow import (
     _annotate_incremental_future_purchase_recommended_items,
     _build_incremental_future_purchase_shortlist,
     _build_incremental_future_purchase_source_guidance,
     _build_incremental_future_purchase_workflow_summary,
     _build_incremental_reactivation_vs_backlog_summary,
-    get_incremental_manual_decision_summary,
-    get_incremental_proposal_tracking_baseline,
     get_incremental_reactivation_summary,
 )
 from apps.dashboard.analytics_v2_builders import (

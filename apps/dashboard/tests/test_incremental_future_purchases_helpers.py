@@ -1,85 +1,56 @@
 from apps.dashboard.incremental_future_purchases import (
-    _annotate_incremental_future_purchase_recommended_items,
-    _build_incremental_future_purchase_workflow_summary,
-    _build_incremental_reactivation_vs_backlog_summary,
+    _build_incremental_backlog_conviction,
+    _build_incremental_backlog_followup,
+    _build_incremental_backlog_shortlist_item,
 )
 
 
-def test_annotate_incremental_future_purchase_recommended_items_marks_matching_rows():
-    shortlist, history = _annotate_incremental_future_purchase_recommended_items(
-        {
-            "items": [
-                {
-                    "proposal_label": "KO defensivo",
-                    "source": "backlog_nuevo",
-                    "snapshot_id": 10,
-                    "reapply_querystring": "a=1",
-                    "is_backlog_front": False,
-                    "is_tracking_baseline": False,
-                }
-            ]
-        },
-        {
-            "items": [
-                {
-                    "proposal_label": "KO defensivo",
-                    "future_purchase_context": {"source": "backlog_nuevo"},
-                    "snapshot_id": 10,
-                    "reapply_querystring": "a=1",
-                    "is_backlog_front": False,
-                    "is_tracking_baseline": False,
-                }
-            ]
-        },
-        {
-            "source": "backlog_nuevo",
-            "proposal_label": "KO defensivo",
-            "next_action": "Revisar primero KO defensivo.",
-            "has_guidance": True,
+def test_build_incremental_backlog_shortlist_item_enriches_edges_and_followup():
+    result = _build_incremental_backlog_shortlist_item(
+        index=1,
+        item={
+            "priority": "high",
+            "priority_label": "Alta",
+            "next_action": "Revisar hoy",
+            "score_difference": 2.4,
+            "improves_profitability": True,
+            "protects_fragility": True,
+            "tactical_clean": True,
+            "snapshot": {
+                "id": 7,
+                "proposal_label": "KO defensivo",
+                "selected_context": "Defensivos USD",
+                "simulation_delta": {
+                    "expected_return_change": 0.5,
+                    "fragility_change": -1.2,
+                    "scenario_loss_change": 0.3,
+                },
+                "reapply_querystring": "a=1",
+                "is_backlog_front": True,
+                "is_tracking_baseline": False,
+            },
         },
     )
 
-    assert shortlist["has_recommended_item"] is True
-    assert history["has_future_purchase_recommended_item"] is True
-    assert shortlist["items"][0]["future_purchase_recommendation_actions"]["can_promote_baseline"] is True
+    assert result["economic_edge"] is True
+    assert result["tactical_edge"] is True
+    assert result["conviction"]["level"] == "high"
+    assert result["followup"]["status"] == "review_now"
 
 
-def test_build_incremental_future_purchase_workflow_summary_prioritizes_promote_baseline():
-    summary = _build_incremental_future_purchase_workflow_summary(
-        {
-            "items": [
-                {
-                    "proposal_label": "MCD calidad",
-                    "is_future_purchase_recommended": True,
-                    "future_purchase_recommendation_actions": {
-                        "can_promote_baseline": True,
-                        "can_promote_front": False,
-                        "can_reapply": False,
-                    },
-                }
-            ]
-        },
-        {"proposal_label": "MCD calidad"},
+def test_build_incremental_backlog_conviction_falls_back_to_medium():
+    result = _build_incremental_backlog_conviction(
+        {"priority": "medium"},
+        economic_edge=True,
+        tactical_edge=False,
     )
 
-    assert summary["status"] == "ready_to_promote"
-    assert "MCD calidad" in summary["headline"]
+    assert result["level"] == "medium"
+    assert result["label"] == "Convicción media"
 
 
-def test_build_incremental_reactivation_vs_backlog_summary_prefers_reactivated_when_effective():
-    summary = _build_incremental_reactivation_vs_backlog_summary(
-        {
-            "count": 3,
-            "accepted_count": 2,
-            "active_count": 1,
-            "acceptance_rate": 66.7,
-        },
-        {
-            "counts": {"high": 1, "medium": 0},
-            "top_item": {"snapshot": {"proposal_label": "PAMP tactica"}},
-            "has_priorities": True,
-        },
-    )
+def test_build_incremental_backlog_followup_uses_hold_for_low_conviction():
+    result = _build_incremental_backlog_followup(conviction_level="low")
 
-    assert summary["preferred_source"] == "reactivadas"
-    assert summary["label"] == "Priorizar reactivadas"
+    assert result["status"] == "hold"
+    assert result["label"] == "En espera"
