@@ -44,29 +44,31 @@ from apps.core.services.analytics_v2 import (
     StressFragilityService,
 )
 from apps.dashboard.decision_engine import (
-    _annotate_preferred_proposal_with_execution_quality,
-    _build_decision_action_suggestions,
     _build_decision_engine_query_stamp,
-    _build_decision_execution_gate,
     _build_decision_expected_impact,
     _build_decision_explanation,
     _build_decision_macro_state,
-    _build_decision_market_history_signal,
-    _build_decision_operation_execution_signal,
-    _build_decision_parking_signal,
     _build_decision_portfolio_state,
-    _build_decision_preferred_proposal,
-    _build_decision_recommendation,
     _build_decision_recommendation_context,
     _build_decision_strategy_bias,
-    _build_decision_suggested_assets,
     _build_decision_tracking_payload,
     _build_manual_incremental_execution_readiness,
     _build_manual_incremental_execution_readiness_summary,
-    _coerce_optional_float,
     _compute_decision_confidence,
     _compute_decision_score,
     _manual_execution_readiness_rank,
+)
+from apps.dashboard.decision_engine_utils import _coerce_optional_float
+from apps.dashboard.decision_execution import (
+    _annotate_preferred_proposal_with_execution_quality,
+    _build_decision_action_suggestions,
+    _build_decision_execution_gate,
+    _build_decision_market_history_signal,
+    _build_decision_operation_execution_signal,
+    _build_decision_parking_signal,
+    _build_decision_preferred_proposal,
+    _build_decision_recommendation,
+    _build_decision_suggested_assets,
 )
 from apps.dashboard.incremental_comparators import (
     _build_comparable_candidate_blocks,

@@ -1,7 +1,9 @@
 from apps.dashboard.decision_engine import (
+    _build_manual_incremental_execution_readiness_summary,
+)
+from apps.dashboard.decision_execution import (
     _build_decision_action_suggestions,
     _build_decision_operation_execution_signal,
-    _build_manual_incremental_execution_readiness_summary,
 )
 
 

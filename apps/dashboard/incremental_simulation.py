@@ -6,10 +6,12 @@ from apps.core.services.candidate_asset_ranking_service import CandidateAssetRan
 from apps.core.services.incremental_portfolio_simulator import IncrementalPortfolioSimulator
 from apps.core.services.monthly_allocation_service import MonthlyAllocationService
 from apps.dashboard.decision_engine import (
-    _annotate_preferred_proposal_with_execution_quality,
-    _build_decision_operation_execution_signal,
     _build_manual_incremental_execution_readiness,
     _build_manual_incremental_execution_readiness_summary,
+)
+from apps.dashboard.decision_execution import (
+    _annotate_preferred_proposal_with_execution_quality,
+    _build_decision_operation_execution_signal,
 )
 from apps.dashboard.incremental_comparators import (
     _build_comparable_candidate_blocks,

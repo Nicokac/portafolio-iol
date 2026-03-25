@@ -4,7 +4,7 @@ from typing import Dict
 from urllib.parse import urlencode
 
 from apps.core.services.incremental_proposal_contracts import build_incremental_purchase_plan_summary
-from apps.dashboard.decision_engine import _coerce_optional_float
+from apps.dashboard.decision_engine_utils import _coerce_optional_float
 
 
 def _build_incremental_snapshot_comparison(saved_item: Dict, current_item: Dict) -> Dict:
