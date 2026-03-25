@@ -9,9 +9,9 @@ from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from apps.dashboard.selector_cache import _get_data_stamp
+from apps.dashboard.incremental_planeacion import _build_portfolio_scope_summary
 from apps.dashboard.selectors import (
-    _get_data_stamp,
-    _build_portfolio_scope_summary,
     get_analytics_mensual,
     get_analytics_v2_dashboard_summary,
     get_concentracion_pais,
@@ -216,7 +216,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -301,7 +301,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -339,7 +339,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
@@ -378,7 +378,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
@@ -433,7 +433,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
@@ -489,7 +489,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -537,7 +537,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -577,7 +577,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -627,7 +627,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -673,7 +673,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -738,7 +738,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -808,7 +808,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={"headline": "ok"}),
             patch(
                 "apps.dashboard.selectors.get_analytics_v2_dashboard_summary",
@@ -1027,7 +1027,7 @@ class TestDashboardSelectors(TestCase):
             pk = 1
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 20}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 20}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -1080,7 +1080,7 @@ class TestDashboardSelectors(TestCase):
         cache.clear()
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -1129,7 +1129,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -1186,7 +1186,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
@@ -1278,7 +1278,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={}),
             patch("apps.dashboard.selectors.get_analytics_v2_dashboard_summary", return_value={}),
             patch(
@@ -1518,7 +1518,7 @@ class TestDashboardSelectors(TestCase):
         )
 
         with (
-            patch("apps.dashboard.selectors._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
+            patch("apps.dashboard.incremental_planeacion._build_portfolio_scope_summary", return_value={"cash_ratio_total": 0.35, "invested_ratio_total": 0.60}),
             patch("apps.dashboard.selectors.get_macro_local_context", return_value={"headline": "ok"}),
             patch(
                 "apps.dashboard.selectors.get_analytics_v2_dashboard_summary",
@@ -5448,7 +5448,7 @@ class TestDashboardSelectors(TestCase):
 
         with (
             patch(
-                "apps.dashboard.selectors._build_portfolio_scope_summary",
+                "apps.dashboard.incremental_planeacion._build_portfolio_scope_summary",
                 return_value={"portfolio_total_broker": 1500000.0, "cash_available_broker": 250000.0},
             ) as portfolio_scope,
             patch(

@@ -4,6 +4,8 @@ import pytest
 
 from apps.dashboard.selectors import get_decision_engine_summary, get_planeacion_incremental_context
 
+_MOD = "apps.dashboard.incremental_planeacion"
+
 
 @pytest.mark.django_db
 class TestDecisionEngineSummary:
@@ -14,7 +16,7 @@ class TestDecisionEngineSummary:
 
         with (
             patch(
-                "apps.dashboard.selectors._build_portfolio_scope_summary",
+                f"{_MOD}._build_portfolio_scope_summary",
                 return_value={
                     "portfolio_total_broker": 15863589.0,
                     "invested_portfolio": 13330704.0,
@@ -25,6 +27,7 @@ class TestDecisionEngineSummary:
                     "fci_ratio_total": 0.1597,
                 },
             ),
+            # lazy-imported via selectors → se parchea en selectors
             patch(
                 "apps.dashboard.selectors.get_macro_local_context",
                 return_value={
@@ -42,7 +45,7 @@ class TestDecisionEngineSummary:
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_monthly_allocation_plan",
+                f"{_MOD}.get_monthly_allocation_plan",
                 return_value={
                     "recommended_blocks": [
                         {
@@ -54,7 +57,7 @@ class TestDecisionEngineSummary:
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_candidate_asset_ranking",
+                f"{_MOD}.get_candidate_asset_ranking",
                 return_value={
                     "candidate_assets": [
                         {"asset": "KO", "block_label": "Defensivos USD", "score": 9.4, "main_reason": "defensive_sector_match"},
@@ -65,7 +68,7 @@ class TestDecisionEngineSummary:
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal",
+                f"{_MOD}.get_preferred_incremental_portfolio_proposal",
                 return_value={
                     "preferred": {
                         "proposal_key": "top_candidate_per_block",
@@ -87,7 +90,7 @@ class TestDecisionEngineSummary:
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_incremental_portfolio_simulation",
+                f"{_MOD}.get_incremental_portfolio_simulation",
                 return_value={
                     "delta": {
                         "expected_return_change": 0.5,
@@ -99,7 +102,7 @@ class TestDecisionEngineSummary:
                 },
             ),
             patch(
-                "apps.dashboard.selectors.get_operation_execution_feature_context",
+                f"{_MOD}.get_operation_execution_feature_context",
                 return_value={
                     "tracked_symbols": ["KO"],
                     "matched_symbols_count": 1,
@@ -148,7 +151,7 @@ class TestDecisionEngineSummary:
 
         with (
             patch(
-                "apps.dashboard.selectors._build_portfolio_scope_summary",
+                f"{_MOD}._build_portfolio_scope_summary",
                 return_value={
                     "portfolio_total_broker": 15863589.0,
                     "invested_portfolio": 15000000.0,
@@ -164,10 +167,10 @@ class TestDecisionEngineSummary:
                 "apps.dashboard.selectors.get_analytics_v2_dashboard_summary",
                 return_value={"stress_testing": {}, "expected_return": {}, "risk_contribution": {}},
             ),
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value=None),
+            patch(f"{_MOD}.get_monthly_allocation_plan", return_value={"recommended_blocks": []}),
+            patch(f"{_MOD}.get_candidate_asset_ranking", return_value={"candidate_assets": []}),
+            patch(f"{_MOD}.get_preferred_incremental_portfolio_proposal", return_value={"preferred": None}),
+            patch(f"{_MOD}.get_incremental_portfolio_simulation", return_value=None),
         ):
             detail = get_decision_engine_summary(DummyUser(), capital_amount=600000)
 
@@ -196,20 +199,20 @@ class TestDecisionEngineSummary:
             is_authenticated = True
 
         with (
-            patch("apps.dashboard.selectors.get_monthly_allocation_plan", return_value={"capital_total": 600000}),
-            patch("apps.dashboard.selectors.get_candidate_asset_ranking", return_value={"candidate_assets_count": 2}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation", return_value={"interpretation": "ok"}),
-            patch("apps.dashboard.selectors.get_incremental_portfolio_simulation_comparison", return_value={"best_label": "Top candidato por bloque"}),
-            patch("apps.dashboard.selectors.get_candidate_incremental_portfolio_comparison", return_value={"selected_block": "defensive"}),
-            patch("apps.dashboard.selectors.get_candidate_split_incremental_portfolio_comparison", return_value={"selected_block": "defensive"}),
-            patch("apps.dashboard.selectors.get_manual_incremental_portfolio_simulation_comparison", return_value={"submitted": False}),
-            patch("apps.dashboard.selectors.get_preferred_incremental_portfolio_proposal", return_value={"preferred": {"proposal_label": "Split KO + MCD"}}),
-            patch("apps.dashboard.selectors.get_decision_engine_summary", return_value={"score": 78, "confidence": "Alta"}) as decision_engine,
-            patch("apps.dashboard.selectors.get_incremental_proposal_history", return_value={"count": 1, "active_filter": "pending"}),
-            patch("apps.dashboard.selectors.get_incremental_proposal_tracking_baseline", return_value={"has_baseline": True}),
-            patch("apps.dashboard.selectors.get_incremental_backlog_prioritization", return_value={"has_priorities": True, "count": 2}),
-            patch("apps.dashboard.selectors.get_incremental_manual_decision_summary", return_value={"has_decision": True}),
-            patch("apps.dashboard.selectors.get_incremental_decision_executive_summary", return_value={"status": "review_backlog"}),
+            patch(f"{_MOD}.get_monthly_allocation_plan", return_value={"capital_total": 600000}),
+            patch(f"{_MOD}.get_candidate_asset_ranking", return_value={"candidate_assets_count": 2}),
+            patch(f"{_MOD}.get_incremental_portfolio_simulation", return_value={"interpretation": "ok"}),
+            patch(f"{_MOD}.get_incremental_portfolio_simulation_comparison", return_value={"best_label": "Top candidato por bloque"}),
+            patch(f"{_MOD}.get_candidate_incremental_portfolio_comparison", return_value={"selected_block": "defensive"}),
+            patch(f"{_MOD}.get_candidate_split_incremental_portfolio_comparison", return_value={"selected_block": "defensive"}),
+            patch(f"{_MOD}.get_manual_incremental_portfolio_simulation_comparison", return_value={"submitted": False}),
+            patch(f"{_MOD}.get_preferred_incremental_portfolio_proposal", return_value={"preferred": {"proposal_label": "Split KO + MCD"}}),
+            patch(f"{_MOD}.get_decision_engine_summary", return_value={"score": 78, "confidence": "Alta"}) as decision_engine,
+            patch(f"{_MOD}.get_incremental_proposal_history", return_value={"count": 1, "active_filter": "pending"}),
+            patch(f"{_MOD}.get_incremental_proposal_tracking_baseline", return_value={"has_baseline": True}),
+            patch(f"{_MOD}.get_incremental_backlog_prioritization", return_value={"has_priorities": True, "count": 2}),
+            patch(f"{_MOD}.get_incremental_manual_decision_summary", return_value={"has_decision": True}),
+            patch(f"{_MOD}.get_incremental_decision_executive_summary", return_value={"status": "review_backlog"}),
         ):
             detail = get_planeacion_incremental_context(
                 {"decision_status_filter": "pending"},
