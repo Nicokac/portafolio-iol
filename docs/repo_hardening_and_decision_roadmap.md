@@ -24,7 +24,7 @@ Se verificaron directamente estos puntos del repositorio:
 - `apps/core/services/iol_api_client.py` tiene 443 lineas, no ~19k
 - `apps/api/views.py` tiene 1057 lineas
 - `apps/dashboard/views.py` tiene 750 lineas
-- `apps/dashboard/selectors.py` tiene 5848 lineas
+- `apps/dashboard/selectors.py` tenia 5848 lineas (D3 implementado 2026-03-25: reducido a ~569 lineas como fachada, ver D-007)
 - `PortfolioParameters` no tiene `CheckConstraint` para suma de targets ni rangos
 - `Alert` no tiene indices orientados a las consultas operativas principales
 - `config/settings/base.py` define SQLite por default
@@ -277,22 +277,23 @@ Corresponde a mejoras de ergonomia, escalabilidad futura o refactors de convenie
 ### Modulo D3 - Particion de `apps/dashboard/selectors.py`
 
 - Prioridad: `P1`
-- Problema: es hoy el archivo mas concentrado del flujo de lectura del dashboard
-- Evidencia:
+- Estado: ✅ Implementado (2026-03-25) — ver D-007 en DECISIONS.md
+- Problema: era el archivo mas concentrado del flujo de lectura del dashboard
+- Evidencia original:
   - 5848 lineas verificadas
-- Cambio esperado:
-  - separar por dominios:
-    - resumen
-    - planeacion
-    - incremental
-    - analytics v2
-    - governance/historial
-- Impacto esperado:
-  - mejora mantenibilidad y localizacion de cambios
-- Riesgo:
-  - medio
-- Criterio de aceptacion:
-  - sin cambiar contratos publicos al principio
+- Solucion aplicada:
+  - extraido en 5 zonas funcionales:
+    - `selector_cache.py`, `portfolio_analytics.py`, `portfolio_distribution.py`, `portfolio_risk.py`
+    - `portfolio_enrichment.py`, `historical_rebalance.py`, `market_signals.py`
+    - `incremental_simulation.py`
+    - `incremental_backlog.py`
+    - `incremental_planeacion.py`
+  - `selectors.py` quedo como fachada delgada (~569 lineas) que re-exporta simbolos publicos
+- Impacto logrado:
+  - mejora de mantenibilidad y localizacion de cambios
+  - tests actualizados al modulo real donde vive cada funcion
+- Criterio de aceptacion cumplido:
+  - contratos publicos sin cambios para vistas y tests existentes
   - suite de tests de selector estable
 
 ## Track E - UX de alto retorno
@@ -334,7 +335,7 @@ Corresponde a mejoras de ergonomia, escalabilidad futura o refactors de convenie
 7. Modulo A4 - Endurecimiento de configuracion de entornos
 8. Modulo D1 - Particion de `apps/api/views.py`
 9. Modulo D2 - Particion de `apps/dashboard/views.py`
-10. Modulo D3 - Particion de `apps/dashboard/selectors.py`
+10. ~~Modulo D3 - Particion de `apps/dashboard/selectors.py`~~ ✅ (2026-03-25)
 11. Modulo B3 - Cache selectivo de analytics costosos
 12. Modulo E1 - Interactividad progresiva en `Planeacion`
 13. Modulo E2 - Persistencia de estado de navegacion

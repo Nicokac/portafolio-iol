@@ -262,3 +262,36 @@ Efecto actual:
 - Los comparadores incremental general, por candidato, por split y manual ahora aceptan filtro por readiness operativa (`all`, `ready`, `review_execution`, `monitor`) sobre el set visible, sin alterar el score base ni la heuristica de ranking.
 - Los formularios de comparadores incrementales ahora preservan el estado util de los otros comparadores mediante hidden inputs y reset URLs especificos para evitar perder contexto de trabajo dentro de `Planeacion`.
 - `Planeacion` ahora resume arriba del bloque de exploracion que comparadores siguen activos, que bloque se esta evaluando y que filtros de readiness siguen aplicados para reducir friccion de navegacion.
+
+---
+
+## D-007 — Descomposicion modular de `apps/dashboard/selectors.py`
+
+**Fecha:** 2026-03-25
+**Estado:** ✅ Implementado
+
+### Por que se refactorizo
+
+`selectors.py` habia crecido hasta ~1600 lineas acumulando funciones de dominio muy distintos: portfolio, distribucion, riesgo, analitica mensual, incrementales de simulacion, backlog, seguimiento y orchestradores de decision. La falta de cohesion interna dificultaba el testing unitario, obligaba a mocks de namespaces globales y acoplaba indirectamente todos los modulos entre si.
+
+### Zonas extraidas
+
+Extraer `selectors.py` en modulos funcionales acotados, en cinco zonas:
+
+| Zona | Modulo destino | Contenido |
+| ---- | -------------- | --------- |
+| 1 | `selector_cache.py`, `portfolio_analytics.py`, `portfolio_distribution.py`, `portfolio_risk.py` | cache, analytics mensual, distribuciones y riesgo |
+| 2 | `portfolio_enrichment.py`, `historical_rebalance.py`, `market_signals.py` | enriquecimiento, rebalanceo historico y senales de mercado |
+| 3 | `incremental_simulation.py` | simulacion, comparadores, propuesta preferida, plan mensual, ejecucion |
+| 4 | `incremental_backlog.py` | backlog operativo, decision executive, followup, adoption checklist |
+| 5 | `incremental_planeacion.py` | `get_decision_engine_summary` y `get_planeacion_incremental_context` |
+
+`selectors.py` quedo como fachada delgada (~570 lineas) que re-exporta los simbolos publicos para compatibilidad con vistas y tests existentes.
+
+Las funciones de Zona 5 que dependian de funciones todavia en `selectors.py` (`get_macro_local_context`, `get_analytics_v2_dashboard_summary`, `get_portfolio_parking_feature_context`, `get_market_snapshot_history_feature_context`) usan lazy imports dentro del cuerpo de la funcion para evitar importaciones circulares.
+
+### Riesgo de lazy imports
+
+Los lazy imports son un patron aceptado en Django para ciclos de importacion. La penalizacion en performance es nula porque Python cachea modulos en `sys.modules` tras la primera carga.
+
+Tests en `test_selectors.py` que antes parchaban `apps.dashboard.selectors.X` fueron actualizados al modulo real donde cada funcion vive, siguiendo la regla de mock "patch-where-it's-used".

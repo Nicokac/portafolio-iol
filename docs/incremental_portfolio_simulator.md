@@ -698,7 +698,7 @@ Deuda prioritaria:
 
 No abordado en este modulo:
 
-- refactor mayor de `selectors.py`
+- ~~refactor mayor de `selectors.py`~~ — resuelto en D-007 (2026-03-25): extraido en 5 modulos funcionales, `selectors.py` quedo como fachada delgada (~569 lineas)
 - migracion de workflow manual a una vista separada
 - eliminacion de selectors legacy todavia reutilizables
 
