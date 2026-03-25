@@ -198,6 +198,11 @@ from apps.dashboard.historical_rebalance import (
     get_objetivos_rebalanceo as _historical_get_objetivos_rebalanceo,
     mapear_sector_a_categoria as _historical_mapear_sector_a_categoria,
 )
+from apps.dashboard.market_signals import (
+    build_market_snapshot_feature_context,
+    build_market_snapshot_history_feature_context,
+    build_portfolio_parking_feature_context,
+)
 
 
 SELECTOR_CACHE_TTL_SECONDS = 60
@@ -240,7 +245,7 @@ def _get_cached_selector_result(cache_key_prefix: str, builder):
 
 
 def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
-    """Obtiene los datos mÃ¡s recientes del portafolio."""
+    """Obtiene los datos mÃƒÆ’Ã‚Â¡s recientes del portafolio."""
     latest_date = ActivoPortafolioSnapshot.objects.aggregate(
         latest=Max('fecha_extraccion')
     )['latest']
@@ -252,7 +257,7 @@ def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
 
 
 def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
-    """Obtiene los datos mÃ¡s recientes del resumen de cuenta."""
+    """Obtiene los datos mÃƒÆ’Ã‚Â¡s recientes del resumen de cuenta."""
     latest_date = ResumenCuentaSnapshot.objects.aggregate(
         latest=Max('fecha_extraccion')
     )['latest']
@@ -269,255 +274,44 @@ def get_market_snapshot_feature_context(*, top_limit: int = 5) -> Dict:
     summary = payload.get("summary") or IOLHistoricalPriceService.summarize_market_snapshot_rows(cached_rows)
     refreshed_at_label = IOLHistoricalPriceService._format_snapshot_datetime(payload.get("refreshed_at"))
 
-    relevant_positions = get_portafolio_enriquecido_actual()["inversion"][: max(int(top_limit or 0), 1)]
-    snapshot_rows_by_key = {
-        (
-            str(row.get("simbolo") or "").strip().upper(),
-            str(row.get("mercado") or "").strip().upper(),
-        ): row
-        for row in cached_rows
-    }
-
-    top_rows = []
-    for item in relevant_positions:
-        activo = item["activo"]
-        snapshot_row = snapshot_rows_by_key.get(
-            (
-                str(activo.simbolo or "").strip().upper(),
-                str(activo.mercado or "").strip().upper(),
-            )
-        )
-        snapshot_status = str((snapshot_row or {}).get("snapshot_status") or "missing")
-        top_rows.append(
-            {
-                "simbolo": activo.simbolo,
-                "mercado": activo.mercado,
-                "descripcion": (snapshot_row or {}).get("descripcion") or activo.descripcion,
-                "peso_porcentual": item.get("peso_porcentual") or 0,
-                "valorizado": activo.valorizado,
-                "snapshot_status": snapshot_status,
-                "snapshot_status_label": {
-                    "available": "Disponible",
-                    "unsupported": "No elegible",
-                    "missing": "Sin snapshot",
-                }.get(snapshot_status, "Sin snapshot"),
-                "snapshot_source_key": (snapshot_row or {}).get("snapshot_source_key") or "",
-                "snapshot_source_label": (snapshot_row or {}).get("snapshot_source_label") or "",
-                "snapshot_reason": (snapshot_row or {}).get("snapshot_reason") or "",
-                "fecha_hora_label": (snapshot_row or {}).get("fecha_hora_label") or "",
-                "ultimo_precio": (snapshot_row or {}).get("ultimo_precio"),
-                "variacion": (snapshot_row or {}).get("variacion"),
-                "cantidad_operaciones": int((snapshot_row or {}).get("cantidad_operaciones") or 0),
-                "puntas_count": int((snapshot_row or {}).get("puntas_count") or 0),
-                "spread_abs": (snapshot_row or {}).get("spread_abs"),
-                "spread_pct": (snapshot_row or {}).get("spread_pct"),
-                "plazo": (snapshot_row or {}).get("plazo") or "",
-                "has_order_book": int((snapshot_row or {}).get("puntas_count") or 0) > 0,
-            }
-        )
-
-    top_available_count = sum(1 for row in top_rows if row["snapshot_status"] == "available")
-    top_missing_count = sum(1 for row in top_rows if row["snapshot_status"] == "missing")
-    wide_spread_rows = [
-        row for row in top_rows
-        if row["snapshot_status"] == "available"
-        and row.get("spread_pct") is not None
-        and Decimal(str(row["spread_pct"])) >= Decimal("1.0")
-    ]
-
-    alerts = []
-    if not payload:
-        alerts.append(
-            {
-                "tone": "secondary",
-                "title": "Snapshot puntual pendiente",
-                "message": "TodavÃ­a no hay market snapshot IOL cacheado para enriquecer la lectura tÃ¡ctica de estas pantallas.",
-            }
-        )
-    else:
-        if top_missing_count > 0:
-            alerts.append(
-                {
-                    "tone": "warning",
-                    "title": "Cobertura parcial en posiciones relevantes",
-                    "message": f"{top_missing_count} posicion(es) relevantes siguen sin snapshot puntual disponible.",
-                }
-            )
-        if wide_spread_rows:
-            alerts.append(
-                {
-                    "tone": "warning",
-                    "title": "Spreads anchos en posiciones relevantes",
-                    "message": ", ".join(row["simbolo"] for row in wide_spread_rows[:3]),
-                }
-            )
-        if int(summary.get("fallback_count") or 0) > 0:
-            alerts.append(
-                {
-                    "tone": "info",
-                    "title": "Parte de la cobertura viene por fallback",
-                    "message": f"{summary['fallback_count']} simbolo(s) usan Cotizacion simple en lugar de CotizacionDetalle.",
-                }
-            )
-        if int(summary.get("order_book_count") or 0) == 0 and int(summary.get("available_count") or 0) > 0:
-            alerts.append(
-                {
-                    "tone": "secondary",
-                    "title": "Sin libro visible",
-                    "message": "Hay precios puntuales disponibles, pero sin puntas visibles para lectura de spread.",
-                }
-            )
-
-    return {
-        "has_cached_snapshot": bool(payload),
-        "refreshed_at_label": refreshed_at_label,
-        "summary": summary,
-        "top_rows": top_rows,
-        "top_available_count": top_available_count,
-        "top_missing_count": top_missing_count,
-        "wide_spread_count": len(wide_spread_rows),
-        "alerts": alerts[:3],
-    }
-
+    return build_market_snapshot_feature_context(
+        payload={
+            **payload,
+            "_has_cached_snapshot": bool(payload),
+            "summary": summary,
+            "refreshed_at_label": refreshed_at_label,
+        },
+        relevant_positions=get_portafolio_enriquecido_actual()["inversion"],
+        top_limit=top_limit,
+    )
 
 def get_market_snapshot_history_feature_context(*, top_limit: int = 5, lookback_days: int = 7) -> Dict:
     def build():
         service = IOLHistoricalPriceService()
         history_rows = service.get_recent_market_history_rows(lookback_days=lookback_days)
         summary = service.summarize_recent_market_history_rows(history_rows)
-
-        current_portafolio = get_portafolio_enriquecido_actual()
-        position_rows = current_portafolio["inversion"] + current_portafolio["fci_cash_management"]
-        metadata_by_key = {
-            (
-                str(item["activo"].simbolo or "").strip().upper(),
-                str(item["activo"].mercado or "").strip().upper(),
-            ): {
-                "valorizado": item["activo"].valorizado,
-                "peso_porcentual": item.get("peso_porcentual") or 0,
-                "bloque_estrategico": item.get("bloque_estrategico") or "N/A",
-            }
-            for item in position_rows
-        }
-
-        enriched_rows = []
-        weak_blocks = {}
-        for row in history_rows:
-            metadata = metadata_by_key.get(
-                (
-                    str(row.get("simbolo") or "").strip().upper(),
-                    str(row.get("mercado") or "").strip().upper(),
-                ),
-                {},
-            )
-            enriched_row = {
-                **row,
-                "valorizado": metadata.get("valorizado") or Decimal("0"),
-                "peso_porcentual": metadata.get("peso_porcentual") or 0,
-                "bloque_estrategico": metadata.get("bloque_estrategico") or "N/A",
-            }
-            enriched_rows.append(enriched_row)
-            if enriched_row["quality_status"] == "weak" and enriched_row["bloque_estrategico"] != "N/A":
-                weak_blocks[enriched_row["bloque_estrategico"]] = (
-                    weak_blocks.get(enriched_row["bloque_estrategico"], Decimal("0")) + enriched_row["valorizado"]
-                )
-
-        severity_order = {"weak": 0, "watch": 1, "insufficient": 2, "strong": 3}
-        top_rows = sorted(
-            enriched_rows,
-            key=lambda item: (
-                severity_order.get(str(item.get("quality_status") or ""), 9),
-                -(item.get("valorizado") or Decimal("0")),
-                str(item.get("simbolo") or ""),
-            ),
-        )[: max(int(top_limit or 0), 1)]
-        weak_block_rows = [
-            {"label": label, "value_total": value_total}
-            for label, value_total in sorted(weak_blocks.items(), key=lambda item: item[1], reverse=True)
-        ]
-
-        alerts = []
-        if int(summary.get("weak_count") or 0) > 0:
-            alerts.append(
-                {
-                    "tone": "warning",
-                    "title": "Liquidez reciente debil en posiciones actuales",
-                    "message": f"{summary['weak_count']} simbolo(s) muestran spread o actividad reciente debil para reforzar compras.",
-                }
-            )
-        if int(summary.get("insufficient_count") or 0) > 0:
-            alerts.append(
-                {
-                    "tone": "secondary",
-                    "title": "Historial puntual todavia corto",
-                    "message": f"{summary['insufficient_count']} simbolo(s) todavia no acumulan observaciones suficientes para lectura reciente.",
-                }
-            )
-
-        return {
-            "lookback_days": lookback_days,
-            "summary": summary,
-            "rows": enriched_rows,
-            "top_rows": top_rows,
-            "weak_blocks": weak_block_rows,
-            "alerts": alerts[:3],
-            "has_history": bool(enriched_rows),
-        }
+        return build_market_snapshot_history_feature_context(
+            history_rows=history_rows,
+            summary=summary,
+            current_portafolio=get_portafolio_enriquecido_actual(),
+            top_limit=top_limit,
+            lookback_days=lookback_days,
+        )
 
     return _get_cached_selector_result(f"market_snapshot_history_feature:{int(lookback_days)}", build)
 
-
 def get_portfolio_parking_feature_context(*, top_limit: int = 5) -> Dict:
     def build():
-        portafolio = get_portafolio_enriquecido_actual()
-        relevant_items = portafolio["inversion"] + portafolio["fci_cash_management"]
-        rows = []
-        parking_blocks: Dict[str, Decimal] = {}
-        for item in relevant_items:
-            row = build_portafolio_row(item["activo"])
-            row["bloque_estrategico"] = item.get("bloque_estrategico") or "N/A"
-            rows.append(row)
-            if row["has_parking"]:
-                block_label = str(item.get("bloque_estrategico") or "N/A")
-                parking_blocks[block_label] = parking_blocks.get(block_label, Decimal("0")) + row["valorizado"]
-        total_positions = len(rows)
-        parking_rows = [row for row in rows if row["has_parking"]]
-        parking_count = len(parking_rows)
-        parking_value_total = sum((row["valorizado"] for row in parking_rows), Decimal("0"))
-        top_rows = sorted(parking_rows, key=lambda row: row["valorizado"], reverse=True)[: max(int(top_limit or 0), 1)]
-        parking_block_summary = [
-            {"label": label, "value_total": value_total}
-            for label, value_total in sorted(parking_blocks.items(), key=lambda item: item[1], reverse=True)
-        ]
-
-        alerts = []
-        if parking_count > 0:
-            alerts.append(
-                {
-                    "tone": "warning",
-                    "title": "Parking visible en posiciones actuales",
-                    "message": f"{parking_count} posicion(es) del portafolio invertido siguen mostrando parking visible en IOL.",
-                }
-            )
-
-        return {
-            "has_visible_parking": parking_count > 0,
-            "summary": {
-                "total_positions": total_positions,
-                "parking_count": parking_count,
-                "parking_pct": _safe_percentage(parking_count, total_positions),
-                "parking_value_total": parking_value_total,
-            },
-            "parking_blocks": parking_block_summary,
-            "top_rows": top_rows,
-            "alerts": alerts,
-        }
+        return build_portfolio_parking_feature_context(
+            portafolio=get_portafolio_enriquecido_actual(),
+            top_limit=top_limit,
+            safe_percentage=_safe_percentage,
+        )
 
     return _get_cached_selector_result("portfolio_parking_feature", build)
 
-
 def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
-    """Obtiene el portafolio actual enriquecido con metadata, separado en liquidez e inversiÃ³n."""
+    """Obtiene el portafolio actual enriquecido con metadata, separado en liquidez e inversiÃƒÆ’Ã‚Â³n."""
     def build():
         portafolio = get_latest_portafolio_data()
         simbolos = [activo.simbolo for activo in portafolio]
@@ -529,10 +323,10 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
         # Traducciones de tipos
         tipo_traducciones = {
             'CEDEARS': 'CEDEAR',
-            'ACCIONES': 'AcciÃ³n',
-            'TitulosPublicos': 'TÃ­tulo PÃºblico',
+            'ACCIONES': 'AcciÃƒÆ’Ã‚Â³n',
+            'TitulosPublicos': 'TÃƒÆ’Ã‚Â­tulo PÃƒÆ’Ã‚Âºblico',
             'FondoComundeInversion': 'FCI',
-            'CAUCIONESPESOS': 'CauciÃ³n',
+            'CAUCIONESPESOS': 'CauciÃƒÆ’Ã‚Â³n',
         }
 
         # Traducciones de monedas
@@ -543,7 +337,7 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
 
         liquidez = []
         inversion = []
-        fci_cash_management = []  # CategorÃ­a intermedia para FCI de cash management
+        fci_cash_management = []  # CategorÃƒÆ’Ã‚Â­a intermedia para FCI de cash management
 
         for activo in portafolio:
             param = parametros.get(activo.simbolo)
@@ -565,13 +359,13 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
                 'peso_porcentual': peso_porcentual,
             }
 
-            # ClasificaciÃ³n refinada
+            # ClasificaciÃƒÆ’Ã‚Â³n refinada
             simbolo_upper = activo.simbolo.upper()
-            if activo.tipo == 'CAUCIONESPESOS' or 'CAUCIÃ“N' in simbolo_upper:
-                # CauciÃ³n como liquidez operativa
+            if activo.tipo == 'CAUCIONESPESOS' or 'CAUCIÃƒÆ’Ã¢â‚¬Å“N' in simbolo_upper:
+                # CauciÃƒÆ’Ã‚Â³n como liquidez operativa
                 liquidez.append(item)
             elif simbolo_upper in ['ADBAICA', 'IOLPORA', 'PRPEDOB']:
-                # FCI de cash management como categorÃ­a intermedia
+                # FCI de cash management como categorÃƒÆ’Ã‚Â­a intermedia
                 fci_cash_management.append(item)
             elif activo.tipo == 'FondoComundeInversion':
                 # Otros FCI van al portafolio invertido
@@ -583,7 +377,7 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
                 # Resto va al portafolio invertido por defecto
                 inversion.append(item)
 
-        # Ordenar inversiÃ³n por valorizado descendente
+        # Ordenar inversiÃƒÆ’Ã‚Â³n por valorizado descendente
         inversion.sort(key=lambda x: x['activo'].valorizado, reverse=True)
         fci_cash_management.sort(key=lambda x: x['activo'].valorizado, reverse=True)
 
@@ -718,12 +512,12 @@ def _extract_resumen_cash_components(resumen: List[ResumenCuentaSnapshot]) -> Di
 
 
 def get_dashboard_kpis() -> Dict:
-    """Calcula los KPIs principales del dashboard con mÃ©tricas separadas por categorÃ­a."""
+    """Calcula los KPIs principales del dashboard con mÃƒÆ’Ã‚Â©tricas separadas por categorÃƒÆ’Ã‚Â­a."""
     def build():
         portafolio = get_latest_portafolio_data()
         resumen = get_latest_resumen_data()
 
-        # Obtener clasificaciÃ³n del portafolio
+        # Obtener clasificaciÃƒÆ’Ã‚Â³n del portafolio
         portafolio_clasificado = get_portafolio_enriquecido_actual()
 
         # Cash inmediato y a liquidar desde estadocuenta
@@ -739,15 +533,15 @@ def get_dashboard_kpis() -> Dict:
         total_iol_calculado = total_activos_valorizados + cash_ars + cash_usd
         total_iol = total_broker_en_pesos if total_broker_en_pesos > 0 else total_iol_calculado
 
-        # KPIs separados por categorÃ­a
-        # 2. Liquidez Operativa = cauciÃ³n + saldo ARS disponible + saldo USD disponible
-        caucion_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'] if item['tipo_traducido'] == 'CauciÃ³n')
+        # KPIs separados por categorÃƒÆ’Ã‚Â­a
+        # 2. Liquidez Operativa = cauciÃƒÆ’Ã‚Â³n + saldo ARS disponible + saldo USD disponible
+        caucion_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['liquidez'] if item['tipo_traducido'] == 'CauciÃƒÆ’Ã‚Â³n')
         liquidez_operativa = caucion_valor + cash_ars + cash_usd
 
         # 3. FCI Cash Management = suma de FCI de cash management
         fci_cash_valor = sum(item['activo'].valorizado for item in portafolio_clasificado['fci_cash_management'])
 
-        # 4. Portafolio Invertido = activos de inversiÃ³n (CEDEAR, acciones, bonos, ETF, otros FCI)
+        # 4. Portafolio Invertido = activos de inversiÃƒÆ’Ã‚Â³n (CEDEAR, acciones, bonos, ETF, otros FCI)
         portafolio_invertido = sum(item['activo'].valorizado for item in portafolio_clasificado['inversion'])
 
         cash_disponible_broker = cash_ars + cash_usd
@@ -975,7 +769,7 @@ def get_distribucion_tipo_patrimonial(base: str = 'total_activos') -> Dict[str, 
 
 
 def get_distribucion_moneda() -> Dict[str, float]:
-    """Obtiene la distribuciÃ³n por moneda de exposiciÃ³n real/econÃ³mica."""
+    """Obtiene la distribuciÃƒÆ’Ã‚Â³n por moneda de exposiciÃƒÆ’Ã‚Â³n real/econÃƒÆ’Ã‚Â³mica."""
     portafolio = get_latest_portafolio_data()
     resumen = get_latest_resumen_data()
     simbolos = [activo.simbolo for activo in portafolio]
@@ -985,7 +779,7 @@ def get_distribucion_moneda() -> Dict[str, float]:
     for activo in portafolio:
         parametro = parametros.get(activo.simbolo)
 
-        # Moneda econÃ³mica/subyacente (exposiciÃ³n real)
+        # Moneda econÃƒÆ’Ã‚Â³mica/subyacente (exposiciÃƒÆ’Ã‚Â³n real)
         if parametro and parametro.pais_exposicion in ['USA', 'Estados Unidos']:
             moneda = 'USD'
         elif activo.moneda == 'dolar_Estadounidense':
@@ -1012,12 +806,12 @@ def get_distribucion_moneda() -> Dict[str, float]:
 
 
 def get_distribucion_moneda_operativa() -> Dict[str, float]:
-    """Obtiene la distribuciÃ³n por moneda operativa (de cotizaciÃ³n)."""
+    """Obtiene la distribuciÃƒÆ’Ã‚Â³n por moneda operativa (de cotizaciÃƒÆ’Ã‚Â³n)."""
     portafolio = get_latest_portafolio_data()
     resumen = get_latest_resumen_data()
     distribucion = {}
 
-    # Agregar activos del portafolio por moneda de cotizaciÃ³n
+    # Agregar activos del portafolio por moneda de cotizaciÃƒÆ’Ã‚Â³n
     for activo in portafolio:
         if activo.moneda == 'dolar_Estadounidense':
             moneda = 'USD'
@@ -1039,7 +833,7 @@ def get_distribucion_moneda_operativa() -> Dict[str, float]:
 
 
 def get_concentracion_patrimonial() -> Dict[str, float]:
-    """Obtiene la concentraciÃ³n por bloque patrimonial (Liquidez, Cash Management, Invertido)."""
+    """Obtiene la concentraciÃƒÆ’Ã‚Â³n por bloque patrimonial (Liquidez, Cash Management, Invertido)."""
     kpis = get_dashboard_kpis()
     total_iol = kpis['total_iol']
 
@@ -1054,8 +848,8 @@ def get_concentracion_patrimonial() -> Dict[str, float]:
 
 
 def get_concentracion_sectorial() -> Dict[str, float]:
-    """Obtiene la concentraciÃ³n por sector econÃ³mico (excluyendo liquidez)."""
-    # Solo considerar activos de inversiÃ³n (excluir liquidez y cash management)
+    """Obtiene la concentraciÃƒÆ’Ã‚Â³n por sector econÃƒÆ’Ã‚Â³mico (excluyendo liquidez)."""
+    # Solo considerar activos de inversiÃƒÆ’Ã‚Â³n (excluir liquidez y cash management)
     portafolio_invertido = get_portafolio_enriquecido_actual()['inversion']
     distribucion = {}
 
@@ -1133,7 +927,7 @@ def get_concentracion_moneda_operativa() -> Dict[str, float]:
 
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
-    """Calcula mÃ©tricas detalladas de riesgo del portafolio."""
+    """Calcula mÃƒÆ’Ã‚Â©tricas detalladas de riesgo del portafolio."""
     portafolio = [item['activo'] for item in _get_activos_invertidos()]
     resumen = get_latest_resumen_data()
     portafolio_clasificado = get_portafolio_enriquecido_actual()
@@ -1145,7 +939,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
     simbolos = [activo.simbolo for activo in portafolio]
     parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
 
-    # ExposiciÃ³n geogrÃ¡fica
+    # ExposiciÃƒÆ’Ã‚Â³n geogrÃƒÆ’Ã‚Â¡fica
     exposicion_usa = 0
     exposicion_argentina = 0
     for activo in portafolio:
@@ -1155,7 +949,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
         elif parametro and parametro.pais_exposicion == 'Argentina':
             exposicion_argentina += activo.valorizado
 
-    # ExposiciÃ³n por tipo
+    # ExposiciÃƒÆ’Ã‚Â³n por tipo
     exposicion_tech = 0
     exposicion_renta_fija_ar = 0
     exposicion_defensivo = 0
@@ -1198,7 +992,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
         'methodology': {
             'pct_usa': 'exposicion USA / portafolio invertido',
             'pct_argentina': 'exposicion Argentina / portafolio invertido',
-            'pct_tech': 'sectores que comienzan con TecnologÃ­a / portafolio invertido',
+            'pct_tech': 'sectores que comienzan con TecnologÃƒÆ’Ã‚Â­a / portafolio invertido',
             'pct_renta_fija_ar': 'Bonos argentinos (soberanos, CER y corporativos) / portafolio invertido',
             'pct_defensivo': 'bloque Defensivo / portafolio invertido',
             'pct_growth': 'bloque Growth / portafolio invertido',
@@ -1208,7 +1002,7 @@ def get_riesgo_portafolio_detallado() -> Dict[str, float]:
 
 
 def get_riesgo_portafolio() -> Dict[str, float]:
-    """Calcula mÃ©tricas de riesgo del portafolio (versiÃ³n simplificada para compatibilidad)."""
+    """Calcula mÃƒÆ’Ã‚Â©tricas de riesgo del portafolio (versiÃƒÆ’Ã‚Â³n simplificada para compatibilidad)."""
     portafolio = [item['activo'] for item in _get_activos_invertidos()]
     resumen = get_latest_resumen_data()
     portafolio_clasificado = get_portafolio_enriquecido_actual()
@@ -1220,7 +1014,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
     simbolos = [activo.simbolo for activo in portafolio]
     parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
 
-    # ExposiciÃ³n USA
+    # ExposiciÃƒÆ’Ã‚Â³n USA
     exposicion_usa = 0
     for activo in portafolio:
         parametro = parametros.get(activo.simbolo)
@@ -1228,7 +1022,7 @@ def get_riesgo_portafolio() -> Dict[str, float]:
             exposicion_usa += activo.valorizado
     exposicion_usa_pct = (exposicion_usa / total_portafolio * 100) if total_portafolio > 0 else 0
 
-    # ExposiciÃ³n Argentina
+    # ExposiciÃƒÆ’Ã‚Â³n Argentina
     exposicion_argentina = 0
     for activo in portafolio:
         parametro = parametros.get(activo.simbolo)
@@ -1400,7 +1194,7 @@ def mapear_sector_a_categoria(sector: str) -> str:
 
 
 def get_senales_rebalanceo() -> Dict[str, list]:
-    """Genera señales de rebalanceo basadas en objetivos definidos."""
+    """Genera seÃƒÂ±ales de rebalanceo basadas en objetivos definidos."""
     return build_senales_rebalanceo(
         concentracion_patrimonial=get_concentracion_patrimonial(),
         concentracion_sectorial=get_concentracion_sectorial(),
@@ -1535,7 +1329,7 @@ def get_incremental_portfolio_simulation_comparison(
         for proposal_key, label, builder in (
             ("top_candidate_per_block", "Top candidato por bloque", _build_top_candidate_purchase_plan),
             ("runner_up_when_available", "Segundo candidato si existe", _build_runner_up_purchase_plan),
-            ("split_largest_block_top_two", "Split del bloque mÃ¡s grande", _build_split_largest_block_purchase_plan),
+            ("split_largest_block_top_two", "Split del bloque mÃƒÆ’Ã‚Â¡s grande", _build_split_largest_block_purchase_plan),
         ):
             proposal = builder(monthly_plan, candidate_ranking)
             if not proposal["purchase_plan"]:
@@ -2149,7 +1943,7 @@ def get_preferred_incremental_portfolio_proposal(
 
     candidates = []
     for source_key, label, payload in (
-        ("automatic_variants", "Comparador automÃ¡tico", auto),
+        ("automatic_variants", "Comparador automÃƒÆ’Ã‚Â¡tico", auto),
         ("candidate_block", "Comparador por candidato", candidate),
         ("candidate_split", "Comparador por split", split),
         ("manual_plan", "Comparador manual", manual),
