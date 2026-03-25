@@ -191,7 +191,7 @@ from apps.dashboard.selector_cache import (
 
 
 def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
-    """Obtiene los datos mÃƒÆ’Ã‚Â¡s recientes del portafolio."""
+    """Obtiene los datos más recientes del portafolio."""
     latest_date = ActivoPortafolioSnapshot.objects.aggregate(
         latest=Max('fecha_extraccion')
     )['latest']
@@ -203,7 +203,7 @@ def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
 
 
 def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
-    """Obtiene los datos mÃƒÆ’Ã‚Â¡s recientes del resumen de cuenta."""
+    """Obtiene los datos más recientes del resumen de cuenta."""
     latest_date = ResumenCuentaSnapshot.objects.aggregate(
         latest=Max('fecha_extraccion')
     )['latest']
@@ -429,7 +429,7 @@ def mapear_sector_a_categoria(sector: str) -> str:
 
 
 def get_senales_rebalanceo() -> Dict[str, list]:
-    """Genera seÃƒÂ±ales de rebalanceo basadas en objetivos definidos."""
+    """Genera señales de rebalanceo basadas en objetivos definidos."""
     return build_senales_rebalanceo(
         concentracion_patrimonial=get_concentracion_patrimonial(),
         concentracion_sectorial=get_concentracion_sectorial(),
