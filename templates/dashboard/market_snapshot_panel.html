@@ -72,6 +72,34 @@
                 </div>
             </div>
         </div>
+        {% if market_snapshot_feature.plazo_comparison.has_comparison %}
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Con t0 y t1</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.plazo_comparison.summary.both_available_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Conviene t0</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.plazo_comparison.summary.t0_preferred_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Conviene t1</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.plazo_comparison.summary.t1_preferred_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="small text-muted">Sin ventaja clara</div>
+                    <div class="h5 mb-0">{{ market_snapshot_feature.plazo_comparison.summary.neutral_count }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
         {% endif %}
 
         {% if market_snapshot_feature.alerts %}
@@ -139,6 +167,11 @@
                                 {{ row.fecha_hora_label|default:"Sin hora" }}
                                 {% endif %}
                             </div>
+                            {% if row.plazo_comparison.recommended_label %}
+                            <div class="small text-muted">
+                                {{ row.plazo_comparison.recommended_label }}{% if row.plazo_comparison.recommendation_reason %}: {{ row.plazo_comparison.recommendation_reason }}{% endif %}
+                            </div>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

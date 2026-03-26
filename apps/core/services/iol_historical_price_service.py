@@ -15,8 +15,10 @@ from apps.core.services.iol_api_client import IOLAPIClient
 from apps.parametros.models import ParametroActivo
 from apps.core.services.iol_market_snapshot_support import (
     build_current_portfolio_market_snapshot_payload,
+    build_current_portfolio_market_plazo_comparison_payload_from_observations,
     get_cached_current_portfolio_market_snapshot,
     get_current_portfolio_market_snapshot_rows,
+    get_current_portfolio_market_snapshot_rows_by_plazo,
     get_latest_position_rows,
     get_recent_market_history_rows,
     persist_market_snapshot_payload,
@@ -299,6 +301,9 @@ class IOLHistoricalPriceService:
     def get_current_portfolio_market_snapshot_rows(self, *, limit: int = 10) -> list[dict]:
         return get_current_portfolio_market_snapshot_rows(self, limit=limit)
 
+    def get_current_portfolio_market_snapshot_rows_by_plazo(self, *, plazo: str = "t1", limit: int = 10) -> list[dict]:
+        return get_current_portfolio_market_snapshot_rows_by_plazo(self, plazo=plazo, limit=limit)
+
     @staticmethod
     def summarize_market_snapshot_rows(rows: list[dict]) -> dict:
         return summarize_market_snapshot_rows(rows)
@@ -321,6 +326,18 @@ class IOLHistoricalPriceService:
 
     def persist_market_snapshot_payload(self, payload: dict | None) -> dict:
         return persist_market_snapshot_payload(self, payload)
+
+    def build_current_portfolio_market_plazo_comparison_payload(
+        self,
+        *,
+        limit: int = 25,
+        lookback_days: int | None = None,
+    ) -> dict:
+        return build_current_portfolio_market_plazo_comparison_payload_from_observations(
+            self,
+            limit=limit,
+            lookback_days=lookback_days,
+        )
 
     def get_recent_market_history_rows(self, *, lookback_days: int | None = None) -> list[dict]:
         return get_recent_market_history_rows(self, lookback_days=lookback_days)
@@ -500,8 +517,9 @@ class IOLHistoricalPriceService:
                 return metadata
         return None
 
-    def _get_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
-        cache_key = (str(mercado or "").strip(), str(simbolo or "").strip().upper())
+    def _get_market_snapshot(self, *, mercado: str, simbolo: str, params: dict | None = None) -> dict | None:
+        plazo = str((params or {}).get("plazo") or (params or {}).get("model.plazo") or "t1").strip().lower()
+        cache_key = (str(mercado or "").strip(), str(simbolo or "").strip().upper(), plazo)
         if cache_key in self._market_snapshot_cache:
             return self._market_snapshot_cache[cache_key]
 
@@ -510,13 +528,13 @@ class IOLHistoricalPriceService:
             self._market_snapshot_cache[cache_key] = None
             return None
 
-        snapshot = getter(mercado, simbolo)
+        snapshot = getter(mercado, simbolo, params=params)
         self._market_snapshot_cache[cache_key] = snapshot or None
         return self._market_snapshot_cache[cache_key]
 
-    def _resolve_market_snapshot(self, *, mercado: str, simbolo: str) -> dict | None:
+    def _resolve_market_snapshot(self, *, mercado: str, simbolo: str, params: dict | None = None) -> dict | None:
         for candidate_market in self._candidate_markets(mercado):
-            snapshot = self._get_market_snapshot(mercado=candidate_market, simbolo=simbolo)
+            snapshot = self._get_market_snapshot(mercado=candidate_market, simbolo=simbolo, params=params)
             if snapshot:
                 return snapshot
         return None

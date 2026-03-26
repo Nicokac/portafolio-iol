@@ -434,11 +434,12 @@ class IOLMarketSnapshotObservation(models.Model):
         indexes = [
             models.Index(fields=["simbolo", "mercado", "captured_at"]),
             models.Index(fields=["captured_date", "mercado"]),
+            models.Index(fields=["captured_date", "mercado", "plazo"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["simbolo", "mercado", "captured_at"],
-                name="unique_iol_market_snapshot_observation",
+                fields=["simbolo", "mercado", "captured_at", "plazo"],
+                name="unique_iol_market_snapshot_observation_by_plazo",
             )
         ]
 

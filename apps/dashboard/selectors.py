@@ -225,21 +225,29 @@ def get_latest_resumen_data() -> List:
 
 
 def get_market_snapshot_feature_context(*, top_limit: int = 5) -> Dict:
-    payload = IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot() or {}
-    cached_rows = payload.get("rows") or []
-    summary = payload.get("summary") or IOLHistoricalPriceService.summarize_market_snapshot_rows(cached_rows)
-    refreshed_at_label = IOLHistoricalPriceService._format_snapshot_datetime(payload.get("refreshed_at"))
+    def build():
+        service = IOLHistoricalPriceService()
+        payload = service.get_cached_current_portfolio_market_snapshot() or {}
+        cached_rows = payload.get("rows") or []
+        summary = payload.get("summary") or service.summarize_market_snapshot_rows(cached_rows)
+        refreshed_at_label = service._format_snapshot_datetime(payload.get("refreshed_at"))
+        plazo_comparison = payload.get("plazo_comparison") or service.build_current_portfolio_market_plazo_comparison_payload(
+            limit=max(int(top_limit or 0), 5)
+        )
 
-    return build_market_snapshot_feature_context(
-        payload={
-            **payload,
-            "_has_cached_snapshot": bool(payload),
-            "summary": summary,
-            "refreshed_at_label": refreshed_at_label,
-        },
-        relevant_positions=get_portafolio_enriquecido_actual()["inversion"],
-        top_limit=top_limit,
-    )
+        return build_market_snapshot_feature_context(
+            payload={
+                **payload,
+                "_has_cached_snapshot": bool(payload),
+                "summary": summary,
+                "refreshed_at_label": refreshed_at_label,
+                "plazo_comparison": plazo_comparison,
+            },
+            relevant_positions=get_portafolio_enriquecido_actual()["inversion"],
+            top_limit=top_limit,
+        )
+
+    return _get_cached_selector_result(f"market_snapshot_feature:{int(top_limit or 0)}", build)
 
 def get_market_snapshot_history_feature_context(*, top_limit: int = 5, lookback_days: int = 7) -> Dict:
     def build():

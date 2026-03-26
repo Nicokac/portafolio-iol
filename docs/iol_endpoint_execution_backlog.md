@@ -249,6 +249,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo D2 - Persistencia tactica por plazo
 
 - Prioridad: `P2`
+- Estado: `Implementado`
 - Problema:
   - `CotizacionDetalleMobile/{plazo}` ya se consulta, pero todavia no se explota como capa comparativa por `t0/t1`
 - Oportunidad:

@@ -13,6 +13,23 @@ def test_build_market_snapshot_feature_context_summarizes_missing_spread_and_fal
         payload={
             "summary": {"fallback_count": 1, "order_book_count": 0, "available_count": 1},
             "refreshed_at_label": "2026-03-24 10:00",
+            "plazo_comparison": {
+                "summary": {
+                    "both_available_count": 1,
+                    "t0_preferred_count": 1,
+                    "t1_preferred_count": 0,
+                    "neutral_count": 0,
+                },
+                "rows": [
+                    {
+                        "simbolo": "GGAL",
+                        "mercado": "BCBA",
+                        "recommended_plazo": "t0",
+                        "recommended_label": "Preferir t0",
+                        "recommendation_reason": "t0 muestra menor spread visible.",
+                    }
+                ],
+            },
             "rows": [
                 {
                     "simbolo": "GGAL",
@@ -35,6 +52,8 @@ def test_build_market_snapshot_feature_context_summarizes_missing_spread_and_fal
     assert result["top_available_count"] == 1
     assert result["top_missing_count"] == 1
     assert result["wide_spread_count"] == 1
+    assert result["plazo_comparison"]["summary"]["t0_preferred_count"] == 1
+    assert result["top_rows"][0]["plazo_comparison"]["recommended_plazo"] == "t0"
     assert [alert["title"] for alert in result["alerts"]] == [
         "Cobertura parcial en posiciones relevantes",
         "Spreads anchos en posiciones relevantes",

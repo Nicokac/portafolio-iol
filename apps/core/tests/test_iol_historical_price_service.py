@@ -500,7 +500,7 @@ def test_iol_historical_price_service_builds_current_portfolio_market_snapshot_r
     fci.save(update_fields=["tipo", "descripcion"])
 
     client = Mock()
-    def _snapshot_side_effect(mercado, simbolo):
+    def _snapshot_side_effect(mercado, simbolo, params=None):
         if simbolo == "GGAL":
             return {
                 "simbolo": "GGAL",
@@ -538,9 +538,9 @@ def test_iol_historical_price_service_builds_current_portfolio_market_snapshot_r
     assert row_by_symbol["AAPL"]["snapshot_reason_key"] == "market_snapshot_unavailable"
     assert row_by_symbol["ADBAICA"]["snapshot_status"] == "unsupported"
     assert row_by_symbol["ADBAICA"]["snapshot_source_key"] == "local_classification"
-    called_pairs = {call.args for call in client.get_titulo_market_snapshot.call_args_list}
-    assert ("BCBA", "GGAL") in called_pairs
-    assert any(args[1] == "AAPL" for args in called_pairs)
+    called_pairs = {(call.args[0], call.args[1], (call.kwargs.get("params") or {}).get("plazo")) for call in client.get_titulo_market_snapshot.call_args_list}
+    assert ("BCBA", "GGAL", "t1") in called_pairs
+    assert any(args[1] == "AAPL" and args[2] == "t1" for args in called_pairs)
 
 
 @pytest.mark.django_db
@@ -662,6 +662,9 @@ def test_iol_historical_price_service_rebuilds_market_snapshot_payload_from_pers
     assert payload["source"] == "persisted_observations"
     assert payload["summary"]["available_count"] == 1
     assert payload["summary"]["missing_count"] == 0
+    assert payload["plazo"] == "t1"
+    assert payload["plazo_comparison"]["summary"]["total_symbols"] == 1
+    assert payload["plazo_comparison"]["summary"]["t1_only_count"] == 1
     assert payload["rows"][0]["simbolo"] == "GGAL"
     assert payload["rows"][0]["snapshot_status"] == "available"
     assert payload["rows"][0]["ultimo_precio"] == Decimal("1234.50")
@@ -690,11 +693,50 @@ def test_iol_historical_price_service_refresh_and_persist_includes_persistence_s
             "refreshed_at": "2026-03-21T10:00:00-03:00",
         }
     )
+    service.get_current_portfolio_market_snapshot_rows_by_plazo = Mock(
+        return_value=[
+            {
+                "simbolo": "GGAL",
+                "mercado": "BCBA",
+                "snapshot_status": "available",
+                "snapshot_source_key": "cotizacion_detalle_mobile",
+                "fecha_hora": "2026-03-21T10:00:00-03:00",
+                "cantidad_operaciones": 60,
+                "puntas_count": 1,
+                "plazo": "t0",
+            }
+        ]
+    )
+    service.build_current_portfolio_market_plazo_comparison_payload = Mock(
+        return_value={
+            "summary": {
+                "total_symbols": 1,
+                "both_available_count": 1,
+                "t0_only_count": 0,
+                "t1_only_count": 0,
+                "t0_preferred_count": 1,
+                "t1_preferred_count": 0,
+                "neutral_count": 0,
+            },
+            "rows": [
+                {
+                    "simbolo": "GGAL",
+                    "mercado": "BCBA",
+                    "recommended_plazo": "t0",
+                    "recommended_label": "Preferir t0",
+                    "recommendation_reason": "t0 muestra menor spread visible.",
+                }
+            ],
+        }
+    )
 
     payload = service.refresh_and_persist_current_portfolio_market_snapshot(limit=25)
 
-    assert payload["persistence"]["persisted_count"] == 1
-    assert IOLMarketSnapshotObservation.objects.count() == 1
+    assert payload["persistence"]["persisted_count"] == 2
+    assert payload["persistence"]["t1"]["persisted_count"] == 1
+    assert payload["persistence"]["t0"]["persisted_count"] == 1
+    assert payload["plazo_comparison"]["summary"]["t0_preferred_count"] == 1
+    assert IOLMarketSnapshotObservation.objects.count() == 2
 
 
 @pytest.mark.django_db

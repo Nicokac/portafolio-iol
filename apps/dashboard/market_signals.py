@@ -9,6 +9,9 @@ def build_market_snapshot_feature_context(*, payload: Dict, relevant_positions: 
     cached_rows = payload.get("rows") or []
     summary = payload.get("summary") or {}
     refreshed_at_label = payload.get("refreshed_at_label") or ""
+    plazo_comparison = payload.get("plazo_comparison") or {}
+    plazo_comparison_rows = plazo_comparison.get("rows") or []
+    plazo_comparison_summary = plazo_comparison.get("summary") or {}
 
     snapshot_rows_by_key = {
         (
@@ -17,11 +20,24 @@ def build_market_snapshot_feature_context(*, payload: Dict, relevant_positions: 
         ): row
         for row in cached_rows
     }
+    plazo_comparison_by_key = {
+        (
+            str(row.get("simbolo") or "").strip().upper(),
+            str(row.get("mercado") or "").strip().upper(),
+        ): row
+        for row in plazo_comparison_rows
+    }
 
     top_rows = []
     for item in relevant_positions[: max(int(top_limit or 0), 1)]:
         activo = item["activo"]
         snapshot_row = snapshot_rows_by_key.get(
+            (
+                str(activo.simbolo or "").strip().upper(),
+                str(activo.mercado or "").strip().upper(),
+            )
+        )
+        comparison_row = plazo_comparison_by_key.get(
             (
                 str(activo.simbolo or "").strip().upper(),
                 str(activo.mercado or "").strip().upper(),
@@ -53,6 +69,7 @@ def build_market_snapshot_feature_context(*, payload: Dict, relevant_positions: 
                 "spread_pct": (snapshot_row or {}).get("spread_pct"),
                 "plazo": (snapshot_row or {}).get("plazo") or "",
                 "has_order_book": int((snapshot_row or {}).get("puntas_count") or 0) > 0,
+                "plazo_comparison": comparison_row or {},
             }
         )
 
@@ -108,11 +125,33 @@ def build_market_snapshot_feature_context(*, payload: Dict, relevant_positions: 
                     "message": "Hay precios puntuales disponibles, pero sin puntas visibles para lectura de spread.",
                 }
             )
+        if int(plazo_comparison_summary.get("both_available_count") or 0) > 0:
+            if int(plazo_comparison_summary.get("t0_preferred_count") or 0) > 0:
+                alerts.append(
+                    {
+                        "tone": "info",
+                        "title": "En algunos simbolos conviene t0",
+                        "message": f"{plazo_comparison_summary['t0_preferred_count']} posicion(es) muestran mejor señal táctica en t0.",
+                    }
+                )
+            elif int(plazo_comparison_summary.get("t1_preferred_count") or 0) > 0:
+                alerts.append(
+                    {
+                        "tone": "info",
+                        "title": "En algunos simbolos conviene t1",
+                        "message": f"{plazo_comparison_summary['t1_preferred_count']} posicion(es) muestran mejor señal táctica en t1.",
+                    }
+                )
 
     return {
         "has_cached_snapshot": has_cached_snapshot,
         "refreshed_at_label": refreshed_at_label,
         "summary": summary,
+        "plazo_comparison": {
+            "summary": plazo_comparison_summary,
+            "rows": plazo_comparison_rows,
+            "has_comparison": bool(plazo_comparison_rows),
+        },
         "top_rows": top_rows,
         "top_available_count": top_available_count,
         "top_missing_count": top_missing_count,
