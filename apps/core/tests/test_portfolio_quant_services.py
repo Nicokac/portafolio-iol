@@ -97,6 +97,25 @@ def test_covariance_service_uses_last_snapshot_of_day_for_each_asset():
     assert np.isclose(returns.iloc[0]["SPY"], (2310 - 2100) / 2100)
 
 
+@pytest.mark.django_db
+def test_covariance_service_returns_insufficient_history_for_single_return_observation():
+    now = timezone.now().replace(hour=12, minute=0, second=0, microsecond=0)
+    day_one = now - timedelta(days=1)
+    day_two = now
+
+    _make_snapshot(day_one, "AAPL", 1000)
+    _make_snapshot(day_one, "SPY", 2000)
+    _make_snapshot(day_two, "AAPL", 1100)
+    _make_snapshot(day_two, "SPY", 2200)
+
+    service = CovarianceService()
+    model_inputs = service.build_model_inputs(["AAPL", "SPY"], lookback_days=30)
+
+    assert model_inputs["warning"] == "insufficient_history"
+    assert model_inputs["observations"] == 1
+    assert model_inputs["covariance_matrix"].size == 0
+
+
 def test_markowitz_optimizer_returns_normalized_weights():
     expected_returns = np.array([0.10, 0.07, 0.05])
     covariance = np.array(

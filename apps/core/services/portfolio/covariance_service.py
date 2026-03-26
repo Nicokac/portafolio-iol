@@ -69,25 +69,29 @@ class CovarianceService:
         return returns.mean().values * self.TRADING_DAYS_PER_YEAR
 
     def covariance_matrix_annualized(self, returns: pd.DataFrame) -> np.ndarray:
-        if returns.empty:
+        if returns.empty or len(returns.index) < 2:
             return np.array([[]])
-        cov = returns.cov().values * self.TRADING_DAYS_PER_YEAR
+        sanitized = returns.replace([np.inf, -np.inf], np.nan).dropna(how="any")
+        if sanitized.empty or len(sanitized.index) < 2:
+            return np.array([[]])
+        cov = sanitized.cov().values * self.TRADING_DAYS_PER_YEAR
         cov += np.eye(cov.shape[0]) * 1e-8
         return cov
 
     def build_model_inputs(self, activos: List[str], lookback_days: int = 252):
         returns = self.build_returns_matrix(activos, lookback_days=lookback_days)
-        if returns.empty:
+        observations = int(len(returns.index))
+        if returns.empty or observations < 2:
             return {
                 "warning": "insufficient_history",
                 "required_min_observations": 2,
-                "observations": 0,
+                "observations": observations,
                 "returns": returns,
                 "expected_returns": np.array([]),
                 "covariance_matrix": np.array([[]]),
             }
         return {
-            "observations": int(len(returns.index)),
+            "observations": observations,
             "returns": returns,
             "expected_returns": self.expected_returns_annualized(returns),
             "covariance_matrix": self.covariance_matrix_annualized(returns),
