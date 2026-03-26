@@ -58,6 +58,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo A1 - Separacion de familias de KPIs
 
 - Prioridad: `P1`
+- Estado: `Implementado`
 - Problema:
   - hoy es facil comparar KPIs que miden cosas distintas
   - `rendimiento_total_porcentaje` convive con retornos temporales sin suficiente separacion semantica

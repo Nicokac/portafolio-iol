@@ -316,10 +316,24 @@ class TestAPIInputValidation:
             body = response.json()
             assert 'metadata' in body
             assert 'fields_basis' in body['metadata']
+            assert body['metadata']['primary_family'] == 'temporal_return_on_total_portfolio'
+            assert 'performance_families' in body['metadata']
             assert 'portfolio_return_ytd_real' in body['metadata']['fields_basis']
             assert 'max_drawdown_real' in body['metadata']['fields_basis']
             assert 'badlar_ytd' in body['metadata']['fields_basis']
             assert 'portfolio_excess_ytd_vs_badlar' in body['metadata']['fields_basis']
+
+    def test_dashboard_kpis_includes_performance_family_metadata(self, auth_client):
+        url = reverse('dashboard-kpis')
+        response = auth_client.get(url)
+        assert response.status_code in [200, 500]
+        if response.status_code == 200:
+            body = response.json()
+            assert 'metadata' in body
+            assert body['metadata']['primary_family'] == 'accumulated_on_invested_cost'
+            assert body['metadata']['comparison_family'] == 'temporal_return_on_total_portfolio'
+            assert 'performance_families' in body['metadata']
+            assert 'rendimiento_total_dinero' in body['metadata']['fields_basis']
 
     def test_metrics_volatility_includes_basis_metadata(self, auth_client):
         url = reverse('metrics-volatility')

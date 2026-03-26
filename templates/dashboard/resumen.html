@@ -82,11 +82,11 @@
     <div class="col-md-3">
         <div class="card h-100 kpi-card">
             <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Rendimiento simple del portafolio invertido calculado como ganancia acumulada sobre costo estimado. Puede diferir del simple de IOL.">Rendimiento simple invertido</div>
+                <div class="text-muted small" data-bs-toggle="tooltip" title="Familia: acumulado sobre costo invertido. Mide la ganancia acumulada del portafolio invertido sobre su costo estimado. No es un retorno temporal del patrimonio total.">Rendimiento acumulado invertido</div>
                 <div class="kpi-value {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">
                     {{ kpis.rendimiento_total_porcentaje|pct:2 }}
                 </div>
-                <div class="text-body-secondary small">Sobre costo estimado del portafolio invertido</div>
+                <div class="text-body-secondary small">Familia: acumulado sobre costo · comparar retornos temporales en Performance</div>
             </div>
         </div>
     </div>

@@ -229,6 +229,16 @@ def test_build_dashboard_kpis_rendimiento_porcentaje():
     assert abs(float(kpis['rendimiento_total_porcentaje']) - 25.0) < 0.01
 
 
+def test_build_dashboard_kpis_includes_performance_family_metadata():
+    inversion = [_make_item(100000, ganancia_dinero=20000)]
+    kpis = build_dashboard_kpis([], _make_portafolio_clasificado(inversion=inversion), [])
+
+    assert 'performance_families' in kpis
+    assert kpis['performance_families']['current_dashboard_family'] == 'accumulated_on_invested_cost'
+    assert kpis['performance_families']['comparison_family'] == 'temporal_return_on_total_portfolio'
+    assert 'rendimiento_total_porcentaje' in kpis['performance_families']['current_dashboard_fields']
+
+
 def test_build_dashboard_kpis_top5_concentracion():
     inversion = [_make_item(200000, simbolo=f'SYM{i}') for i in range(10)]
     kpis = build_dashboard_kpis([], _make_portafolio_clasificado(inversion=inversion), [])

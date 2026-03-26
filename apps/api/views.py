@@ -43,6 +43,17 @@ MAX_QUANTITY_INPUT = 1_000_000_000
 MIN_TARGET_RETURN = -1.0
 MAX_TARGET_RETURN = 10.0
 
+PERFORMANCE_FAMILIES = {
+    'accumulated_on_invested_cost': {
+        'label': 'Acumulado sobre costo invertido',
+        'description': 'Ganancia acumulada del portafolio invertido medida contra costo estimado.',
+    },
+    'temporal_return_on_total_portfolio': {
+        'label': 'Retorno temporal sobre patrimonio',
+        'description': 'Retorno del patrimonio total en una ventana temporal usando PortfolioSnapshot.total_iol.',
+    },
+}
+
 METRIC_BASES = {
     'total_portfolio': 'Total IOL (activos + cash)',
     'invested_capital': 'Capital invertido en activos',
@@ -218,17 +229,22 @@ def dashboard_kpis(request):
         kpis = get_dashboard_kpis()
         kpis['metadata'] = {
             'bases': METRIC_BASES,
+            'performance_families': PERFORMANCE_FAMILIES,
+            'primary_family': 'accumulated_on_invested_cost',
+            'comparison_family': 'temporal_return_on_total_portfolio',
             'fields_basis': {
                 'top_5_concentracion': 'invested_portfolio_market_value',
                 'top_10_concentracion': 'invested_portfolio_market_value',
                 'pct_fci_cash_management': 'total_portfolio',
                 'pct_portafolio_invertido': 'total_portfolio',
                 'rendimiento_total_porcentaje': 'invested_portfolio_estimated_cost',
+                'rendimiento_total_dinero': 'invested_portfolio_market_value_absolute_pnl',
             },
             'fields_methodology': {
                 'top_5_concentracion': 'sum(top_5 valorizado del portafolio invertido) / portafolio invertido',
                 'top_10_concentracion': 'sum(top_10 valorizado del portafolio invertido) / portafolio invertido',
                 'rendimiento_total_porcentaje': 'ganancia acumulada / costo estimado del portafolio invertido',
+                'rendimiento_total_dinero': 'sum(ganancia_dinero) sobre el portafolio invertido',
             },
         }
         return Response(kpis, status=status.HTTP_200_OK)
@@ -342,6 +358,8 @@ def metrics_returns(request):
             limitations='Requires at least two historical snapshots in selected period',
             extra={
                 'bases': METRIC_BASES,
+                'performance_families': PERFORMANCE_FAMILIES,
+                'primary_family': 'temporal_return_on_total_portfolio',
                 'fields_basis': {
                     'total_period_return': 'total_portfolio',
                     'monthly_return': 'total_portfolio',
