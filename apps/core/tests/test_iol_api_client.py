@@ -384,7 +384,31 @@ class TestIOLAPIClient:
 
         assert result is None
 
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_titulo_cotizacion_detalle_mobile_returns_dict(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            'simbolo': 'MELI',
+            'mercado': 'bcba',
+            'plazo': 't1',
+            'tipo': 'cedears',
+        }
+        mock_get.return_value = mock_response
+
+        result = client.get_titulo_cotizacion_detalle_mobile('bCBA', 'MELI', 't1')
+
+        assert result == {
+            'simbolo': 'MELI',
+            'mercado': 'bcba',
+            'plazo': 't1',
+            'tipo': 'cedears',
+        }
+        assert mock_get.call_args.args[0].endswith('/api/v2/bCBA/Titulos/MELI/CotizacionDetalleMobile/t1')
+        assert mock_get.call_args.kwargs['params'] is None
+
     def test_get_titulo_market_snapshot_prefers_cotizacion_detalle(self, client):
+        client.get_titulo_cotizacion_detalle_mobile = MagicMock(return_value=None)
         client.get_titulo_cotizacion_detalle = MagicMock(return_value={
             'simbolo': 'MELI',
             'tipo': 'cedears',
@@ -398,11 +422,37 @@ class TestIOLAPIClient:
             'simbolo': 'MELI',
             'tipo': 'cedears',
             'puntas': [{'precioCompra': 20040}],
+            '_snapshot_source_key': 'cotizacion_detalle',
         }
+        client.get_titulo_cotizacion_detalle_mobile.assert_called_once_with('bCBA', 'MELI', 't1')
         client.get_titulo_cotizacion_detalle.assert_called_once_with('bCBA', 'MELI')
         client.get_titulo_cotizacion.assert_not_called()
 
+    def test_get_titulo_market_snapshot_prefers_cotizacion_detalle_mobile(self, client):
+        client.get_titulo_cotizacion_detalle_mobile = MagicMock(return_value={
+            'simbolo': 'MELI',
+            'tipo': 'cedears',
+            'plazo': 't1',
+            'puntas': [{'precioCompra': 20040}],
+        })
+        client.get_titulo_cotizacion_detalle = MagicMock(return_value={'ultimoPrecio': 20040})
+        client.get_titulo_cotizacion = MagicMock(return_value={'ultimoPrecio': 20040})
+
+        result = client.get_titulo_market_snapshot('bCBA', 'MELI', params={'plazo': 't1'})
+
+        assert result == {
+            'simbolo': 'MELI',
+            'tipo': 'cedears',
+            'plazo': 't1',
+            'puntas': [{'precioCompra': 20040}],
+            '_snapshot_source_key': 'cotizacion_detalle_mobile',
+        }
+        client.get_titulo_cotizacion_detalle_mobile.assert_called_once_with('bCBA', 'MELI', 't1')
+        client.get_titulo_cotizacion_detalle.assert_not_called()
+        client.get_titulo_cotizacion.assert_not_called()
+
     def test_get_titulo_market_snapshot_falls_back_to_cotizacion(self, client):
+        client.get_titulo_cotizacion_detalle_mobile = MagicMock(return_value=None)
         client.get_titulo_cotizacion_detalle = MagicMock(return_value=None)
         client.get_titulo_cotizacion = MagicMock(return_value={
             'ultimoPrecio': 20040,
@@ -414,7 +464,9 @@ class TestIOLAPIClient:
         assert result == {
             'ultimoPrecio': 20040,
             'descripcionTitulo': 'Cedear Mercadolibre Inc.',
+            '_snapshot_source_key': 'cotizacion',
         }
+        client.get_titulo_cotizacion_detalle_mobile.assert_called_once_with('bCBA', 'MELI', 't0')
         client.get_titulo_cotizacion_detalle.assert_called_once_with('bCBA', 'MELI')
         client.get_titulo_cotizacion.assert_called_once_with('bCBA', 'MELI', params={'plazo': 't0'})
 

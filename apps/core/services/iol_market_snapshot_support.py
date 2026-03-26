@@ -121,7 +121,11 @@ def summarize_market_snapshot_rows(rows: list[dict]) -> dict:
     available_count = sum(1 for row in rows if row.get("snapshot_status") == "available")
     missing_count = sum(1 for row in rows if row.get("snapshot_status") == "missing")
     unsupported_count = sum(1 for row in rows if row.get("snapshot_status") == "unsupported")
-    detail_count = sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion_detalle")
+    detail_count = sum(
+        1
+        for row in rows
+        if row.get("snapshot_source_key") in {"cotizacion_detalle", "cotizacion_detalle_mobile"}
+    )
     fallback_count = sum(1 for row in rows if row.get("snapshot_source_key") == "cotizacion")
     order_book_count = sum(1 for row in rows if int(row.get("puntas_count") or 0) > 0)
 

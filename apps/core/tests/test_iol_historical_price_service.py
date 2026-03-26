@@ -505,10 +505,33 @@ def test_iol_historical_price_service_marks_snapshot_fallback_source_when_detail
     assert rows[0]["snapshot_source_label"] == "Cotizacion fallback"
 
 
+@pytest.mark.django_db
+def test_iol_historical_price_service_marks_mobile_snapshot_source_when_present():
+    _make_asset_snapshot("GGAL", "BCBA")
+
+    client = Mock()
+    client.get_titulo_market_snapshot.return_value = {
+        "simbolo": "GGAL",
+        "mercado": "bcba",
+        "tipo": "acciones",
+        "plazo": "t1",
+        "_snapshot_source_key": "cotizacion_detalle_mobile",
+        "fechaHora": "2026-03-20T16:59:46.4181717-03:00",
+        "cantidadOperaciones": 582,
+        "puntas": [{"precioCompra": 995, "precioVenta": 1000}],
+    }
+
+    rows = IOLHistoricalPriceService(client=client).get_current_portfolio_market_snapshot_rows(limit=10)
+
+    assert rows[0]["snapshot_status"] == "available"
+    assert rows[0]["snapshot_source_key"] == "cotizacion_detalle_mobile"
+    assert rows[0]["snapshot_source_label"] == "CotizacionDetalleMobile"
+
+
 def test_iol_historical_price_service_summarizes_market_snapshot_rows():
     summary = IOLHistoricalPriceService.summarize_market_snapshot_rows(
         [
-            {"snapshot_status": "available", "snapshot_source_key": "cotizacion_detalle", "puntas_count": 2},
+            {"snapshot_status": "available", "snapshot_source_key": "cotizacion_detalle_mobile", "puntas_count": 2},
             {"snapshot_status": "available", "snapshot_source_key": "cotizacion", "puntas_count": 0},
             {"snapshot_status": "missing", "snapshot_source_key": "", "puntas_count": 0},
             {"snapshot_status": "unsupported", "snapshot_source_key": "local_classification", "puntas_count": 0},

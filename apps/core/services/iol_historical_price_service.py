@@ -504,6 +504,7 @@ class IOLHistoricalPriceService:
     @staticmethod
     def _build_snapshot_source_label(source_key: str | None) -> str:
         labels = {
+            "cotizacion_detalle_mobile": "CotizacionDetalleMobile",
             "cotizacion_detalle": "CotizacionDetalle",
             "cotizacion": "Cotizacion fallback",
             "local_classification": "Clasificacion local",
@@ -525,6 +526,9 @@ class IOLHistoricalPriceService:
 
     @staticmethod
     def _infer_market_snapshot_source(snapshot: dict) -> str:
+        explicit_source = str(snapshot.get("_snapshot_source_key") or "").strip()
+        if explicit_source:
+            return explicit_source
         detail_keys = {"simbolo", "pais", "mercado", "tipo", "cantidadMinima", "puntosVariacion"}
         if any(key in snapshot for key in detail_keys):
             return "cotizacion_detalle"

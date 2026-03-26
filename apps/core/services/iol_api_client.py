@@ -387,17 +387,47 @@ class IOLAPIClient:
         )
         return data if isinstance(data, dict) else None
 
+    def get_titulo_cotizacion_detalle_mobile(
+        self,
+        mercado: str,
+        simbolo: str,
+        plazo: str = "t1",
+    ) -> Optional[Dict]:
+        """Obtiene la cotizacion detallada mobile de un titulo para un plazo puntual."""
+        mercado_path = quote(str(mercado or "").strip(), safe="")
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        plazo_path = quote(str(plazo or "t1").strip(), safe="")
+        url = f"{self.base_url}/api/v2/{mercado_path}/Titulos/{simbolo_path}/CotizacionDetalleMobile/{plazo_path}"
+        data = self._request_json(
+            operation=f"get_titulo_cotizacion_detalle_mobile:{mercado}:{simbolo}:{plazo}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
     def get_titulo_market_snapshot(
         self,
         mercado: str,
         simbolo: str,
         params: Optional[Dict] = None,
     ) -> Optional[Dict]:
-        """Obtiene market data puntual priorizando CotizacionDetalle y usando Cotizacion como fallback."""
+        """Obtiene market data puntual priorizando CotizacionDetalleMobile, luego CotizacionDetalle y finalmente Cotizacion."""
+        plazo = str(
+            (params or {}).get("model.plazo")
+            or (params or {}).get("plazo")
+            or (params or {}).get("plazo_operacion")
+            or "t1"
+        ).strip() or "t1"
+        detalle_mobile = self.get_titulo_cotizacion_detalle_mobile(mercado, simbolo, plazo)
+        if isinstance(detalle_mobile, dict):
+            return {**detalle_mobile, "_snapshot_source_key": "cotizacion_detalle_mobile"}
+
         detalle = self.get_titulo_cotizacion_detalle(mercado, simbolo)
         if isinstance(detalle, dict):
-            return detalle
-        return self.get_titulo_cotizacion(mercado, simbolo, params=params)
+            return {**detalle, "_snapshot_source_key": "cotizacion_detalle"}
+        cotizacion = self.get_titulo_cotizacion(mercado, simbolo, params=params)
+        if isinstance(cotizacion, dict):
+            return {**cotizacion, "_snapshot_source_key": "cotizacion"}
+        return cotizacion
 
     def get_titulo_historicos(
         self,

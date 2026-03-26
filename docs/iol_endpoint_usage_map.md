@@ -26,6 +26,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 - `GET /api/v2/Titulos/FCI/{simbolo}`
 - `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion`
 - `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle`
+- `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalleMobile/{plazo}`
 - `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/{fechaDesde}/{fechaHasta}/{ajustada}`
 
 ## Mapa por endpoint
@@ -39,6 +40,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | `GET /api/v2/{mercado}/Titulos/{simbolo}` | `IOLAPIClient.get_titulo()` | Metadata minima de titulo | elegibilidad de historicos, resolucion de instrumentos | Medio | no expuesto en UI de forma explicita |
 | `GET /api/v2/Titulos/FCI/{simbolo}` | `IOLAPIClient.get_fci()` | Confirmacion de FCI y cash management | exclusiones del pipeline de historicos | Medio | no se usa mas alla de clasificacion o confirmacion |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
+| `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalleMobile/{plazo}` | `IOLAPIClient.get_titulo_cotizacion_detalle_mobile()` | fuente tactica puntual por plazo | `get_titulo_market_snapshot()` para lectura operativa `t0/t1` | Medio | todavia no se explota como serie intradia ni analitica por plazo |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops`, `Resumen`, `Estrategia`, `Planeacion` via snapshot cacheado y lectura historica corta de ejecucion reciente | Alto | la persistencia historica sigue acotada al universo refrescado manualmente |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo, performance y `Ops` | Alto | sigue siendo opt-in via sync, no cobertura total garantizada |
 
@@ -251,6 +253,20 @@ Conclusion:
 - ya puede promover una propuesta incremental alternativa cuando la preferida original no viene con una ejecucion reciente suficientemente limpia
 - ya puede deteriorar la firmeza cuantitativa final de la decision cuando el contexto de ejecucion reciente no acompana
 - la brecha actual ya no es si conviene persistirlo, sino cuanta automatizacion y cobertura adicional merece ese historial
+
+### 7b. `CotizacionDetalleMobile/{plazo}`
+
+Se usa hoy como:
+
+- primer intento del `market snapshot` puntual cuando queremos lectura tactica por plazo
+- captura de `puntas`, `cantidadOperaciones`, `operableCompra` y `operableVenta` sobre `t0/t1`
+- etiquetado explicito de fuente `CotizacionDetalleMobile` dentro del snapshot persistido
+
+Conclusion:
+
+- no reemplaza `seriehistorica`
+- agrega valor para ejecucion y operabilidad puntual
+- abre la puerta a una futura capa intradia o comparativa por plazo si realmente aporta valor
 
 ### 8. `seriehistorica`
 
