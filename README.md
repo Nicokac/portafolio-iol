@@ -250,10 +250,10 @@ Defaults relevantes:
 - `UVA_API_VALUE_PATH=valor`
 - `UVA_API_DATE_PATH=fecha`
 
-Si querÃ©s sobrescribir las fuentes por entorno:
+Si queres sobrescribir las fuentes por entorno:
 
-- podÃ©s redefinir `USDARS_MEP_API_URL` y `USDARS_CCL_API_URL`
-- el sync macro local seguirÃ¡ usando los `VALUE_PATH` y `DATE_PATH` configurados
+- podes redefinir `USDARS_MEP_API_URL` y `USDARS_CCL_API_URL`
+- el sync macro local seguira usando los `VALUE_PATH` y `DATE_PATH` configurados
 
 ## Ejecucion local
 

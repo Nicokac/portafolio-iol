@@ -295,3 +295,66 @@ Las funciones de Zona 5 que dependian de funciones todavia en `selectors.py` (`g
 Los lazy imports son un patron aceptado en Django para ciclos de importacion. La penalizacion en performance es nula porque Python cachea modulos en `sys.modules` tras la primera carga.
 
 Tests en `test_selectors.py` que antes parchaban `apps.dashboard.selectors.X` fueron actualizados al modulo real donde cada funcion vive, siguiendo la regla de mock "patch-where-it's-used".
+
+---
+
+## D-008 - Refactor transversal de modulos grandes en dashboard y core
+
+**Fecha:** 2026-03-25
+**Estado:** Implementado
+
+### Contexto
+
+Despues de la descomposicion inicial de `selectors.py`, todavia quedaban modulos grandes y con mezcla de responsabilidades tanto en `apps/dashboard` como en `apps/core/services`.
+
+En particular, la capa incremental de `Planeacion`, los servicios de asignacion mensual, recomendaciones, contexto macro local y soporte de snapshot de mercado seguian acumulando:
+
+- logica de orquestacion
+- reglas de negocio
+- builders de payload
+- UI/plumbing para tests o wrappers publicos
+
+Eso hacia mas costoso testear piezas chicas y obligaba a tocar archivos grandes para cambios menores.
+
+### Decision
+
+Cerrar una tanda acotada de refactor sobre diez modulos de mayor valor tecnico, extrayendo helpers cohesivos y manteniendo las fachadas publicas para compatibilidad con vistas, tests y puntos de `patch()`.
+
+Modulos intervenidos en esta tanda:
+
+- `apps/dashboard/incremental_simulation.py`
+- `apps/dashboard/views.py`
+- `apps/dashboard/incremental_comparators.py`
+- `apps/dashboard/incremental_planeacion.py`
+- `apps/dashboard/incremental_history_enrichment.py`
+- `apps/dashboard/selectors.py`
+- `apps/core/services/iol_historical_price_service.py`
+- `apps/core/services/monthly_allocation_service.py`
+- `apps/core/services/local_macro_series_service.py`
+- `apps/core/services/recommendation_engine.py`
+
+Modulos soporte creados o consolidados:
+
+- `incremental_simulation_comparison.py`
+- `dashboard_incremental_actions.py`
+- `incremental_comparator_ui.py`
+- `incremental_planeacion_context.py`
+- `incremental_history_sources.py`
+- `dashboard_overview.py`
+- `iol_market_snapshot_support.py`
+- `monthly_allocation_rules.py`
+- `local_macro_context.py`
+- `recommendation_signal_support.py`
+
+### Criterio aplicado
+
+- conservar contratos publicos
+- mantener wrappers cuando los tests patchaban sobre la fachada original
+- separar orquestacion de reglas o builders puros
+- agregar tests directos al modulo extraido antes de considerar cerrado el corte
+
+### Riesgo aceptado
+
+Se acepta mantener algunas fachadas delgadas y re-exportaciones mientras sigan aportando compatibilidad con tests y puntos de integracion existentes.
+
+El objetivo de esta tanda fue bajar acoplamiento y mejorar testabilidad sin introducir un cambio funcional visible ni reescribir consumidores en cascada.
