@@ -5,14 +5,12 @@ import hashlib
 import json
 from urllib.parse import urlencode
 from django.core.cache import cache
-from django.db.models import Max, Sum
+from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.selectors import build_portafolio_row
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
-from apps.resumen_iol.models import ResumenCuentaSnapshot
 from apps.core.models import Alert
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.risk.cvar_service import CVaRService
@@ -198,30 +196,30 @@ from apps.dashboard.selector_cache import (
     _get_cached_selector_result,
     _safe_percentage,
 )
+from apps.dashboard.dashboard_overview import (
+    build_current_enriched_portfolio,
+    build_dashboard_kpis_payload,
+    build_distribucion_moneda_operativa_payload,
+    build_distribucion_moneda_payload,
+    build_distribucion_pais_payload,
+    build_distribucion_sector_payload,
+    build_distribucion_tipo_patrimonial_payload,
+    build_macro_local_context_payload,
+    build_riesgo_portafolio_detallado_payload,
+    build_riesgo_portafolio_payload,
+    fetch_latest_portafolio_data,
+    fetch_latest_resumen_data,
+)
 
 
 def get_latest_portafolio_data() -> List[ActivoPortafolioSnapshot]:
     """Obtiene los datos más recientes del portafolio."""
-    latest_date = ActivoPortafolioSnapshot.objects.aggregate(
-        latest=Max('fecha_extraccion')
-    )['latest']
-    if not latest_date:
-        return []
-    return list(ActivoPortafolioSnapshot.objects.filter(
-        fecha_extraccion=latest_date
-    ))
+    return fetch_latest_portafolio_data()
 
 
-def get_latest_resumen_data() -> List[ResumenCuentaSnapshot]:
+def get_latest_resumen_data() -> List:
     """Obtiene los datos más recientes del resumen de cuenta."""
-    latest_date = ResumenCuentaSnapshot.objects.aggregate(
-        latest=Max('fecha_extraccion')
-    )['latest']
-    if not latest_date:
-        return []
-    return list(ResumenCuentaSnapshot.objects.filter(
-        fecha_extraccion=latest_date
-    ))
+    return fetch_latest_resumen_data()
 
 
 def get_market_snapshot_feature_context(*, top_limit: int = 5) -> Dict:
@@ -269,10 +267,10 @@ def get_portfolio_parking_feature_context(*, top_limit: int = 5) -> Dict:
 def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
     """Obtiene el portafolio actual enriquecido con metadata, separado en liquidez e inversion."""
     def build():
-        portafolio = get_latest_portafolio_data()
-        simbolos = [activo.simbolo for activo in portafolio]
-        parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
-        return build_portafolio_enriquecido(portafolio, parametros)
+        return build_current_enriched_portfolio(
+            get_latest_portafolio_data_fn=get_latest_portafolio_data,
+            build_portafolio_enriquecido_fn=build_portafolio_enriquecido,
+        )
 
     return _get_cached_selector_result("portafolio_enriquecido_actual", build)
 
@@ -294,10 +292,12 @@ _extract_resumen_cash_components = extract_resumen_cash_components
 def get_dashboard_kpis() -> Dict:
     """Calcula los KPIs principales del dashboard con metricas separadas por categoria."""
     def build():
-        portafolio = get_latest_portafolio_data()
-        resumen = get_latest_resumen_data()
-        portafolio_clasificado = get_portafolio_enriquecido_actual()
-        return _build_dashboard_kpis(portafolio, portafolio_clasificado, resumen)
+        return build_dashboard_kpis_payload(
+            get_latest_portafolio_data_fn=get_latest_portafolio_data,
+            get_latest_resumen_data_fn=get_latest_resumen_data,
+            get_portafolio_enriquecido_actual_fn=get_portafolio_enriquecido_actual,
+            build_dashboard_kpis_fn=_build_dashboard_kpis,
+        )
 
     return _get_cached_selector_result("dashboard_kpis", build)
 
@@ -306,7 +306,7 @@ def get_macro_local_context(total_iol: float | None = None) -> Dict:
     """Obtiene contexto macro local persistido para enriquecer el analisis."""
 
     def build():
-        return LocalMacroSeriesService().get_context_summary(total_iol=total_iol)
+        return build_macro_local_context_payload(total_iol=total_iol)
 
     total_stamp = round(float(total_iol), 2) if total_iol is not None else "none"
     return _get_cached_selector_result(f"macro_local_context:{total_stamp}", build)
@@ -320,41 +320,47 @@ def get_liquidity_contract_summary(kpis: Dict | None = None) -> Dict:
 
 
 def get_distribucion_sector(base: str = 'total_activos') -> Dict[str, float]:
-    return build_distribucion_sector(
-        activos_invertidos=_get_activos_invertidos(),
-        activos_con_metadata=_get_activos_valorizados_con_metadata(),
+    return build_distribucion_sector_payload(
+        get_activos_invertidos_fn=_get_activos_invertidos,
+        get_activos_valorizados_con_metadata_fn=_get_activos_valorizados_con_metadata,
         base=base,
+        build_distribucion_sector_fn=build_distribucion_sector,
     )
 
 
 def get_distribucion_pais(base: str = 'portafolio_invertido') -> Dict[str, float]:
-    return build_distribucion_pais(
-        activos_invertidos=_get_activos_invertidos(),
-        activos_con_metadata=_get_activos_valorizados_con_metadata(),
-        resumen_cash_by_country=build_resumen_cash_distribution_by_country(get_latest_resumen_data()),
+    return build_distribucion_pais_payload(
+        get_activos_invertidos_fn=_get_activos_invertidos,
+        get_activos_valorizados_con_metadata_fn=_get_activos_valorizados_con_metadata,
+        get_latest_resumen_data_fn=get_latest_resumen_data,
+        build_resumen_cash_distribution_by_country_fn=build_resumen_cash_distribution_by_country,
         base=base,
+        build_distribucion_pais_fn=build_distribucion_pais,
     )
 
 
 def get_distribucion_tipo_patrimonial(base: str = 'total_activos') -> Dict[str, float]:
-    return build_distribucion_tipo_patrimonial(
-        activos_invertidos=_get_activos_invertidos(),
-        activos_con_metadata=_get_activos_valorizados_con_metadata(),
+    return build_distribucion_tipo_patrimonial_payload(
+        get_activos_invertidos_fn=_get_activos_invertidos,
+        get_activos_valorizados_con_metadata_fn=_get_activos_valorizados_con_metadata,
         base=base,
+        build_distribucion_tipo_patrimonial_fn=build_distribucion_tipo_patrimonial,
     )
 
 
 def get_distribucion_moneda() -> Dict[str, float]:
-    return build_distribucion_moneda(
-        portafolio=get_latest_portafolio_data(),
-        resumen=get_latest_resumen_data(),
+    return build_distribucion_moneda_payload(
+        get_latest_portafolio_data_fn=get_latest_portafolio_data,
+        get_latest_resumen_data_fn=get_latest_resumen_data,
+        build_distribucion_moneda_fn=build_distribucion_moneda,
     )
 
 
 def get_distribucion_moneda_operativa() -> Dict[str, float]:
-    return build_distribucion_moneda_operativa(
-        portafolio=get_latest_portafolio_data(),
-        resumen=get_latest_resumen_data(),
+    return build_distribucion_moneda_operativa_payload(
+        get_latest_portafolio_data_fn=get_latest_portafolio_data,
+        get_latest_resumen_data_fn=get_latest_resumen_data,
+        build_distribucion_moneda_operativa_fn=build_distribucion_moneda_operativa,
     )
 
 
@@ -395,24 +401,18 @@ def get_concentracion_moneda_operativa() -> Dict[str, float]:
 
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
-    portafolio = [item['activo'] for item in _get_activos_invertidos()]
-    kpis = get_dashboard_kpis()
-    return build_riesgo_portafolio_detallado(
-        portafolio=portafolio,
-        total_portafolio=sum(activo.valorizado for activo in portafolio),
-        liquidez_operativa=kpis.get('liquidez_operativa', 0),
-        total_iol=kpis.get('total_iol', 0),
+    return build_riesgo_portafolio_detallado_payload(
+        get_activos_invertidos_fn=_get_activos_invertidos,
+        get_dashboard_kpis_fn=get_dashboard_kpis,
+        build_riesgo_portafolio_detallado_fn=build_riesgo_portafolio_detallado,
     )
 
 
 def get_riesgo_portafolio() -> Dict[str, float]:
-    portafolio = [item['activo'] for item in _get_activos_invertidos()]
-    kpis = get_dashboard_kpis()
-    return build_riesgo_portafolio(
-        portafolio=portafolio,
-        total_portafolio=sum(activo.valorizado for activo in portafolio),
-        liquidez_operativa=kpis.get('liquidez_operativa', 0),
-        total_iol=kpis.get('total_iol', 0),
+    return build_riesgo_portafolio_payload(
+        get_activos_invertidos_fn=_get_activos_invertidos,
+        get_dashboard_kpis_fn=get_dashboard_kpis,
+        build_riesgo_portafolio_fn=build_riesgo_portafolio,
     )
 
 def get_analytics_mensual() -> Dict[str, float]:
