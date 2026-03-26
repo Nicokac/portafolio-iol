@@ -29,6 +29,23 @@ Hoy existe un consumidor real para estos endpoints IOL:
 - `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalleMobile/{plazo}`
 - `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/{fechaDesde}/{fechaHasta}/{ajustada}`
 
+## Estrategia actual de historicos
+
+La app ya no depende de una sola fuente para historicos diarios por activo.
+
+Estado actual:
+
+- `IOL seriehistorica` sigue siendo la fuente legacy para simbolos donde responde bien
+- `Yahoo Finance / yfinance` ahora se usa como fuente complementaria para `Equity`, `CEDEAR` y `ETF`
+- la persistencia sigue cayendo en `IOLHistoricalPriceSnapshot` para no romper consumers cuantitativos existentes
+- el campo `source` distingue la procedencia real (`iol` o `yfinance`)
+
+Objetivo:
+
+- mantener IOL como fuente tactica y operativa del momento
+- usar `yfinance` para reforzar cobertura historica diaria del universo accionario
+- dejar bonos y otros instrumentos fuera de este fallback hasta definir otra fuente confiable
+
 ## Mapa por endpoint
 
 | Endpoint IOL | Cliente | Uso real actual | Superficie | Aprovechamiento actual | Brecha principal |
@@ -42,7 +59,7 @@ Hoy existe un consumidor real para estos endpoints IOL:
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion` | `IOLAPIClient.get_titulo_cotizacion()` | fallback de market data puntual | `get_titulo_market_snapshot()` | Bajo por si solo | hoy se usa solo como fallback |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalleMobile/{plazo}` | `IOLAPIClient.get_titulo_cotizacion_detalle_mobile()` | fuente tactica puntual por plazo | `get_titulo_market_snapshot()` para lectura operativa `t0/t1` | Medio | todavia no se explota como serie intradia ni analitica por plazo |
 | `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalle` | `IOLAPIClient.get_titulo_cotizacion_detalle()` | fuente primaria de market data puntual | elegibilidad historicos fallback, `Ops`, `Resumen`, `Estrategia`, `Planeacion` via snapshot cacheado y lectura historica corta de ejecucion reciente | Alto | la persistencia historica sigue acotada al universo refrescado manualmente |
-| `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo, performance y `Ops` | Alto | sigue siendo opt-in via sync, no cobertura total garantizada |
+| `GET /api/v2/{mercado}/Titulos/{simbolo}/Cotizacion/seriehistorica/...` | `IOLAPIClient.get_titulo_historicos()` | sync de precios historicos por simbolo | `IOLHistoricalPriceSnapshot`, riesgo, performance y `Ops` | Alto | ya no es la unica fuente de historicos; cuando falla o no conviene, la app puede reforzar `Equity/CEDEAR/ETF` via `yfinance` |
 
 ## Endpoint por endpoint
 
@@ -279,7 +296,83 @@ Se usa para:
 Conclusion:
 
 - esta bien integrado
-- la brecha principal no es el endpoint sino la cobertura efectiva del universo del portfolio
+- pero ya no debe considerarse fuente unica ni contrato suficiente por si solo
+- la cobertura efectiva del universo del portfolio ahora depende de una estrategia hibrida
+- para `Equity/CEDEAR/ETF`, la app puede persistir historicos desde `yfinance`
+- para bonos y otros instrumentos, sigue pendiente definir una fuente complementaria confiable
+
+## Fuente complementaria externa: `yfinance`
+
+Se usa hoy como:
+
+- refuerzo de historicos diarios para `Equity`, `CEDEAR` y `ETF`
+- cobertura local BYMA usando sufijo `.BA` cuando el mercado es `BCBA`
+- cobertura directa sin sufijo para mercados compatibles como `NASDAQ` o `NYSE`
+- persistencia en `IOLHistoricalPriceSnapshot` con `source="yfinance"`
+
+Importante:
+
+- no reemplaza a IOL como fuente tactica actual
+- no se usa para `market snapshot`, `puntas`, `parking` ni operabilidad
+- no se usa para bonos en el estado actual
+
+Razon de dise�o:
+
+- `CotizacionDetalleMobile` y `CotizacionDetalle` resolvieron bien la capa operativa del momento
+- `seriehistorica` de IOL mostro comportamiento remoto inestable en pruebas reales
+- `yfinance` mostro cobertura util para `AAPL.BA`, `SPY.BA`, `MELI.BA` y `YPFD.BA`
+- `yfinance` no mostro cobertura util para bonos locales como `GD30.BA`, `AL30.BA`, `GD35.BA`, `TZX26.BA`, `TZXM6.BA` o `BPOC7.BA`
+
+## Como probar la integracion nueva en la app
+
+### Prueba tecnica minima
+
+1. Instalar dependencias del entorno si hiciera falta
+2. Correr:
+   - `python manage.py runserver`
+3. Disparar una sincronizacion de historicos desde la UI o por comando
+4. Confirmar que aparezcan filas nuevas en `IOLHistoricalPriceSnapshot` con `source="yfinance"` para simbolos elegibles
+
+### Comando sugerido
+
+- `python manage.py sync_iol_historical_prices --simbolo=AAPL --mercado=BCBA`
+- repetir con:
+  - `SPY`
+  - `MELI`
+  - `YPFD`
+
+Resultado esperado:
+
+- la sync completa sin depender de `seriehistorica` de IOL para esos simbolos
+- las filas persistidas quedan con `source="yfinance"`
+- `rows_count` del simbolo sube en cobertura historica
+
+### Validacion funcional en dashboard
+
+Despues de sincronizar:
+
+1. abrir `Ops`
+2. revisar cobertura de historicos del simbolo
+3. abrir `Estrategia`
+4. revisar si mejoran las metricas que dependen de historia:
+   - volatilidad
+   - tracking error
+   - VaR / CVaR
+   - risk contribution cuando corresponda
+
+### Casos esperados
+
+- `AAPL`, `SPY`, `MELI`, `YPFD`: deberian poder reforzar historicos via `yfinance`
+- `GD30`, `AL30`, `GD35`, `TZX26`, `TZXM6`, `BPOC7`: no deberian cubrirse por este fallback
+
+### Criterio de aceptacion
+
+La integracion se considera validada si:
+
+- la sync no falla para `Equity/CEDEAR/ETF`
+- la persistencia deja `source="yfinance"` visible en DB
+- `build_close_series()` vuelve a entregar serie util aunque no haya filas `iol`
+- el dashboard mejora cobertura historica sin degradar la capa tactica de IOL
 
 ## Donde hoy no le estamos sacando el maximo provecho
 

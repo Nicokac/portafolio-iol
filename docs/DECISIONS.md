@@ -396,3 +396,52 @@ Consolidar el contrato operativo de estas tres capas:
 El bootstrap de `ParametroActivo` sigue siendo una taxonomia inicial y puede requerir ajustes manuales finos para ciertos activos.
 
 Tambien se acepta que `CotizacionDetalle` pueda devolver precio puntual sin puntas visibles; en ese caso la UI muestra `Sin libro visible` aunque el refresh haya sido correcto.
+
+---
+
+## D-010 - Historicos diarios hibridos: IOL tactico + yfinance para Equity/CEDEAR/ETF
+
+**Fecha:** 2026-03-26
+**Estado:** Implementado
+
+### Contexto
+
+El endpoint `seriehistorica` de IOL quedo correctamente integrado en el cliente, pero en pruebas reales mostro comportamiento remoto inestable para consumo productivo como fuente principal de historicos diarios.
+
+Al mismo tiempo:
+
+- `CotizacionDetalleMobile` y `CotizacionDetalle` ya resolvieron bien la capa tactica del momento
+- `yfinance` mostro cobertura util para una parte relevante del universo accionario local
+- los consumers cuantitativos ya dependen de `IOLHistoricalPriceSnapshot` como almacenamiento comun
+
+### Decision
+
+Adoptar una estrategia hibrida:
+
+- mantener IOL como fuente principal de snapshot puntual, operabilidad y lectura tactica
+- usar `yfinance` como fuente complementaria de historicos diarios para `Equity`, `CEDEAR` y `ETF`
+- persistir ambos orígenes en `IOLHistoricalPriceSnapshot`, diferenciando con `source`
+- hacer que `build_close_series()` pueda leer series historicas aun cuando la data disponible venga de `yfinance`
+
+### Alcance
+
+Cobertura esperada en esta etapa:
+
+- `Equity`
+- `CEDEAR`
+- `ETF`
+
+Fuera de alcance por ahora:
+
+- bonos locales
+- cauciones
+- FCI / cash management
+- cualquier instrumento cuya cobertura en Yahoo no sea confiable
+
+### Riesgo aceptado
+
+`yfinance` no reemplaza un proveedor oficial con SLA fuerte. Se acepta su uso solo como fuente complementaria para historicos diarios de activos accionarios mientras:
+
+- siga mejorando cobertura real del portfolio
+- no reemplace la capa tactica actual basada en IOL
+- se mantenga trazabilidad explicita de fuente via `source="yfinance"`
