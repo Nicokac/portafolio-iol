@@ -302,6 +302,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo E2 - Familia Orleans
 
 - Prioridad: `P3`
+- Estado: `Implementado como spike controlado`
 - Problema:
   - existe una familia de endpoints `cotizaciones-orleans`, pero no esta validado su valor contractual
 - Oportunidad:
@@ -322,7 +323,22 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 - Riesgo:
   - alto
 - Criterio de aceptacion:
-  - no avanzar a producto sin evidencia clara de estabilidad y valor diferencial
+  - existe un probe aislado para contrastar Orleans contra la familia estandar
+  - el uso queda protegido por feature flag
+  - un `401/403` o payload inestable no rompe ninguna capa productiva
+
+### Cierre Track E - Decision
+
+- `E1 / Administradoras FCI`: `Mantener en observacion`
+  - motivo:
+    - el spike ya quedo implementado y seguro
+    - el endpoint remoto mostro `403/401` en validaciones reales
+    - el catalogo local persistido ya cubre la necesidad productiva principal
+- `E2 / Orleans`: `Descartar como base productiva por ahora`
+  - motivo:
+    - no hay evidencia de valor diferencial suficiente frente a `bulk quotes` estandar
+    - el costo de complejidad contractual es alto
+    - queda disponible solo como spike comparativo bajo feature flag para futuras revalidaciones
 
 ## Orden de ejecucion sugerido
 

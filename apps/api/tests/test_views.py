@@ -513,6 +513,132 @@ class TestAPIInputValidation:
         assert body['metadata']['available_filters'] == ['pais', 'instrumento']
         assert body['metadata']['fields_basis']['coverage_pct'] == 'priced_titles / total_titles'
 
+    @patch('apps.api.views.IOLOrleansSpikeService.get_probe')
+    def test_catalog_orleans_probe_exposes_spike_comparison(self, mock_get_probe, auth_client):
+        mock_get_probe.return_value = {
+            'instrumento': 'Bonos',
+            'pais': 'argentina',
+            'feature_enabled': True,
+            'status': 'available',
+            'reason': '',
+            'baseline': {
+                'source': 'iol_bulk_quotes',
+                'status': 'available',
+                'count': 2,
+                'symbols_sample': ['AL30', 'GD30'],
+                'symbol_set': ['AL30', 'GD30'],
+                'coverage_pct': 100.0,
+                'order_book_coverage_pct': 50.0,
+                'activity_pct': 50.0,
+                'freshness_status': 'fresh',
+                'latest_quote_age_minutes': 3,
+                'stale_titles': 0,
+                'metadata': {},
+            },
+            'orleans': {
+                'source': 'iol_orleans_bulk_quotes',
+                'status': 'available',
+                'count': 2,
+                'symbols_sample': ['AL30', 'TX26'],
+                'symbol_set': ['AL30', 'TX26'],
+                'coverage_pct': 100.0,
+                'order_book_coverage_pct': 50.0,
+                'activity_pct': 50.0,
+                'freshness_status': 'fresh',
+                'latest_quote_age_minutes': 4,
+                'stale_titles': 0,
+                'metadata': {},
+            },
+            'orleans_operables': {
+                'source': 'iol_orleans_bulk_quotes',
+                'status': 'available',
+                'count': 1,
+                'symbols_sample': ['AL30'],
+                'symbol_set': ['AL30'],
+                'coverage_pct': 100.0,
+                'order_book_coverage_pct': 100.0,
+                'activity_pct': 100.0,
+                'freshness_status': 'fresh',
+                'latest_quote_age_minutes': 2,
+                'stale_titles': 0,
+                'metadata': {},
+            },
+            'orleans_panel': {
+                'source': 'iol_orleans_panel_bulk_quotes',
+                'status': 'available',
+                'count': 2,
+                'symbols_sample': ['AL30', 'GD30'],
+                'symbol_set': ['AL30', 'GD30'],
+                'coverage_pct': 100.0,
+                'order_book_coverage_pct': 100.0,
+                'activity_pct': 50.0,
+                'freshness_status': 'fresh',
+                'latest_quote_age_minutes': 5,
+                'stale_titles': 0,
+                'metadata': {},
+            },
+            'orleans_panel_operables': {
+                'source': 'iol_orleans_panel_bulk_quotes',
+                'status': 'available',
+                'count': 1,
+                'symbols_sample': ['AL30'],
+                'symbol_set': ['AL30'],
+                'coverage_pct': 100.0,
+                'order_book_coverage_pct': 100.0,
+                'activity_pct': 100.0,
+                'freshness_status': 'fresh',
+                'latest_quote_age_minutes': 2,
+                'stale_titles': 0,
+                'metadata': {},
+            },
+            'comparisons': {
+                'baseline_vs_orleans': {
+                    'left_status': 'available',
+                    'right_status': 'available',
+                    'left_count': 2,
+                    'right_count': 2,
+                    'count_delta': 0,
+                    'overlap_count': 1,
+                    'left_only_count': 1,
+                    'right_only_count': 1,
+                    'overlap_pct_vs_left': 50.0,
+                    'overlap_pct_vs_right': 50.0,
+                },
+                'orleans_todos_vs_operables': {
+                    'left_status': 'available',
+                    'right_status': 'available',
+                    'left_count': 2,
+                    'right_count': 1,
+                    'count_delta': -1,
+                    'overlap_count': 1,
+                    'left_only_count': 1,
+                    'right_only_count': 0,
+                    'overlap_pct_vs_left': 50.0,
+                    'overlap_pct_vs_right': 100.0,
+                },
+                'orleans_panel_todos_vs_operables': {
+                    'left_status': 'available',
+                    'right_status': 'available',
+                    'left_count': 2,
+                    'right_count': 1,
+                    'count_delta': -1,
+                    'overlap_count': 1,
+                    'left_only_count': 1,
+                    'right_only_count': 0,
+                    'overlap_pct_vs_left': 50.0,
+                    'overlap_pct_vs_right': 100.0,
+                },
+            },
+        }
+
+        response = auth_client.get(reverse('catalog-orleans-probe') + '?instrumento=Bonos&pais=argentina')
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['instrumento'] == 'Bonos'
+        assert body['comparisons']['baseline_vs_orleans']['overlap_count'] == 1
+        assert body['metadata']['feature_flag'] == 'IOL_ORLEANS_SPIKE_ENABLED'
+
     @patch('apps.api.views.TemporalMetricsService.get_portfolio_returns')
     def test_metrics_returns_exposes_partial_history_guardrails(self, mock_get_returns, auth_client):
         mock_get_returns.return_value = {

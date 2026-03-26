@@ -21,6 +21,7 @@ from apps.core.services.iol_fci_admin_taxonomy_service import IOLFCIAdminTaxonom
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
 from apps.core.services.iol_market_coverage_service import IOLMarketCoverageService
 from apps.core.services.iol_market_universe_service import IOLMarketUniverseService
+from apps.core.services.iol_orleans_spike_service import IOLOrleansSpikeService
 from apps.core.services.observability import get_state_summary, get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.security_audit import record_sensitive_action
@@ -737,6 +738,49 @@ def catalog_market_coverage(request):
         return Response(payload, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "catalog_market_coverage")
+
+
+@api_view(['GET'])
+def catalog_orleans_probe(request):
+    """Spike controlado para contrastar la familia Orleans contra el bulk quotes estandar."""
+    instrumento = str(request.query_params.get('instrumento') or '').strip()
+    pais = str(request.query_params.get('pais') or 'argentina').strip()
+    include_panel_family = str(
+        request.query_params.get('include_panel_family') or 'true'
+    ).strip().lower() not in {'0', 'false', 'no', 'off'}
+
+    if not instrumento:
+        return Response(
+            {'error': 'Parámetro instrumento es obligatorio'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        payload = IOLOrleansSpikeService().get_probe(
+            instrumento=instrumento,
+            pais=pais,
+            include_panel_family=include_panel_family,
+        )
+        payload['metadata'] = build_metric_metadata(
+            methodology='Controlled spike: compare Orleans bulk quotes families against the standard IOL bulk quotes endpoint',
+            data_basis='GET /api/v2/Cotizaciones/{Instrumento}/{Pais}/Todos + Orleans families (/cotizaciones-orleans and /cotizaciones-orleans-panel)',
+            limitations='Orleans is exploratory only behind feature flag; a 401/403 or unstable payload should not be treated as product-grade coverage',
+            extra={
+                'fields_basis': {
+                    'baseline': 'standard_iol_bulk_quotes',
+                    'orleans': 'orleans_bulk_quotes_todos',
+                    'orleans_operables': 'orleans_bulk_quotes_operables',
+                    'orleans_panel': 'orleans_panel_bulk_quotes_todos',
+                    'orleans_panel_operables': 'orleans_panel_bulk_quotes_operables',
+                    'comparisons': 'symbol_overlap_and_count_delta',
+                },
+                'available_filters': ['instrumento', 'pais', 'include_panel_family'],
+                'feature_flag': 'IOL_ORLEANS_SPIKE_ENABLED',
+            },
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "catalog_orleans_probe")
 
 
 @api_view(['GET'])

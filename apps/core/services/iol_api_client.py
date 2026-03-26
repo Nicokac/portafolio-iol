@@ -420,6 +420,50 @@ class IOLAPIClient:
         )
         return data if isinstance(data, dict) else None
 
+    def get_orleans_bulk_quotes(self, instrumento: str, pais: str) -> Optional[Dict]:
+        """Obtiene cotizaciones Orleans por instrumento y pais."""
+        instrumento_path = quote(str(instrumento or "").strip(), safe="")
+        pais_path = quote(str(pais or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/cotizaciones-orleans/{instrumento_path}/{pais_path}/Todos"
+        data = self._request_json(
+            operation=f"get_orleans_bulk_quotes:{instrumento}:{pais}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
+    def get_orleans_operables(self, instrumento: str, pais: str) -> Optional[Dict]:
+        """Obtiene operables Orleans por instrumento y pais."""
+        instrumento_path = quote(str(instrumento or "").strip(), safe="")
+        pais_path = quote(str(pais or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/cotizaciones-orleans/{instrumento_path}/{pais_path}/Operables"
+        data = self._request_json(
+            operation=f"get_orleans_operables:{instrumento}:{pais}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
+    def get_orleans_panel_bulk_quotes(self, instrumento: str, pais: str) -> Optional[Dict]:
+        """Obtiene cotizaciones Orleans Panel por instrumento y pais."""
+        instrumento_path = quote(str(instrumento or "").strip(), safe="")
+        pais_path = quote(str(pais or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/cotizaciones-orleans-panel/{instrumento_path}/{pais_path}/Todos"
+        data = self._request_json(
+            operation=f"get_orleans_panel_bulk_quotes:{instrumento}:{pais}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
+    def get_orleans_panel_operables(self, instrumento: str, pais: str) -> Optional[Dict]:
+        """Obtiene operables Orleans Panel por instrumento y pais."""
+        instrumento_path = quote(str(instrumento or "").strip(), safe="")
+        pais_path = quote(str(pais or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/cotizaciones-orleans-panel/{instrumento_path}/{pais_path}/Operables"
+        data = self._request_json(
+            operation=f"get_orleans_panel_operables:{instrumento}:{pais}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
     def get_mep_quote(self, simbolo: str) -> Optional[float]:
         """Obtiene la valuacion MEP implicita para un simbolo."""
         simbolo_path = quote(str(simbolo or "").strip(), safe="")

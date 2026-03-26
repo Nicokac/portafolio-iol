@@ -482,7 +482,7 @@ El criterio de priorizacion es:
 | --- | --- | --- | --- | --- | --- |
 | `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos` | taxonomia por administradora | ordena catalogo FCI y comparadores por family grouping | Medio | Medio | spike implementado bajo feature flag con fallback al catalogo local |
 | `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos/{tipoFondo}` | screener filtrado remoto de FCI | menor trabajo de filtrado local | Medio | Medio/Alto | usar solo como contraste remoto; la base productiva sigue siendo el catalogo persistido |
-| `GET /api/v2/cotizaciones-orleans/...` | posible universo operable alternativo | podria mejorar cobertura de operables o paneles | Medio | Alto | spike tecnico aislado antes de integracion |
+| `GET /api/v2/cotizaciones-orleans/...` | posible universo operable alternativo | podria mejorar cobertura de operables o paneles | Medio | Alto | spike implementado bajo feature flag con comparacion contra bulk quotes estandar |
 
 ### Endpoint que hoy no conviene tomar como eje
 
@@ -490,6 +490,7 @@ El criterio de priorizacion es:
 | --- | --- |
 | `seriehistorica` como unica fuente | ya mostro inestabilidad remota y errores `500` |
 | `FCI/Administradoras` como dependencia productiva directa | en pruebas reales devolvio `403`; hoy solo se usa como spike controlado bajo feature flag y con fallback local |
+| `cotizaciones-orleans` como fuente primaria directa | sigue siendo exploratorio; hoy solo se usa como spike controlado con contraste frente a la familia estandar |
 | `Cotizaciones/{Instrumento}/{Panel}/{Pais}` como base primaria | en la muestra compartida devolvio `401`, por lo que necesita validacion antes de comprometer producto |
 
 ## Roadmap por fase
@@ -536,6 +537,13 @@ Si hubiera que elegir solo dos frentes con mejor retorno hoy:
 
 - `FCI` para valor visible rapido en producto
 - `Cotizaciones/{Instrumento}/{Pais}/Todos` para ampliar cobertura de mercado y analytics
+
+## Cierre actual del track exploratorio
+
+- `E1 / FCI Administradoras`: mantener en observacion
+  - el spike controlado sirve para contraste tecnico, pero no para base productiva
+- `E2 / Orleans`: descartar como fuente primaria por ahora
+  - no demostro suficiente ventaja contractual frente a la familia estandar y se mantiene solo como comparador aislado
 
 ## Recomendacion de lectura
 

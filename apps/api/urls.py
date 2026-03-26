@@ -13,6 +13,7 @@ urlpatterns = [
     path('catalogs/fci-admin-taxonomy/<str:administradora>/', views.catalog_fci_admin_taxonomy, name='catalog-fci-admin-taxonomy'),
     path('catalogs/market-universe/', views.catalog_market_universe, name='catalog-market-universe'),
     path('catalogs/market-coverage/', views.catalog_market_coverage, name='catalog-market-coverage'),
+    path('catalogs/orleans-probe/', views.catalog_orleans_probe, name='catalog-orleans-probe'),
 
     # Alertas
     path('alerts/active/', views.alerts_active, name='alerts-active'),
