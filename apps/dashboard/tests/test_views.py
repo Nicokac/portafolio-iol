@@ -1114,9 +1114,12 @@ class TestDashboardView:
         assert response.status_code == 200
         assert 'resolver primero qué hacer con el aporte mensual' in body
         assert 'arrancá por `Aportes` y no necesitás recorrer el resto de la hoja' in body
-        assert '1. Aportes' in body
-        assert 'Aportes principal' in body
+        assert 'Flujo principal' in body
+        assert 'Ir a Aportes' in body
+        assert 'Abrir herramientas complementarias' in body
+        assert 'Herramientas complementarias' in body
         assert 'Planeación de aportes: flujo principal' in body
+        assert 'Si necesitás más contexto:' in body
         assert 'Universo patrimonial' in body
         assert 'Patrimonio total broker' in body
         assert 'Cash disponible' in body

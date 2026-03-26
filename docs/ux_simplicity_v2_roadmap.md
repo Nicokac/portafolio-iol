@@ -71,6 +71,17 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `templates/base.html`
     - `apps/dashboard/tests/test_views.py`
 
+- `B1 - Planeacion minimal para aporte mensual`
+  - estado: `implementado`
+  - resultado:
+    - la hoja abre con un flujo principal centrado en `Aportes`
+    - `Diagnóstico`, `Simulación`, `Optimización` y `Config base` quedaron detrás de `Herramientas complementarias`
+    - la lectura principal ya no compite visualmente con cinco caminos simultáneos
+  - archivos principales:
+    - `templates/dashboard/planeacion.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

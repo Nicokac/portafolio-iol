@@ -55,14 +55,17 @@ class TestDashboardFeatureFlows:
         assert response.status_code == 200
         assert "resolver primero qu\u00e9 hacer con el aporte mensual" in content
         assert "arranc\u00e1 por `Aportes` y no necesit\u00e1s recorrer el resto de la hoja" in content
-        assert "1. Aportes" in content
-        assert "Aportes principal" in content
+        assert "Flujo principal" in content
+        assert "Ir a Aportes" in content
+        assert "Abrir herramientas complementarias" in content
+        assert "Herramientas complementarias" in content
         assert "Planeaci\u00f3n de aportes: flujo principal" in content
         assert "Universo patrimonial" in content
         assert "Patrimonio total broker" in content
         assert "Cash disponible" in content
         assert "Caucion colocada" in content
         assert "Capital invertido analizado" in content
+        assert "Si necesit\u00e1s m\u00e1s contexto:" in content
         assert "Diagn\u00f3stico previo al aporte" in content
         assert "Se\u00f1ales de diagn\u00f3stico y priorizaci\u00f3n" in content
         assert "Macro local FX + UVA:" in content

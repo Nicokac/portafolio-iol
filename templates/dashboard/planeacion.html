@@ -9,39 +9,45 @@
     <span class="text-muted">resolver primero qué hacer con el aporte mensual. Si solo querés tomar esa decisión, arrancá por `Aportes` y no necesitás recorrer el resto de la hoja.</span>
 </div>
 
-<div class="card border-0 bg-light mb-4">
-    <div class="card-body py-3">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="text-muted small me-2">Navegación rápida:</span>
-            <a class="btn btn-sm btn-outline-info" href="#planeacion-aportes">1. Aportes</a>
-            <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">2. Diagnóstico previo</a>
-            <a class="btn btn-sm btn-outline-success" href="#simulacion">3. Simulación táctica</a>
-            <a class="btn btn-sm btn-outline-warning" href="#optimizacion">4. Optimización teórica</a>
-            <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">5. Config base</a>
-            <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
-        </div>
-    </div>
-</div>
-
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-3">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
-                <h2 class="h5 mb-1">Mapa de trabajo</h2>
-                <p class="text-muted mb-0">La lectura recomendada arranca por `Aportes`, sigue opcionalmente por `Diagnóstico previo` y deja `Simulación`, `Optimización` y `Config base` solo como apoyo táctico.</p>
+                <h2 class="h5 mb-1">Flujo principal</h2>
+                <p class="text-muted mb-0">Esta hoja queda centrada primero en `Aportes`. `Diagnóstico`, `Simulación`, `Optimización` y `Config base` siguen disponibles, pero como herramientas complementarias y no como parte del recorrido principal.</p>
             </div>
-            <ul class="nav nav-pills gap-2" id="planeacion-tab-nav">
-                <li class="nav-item"><button type="button" class="nav-link active" data-planeacion-tab="planeacion-aportes">Aportes principal</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico previo</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación táctica</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización teórica</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="parametros-estrategia">Config base</button></li>
-            </ul>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-info text-white" href="#planeacion-aportes">Ir a Aportes</a>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#planeacion-secondary-tools" aria-expanded="false" aria-controls="planeacion-secondary-tools">
+                    Abrir herramientas complementarias
+                </button>
+                <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="collapse mb-4" id="planeacion-secondary-tools">
+    <div class="card border-0 bg-light">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Herramientas complementarias</h2>
+                    <p class="text-muted mb-0">Usalas solo si necesitás más contexto antes de cerrar el aporte mensual o si querés validar escenarios puntuales.</p>
+                </div>
+                <ul class="nav nav-pills gap-2" id="planeacion-tab-nav">
+                    <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico previo</button></li>
+                    <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación táctica</button></li>
+                    <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización teórica</button></li>
+                    <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="parametros-estrategia">Config base</button></li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="planeacion-panels">
+    <div class="collapse" id="planeacion-secondary-panels">
     <div class="planeacion-panel d-none" data-planeacion-panel="recomendaciones">
         <section id="recomendaciones" class="mb-4">
             <div class="border-start border-4 border-primary ps-3 mb-4">
@@ -158,6 +164,8 @@
         </div>
     </div>
 
+    </div>
+
     <div class="planeacion-panel" data-planeacion-panel="planeacion-aportes">
         <section id="planeacion-aportes" class="mt-1 mb-4">
             <div class="border-start border-4 border-info ps-3">
@@ -168,6 +176,10 @@
         <div class="alert alert-info border mb-4">
             <strong>Ruta recomendada:</strong>
             <span class="text-muted">primero definí qué bloques reforzar, después mirá activos candidatos, luego validá la propuesta preferida y recién ahí contrastá el impacto incremental.</span>
+        </div>
+        <div class="alert alert-light border mb-4">
+            <strong>Si necesitás más contexto:</strong>
+            <span class="text-muted">abrí `Herramientas complementarias` para revisar diagnóstico previo, simulaciones puntuales, optimización teórica o configuración base sin salir del flujo principal.</span>
         </div>
         {% with scope=portfolio_scope_summary %}
         <section class="mb-4">
@@ -2350,6 +2362,7 @@
         </details>
     </div>
 
+    <div class="collapse" id="planeacion-secondary-panels-bottom">
     <div class="planeacion-panel d-none" data-planeacion-panel="optimizacion">
         <section id="optimizacion" class="mt-1 mb-4">
             <div class="border-start border-4 border-warning ps-3">
@@ -2425,6 +2438,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </div>
 {% endblock %}
@@ -2590,7 +2604,18 @@ function savePortfolioParams() {
 }
 
 function activatePlaneacionTab(tabName) {
-    const normalized = tabName || 'recomendaciones';
+    const normalized = tabName || 'planeacion-aportes';
+    const advancedTabs = new Set(['recomendaciones', 'simulacion', 'optimizacion', 'parametros-estrategia']);
+    const secondaryTools = document.getElementById('planeacion-secondary-tools');
+    const secondaryPanelsTop = document.getElementById('planeacion-secondary-panels');
+    const secondaryPanelsBottom = document.getElementById('planeacion-secondary-panels-bottom');
+
+    if (advancedTabs.has(normalized)) {
+        if (secondaryTools) bootstrap.Collapse.getOrCreateInstance(secondaryTools, { toggle: false }).show();
+        if (secondaryPanelsTop) bootstrap.Collapse.getOrCreateInstance(secondaryPanelsTop, { toggle: false }).show();
+        if (secondaryPanelsBottom) bootstrap.Collapse.getOrCreateInstance(secondaryPanelsBottom, { toggle: false }).show();
+    }
+
     document.querySelectorAll('[data-planeacion-tab]').forEach(button => {
         button.classList.toggle('active', button.dataset.planeacionTab === normalized);
     });
