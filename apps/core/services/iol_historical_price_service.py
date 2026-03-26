@@ -56,6 +56,19 @@ class IOLHistoricalPriceService:
         params: dict | None = None,
         row: dict | None = None,
     ) -> dict:
+        yfinance_support = self.resolve_symbol_history_support_via_yfinance(
+            mercado=mercado,
+            simbolo=simbolo,
+            row=row,
+        )
+        if yfinance_support.get("supported"):
+            return self._sync_symbol_history_from_yfinance(
+                mercado=mercado,
+                simbolo=simbolo,
+                params=params,
+                yfinance_support=yfinance_support,
+            )
+
         support = self.resolve_symbol_history_support(mercado=mercado, simbolo=simbolo, row=row)
         if not support.get("supported"):
             return {
@@ -69,19 +82,6 @@ class IOLHistoricalPriceService:
                 "eligibility_status": support.get("eligibility_status") or "unsupported",
                 "error": support.get("reason") or "Instrumento no elegible para históricos IOL",
             }
-
-        yfinance_support = self.resolve_symbol_history_support_via_yfinance(
-            mercado=mercado,
-            simbolo=simbolo,
-            row=row,
-        )
-        if yfinance_support.get("supported"):
-            return self._sync_symbol_history_from_yfinance(
-                mercado=mercado,
-                simbolo=simbolo,
-                params=params,
-                yfinance_support=yfinance_support,
-            )
 
         resolved_market = str(support.get("mercado") or mercado)
         raw_rows = self.client.get_titulo_historicos(resolved_market, simbolo, params=params)
