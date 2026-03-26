@@ -8,6 +8,7 @@ urlpatterns = [
     path('dashboard/concentracion-pais/', views.dashboard_concentracion_pais, name='dashboard-concentracion-pais'),
     path('dashboard/concentracion-sector/', views.dashboard_concentracion_sector, name='dashboard-concentracion-sector'),
     path('dashboard/senales-rebalanceo/', views.dashboard_senales_rebalanceo, name='dashboard-senales-rebalanceo'),
+    path('catalogs/fci/', views.catalog_fci, name='catalog-fci'),
 
     # Alertas
     path('alerts/active/', views.alerts_active, name='alerts-active'),

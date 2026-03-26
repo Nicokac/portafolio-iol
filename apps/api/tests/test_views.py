@@ -42,6 +42,7 @@ GET_ENDPOINTS = [
     'dashboard-concentracion-pais',
     'dashboard-concentracion-sector',
     'dashboard-senales-rebalanceo',
+    'catalog-fci',
     'alerts-active',
     'alerts-by-severity',
     'rebalance-suggestions',
@@ -324,6 +325,36 @@ class TestAPIInputValidation:
             assert 'portfolio_excess_ytd_vs_badlar' in body['metadata']['fields_basis']
             assert 'history_guardrails' in body['metadata']
             assert body['metadata']['history_guardrails']['warning_code_for_partial_history'] == 'partial_history'
+
+    @patch('apps.api.views.IOLFCICatalogService.list_latest_catalog')
+    def test_catalog_fci_exposes_filtered_catalog(self, mock_list_latest_catalog, auth_client):
+        mock_list_latest_catalog.return_value = {
+            'captured_date': '2026-03-26',
+            'count': 1,
+            'items': [
+                {
+                    'simbolo': 'IOLCAMA',
+                    'descripcion': 'IOL Cash Management',
+                    'tipo_fondo': 'renta_fija_pesos',
+                    'moneda': 'peso_Argentino',
+                    'rescate': 't1',
+                    'perfil_inversor': 'Conservador',
+                    'administradora': 'convexity',
+                    'metadata': {},
+                }
+            ],
+        }
+
+        response = auth_client.get(
+            reverse('catalog-fci') + '?tipo_fondo=renta_fija_pesos&moneda=peso_Argentino'
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['count'] == 1
+        assert body['items'][0]['simbolo'] == 'IOLCAMA'
+        assert 'metadata' in body
+        assert 'available_filters' in body['metadata']
 
     @patch('apps.api.views.TemporalMetricsService.get_portfolio_returns')
     def test_metrics_returns_exposes_partial_history_guardrails(self, mock_get_returns, auth_client):

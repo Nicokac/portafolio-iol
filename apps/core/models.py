@@ -474,3 +474,54 @@ class MacroSeriesSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.series_key} {self.fecha} ({self.source})"
+
+
+class IOLFCICatalogSnapshot(models.Model):
+    """Catalogo diario persistido de Fondos Comunes de Inversion expuesto por IOL."""
+
+    simbolo = models.CharField(max_length=24)
+    descripcion = models.CharField(max_length=200, blank=True, default="")
+    source = models.CharField(max_length=32, default="iol")
+    captured_at = models.DateTimeField()
+    captured_date = models.DateField()
+
+    administradora = models.CharField(max_length=64, blank=True, default="")
+    administradora_key = models.CharField(max_length=64, blank=True, default="")
+    tipo_fondo = models.CharField(max_length=64, blank=True, default="")
+    horizonte_inversion = models.CharField(max_length=64, blank=True, default="")
+    rescate = models.CharField(max_length=16, blank=True, default="")
+    perfil_inversor = models.CharField(max_length=64, blank=True, default="")
+    perfil_inversor_key = models.CharField(max_length=64, blank=True, default="")
+    moneda = models.CharField(max_length=64, blank=True, default="")
+    pais = models.CharField(max_length=64, blank=True, default="")
+    mercado = models.CharField(max_length=32, blank=True, default="")
+
+    ultimo_operado = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    variacion = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    variacion_mensual = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    variacion_anual = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    monto_minimo = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    fecha_corte = models.DateTimeField(null=True, blank=True)
+
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-captured_date", "simbolo"]
+        indexes = [
+            models.Index(fields=["captured_date", "tipo_fondo"]),
+            models.Index(fields=["captured_date", "moneda"]),
+            models.Index(fields=["captured_date", "rescate"]),
+            models.Index(fields=["captured_date", "perfil_inversor_key"]),
+            models.Index(fields=["captured_date", "administradora_key"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["simbolo", "source", "captured_date"],
+                name="unique_iol_fci_catalog_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.simbolo} {self.captured_date} ({self.source})"

@@ -156,6 +156,18 @@ class TestIOLAPIClient:
         assert result is None
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_fci_list_success(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'simbolo': 'IOLPORA'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_fci_list()
+
+        assert result == [{'simbolo': 'IOLPORA'}]
+        assert mock_get.call_args.args[0].endswith('/api/v2/Titulos/FCI')
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_operaciones_success(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
         mock_response = Mock()

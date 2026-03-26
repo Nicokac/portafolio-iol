@@ -112,6 +112,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 
 ### Modulo B1 - Catalogo persistido de FCI
 
+- Estado: `Implementado`
 - Prioridad: `P1`
 - Problema:
   - hoy `Titulos/FCI/{simbolo}` solo se usa como soporte y no existe un catalogo de fondos realmente explotado

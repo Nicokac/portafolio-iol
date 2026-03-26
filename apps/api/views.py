@@ -17,6 +17,7 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
+from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
 from apps.core.services.observability import get_state_summary, get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.security_audit import record_sensitive_action
@@ -559,6 +560,57 @@ def metrics_stress_test(request):
         )
     except Exception as e:
         return internal_error_response(e, "dashboard_concentracion_sector")
+
+
+@api_view(['GET'])
+def catalog_fci(request):
+    """Obtiene el ultimo catalogo persistido de FCI con filtros basicos."""
+    try:
+        limit = request.query_params.get('limit')
+        if limit is not None:
+            limit = int(limit)
+            if limit <= 0:
+                raise ValueError
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro limit debe ser un número entero positivo'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        payload = IOLFCICatalogService().list_latest_catalog(
+            tipo_fondo=request.query_params.get('tipo_fondo'),
+            moneda=request.query_params.get('moneda'),
+            rescate=request.query_params.get('rescate'),
+            perfil_inversor=request.query_params.get('perfil_inversor'),
+            administradora=request.query_params.get('administradora'),
+            limit=limit,
+        )
+        payload['metadata'] = build_metric_metadata(
+            methodology='Latest persisted daily IOL FCI catalog filtered over the most recent captured_date',
+            data_basis='IOLFCICatalogSnapshot latest captured_date',
+            limitations='Requires a successful prior catalog sync; filters operate over normalized persisted fields',
+            extra={
+                'fields_basis': {
+                    'tipo_fondo': 'latest_fci_catalog',
+                    'moneda': 'latest_fci_catalog',
+                    'rescate': 'latest_fci_catalog',
+                    'perfil_inversor': 'latest_fci_catalog',
+                    'administradora': 'latest_fci_catalog',
+                },
+                'available_filters': [
+                    'tipo_fondo',
+                    'moneda',
+                    'rescate',
+                    'perfil_inversor',
+                    'administradora',
+                    'limit',
+                ],
+            },
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "catalog_fci")
 
 
 @api_view(['GET'])

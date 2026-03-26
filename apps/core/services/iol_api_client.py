@@ -355,6 +355,15 @@ class IOLAPIClient:
         )
         return data if isinstance(data, dict) else None
 
+    def get_fci_list(self) -> Optional[List[Dict]]:
+        """Obtiene el catalogo completo de FCI desde IOL."""
+        url = f"{self.base_url}/api/v2/Titulos/FCI"
+        data = self._request_json(
+            operation="get_fci_list",
+            url=url,
+        )
+        return data if isinstance(data, list) else None
+
     def get_titulo_cotizacion(
         self,
         mercado: str,
