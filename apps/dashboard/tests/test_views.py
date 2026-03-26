@@ -2853,6 +2853,24 @@ class TestDashboardView:
         assert response.status_code == 302
         assert response['Location'] == '/'
 
+    def test_base_navigation_prioritizes_main_flow_and_hides_ui_mode_switch(self, auth_client):
+        response = auth_client.get(reverse('dashboard:resumen'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'href="/panel/resumen/"' in body
+        assert 'href="/planeacion/"' in body
+        assert 'href="/estrategia/"' in body
+        assert 'Más' in body
+        assert 'Datos IOL' in body
+        assert 'Portafolio base' in body
+        assert 'Config técnica' in body
+        assert 'Power user' not in body
+        assert 'Vista rápida' not in body
+        assert 'name="ui_mode"' not in body
+        assert 'Resumen IOL' not in body
+        assert 'Parámetros' not in body
+
     def test_dashboard_view_class_is_protected(self):
         from apps.dashboard.views import DashboardView
         from django.contrib.auth.mixins import LoginRequiredMixin

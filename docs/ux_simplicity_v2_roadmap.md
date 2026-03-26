@@ -60,6 +60,17 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
 
 ### Modulo ya implementado
 
+- `A1 - Navbar minimo y separacion de superficies`
+  - estado: `implementado`
+  - resultado:
+    - el navbar principal prioriza `Resumen`, `Planeacion` y `Estrategia`
+    - `Análisis`, `Performance`, `Métricas` y superficies de soporte pasaron a un dropdown secundario
+    - se retiró el selector visible de `ui_mode` del flujo principal
+    - los accesos `legacy` dejaron de competir visualmente con la navegación principal
+  - archivos principales:
+    - `templates/base.html`
+    - `apps/dashboard/tests/test_views.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:
@@ -411,4 +422,3 @@ Cada modulo que se implemente debe cerrar con:
 4. tests o validacion ejecutada
 5. deuda pendiente
 6. mensaje de commit propuesto
-
