@@ -114,6 +114,12 @@ Para validacion puntual de instrumentos IOL:
    - `No elegible`
    - `Cotizacion fallback`
 
+Notas operativas adicionales:
+
+- el refresh persiste observaciones en `IOLMarketSnapshotObservation`
+- si el proceso reinicia o el cache puntual vence, el dashboard recompone el payload desde esas observaciones persistidas
+- `Sin libro visible` no implica fallo del refresh: puede significar que IOL devolvio precio puntual sin puntas utilizables
+
 ## Limitaciones
 
 - `last_successful_iol_sync` se deriva del estado patrimonial de snapshots, no de una auditoria historica persistida

@@ -74,6 +74,22 @@ def test_build_volatility_result_without_downside_sortino():
     assert "sortino_ratio" not in result
 
 
+def test_build_volatility_result_filters_non_finite_returns():
+    import pandas as pd
+
+    service = VolatilityService()
+    returns = pd.Series([None, 0.02, float("inf"), -0.01, float("-inf"), 0.03])
+
+    result = service._build_volatility_result_from_returns(
+        returns=returns,
+        observations=6,
+        history_span_days=5,
+    )
+
+    assert "annualized_volatility" in result
+    assert result["sample_size"] == 3
+
+
 @pytest.mark.django_db
 def test_volatility_service_filters_extreme_daily_jumps():
     today = timezone.now().date()

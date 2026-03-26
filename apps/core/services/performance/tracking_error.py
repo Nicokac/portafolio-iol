@@ -50,7 +50,7 @@ class TrackingErrorService:
                 result["fallback_source"] = fallback_source
             return result
 
-        active_returns = portfolio_returns - benchmark_returns
+        active_returns = self._sanitize_returns(portfolio_returns - benchmark_returns)
         if active_returns.empty:
             result = {
                 "warning": "insufficient_history",
@@ -155,7 +155,7 @@ class TrackingErrorService:
         df = df.dropna(subset=["total_iol"]).set_index("fecha").sort_index()
         if len(df.index) < 2:
             return pd.Series(dtype=float), None
-        return df["total_iol"].pct_change().dropna(), None
+        return self._sanitize_returns(df["total_iol"].pct_change()), None
 
     def _get_portfolio_returns(self, days: int) -> pd.Series:
         returns, _ = self._get_portfolio_returns_with_metadata(days=days)
@@ -184,7 +184,7 @@ class TrackingErrorService:
         weekly = df["total_iol"].resample("W-FRI").last().dropna()
         if len(weekly.index) < 2:
             return pd.Series(dtype=float)
-        return weekly.pct_change().dropna()
+        return self._sanitize_returns(weekly.pct_change())
 
     def _get_composite_benchmark_returns(self, index, frequency: str = "daily") -> pd.Series:
         weights = self._infer_weights_from_portfolio()
@@ -256,6 +256,16 @@ class TrackingErrorService:
             frequency="daily",
         ) if not daily_portfolio_returns.empty else pd.Series(dtype=float)
         return daily_portfolio_returns, daily_benchmark_returns, "daily", daily_fallback_source
+
+    @staticmethod
+    def _sanitize_returns(returns: pd.Series) -> pd.Series:
+        if returns is None:
+            return pd.Series(dtype=float)
+        return (
+            pd.to_numeric(returns, errors="coerce")
+            .replace([float("inf"), float("-inf")], pd.NA)
+            .dropna()
+        )
 
     def _count_historical_observations(self, index, frequency: str) -> int:
         weights = self._infer_weights_from_portfolio()

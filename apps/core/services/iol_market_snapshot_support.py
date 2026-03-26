@@ -172,9 +172,168 @@ def refresh_and_persist_current_portfolio_market_snapshot(service, *, limit: int
     return payload
 
 
-def get_cached_current_portfolio_market_snapshot(cache_key: str) -> dict | None:
+def build_current_portfolio_market_snapshot_payload_from_observations(
+    service,
+    *,
+    limit: int = 25,
+    lookback_days: int | None = None,
+) -> dict | None:
+    latest_positions = get_latest_position_rows()
+    if not latest_positions:
+        return None
+
+    days = int(lookback_days or service.MARKET_SNAPSHOT_HISTORY_LOOKBACK_DAYS)
+    cutoff = timezone.now() - pd.Timedelta(days=days)
+    observations = list(
+        IOLMarketSnapshotObservation.objects.filter(captured_at__gte=cutoff)
+        .order_by("simbolo", "mercado", "-captured_at")
+        .values(
+            "simbolo",
+            "mercado",
+            "captured_at",
+            "source_key",
+            "descripcion",
+            "tipo",
+            "plazo",
+            "ultimo_precio",
+            "variacion",
+            "cantidad_operaciones",
+            "puntas_count",
+            "spread_abs",
+            "spread_pct",
+        )
+    )
+    latest_observation_by_key: dict[tuple[str, str], dict] = {}
+    for observation in observations:
+        key = (
+            str(observation.get("simbolo") or "").strip().upper(),
+            str(observation.get("mercado") or "").strip().upper(),
+        )
+        latest_observation_by_key.setdefault(key, observation)
+
+    if not latest_observation_by_key:
+        return None
+
+    rows = []
+    latest_captured_at = None
+    for row in sorted(latest_positions, key=lambda item: (str(item["mercado"]), str(item["simbolo"]))):
+        local_support = service.classify_position_for_history(row)
+        if not local_support.get("supported"):
+            rows.append(
+                {
+                    "simbolo": row["simbolo"],
+                    "mercado": row["mercado"],
+                    "descripcion": row.get("descripcion") or "",
+                    "tipo": row.get("tipo") or "",
+                    "snapshot_status": "unsupported",
+                    "snapshot_source_key": local_support.get("support_source") or "local_classification",
+                    "snapshot_source_label": service._build_snapshot_source_label(
+                        local_support.get("support_source") or "local_classification"
+                    ),
+                    "snapshot_reason_key": local_support.get("reason_key") or "",
+                    "snapshot_reason": local_support.get("reason") or "",
+                    "fecha_hora": None,
+                    "fecha_hora_label": "",
+                    "ultimo_precio": None,
+                    "variacion": None,
+                    "cantidad_operaciones": 0,
+                    "puntas_count": 0,
+                    "best_bid": None,
+                    "best_ask": None,
+                    "spread_abs": None,
+                    "spread_pct": None,
+                    "plazo": "",
+                }
+            )
+            continue
+
+        key = (
+            str(row.get("simbolo") or "").strip().upper(),
+            str(row.get("mercado") or "").strip().upper(),
+        )
+        observation = latest_observation_by_key.get(key)
+        if not observation:
+            rows.append(
+                {
+                    "simbolo": row["simbolo"],
+                    "mercado": row["mercado"],
+                    "descripcion": row.get("descripcion") or "",
+                    "tipo": row.get("tipo") or "",
+                    "snapshot_status": "missing",
+                    "snapshot_source_key": "",
+                    "snapshot_source_label": "",
+                    "snapshot_reason_key": "market_snapshot_unavailable",
+                    "snapshot_reason": "IOL no devolvio cotizacion puntual para el instrumento.",
+                    "fecha_hora": None,
+                    "fecha_hora_label": "",
+                    "ultimo_precio": None,
+                    "variacion": None,
+                    "cantidad_operaciones": 0,
+                    "puntas_count": 0,
+                    "best_bid": None,
+                    "best_ask": None,
+                    "spread_abs": None,
+                    "spread_pct": None,
+                    "plazo": "",
+                }
+            )
+            continue
+
+        captured_at = service._coerce_datetime(observation.get("captured_at"))
+        if latest_captured_at is None or (captured_at and captured_at > latest_captured_at):
+            latest_captured_at = captured_at
+        rows.append(
+            {
+                "simbolo": row["simbolo"],
+                "mercado": row["mercado"],
+                "descripcion": observation.get("descripcion") or row.get("descripcion") or "",
+                "tipo": observation.get("tipo") or row.get("tipo") or "",
+                "snapshot_status": "available",
+                "snapshot_source_key": str(observation.get("source_key") or "cotizacion_detalle"),
+                "snapshot_source_label": service._build_snapshot_source_label(observation.get("source_key")),
+                "snapshot_reason_key": "",
+                "snapshot_reason": "",
+                "fecha_hora": captured_at.isoformat() if captured_at else "",
+                "fecha_hora_label": service._format_snapshot_datetime(captured_at),
+                "ultimo_precio": service._coerce_decimal(observation.get("ultimo_precio")),
+                "variacion": service._coerce_decimal(observation.get("variacion")),
+                "cantidad_operaciones": service._coerce_int(observation.get("cantidad_operaciones")) or 0,
+                "puntas_count": service._coerce_int(observation.get("puntas_count")) or 0,
+                "best_bid": None,
+                "best_ask": None,
+                "spread_abs": service._coerce_decimal(observation.get("spread_abs")),
+                "spread_pct": service._coerce_decimal(observation.get("spread_pct")),
+                "plazo": str(observation.get("plazo") or ""),
+            }
+        )
+
+    rows = rows[:limit]
+    return {
+        "rows": rows,
+        "summary": summarize_market_snapshot_rows(rows),
+        "refreshed_at": latest_captured_at.isoformat() if latest_captured_at else timezone.now().isoformat(),
+        "limit": limit,
+        "source": "persisted_observations",
+    }
+
+
+def get_cached_current_portfolio_market_snapshot(cache_key: str, service=None) -> dict | None:
     cached = cache.get(cache_key)
-    return cached if isinstance(cached, dict) else None
+    if isinstance(cached, dict):
+        return cached
+
+    if service is None:
+        return None
+
+    rebuilt_payload = build_current_portfolio_market_snapshot_payload_from_observations(service)
+    if isinstance(rebuilt_payload, dict):
+        cache.set(
+            cache_key,
+            rebuilt_payload,
+            timeout=service.MARKET_SNAPSHOT_CACHE_TTL_SECONDS,
+        )
+        return rebuilt_payload
+    return None
 
 
 def persist_market_snapshot_payload(service, payload: dict | None) -> dict:

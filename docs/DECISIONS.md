@@ -358,3 +358,41 @@ Modulos soporte creados o consolidados:
 Se acepta mantener algunas fachadas delgadas y re-exportaciones mientras sigan aportando compatibilidad con tests y puntos de integracion existentes.
 
 El objetivo de esta tanda fue bajar acoplamiento y mejorar testabilidad sin introducir un cambio funcional visible ni reescribir consumidores en cascada.
+
+---
+
+## D-009 - Bootstrap local de `ParametroActivo` y market snapshot persistido como contrato operativo
+
+**Fecha:** 2026-03-26
+**Estado:** Implementado
+
+### Contexto
+
+En un entorno local nuevo, la app podia arrancar con datos patrimoniales reales pero sin `ParametroActivo`, porque esa metadata vive en la base local y no viaja entre computadoras por si sola.
+
+Eso degradaba `Estrategia`, `Planeacion` y partes de `Analytics v2` a lecturas de `N/A`, porcentajes en cero o taxonomia incompleta aunque el portfolio estuviera correctamente sincronizado.
+
+Ademas, el refresh de `market snapshot IOL` persistia observaciones en `IOLMarketSnapshotObservation`, pero la UI dependia demasiado del cache puntual en memoria. Si el proceso reiniciaba o el cache expiraba, la capa operativa podia volver a mostrar `Snapshot puntual pendiente` pese a tener observaciones ya guardadas en DB.
+
+Finalmente, varias metricas numericas del dashboard (`covarianza`, `VaR`, `CVaR`, `volatilidad`, `tracking error`) seguian expuestas a `NaN` o `inf` en series de retornos, generando `RuntimeWarning` en la carga del home.
+
+### Decision
+
+Consolidar el contrato operativo de estas tres capas:
+
+- `ParametroActivo` se bootstrappea con `python manage.py cargar_metadata`, que ahora soporta `--dry-run`, es idempotente y reporta `Creado`, `Actualizado` o `Sin cambios`
+- el `market snapshot` puntual se considera persistencia reutilizable, no solo cache efimero: la UI puede reconstruir el payload desde `IOLMarketSnapshotObservation` cuando no haya cache en memoria
+- los servicios cuantitativos principales sanitizan retornos no finitos antes de calcular dispersion o percentiles
+
+### Efecto operativo
+
+- un entorno local nuevo puede recuperar rapidamente taxonomia base sin carga manual fila por fila
+- `Estrategia` deja de depender de que exista una DB historica copiada desde otra maquina
+- la capa operativa puntual del dashboard sobrevive a reinicios del proceso mientras existan observaciones recientes persistidas
+- desaparecen warnings numericos espurios durante la carga del home y la lectura de riesgo queda mas robusta frente a historia parcial
+
+### Riesgo aceptado
+
+El bootstrap de `ParametroActivo` sigue siendo una taxonomia inicial y puede requerir ajustes manuales finos para ciertos activos.
+
+Tambien se acepta que `CotizacionDetalle` pueda devolver precio puntual sin puntas visibles; en ese caso la UI muestra `Sin libro visible` aunque el refresh haya sido correcto.

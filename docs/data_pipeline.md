@@ -64,6 +64,10 @@ IOL API
   -> IOLHistoricalPriceService.resolve_symbol_history_support()
   -> metadata de titulo / FCI / market snapshot puntual
 
+IOL API
+  -> IOLHistoricalPriceService.refresh_and_persist_current_portfolio_market_snapshot()
+  -> cache puntual + IOLMarketSnapshotObservation
+
 sync_all()
   -> PortfolioSnapshotService.generate_daily_snapshot()
   -> PortfolioSnapshot / PositionSnapshot
@@ -116,6 +120,7 @@ Persistencia principal:
 - `OperacionIOL`
 - `BenchmarkSnapshot`
 - `MacroSeriesSnapshot`
+- `IOLMarketSnapshotObservation`
 
 Salidas operativas:
 
@@ -201,7 +206,14 @@ Estado actual:
 - benchmarks y macro local tienen sync propio
 - `Ops` ya muestra un resumen unificado del pipeline
 - `Ops` tambien puede validar market snapshot puntual del portfolio actual
+- el `market snapshot` puntual ya persiste observaciones reutilizables y el dashboard puede reconstruir el payload desde DB si el cache expira
 - `Planeacion` ya usa parte del pipeline para gobierno tactico de futuras compras
+
+Bootstrap local importante:
+
+- `ParametroActivo` vive en DB y no se comparte automaticamente entre maquinas
+- para entornos locales nuevos conviene correr `python manage.py cargar_metadata`
+- esto destraba taxonomia base para `Estrategia`, `Planeacion` y `Analytics v2`
 
 Brechas:
 

@@ -181,6 +181,83 @@ def test_tracking_error_service_returns_warning_for_insufficient_history():
 
 
 @pytest.mark.django_db
+def test_tracking_error_service_filters_non_finite_portfolio_returns():
+    now = timezone.now()
+    today = now.date()
+
+    PortfolioSnapshot.objects.create(
+        fecha=today - timedelta(days=3),
+        total_iol=1000,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=700,
+        rendimiento_total=0.0,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today - timedelta(days=2),
+        total_iol=0,
+        liquidez_operativa=0,
+        cash_management=0,
+        portafolio_invertido=0,
+        rendimiento_total=0.0,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today - timedelta(days=1),
+        total_iol=1000,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=700,
+        rendimiento_total=0.0,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    PortfolioSnapshot.objects.create(
+        fecha=today,
+        total_iol=1010,
+        liquidez_operativa=200,
+        cash_management=100,
+        portafolio_invertido=710,
+        rendimiento_total=0.0,
+        exposicion_usa=0.0,
+        exposicion_argentina=100.0,
+    )
+    ResumenCuentaSnapshot.objects.create(
+        fecha_extraccion=now,
+        numero_cuenta="123",
+        tipo_cuenta="CA",
+        moneda="ARS",
+        disponible=1000,
+        comprometido=0,
+        saldo=1000,
+        titulos_valorizados=0,
+        total=1000,
+        estado="activa",
+    )
+
+    benchmark_service = Mock()
+    benchmark_service.build_daily_returns.return_value = pd.Series(
+        [0.0, 0.0],
+        index=pd.to_datetime([today - timedelta(days=1), today]),
+        dtype=float,
+    )
+    benchmark_service.build_weekly_returns.return_value = pd.Series(dtype=float)
+    local_macro_service = Mock()
+    local_macro_service.build_rate_returns.return_value = pd.Series(dtype=float)
+
+    result = TrackingErrorService(
+        benchmark_service=benchmark_service,
+        local_macro_service=local_macro_service,
+    ).calculate(days=30)
+
+    assert "tracking_error_annualized" in result
+    assert result["observations"] >= 1
+
+
+@pytest.mark.django_db
 def test_tracking_error_service_uses_historical_daily_benchmark_when_available():
     now = timezone.now()
     today = now.date()

@@ -552,6 +552,41 @@ def test_iol_historical_price_service_refreshes_and_reads_cached_market_snapshot
 
 
 @pytest.mark.django_db
+def test_iol_historical_price_service_rebuilds_market_snapshot_payload_from_persisted_observations():
+    cache.delete(IOLHistoricalPriceService.MARKET_SNAPSHOT_CACHE_KEY)
+    _make_asset_snapshot("GGAL", "BCBA")
+    now = timezone.now()
+    IOLMarketSnapshotObservation.objects.create(
+        simbolo="GGAL",
+        mercado="BCBA",
+        source_key="cotizacion_detalle",
+        snapshot_status="available",
+        captured_at=now - timedelta(minutes=5),
+        captured_date=now.date(),
+        descripcion="Grupo Galicia",
+        tipo="ACCIONES",
+        plazo="T1",
+        ultimo_precio=Decimal("1234.50"),
+        variacion=Decimal("1.75"),
+        cantidad_operaciones=320,
+        puntas_count=2,
+        spread_abs=Decimal("5.00"),
+        spread_pct=Decimal("0.40"),
+    )
+
+    payload = IOLHistoricalPriceService.get_cached_current_portfolio_market_snapshot()
+
+    assert payload is not None
+    assert payload["source"] == "persisted_observations"
+    assert payload["summary"]["available_count"] == 1
+    assert payload["summary"]["missing_count"] == 0
+    assert payload["rows"][0]["simbolo"] == "GGAL"
+    assert payload["rows"][0]["snapshot_status"] == "available"
+    assert payload["rows"][0]["ultimo_precio"] == Decimal("1234.50")
+    assert cache.get(IOLHistoricalPriceService.MARKET_SNAPSHOT_CACHE_KEY) == payload
+
+
+@pytest.mark.django_db
 def test_iol_historical_price_service_refresh_and_persist_includes_persistence_summary():
     cache.delete(IOLHistoricalPriceService.MARKET_SNAPSHOT_CACHE_KEY)
 

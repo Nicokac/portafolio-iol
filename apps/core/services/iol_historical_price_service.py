@@ -283,7 +283,10 @@ class IOLHistoricalPriceService:
 
     @classmethod
     def get_cached_current_portfolio_market_snapshot(cls) -> dict | None:
-        return get_cached_current_portfolio_market_snapshot(cls.MARKET_SNAPSHOT_CACHE_KEY)
+        return get_cached_current_portfolio_market_snapshot(
+            cls.MARKET_SNAPSHOT_CACHE_KEY,
+            service=cls(),
+        )
 
     def persist_market_snapshot_payload(self, payload: dict | None) -> dict:
         return persist_market_snapshot_payload(self, payload)

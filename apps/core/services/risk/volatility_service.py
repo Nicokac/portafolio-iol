@@ -172,7 +172,7 @@ class VolatilityService:
             if series.empty or len(series.dropna()) < 2:
                 continue
 
-            asset_returns = pd.to_numeric(series, errors="coerce").pct_change().dropna()
+            asset_returns = self._sanitize_returns(pd.to_numeric(series, errors="coerce").pct_change())
             if asset_returns.empty:
                 continue
 
@@ -193,7 +193,7 @@ class VolatilityService:
             return pd.Series(dtype=float), proxy_metadata
 
         proxy_returns = pd.concat(weighted_returns, axis=1).fillna(0.0).sum(axis=1)
-        return pd.to_numeric(proxy_returns, errors="coerce").dropna().sort_index(), proxy_metadata
+        return self._sanitize_returns(pd.to_numeric(proxy_returns, errors="coerce")).sort_index(), proxy_metadata
 
     @staticmethod
     def _build_proxy_metadata(
@@ -210,7 +210,7 @@ class VolatilityService:
         }
 
     def _build_volatility_result(self, df: pd.DataFrame) -> Dict[str, float]:
-        returns = df["total_iol"].pct_change().dropna()
+        returns = self._sanitize_returns(df["total_iol"].pct_change())
         history_span_days = int((df.index.max() - df.index.min()).days) if len(df.index) >= 2 else 0
         return self._build_volatility_result_from_returns(
             returns=returns,
@@ -227,7 +227,7 @@ class VolatilityService:
         if returns is None:
             returns = pd.Series(dtype=float)
 
-        returns = pd.to_numeric(returns, errors="coerce").dropna()
+        returns = self._sanitize_returns(returns)
         raw_observations = int(len(returns))
         returns = returns[returns.abs() <= self.MAX_ABS_DAILY_RETURN]
         if returns.empty or len(returns) < 2 or observations < self.MIN_OBSERVATIONS:
@@ -276,3 +276,13 @@ class VolatilityService:
                 result["sortino_ratio"] = round(sortino, 2)
 
         return result
+
+    @staticmethod
+    def _sanitize_returns(returns: pd.Series) -> pd.Series:
+        if returns is None:
+            return pd.Series(dtype=float)
+        return (
+            pd.to_numeric(returns, errors="coerce")
+            .replace([float("inf"), float("-inf")], pd.NA)
+            .dropna()
+        )

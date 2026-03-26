@@ -164,13 +164,34 @@ Acciones manuales visibles para `staff`:
 - `Sincronizar macro local`
 - `Refrescar market snapshot IOL`
 
+Bootstrap local recomendado despues de una instalacion nueva o cambio de computadora:
+
+```bash
+python manage.py migrate
+python manage.py cargar_metadata --dry-run
+python manage.py cargar_metadata
+```
+
+Notas operativas:
+
+- `ParametroActivo` vive en la base de datos local. Si cambias de computadora o arrancas una SQLite nueva, esa metadata no viaja sola.
+- `cargar_metadata` sirve como bootstrap inicial de clasificacion para `Estrategia`, `Planeacion` y `Analytics v2`.
+- el comando es idempotente y ahora informa `Creado`, `Actualizado` o `Sin cambios`.
+
 Flujo practico:
 
 1. sincronizar IOL
 2. generar o validar snapshot
+3. bootstrapear `ParametroActivo` si el entorno local es nuevo
 3. revisar `Resumen` y `Estrategia`
 4. usar `Planeacion` para simulacion, aportes y decision incremental
 5. usar `Ops` si hay dudas de datos o estado del pipeline
+
+Para la lectura tactica de mercado:
+
+- `Refrescar market snapshot IOL` consulta `CotizacionDetalle` y persiste observaciones en `IOLMarketSnapshotObservation`
+- si el cache puntual expira o se reinicia el proceso, el dashboard puede reconstruir el payload desde esas observaciones persistidas
+- por eso la capa operativa puntual no depende solo de memoria del proceso
 
 Chequeo operativo recomendado en `Ops` cuando falte contexto macro local:
 
