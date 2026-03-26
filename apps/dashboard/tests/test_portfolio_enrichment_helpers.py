@@ -112,6 +112,46 @@ def test_build_portafolio_enriquecido_clasifica_fci_cash_management():
     assert result['inversion'] == []
 
 
+def test_build_portafolio_enriquecido_reclassifies_cash_management_using_fci_profile():
+    portafolio = [_make_activo('IOLCAMA', 30000, tipo='FondoComundeInversion')]
+    result = build_portafolio_enriquecido(
+        portafolio,
+        {},
+        fci_profiles={
+            'IOLCAMA': {
+                'strategy_profile': {
+                    'classification': 'cash_management',
+                    'label': 'Liquidez / cash management',
+                }
+            }
+        },
+    )
+
+    assert len(result['fci_cash_management']) == 1
+    assert result['fci_cash_management'][0]['fci_profile']['strategy_profile']['classification'] == 'cash_management'
+    assert result['inversion'] == []
+
+
+def test_build_portafolio_enriquecido_keeps_return_fci_inside_inversion():
+    portafolio = [_make_activo('SCHRINS', 30000, tipo='FondoComundeInversion')]
+    result = build_portafolio_enriquecido(
+        portafolio,
+        {},
+        fci_profiles={
+            'SCHRINS': {
+                'strategy_profile': {
+                    'classification': 'return_seeking',
+                    'label': 'FCI de retorno / asignacion',
+                }
+            }
+        },
+    )
+
+    assert len(result['inversion']) == 1
+    assert result['inversion'][0]['fci_profile']['strategy_profile']['classification'] == 'return_seeking'
+    assert result['fci_cash_management'] == []
+
+
 def test_build_portafolio_enriquecido_clasifica_otros_como_inversion():
     portafolio = [
         _make_activo('AAPL', 100000, tipo='CEDEARS'),

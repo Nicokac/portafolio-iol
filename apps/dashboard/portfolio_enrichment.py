@@ -21,9 +21,10 @@ _MONEDA_TRADUCCIONES = {
 }
 
 
-def build_portafolio_enriquecido(portafolio: list, parametros: dict) -> Dict:
+def build_portafolio_enriquecido(portafolio: list, parametros: dict, fci_profiles: dict | None = None) -> Dict:
     """Clasifica y enriquece el portafolio con metadata. Funcion pura dado portafolio y parametros."""
     total_portafolio = sum(activo.valorizado for activo in portafolio)
+    fci_profiles = fci_profiles or {}
 
     liquidez: List[Dict] = []
     fci_cash_management: List[Dict] = []
@@ -47,12 +48,13 @@ def build_portafolio_enriquecido(portafolio: list, parametros: dict) -> Dict:
             'tipo_traducido': tipo_traducido,
             'moneda_traducida': moneda_traducida,
             'peso_porcentual': peso_porcentual,
+            'fci_profile': fci_profiles.get(activo.simbolo.upper()),
         }
 
         simbolo_upper = activo.simbolo.upper()
         if activo.tipo == 'CAUCIONESPESOS' or 'CAUCION' in simbolo_upper:
             liquidez.append(item)
-        elif simbolo_upper in _FCI_CASH_MANAGEMENT_SIMBOLOS:
+        elif _is_cash_management_fci(activo, item.get('fci_profile')):
             fci_cash_management.append(item)
         else:
             inversion.append(item)
@@ -66,6 +68,16 @@ def build_portafolio_enriquecido(portafolio: list, parametros: dict) -> Dict:
         'inversion': inversion,
         'total_portafolio': total_portafolio,
     }
+
+
+def _is_cash_management_fci(activo, fci_profile: dict | None) -> bool:
+    simbolo_upper = activo.simbolo.upper()
+    if simbolo_upper in _FCI_CASH_MANAGEMENT_SIMBOLOS:
+        return True
+    if activo.tipo != 'FondoComundeInversion':
+        return False
+    strategy_profile = (fci_profile or {}).get('strategy_profile') or {}
+    return strategy_profile.get('classification') == 'cash_management'
 
 
 def extract_resumen_cash_components(resumen: list) -> Dict[str, Decimal]:

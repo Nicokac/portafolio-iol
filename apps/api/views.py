@@ -614,6 +614,36 @@ def catalog_fci(request):
 
 
 @api_view(['GET'])
+def catalog_fci_detail(request, simbolo: str):
+    """Obtiene la ficha enriquecida de un FCI por simbolo."""
+    try:
+        payload = IOLFCICatalogService().get_fci_detail(simbolo)
+        if payload is None:
+            return Response(
+                {'error': 'FCI no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        payload['metadata'] = build_metric_metadata(
+            methodology='FCI detail resolved from latest persisted catalog with live IOL fallback by symbol',
+            data_basis='IOLFCICatalogSnapshot latest captured_date or GET /api/v2/Titulos/FCI/{simbolo}',
+            limitations='Live fallback depends on endpoint availability; classification is heuristic and optimized for portfolio interpretation',
+            extra={
+                'fields_basis': {
+                    'variacion_mensual': 'fci_detail',
+                    'variacion_anual': 'fci_detail',
+                    'horizonte_inversion': 'fci_detail',
+                    'monto_minimo': 'fci_detail',
+                    'strategy_profile': 'heuristic_classification',
+                },
+            },
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "catalog_fci_detail")
+
+
+@api_view(['GET'])
 def metrics_attribution(request):
     """Obtiene attribution de performance por activo/buckets/flujos."""
     try:

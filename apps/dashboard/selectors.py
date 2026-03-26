@@ -13,6 +13,7 @@ from apps.portafolio_iol.selectors import build_portafolio_row
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapshot
 from apps.core.models import Alert
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
+from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
@@ -270,6 +271,7 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
         return build_current_enriched_portfolio(
             get_latest_portafolio_data_fn=get_latest_portafolio_data,
             build_portafolio_enriquecido_fn=build_portafolio_enriquecido,
+            get_fci_profiles_by_symbols_fn=IOLFCICatalogService().get_profiles_for_symbols,
         )
 
     return _get_cached_selector_result("portafolio_enriquecido_actual", build)

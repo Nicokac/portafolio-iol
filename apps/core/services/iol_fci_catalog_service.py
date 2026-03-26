@@ -17,6 +17,7 @@ class IOLFCICatalogService:
     """Persistencia y lectura del catalogo diario de FCI expuesto por IOL."""
 
     SOURCE_KEY = "iol"
+    CASH_MANAGEMENT_SYMBOLS = frozenset({"ADBAICA", "IOLPORA", "PRPEDOB", "IOLCAMA"})
 
     def __init__(self, client: IOLAPIClient | None = None):
         self.client = client or IOLAPIClient()
@@ -92,6 +93,54 @@ class IOLFCICatalogService:
             "items": [self._serialize_item(item) for item in queryset],
         }
 
+    def get_profiles_for_symbols(self, simbolos: list[str]) -> dict[str, dict]:
+        normalized_symbols = [self._as_str(simbolo).upper() for simbolo in simbolos if self._as_str(simbolo)]
+        if not normalized_symbols:
+            return {}
+
+        latest_date = IOLFCICatalogSnapshot.objects.aggregate(latest=Max("captured_date"))["latest"]
+        if latest_date is None:
+            return {}
+
+        queryset = IOLFCICatalogSnapshot.objects.filter(
+            captured_date=latest_date,
+            simbolo__in=normalized_symbols,
+        ).order_by("simbolo")
+
+        return {item.simbolo.upper(): self._serialize_item(item) for item in queryset}
+
+    def get_fci_detail(self, simbolo: str, *, fallback_live: bool = True) -> dict | None:
+        symbol = self._as_str(simbolo).upper()
+        if not symbol:
+            return None
+
+        latest_date = IOLFCICatalogSnapshot.objects.aggregate(latest=Max("captured_date"))["latest"]
+        snapshot = None
+        if latest_date is not None:
+            snapshot = (
+                IOLFCICatalogSnapshot.objects.filter(captured_date=latest_date, simbolo=symbol)
+                .order_by("simbolo")
+                .first()
+            )
+
+        if snapshot is not None:
+            payload = self._serialize_item(snapshot)
+            payload["metadata"]["detail_source"] = "latest_catalog_snapshot"
+            payload["metadata"]["captured_date"] = latest_date.isoformat()
+            return payload
+
+        if not fallback_live:
+            return None
+
+        raw_row = self.client.get_fci(symbol)
+        if not raw_row:
+            return None
+
+        normalized = self._normalize_row(raw_row, captured_at=timezone.now())
+        payload = self._serialize_normalized_row(normalized)
+        payload["metadata"]["detail_source"] = "iol_live_detail"
+        return payload
+
     def _apply_filters(
         self,
         queryset: QuerySet[IOLFCICatalogSnapshot],
@@ -150,27 +199,124 @@ class IOLFCICatalogService:
             },
         }
 
-    @staticmethod
-    def _serialize_item(item: IOLFCICatalogSnapshot) -> dict:
+    def _serialize_item(self, item: IOLFCICatalogSnapshot) -> dict:
+        return self._serialize_normalized_row(
+            {
+                "simbolo": item.simbolo,
+                "descripcion": item.descripcion,
+                "administradora": item.administradora,
+                "administradora_key": item.administradora_key,
+                "tipo_fondo": item.tipo_fondo,
+                "horizonte_inversion": item.horizonte_inversion,
+                "rescate": item.rescate,
+                "perfil_inversor": item.perfil_inversor,
+                "perfil_inversor_key": item.perfil_inversor_key,
+                "moneda": item.moneda,
+                "pais": item.pais,
+                "mercado": item.mercado,
+                "ultimo_operado": item.ultimo_operado,
+                "variacion": item.variacion,
+                "variacion_mensual": item.variacion_mensual,
+                "variacion_anual": item.variacion_anual,
+                "monto_minimo": item.monto_minimo,
+                "fecha_corte": item.fecha_corte,
+                "metadata": item.metadata or {},
+            }
+        )
+
+    def _serialize_normalized_row(self, normalized: dict[str, Any]) -> dict:
+        strategy_profile = self._build_strategy_profile(normalized)
         return {
-            "simbolo": item.simbolo,
-            "descripcion": item.descripcion,
-            "administradora": item.administradora,
-            "tipo_fondo": item.tipo_fondo,
-            "horizonte_inversion": item.horizonte_inversion,
-            "rescate": item.rescate,
-            "perfil_inversor": item.perfil_inversor,
-            "moneda": item.moneda,
-            "pais": item.pais,
-            "mercado": item.mercado,
-            "ultimo_operado": float(item.ultimo_operado) if item.ultimo_operado is not None else None,
-            "variacion": float(item.variacion) if item.variacion is not None else None,
-            "variacion_mensual": float(item.variacion_mensual) if item.variacion_mensual is not None else None,
-            "variacion_anual": float(item.variacion_anual) if item.variacion_anual is not None else None,
-            "monto_minimo": float(item.monto_minimo) if item.monto_minimo is not None else None,
-            "fecha_corte": item.fecha_corte.isoformat() if item.fecha_corte else None,
-            "metadata": item.metadata,
+            "simbolo": normalized["simbolo"],
+            "descripcion": normalized["descripcion"],
+            "administradora": normalized["administradora"],
+            "tipo_fondo": normalized["tipo_fondo"],
+            "horizonte_inversion": normalized["horizonte_inversion"],
+            "rescate": normalized["rescate"],
+            "perfil_inversor": normalized["perfil_inversor"],
+            "moneda": normalized["moneda"],
+            "pais": normalized["pais"],
+            "mercado": normalized["mercado"],
+            "ultimo_operado": float(normalized["ultimo_operado"]) if normalized["ultimo_operado"] is not None else None,
+            "variacion": float(normalized["variacion"]) if normalized["variacion"] is not None else None,
+            "variacion_mensual": float(normalized["variacion_mensual"]) if normalized["variacion_mensual"] is not None else None,
+            "variacion_anual": float(normalized["variacion_anual"]) if normalized["variacion_anual"] is not None else None,
+            "monto_minimo": float(normalized["monto_minimo"]) if normalized["monto_minimo"] is not None else None,
+            "fecha_corte": normalized["fecha_corte"].isoformat() if normalized["fecha_corte"] else None,
+            "strategy_profile": strategy_profile,
+            "metadata": {
+                **(normalized["metadata"] or {}),
+                "administradora_key": normalized.get("administradora_key", ""),
+                "perfil_inversor_key": normalized.get("perfil_inversor_key", ""),
+            },
         }
+
+    def _build_strategy_profile(self, normalized: dict[str, Any]) -> dict:
+        tipo_fondo = self._as_str(normalized.get("tipo_fondo"))
+        perfil = self._as_str(normalized.get("perfil_inversor"))
+        horizonte = self._as_str(normalized.get("horizonte_inversion"))
+        rescate = self._as_str(normalized.get("rescate")).lower()
+        simbolo = self._as_str(normalized.get("simbolo")).upper()
+
+        is_cash_management = self._is_cash_management_candidate(
+            simbolo=simbolo,
+            tipo_fondo=tipo_fondo,
+            perfil_inversor=perfil,
+            horizonte_inversion=horizonte,
+            rescate=rescate,
+        )
+        return {
+            "classification": "cash_management" if is_cash_management else "return_seeking",
+            "label": "Liquidez / cash management" if is_cash_management else "FCI de retorno / asignacion",
+            "risk_label": self._map_risk_label(perfil),
+            "liquidity_label": self._map_liquidity_label(rescate),
+            "horizon_label": horizonte or "No informado",
+        }
+
+    def _is_cash_management_candidate(
+        self,
+        *,
+        simbolo: str,
+        tipo_fondo: str,
+        perfil_inversor: str,
+        horizonte_inversion: str,
+        rescate: str,
+    ) -> bool:
+        if simbolo in self.CASH_MANAGEMENT_SYMBOLS:
+            return True
+
+        tipo_key = self._normalize_key(tipo_fondo)
+        perfil_key = self._normalize_key(perfil_inversor)
+        horizonte_key = self._normalize_key(horizonte_inversion)
+
+        if tipo_key.startswith("plazo_fijo_"):
+            return True
+
+        return (
+            tipo_key in {"renta_fija_pesos", "renta_fija_dolares"}
+            and perfil_key == "conservador"
+            and "corto" in horizonte_key
+            and rescate in {"t0", "t1"}
+        )
+
+    @staticmethod
+    def _map_liquidity_label(rescate: str) -> str:
+        mapping = {
+            "t0": "Liquidez inmediata",
+            "t1": "Liquidez 24h",
+            "t2": "Liquidez 48h+",
+        }
+        return mapping.get(rescate, f"Rescate {rescate}" if rescate else "Rescate no informado")
+
+    @staticmethod
+    def _map_risk_label(perfil_inversor: str) -> str:
+        perfil_key = IOLFCICatalogService._normalize_key(perfil_inversor)
+        mapping = {
+            "conservador": "Riesgo bajo",
+            "moderado": "Riesgo medio",
+            "agresivo": "Riesgo alto",
+        }
+        return mapping.get(perfil_key, "Riesgo no informado")
 
     @staticmethod
     def _as_str(value: Any) -> str:

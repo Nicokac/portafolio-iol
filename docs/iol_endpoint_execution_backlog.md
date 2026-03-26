@@ -141,6 +141,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo B2 - Ficha enriquecida de FCI
 
 - Prioridad: `P1`
+- Estado: `Implementado`
 - Problema:
   - la app todavia no capitaliza `variacionMensual`, `variacionAnual`, `horizonteInversion` ni `montoMinimo`
 - Oportunidad:

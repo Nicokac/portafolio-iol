@@ -356,6 +356,34 @@ class TestAPIInputValidation:
         assert 'metadata' in body
         assert 'available_filters' in body['metadata']
 
+    @patch('apps.api.views.IOLFCICatalogService.get_fci_detail')
+    def test_catalog_fci_detail_exposes_enriched_profile(self, mock_get_fci_detail, auth_client):
+        mock_get_fci_detail.return_value = {
+            'simbolo': 'IOLCAMA',
+            'descripcion': 'IOL Cash Management',
+            'variacion_mensual': 2.49,
+            'variacion_anual': 8.24,
+            'horizonte_inversion': 'Corto plazo',
+            'monto_minimo': 0.0,
+            'strategy_profile': {
+                'classification': 'cash_management',
+                'label': 'Liquidez / cash management',
+                'risk_label': 'Riesgo bajo',
+                'liquidity_label': 'Liquidez 24h',
+            },
+            'metadata': {
+                'detail_source': 'latest_catalog_snapshot',
+            },
+        }
+
+        response = auth_client.get(reverse('catalog-fci-detail', kwargs={'simbolo': 'IOLCAMA'}))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['simbolo'] == 'IOLCAMA'
+        assert body['strategy_profile']['classification'] == 'cash_management'
+        assert body['metadata']['fields_basis']['strategy_profile'] == 'heuristic_classification'
+
     @patch('apps.api.views.TemporalMetricsService.get_portfolio_returns')
     def test_metrics_returns_exposes_partial_history_guardrails(self, mock_get_returns, auth_client):
         mock_get_returns.return_value = {

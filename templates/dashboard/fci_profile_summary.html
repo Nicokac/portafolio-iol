@@ -1,0 +1,24 @@
+{% if item.fci_profile %}
+<div class="small text-muted mt-1">
+    <span class="badge {% if item.fci_profile.strategy_profile.classification == 'cash_management' %}bg-success{% else %}bg-primary{% endif %}">
+        {{ item.fci_profile.strategy_profile.label }}
+    </span>
+    <span class="badge bg-light text-dark">{{ item.fci_profile.strategy_profile.risk_label }}</span>
+    <span class="badge bg-light text-dark">{{ item.fci_profile.strategy_profile.liquidity_label }}</span>
+    {% if item.fci_profile.variacion_mensual is not None %}
+    <span class="badge bg-light text-dark">Mes {{ item.fci_profile.variacion_mensual|floatformat:2 }}%</span>
+    {% endif %}
+    {% if item.fci_profile.variacion_anual is not None %}
+    <span class="badge bg-light text-dark">Año {{ item.fci_profile.variacion_anual|floatformat:2 }}%</span>
+    {% endif %}
+</div>
+<div class="small text-muted mt-1">
+    Horizonte {{ item.fci_profile.horizonte_inversion|default:"No informado" }}
+    {% if item.fci_profile.monto_minimo is not None %}
+    · Mínimo {{ item.fci_profile.monto_minimo|currency:0 }}
+    {% endif %}
+    {% if item.fci_profile.administradora %}
+    · {{ item.fci_profile.administradora }}
+    {% endif %}
+</div>
+{% endif %}

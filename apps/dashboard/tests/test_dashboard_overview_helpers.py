@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from apps.dashboard.dashboard_overview import (
+    build_current_enriched_portfolio,
     build_dashboard_kpis_payload,
     build_riesgo_portafolio_payload,
     build_riesgo_portafolio_detallado_payload,
@@ -22,6 +23,23 @@ def test_build_dashboard_kpis_payload_passes_portfolio_resumen_and_classified_da
     assert result["portafolio"] == ["portfolio"]
     assert result["clasificado"] == {"inversion": []}
     assert result["resumen"] == ["resumen"]
+
+
+def test_build_current_enriched_portfolio_passes_fci_profiles_when_available(db):
+    result = build_current_enriched_portfolio(
+        get_latest_portafolio_data_fn=lambda: [
+            SimpleNamespace(simbolo="IOLCAMA", tipo="FondoComundeInversion"),
+            SimpleNamespace(simbolo="AAPL", tipo="CEDEARS"),
+        ],
+        build_portafolio_enriquecido_fn=lambda portafolio, parametros, fci_profiles=None: {
+            "portafolio": portafolio,
+            "parametros": parametros,
+            "fci_profiles": fci_profiles,
+        },
+        get_fci_profiles_by_symbols_fn=lambda simbolos: {"IOLCAMA": {"strategy_profile": {"classification": "cash_management"}}},
+    )
+
+    assert "IOLCAMA" in result["fci_profiles"]
 
 
 def test_build_riesgo_portafolio_payload_uses_kpis_liquidity_and_total():
