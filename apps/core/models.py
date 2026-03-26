@@ -525,3 +525,38 @@ class IOLFCICatalogSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.simbolo} {self.captured_date} ({self.source})"
+
+
+class IOLMarketUniverseSnapshot(models.Model):
+    """Catalogo diario persistido de instrumentos y paneles de cotizacion expuestos por IOL."""
+
+    pais = models.CharField(max_length=64)
+    pais_key = models.CharField(max_length=64, blank=True, default="")
+    instrumento = models.CharField(max_length=64)
+    instrumento_key = models.CharField(max_length=64, blank=True, default="")
+    panel = models.CharField(max_length=64, blank=True, default="")
+    panel_key = models.CharField(max_length=64, blank=True, default="")
+    source = models.CharField(max_length=32, default="iol")
+    captured_at = models.DateTimeField()
+    captured_date = models.DateField()
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-captured_date", "pais", "instrumento", "panel"]
+        indexes = [
+            models.Index(fields=["captured_date", "pais_key"]),
+            models.Index(fields=["captured_date", "instrumento_key"]),
+            models.Index(fields=["captured_date", "pais_key", "instrumento_key"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pais", "instrumento", "panel", "source", "captured_date"],
+                name="unique_iol_market_universe_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        panel_suffix = f" / {self.panel}" if self.panel else ""
+        return f"{self.pais} / {self.instrumento}{panel_suffix} ({self.captured_date})"

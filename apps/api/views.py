@@ -18,6 +18,7 @@ from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
+from apps.core.services.iol_market_universe_service import IOLMarketUniverseService
 from apps.core.services.observability import get_state_summary, get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
 from apps.core.services.security_audit import record_sensitive_action
@@ -641,6 +642,32 @@ def catalog_fci_detail(request, simbolo: str):
         return Response(payload, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "catalog_fci_detail")
+
+
+@api_view(['GET'])
+def catalog_market_universe(request):
+    """Obtiene el ultimo catalogo persistido de instrumentos y paneles de cotizacion de IOL."""
+    try:
+        payload = IOLMarketUniverseService().list_latest_universe(
+            pais=request.query_params.get('pais'),
+            instrumento=request.query_params.get('instrumento'),
+        )
+        payload['metadata'] = build_metric_metadata(
+            methodology='Latest persisted IOL market universe grouped by country, instrument and discovered panels',
+            data_basis='IOLMarketUniverseSnapshot latest captured_date',
+            limitations='Requires a successful prior universe sync; panel coverage depends on IOL discovery endpoint behavior',
+            extra={
+                'fields_basis': {
+                    'countries': 'latest_market_universe',
+                    'instrumentos': 'latest_market_universe',
+                    'paneles': 'latest_market_universe',
+                },
+                'available_filters': ['pais', 'instrumento'],
+            },
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "catalog_market_universe")
 
 
 @api_view(['GET'])

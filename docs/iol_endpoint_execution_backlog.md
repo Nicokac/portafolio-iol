@@ -168,6 +168,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo C1 - Bootstrap de universo por instrumento
 
 - Prioridad: `P1`
+- Estado: `Implementado`
 - Problema:
   - parte del universo potencial sigue implícito o hardcodeado
 - Oportunidad:

@@ -364,6 +364,27 @@ class IOLAPIClient:
         )
         return data if isinstance(data, list) else None
 
+    def get_quote_instruments(self, pais: str) -> Optional[List[Dict]]:
+        """Obtiene el catalogo de instrumentos de cotizacion para un pais."""
+        pais_path = quote(str(pais or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/{pais_path}/Titulos/Cotizacion/Instrumentos"
+        data = self._request_json(
+            operation=f"get_quote_instruments:{pais}",
+            url=url,
+        )
+        return data if isinstance(data, list) else None
+
+    def get_quote_panels(self, pais: str, instrumento: str) -> Optional[List[Dict]]:
+        """Obtiene el catalogo de paneles de cotizacion para un instrumento dado."""
+        pais_path = quote(str(pais or "").strip(), safe="")
+        instrumento_path = quote(str(instrumento or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/{pais_path}/Titulos/Cotizacion/Paneles/{instrumento_path}"
+        data = self._request_json(
+            operation=f"get_quote_panels:{pais}:{instrumento}",
+            url=url,
+        )
+        return data if isinstance(data, list) else None
+
     def get_titulo_cotizacion(
         self,
         mercado: str,

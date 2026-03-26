@@ -43,6 +43,7 @@ GET_ENDPOINTS = [
     'dashboard-concentracion-sector',
     'dashboard-senales-rebalanceo',
     'catalog-fci',
+    'catalog-market-universe',
     'alerts-active',
     'alerts-by-severity',
     'rebalance-suggestions',
@@ -383,6 +384,37 @@ class TestAPIInputValidation:
         assert body['simbolo'] == 'IOLCAMA'
         assert body['strategy_profile']['classification'] == 'cash_management'
         assert body['metadata']['fields_basis']['strategy_profile'] == 'heuristic_classification'
+
+    @patch('apps.api.views.IOLMarketUniverseService.list_latest_universe')
+    def test_catalog_market_universe_exposes_grouped_discovery(self, mock_list_latest_universe, auth_client):
+        mock_list_latest_universe.return_value = {
+            'captured_date': '2026-03-26',
+            'count': 2,
+            'panel_count': 3,
+            'countries': [
+                {
+                    'pais': 'argentina',
+                    'instrumentos': [
+                        {
+                            'instrumento': 'Acciones',
+                            'instrumento_key': 'acciones',
+                            'paneles': [{'panel': 'Cedears', 'panel_key': 'cedears'}],
+                            'panel_count': 1,
+                            'metadata': {'panel_discovery_status': 'available'},
+                        }
+                    ],
+                }
+            ],
+        }
+
+        response = auth_client.get(reverse('catalog-market-universe') + '?pais=argentina')
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['count'] == 2
+        assert body['countries'][0]['pais'] == 'argentina'
+        assert body['countries'][0]['instrumentos'][0]['paneles'][0]['panel'] == 'Cedears'
+        assert body['metadata']['available_filters'] == ['pais', 'instrumento']
 
     @patch('apps.api.views.TemporalMetricsService.get_portfolio_returns')
     def test_metrics_returns_exposes_partial_history_guardrails(self, mock_get_returns, auth_client):
