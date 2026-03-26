@@ -192,6 +192,18 @@ class TestIOLAPIClient:
         assert mock_get.call_args.args[0].endswith('/api/v2/argentina/Titulos/Cotizacion/Paneles/Acciones')
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_bulk_quotes_success(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = {'titulos': [{'simbolo': 'AL30'}]}
+        mock_get.return_value = mock_response
+
+        result = client.get_bulk_quotes('Bonos', 'argentina')
+
+        assert result == {'titulos': [{'simbolo': 'AL30'}]}
+        assert mock_get.call_args.args[0].endswith('/api/v2/Cotizaciones/Bonos/argentina/Todos')
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_operaciones_success(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
         mock_response = Mock()

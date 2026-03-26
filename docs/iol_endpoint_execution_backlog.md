@@ -194,6 +194,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo C2 - Ingesta masiva de cotizaciones por instrumento
 
 - Prioridad: `P1`
+- Estado: `Implementado`
 - Problema:
   - faltan cobertura amplia y visibilidad de freshness para bonos, opciones y otros instrumentos
 - Oportunidad:

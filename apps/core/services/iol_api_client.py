@@ -385,6 +385,17 @@ class IOLAPIClient:
         )
         return data if isinstance(data, list) else None
 
+    def get_bulk_quotes(self, instrumento: str, pais: str) -> Optional[Dict]:
+        """Obtiene cotizaciones masivas por instrumento y pais."""
+        instrumento_path = quote(str(instrumento or "").strip(), safe="")
+        pais_path = quote(str(pais or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/Cotizaciones/{instrumento_path}/{pais_path}/Todos"
+        data = self._request_json(
+            operation=f"get_bulk_quotes:{instrumento}:{pais}",
+            url=url,
+        )
+        return data if isinstance(data, dict) else None
+
     def get_titulo_cotizacion(
         self,
         mercado: str,

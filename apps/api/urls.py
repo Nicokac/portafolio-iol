@@ -11,6 +11,7 @@ urlpatterns = [
     path('catalogs/fci/', views.catalog_fci, name='catalog-fci'),
     path('catalogs/fci/<str:simbolo>/', views.catalog_fci_detail, name='catalog-fci-detail'),
     path('catalogs/market-universe/', views.catalog_market_universe, name='catalog-market-universe'),
+    path('catalogs/market-coverage/', views.catalog_market_coverage, name='catalog-market-coverage'),
 
     # Alertas
     path('alerts/active/', views.alerts_active, name='alerts-active'),

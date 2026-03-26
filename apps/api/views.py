@@ -18,6 +18,7 @@ from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
+from apps.core.services.iol_market_coverage_service import IOLMarketCoverageService
 from apps.core.services.iol_market_universe_service import IOLMarketUniverseService
 from apps.core.services.observability import get_state_summary, get_timing_summary
 from apps.core.services.rebalance_engine import RebalanceEngine
@@ -668,6 +669,33 @@ def catalog_market_universe(request):
         return Response(payload, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "catalog_market_universe")
+
+
+@api_view(['GET'])
+def catalog_market_coverage(request):
+    """Obtiene el ultimo resumen persistido de cobertura y freshness por instrumento."""
+    try:
+        payload = IOLMarketCoverageService().list_latest_coverage(
+            pais=request.query_params.get('pais'),
+            instrumento=request.query_params.get('instrumento'),
+        )
+        payload['metadata'] = build_metric_metadata(
+            methodology='Latest persisted batch summary built from IOL bulk quotes by instrument and country',
+            data_basis='IOLMarketCoverageSnapshot latest captured_date from GET /api/v2/Cotizaciones/{Instrumento}/{Pais}/Todos',
+            limitations='Requires a successful prior batch sync; coverage percentages summarize batch payload and do not replace per-symbol market snapshots',
+            extra={
+                'fields_basis': {
+                    'coverage_pct': 'priced_titles / total_titles',
+                    'order_book_coverage_pct': 'order_book_titles / total_titles',
+                    'activity_pct': 'active_titles / total_titles',
+                    'freshness_status': 'latest_quote_age_minutes and stale_titles',
+                },
+                'available_filters': ['pais', 'instrumento'],
+            },
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "catalog_market_coverage")
 
 
 @api_view(['GET'])

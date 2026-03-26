@@ -416,6 +416,58 @@ class TestAPIInputValidation:
         assert body['countries'][0]['instrumentos'][0]['paneles'][0]['panel'] == 'Cedears'
         assert body['metadata']['available_filters'] == ['pais', 'instrumento']
 
+    @patch('apps.api.views.IOLMarketCoverageService.list_latest_coverage')
+    def test_catalog_market_coverage_exposes_batch_summary(self, mock_list_latest_coverage, auth_client):
+        mock_list_latest_coverage.return_value = {
+            'captured_date': '2026-03-26',
+            'count': 1,
+            'countries': [
+                {
+                    'pais': 'argentina',
+                    'instrumentos': [
+                        {
+                            'instrumento': 'Bonos',
+                            'instrumento_key': 'bonos',
+                            'total_titles': 120,
+                            'priced_titles': 100,
+                            'order_book_titles': 80,
+                            'volume_titles': 50,
+                            'active_titles': 40,
+                            'recent_titles': 90,
+                            'stale_titles': 5,
+                            'zero_price_titles': 20,
+                            'latest_quote_at': '2026-03-26T15:00:00-03:00',
+                            'oldest_quote_at': '2026-03-26T12:00:00-03:00',
+                            'latest_quote_age_minutes': 5,
+                            'oldest_quote_age_minutes': 180,
+                            'coverage_pct': 83.33,
+                            'order_book_coverage_pct': 66.67,
+                            'activity_pct': 33.33,
+                            'freshness_status': 'mixed',
+                            'metadata': {'stale_sample_symbols': ['GD30']},
+                        }
+                    ],
+                }
+            ],
+            'totals': {
+                'total_titles': 120,
+                'priced_titles': 100,
+                'order_book_titles': 80,
+                'active_titles': 40,
+                'stale_titles': 5,
+            },
+        }
+
+        response = auth_client.get(reverse('catalog-market-coverage') + '?pais=argentina')
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['count'] == 1
+        assert body['countries'][0]['instrumentos'][0]['instrumento'] == 'Bonos'
+        assert body['countries'][0]['instrumentos'][0]['freshness_status'] == 'mixed'
+        assert body['metadata']['available_filters'] == ['pais', 'instrumento']
+        assert body['metadata']['fields_basis']['coverage_pct'] == 'priced_titles / total_titles'
+
     @patch('apps.api.views.TemporalMetricsService.get_portfolio_returns')
     def test_metrics_returns_exposes_partial_history_guardrails(self, mock_get_returns, auth_client):
         mock_get_returns.return_value = {

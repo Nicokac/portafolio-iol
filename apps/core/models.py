@@ -560,3 +560,53 @@ class IOLMarketUniverseSnapshot(models.Model):
     def __str__(self):
         panel_suffix = f" / {self.panel}" if self.panel else ""
         return f"{self.pais} / {self.instrumento}{panel_suffix} ({self.captured_date})"
+
+
+class IOLMarketCoverageSnapshot(models.Model):
+    """Resumen diario persistido de cobertura y frescura para cotizaciones masivas por instrumento."""
+
+    pais = models.CharField(max_length=64)
+    pais_key = models.CharField(max_length=64, blank=True, default="")
+    instrumento = models.CharField(max_length=64)
+    instrumento_key = models.CharField(max_length=64, blank=True, default="")
+    source = models.CharField(max_length=32, default="iol_bulk_quotes")
+    captured_at = models.DateTimeField()
+    captured_date = models.DateField()
+
+    total_titles = models.PositiveIntegerField(default=0)
+    priced_titles = models.PositiveIntegerField(default=0)
+    order_book_titles = models.PositiveIntegerField(default=0)
+    volume_titles = models.PositiveIntegerField(default=0)
+    active_titles = models.PositiveIntegerField(default=0)
+    recent_titles = models.PositiveIntegerField(default=0)
+    stale_titles = models.PositiveIntegerField(default=0)
+    zero_price_titles = models.PositiveIntegerField(default=0)
+    latest_quote_at = models.DateTimeField(null=True, blank=True)
+    oldest_quote_at = models.DateTimeField(null=True, blank=True)
+    latest_quote_age_minutes = models.PositiveIntegerField(null=True, blank=True)
+    oldest_quote_age_minutes = models.PositiveIntegerField(null=True, blank=True)
+    coverage_pct = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    order_book_coverage_pct = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    activity_pct = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    freshness_status = models.CharField(max_length=16, blank=True, default="unknown")
+
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-captured_date", "pais", "instrumento"]
+        indexes = [
+            models.Index(fields=["captured_date", "pais_key"]),
+            models.Index(fields=["captured_date", "instrumento_key"]),
+            models.Index(fields=["captured_date", "freshness_status"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pais", "instrumento", "source", "captured_date"],
+                name="unique_iol_market_coverage_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.pais} / {self.instrumento} ({self.captured_date})"
