@@ -12,7 +12,6 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 from django.views import View
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
-from apps.core.services.data_quality.daily_snapshot_continuity_service import DailySnapshotContinuityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
@@ -263,12 +262,12 @@ class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        pipeline_observability = PipelineObservabilityService().build_summary(lookback_days=30, integrity_days=120)
+        pipeline_observability = PipelineObservabilityService().build_ops_lite_summary(
+            lookback_days=30,
+            integrity_days=120,
+        )
         context['pipeline_observability'] = pipeline_observability
-        context['benchmark_status'] = pipeline_observability['benchmark_status_rows']
-        context['local_macro_status'] = pipeline_observability['local_macro_status_rows']
         context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
-        context['snapshot_continuity'] = DailySnapshotContinuityService().build_report(lookback_days=14)
         context['periodic_tasks_count'] = PeriodicTask.objects.count()
         return context
 

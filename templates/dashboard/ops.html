@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% block title %}Ops - Portafolio IOL{% endblock %}
 
 {% block content %}
@@ -6,24 +6,12 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
             <h1 class="mb-1">Ops - Observabilidad</h1>
-            <p class="text-muted mb-0">Vista para admin/perfil experto con latencias, sync interno y estado de benchmarks.</p>
+            <p class="text-muted mb-0">Vista operativa compacta para validar salud del pipeline sin distraerse del flujo de inversión.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <form method="post" action="{% url 'dashboard:sync_local_macro' %}">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-outline-secondary">Sincronizar Macro Local</button>
-            </form>
-            <form method="post" action="{% url 'dashboard:sync_iol_historical_prices' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-info">Sincronizar históricos IOL faltantes</button>
-            </form>
-            <form method="post" action="{% url 'dashboard:sync_iol_historical_prices_partial' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-warning">Reforzar históricos IOL parciales</button>
-            </form>
-            <form method="post" action="{% url 'dashboard:sync_iol_historical_prices_retry_metadata' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-dark">Reintentar metadata IOL no resuelta</button>
             </form>
             <form method="post" action="{% url 'dashboard:refresh_iol_market_snapshot' %}">
                 {% csrf_token %}
@@ -41,8 +29,8 @@
 <section class="mb-4">
     <div class="alert alert-warning mb-0">
         <strong>Cobertura operativa incompleta.</strong>
-        Faltan snapshots diarios para métricas de riesgo robustas. Verificá que `celery worker`
-        y `celery beat` estén activos y que se haya ejecutado
+        Faltan snapshots diarios para métricas de riesgo robustas. Verificá que <code>celery worker</code>
+        y <code>celery beat</code> estén activos y que se haya ejecutado
         <code>python manage.py setup_periodic_tasks</code>.
         <div class="small mt-2 text-muted">
             Snapshots recientes: {{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }} días.
@@ -55,16 +43,8 @@
 <section class="mb-4">
     <div class="card border-0 shadow-sm">
         <div class="card-body py-3">
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                <div>
-                    <h2 class="h5 mb-1">Mapa operativo</h2>
-                    <p class="text-muted mb-0">Primero estado de benchmarks. Después observabilidad interna y latencias.</p>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-sm btn-outline-primary" href="#ops-benchmarks">Benchmarks</a>
-                    <a class="btn btn-sm btn-outline-secondary" href="#ops-observabilidad">Observabilidad</a>
-                </div>
-            </div>
+            <h2 class="h5 mb-1">Mapa operativo</h2>
+            <p class="text-muted mb-0">La hoja quedó reducida a salud general, alertas y fuentes. El detalle técnico por símbolo sale de esta vista principal.</p>
         </div>
     </div>
 </section>
@@ -134,22 +114,6 @@
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Históricos IOL por símbolo</strong></td>
-                            <td class="text-end">
-                                {{ pipeline_observability.iol_historical_price_summary.ready_count }}/{{ pipeline_observability.iol_historical_price_summary.total_symbols }}
-                                listos · parcial {{ pipeline_observability.iol_historical_price_summary.partial_count }} · missing {{ pipeline_observability.iol_historical_price_summary.missing_count }} · no elegibles {{ pipeline_observability.iol_historical_price_summary.unsupported_count }} (FCI {{ pipeline_observability.iol_historical_price_summary.unsupported_fci_count }} · otros {{ pipeline_observability.iol_historical_price_summary.unsupported_other_count }})
-                                ({{ pipeline_observability.iol_historical_price_summary.overall_status }})
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Market snapshot IOL</strong></td>
-                            <td class="text-end">
-                                {{ pipeline_observability.iol_market_snapshot_summary.available_count }}/{{ pipeline_observability.iol_market_snapshot_summary.total_symbols }}
-                                disponibles · missing {{ pipeline_observability.iol_market_snapshot_summary.missing_count }} · no elegibles {{ pipeline_observability.iol_market_snapshot_summary.unsupported_count }} · detalle {{ pipeline_observability.iol_market_snapshot_summary.detail_count }} · fallback {{ pipeline_observability.iol_market_snapshot_summary.fallback_count }}
-                                ({{ pipeline_observability.iol_market_snapshot_summary.overall_status }})
-                            </td>
-                        </tr>
-                        <tr>
                             <td><strong>Resumen macro local</strong></td>
                             <td class="text-end">
                                 {{ pipeline_observability.local_macro_status_summary.ready }}/{{ pipeline_observability.local_macro_status_summary.total_series }}
@@ -181,666 +145,90 @@
     </div>
 </section>
 
-<section id="ops-benchmarks" class="mb-3">
-    <div class="border-start border-4 border-primary ps-3 mb-3">
-        <h2 class="mb-1">Benchmarks históricos</h2>
-        <p class="text-muted mb-0">Cobertura, última fecha disponible y estado de disponibilidad por bucket.</p>
-    </div>
-</section>
-
 <section class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de benchmarks históricos</h5></div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Bucket</th><th>Symbol</th><th>Provider</th><th class="text-end">Daily</th><th class="text-end">Weekly</th><th>Última fecha</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in benchmark_status %}
-                        <tr>
-                            <td>{{ row.benchmark_key }}</td>
-                            <td>{{ row.symbol }}</td>
-                            <td>{{ row.provider }}</td>
-                            <td class="text-end">{{ row.daily_rows_count }}</td>
-                            <td class="text-end">{{ row.weekly_rows_count }}</td>
-                            <td>{{ row.latest_date|default:"-" }}</td>
-                            <td>
-                                {% if row.is_ready %}
-                                <span class="badge text-bg-success">Listo</span>
-                                {% else %}
-                                <span class="badge text-bg-warning">Sin historia suficiente</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card border-info-subtle">
-            <div class="card-header bg-transparent">
-                <h5 class="mb-0">Símbolos cubiertos y faltantes del proxy IOL</h5>
-            </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Alertas operativas</h5></div>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-lg-3">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                <strong>Listos</strong>
-                                <span class="badge text-bg-success">{{ pipeline_observability.iol_historical_price_symbol_groups.ready|length }}</span>
-                            </div>
-                            {% if pipeline_observability.iol_historical_price_symbol_groups.ready %}
-                            <div class="small">
-                                {{ pipeline_observability.iol_historical_price_symbol_groups.ready|join:", " }}
-                            </div>
-                            {% else %}
-                            <div class="small text-muted">Sin símbolos listos.</div>
-                            {% endif %}
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <strong>Snapshots recientes</strong>
+                            <div class="small text-muted">Cobertura mínima para métricas diarias y riesgo.</div>
                         </div>
-                    </div>
-                    <div class="col-lg-3">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                <strong>Parciales</strong>
-                                <span class="badge text-bg-warning">{{ pipeline_observability.iol_historical_price_symbol_groups.partial|length }}</span>
-                            </div>
-                            {% if pipeline_observability.iol_historical_price_symbol_groups.partial %}
-                            <div class="small">
-                                {{ pipeline_observability.iol_historical_price_symbol_groups.partial|join:", " }}
-                            </div>
-                            {% else %}
-                            <div class="small text-muted">Sin símbolos parciales.</div>
-                            {% endif %}
+                        <span class="badge {% if snapshot_coverage.status == 'ok' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                            {{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}
+                        </span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <strong>Tareas periódicas</strong>
+                            <div class="small text-muted">Debe existir al menos la base para sync y snapshot diario.</div>
                         </div>
-                    </div>
-                    <div class="col-lg-3">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                <strong>Faltantes</strong>
-                                <span class="badge text-bg-danger">{{ pipeline_observability.iol_historical_price_symbol_groups.missing|length }}</span>
-                            </div>
-                            {% if pipeline_observability.iol_historical_price_symbol_groups.missing %}
-                            <div class="small">
-                                {{ pipeline_observability.iol_historical_price_symbol_groups.missing|join:", " }}
-                            </div>
-                            {% else %}
-                            <div class="small text-muted">Sin símbolos faltantes.</div>
-                            {% endif %}
+                        <span class="badge {% if periodic_tasks_count > 0 %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                            {{ periodic_tasks_count }}
+                        </span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <strong>Benchmarks</strong>
+                            <div class="small text-muted">Sirven para contexto relativo, no bloquean decisiones tácticas del día.</div>
                         </div>
-                    </div>
-                    <div class="col-lg-3">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                <strong>No elegibles</strong>
-                                <span class="badge text-bg-secondary">{{ pipeline_observability.iol_historical_price_symbol_groups.unsupported|length }}</span>
-                            </div>
-                            {% if pipeline_observability.iol_historical_price_symbol_groups.unsupported %}
-                            <div class="small text-muted mb-2">
-                                FCI: {{ pipeline_observability.iol_historical_price_symbol_groups.unsupported_fci|length }} · Otros: {{ pipeline_observability.iol_historical_price_symbol_groups.unsupported_other|length }}
-                            </div>
-                            <div class="small">
-                                {{ pipeline_observability.iol_historical_price_symbol_groups.unsupported|join:", " }}
-                            </div>
-                            {% else %}
-                            <div class="small text-muted">Sin símbolos no elegibles.</div>
-                            {% endif %}
+                        <span class="badge {% if pipeline_observability.benchmark_status_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.benchmark_status_summary.overall_status == 'partial' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                            {{ pipeline_observability.benchmark_status_summary.overall_status }}
+                        </span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <strong>Series macro críticas</strong>
+                            <div class="small text-muted">Sólo para verificar que el stack macro no quedó roto.</div>
                         </div>
-                    </div>
-                </div>
+                        <span class="badge {% if pipeline_observability.critical_local_macro_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.critical_local_macro_summary.overall_status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
+                            {{ pipeline_observability.critical_local_macro_summary.overall_status }}
+                        </span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <strong>Integridad de snapshots</strong>
+                            <div class="small text-muted">Si este número sube, conviene revisar el pipeline antes de confiar en analytics.</div>
+                        </div>
+                        <span class="badge {% if pipeline_observability.snapshot_integrity_issues_count == 0 %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                            {{ pipeline_observability.snapshot_integrity_issues_count }}
+                        </span>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
-    <div class="col-12">
-        {% if pipeline_observability.iol_historical_ops_cta %}
-        <div class="alert alert-{{ pipeline_observability.iol_historical_ops_cta.level }} mb-3">
-            <strong>{{ pipeline_observability.iol_historical_ops_cta.title }}</strong><br>
-            {{ pipeline_observability.iol_historical_ops_cta.message }}
-            <div class="small mt-2">
-                {{ pipeline_observability.iol_historical_ops_cta.action_hint }}
-                {% if pipeline_observability.iol_historical_ops_cta.symbol_keys %}
-                <div class="mt-1 text-muted">
-                    Símbolos: {{ pipeline_observability.iol_historical_ops_cta.symbol_keys|join:", " }}
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-        <div class="card border-info-subtle">
-            <div class="card-header bg-transparent">
-                <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                    <h5 class="mb-0">Historial IOL agrupado por símbolo</h5>
-                    <div class="small text-muted">Ordenado por severidad y recuperabilidad: fallidos, metadata recuperable, luego éxitos.</div>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <a class="btn btn-sm btn-outline-danger" href="#ops-iol-priority-critical">
-                        Atención inmediata ({{ pipeline_observability.iol_historical_recent_sync_priority_groups.critical|length }})
-                    </a>
-                    <a class="btn btn-sm btn-outline-warning" href="#ops-iol-priority-recoverable">
-                        Recuperable ({{ pipeline_observability.iol_historical_recent_sync_priority_groups.recoverable|length }})
-                    </a>
-                    <a class="btn btn-sm btn-outline-success" href="#ops-iol-priority-stable">
-                        Estable ({{ pipeline_observability.iol_historical_recent_sync_priority_groups.stable|length }})
-                    </a>
-                </div>
-                <div id="ops-iol-priority-critical" class="small text-muted mb-2">
-                    Atención inmediata: {{ pipeline_observability.iol_historical_recent_sync_priority_groups.critical|length }} símbolo(s)
-                </div>
-                <div id="ops-iol-priority-recoverable" class="small text-muted mb-2">
-                    Recuperable: {{ pipeline_observability.iol_historical_recent_sync_priority_groups.recoverable|length }} símbolo(s)
-                </div>
-                <div id="ops-iol-priority-stable" class="small text-muted mb-3">
-                    Estable: {{ pipeline_observability.iol_historical_recent_sync_priority_groups.stable|length }} símbolo(s)
-                </div>
-                <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>Prioridad</th><th>Símbolo</th><th>Usuarios</th><th>Flujos</th><th>Última actividad</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in pipeline_observability.iol_historical_recent_sync_by_symbol %}
-                        <tr>
-                            <td>
-                                <span class="badge text-bg-{{ row.priority_badge }}">{{ row.priority_label }}</span>
-                            </td>
-                            <td>{{ row.symbol_key }}</td>
-                            <td>{{ row.user_labels|join:", " }}</td>
-                            <td class="small">
-                                {% for item in row.items %}
-                                <div>
-                                    <strong>{{ item.scope }}</strong>: {{ item.rows_received }} filas
-                                    {% if item.status == 'success' %}
-                                    <span class="badge text-bg-success">Exitoso</span>
-                                    {% elif item.status == 'failed' %}
-                                    <span class="badge text-bg-danger">Fallido</span>
-                                    {% else %}
-                                    <span class="badge text-bg-secondary">{{ item.status }}</span>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </td>
-                            <td>{{ row.latest_at|default:"-" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-muted">Sin historial IOL reciente agrupado por símbolo.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="card border-info-subtle">
-            <div class="card-header bg-transparent">
-                <h5 class="mb-0">Última ejecución IOL por símbolo</h5>
-            </div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>Acción</th><th>Usuario</th><th>Flujo</th><th>Símbolo</th><th class="text-end">Filas</th><th>Estado</th><th>Ejecutado</th><th>Detalle</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in pipeline_observability.iol_historical_recent_sync_rows %}
-                        <tr>
-                            <td>{{ row.action_label }}</td>
-                            <td>{{ row.user_label }}</td>
-                            <td>{{ row.scope }}</td>
-                            <td>{{ row.symbol_key }}</td>
-                            <td class="text-end">{{ row.rows_received }}</td>
-                            <td>
-                                {% if row.status == 'success' %}
-                                <span class="badge text-bg-success">Exitoso</span>
-                                {% elif row.status == 'failed' %}
-                                <span class="badge text-bg-danger">Fallido</span>
-                                {% else %}
-                                <span class="badge text-bg-secondary">{{ row.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ row.created_at|default:"-" }}</td>
-                            <td class="small text-muted">{{ row.message|default:"-" }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="8" class="text-muted">Sin sincronizaciones manuales recientes de históricos IOL.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="card border-info-subtle">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Cobertura de históricos IOL por símbolo</h5>
-                <span class="badge {% if pipeline_observability.iol_historical_price_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.iol_historical_price_summary.overall_status == 'partial' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
-                    {{ pipeline_observability.iol_historical_price_summary.ready_count }}/{{ pipeline_observability.iol_historical_price_summary.total_symbols }} listos
-                </span>
-            </div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>Símbolo</th><th>Mercado</th><th class="text-end">Rows</th><th>Última fecha</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in pipeline_observability.iol_historical_price_rows %}
-                        <tr>
-                            <td>{{ row.simbolo }}</td>
-                            <td>{{ row.mercado }}</td>
-                            <td class="text-end">{{ row.rows_count }}</td>
-                            <td>{{ row.latest_date|default:"-" }}</td>
-                            <td>
-                                {% if row.status == 'ready' %}
-                                <span class="badge text-bg-success">Listo</span>
-                                {% elif row.status == 'partial' %}
-                                <span class="badge text-bg-warning">Parcial</span>
-                                {% elif row.status == 'unsupported' %}
-                                <span class="badge text-bg-secondary">No elegible</span>
-                                {% else %}
-                                <span class="badge text-bg-danger">Sin historia</span>
-                                {% endif %}
-                                {% if row.eligibility_status == 'unsupported_fci' %}
-                                <div class="small text-muted mt-1">Clase: FCI confirmado</div>
-                                {% elif row.status == 'unsupported' %}
-                                <div class="small text-muted mt-1">Clase: no elegible por otros motivos</div>
-                                {% endif %}
-                                {% if row.eligibility_source_label %}
-                                <div class="small text-muted mt-1">Origen: {{ row.eligibility_source_label }}</div>
-                                {% endif %}
-                                {% if row.eligibility_reason %}
-                                <div class="small text-muted mt-1">{{ row.eligibility_reason }}</div>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-muted">Sin símbolos del portfolio observados para históricos IOL.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="card border-primary-subtle">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Market snapshot puntual del portfolio</h5>
-                <span class="badge {% if pipeline_observability.iol_market_snapshot_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.iol_market_snapshot_summary.overall_status == 'partial' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
-                    {{ pipeline_observability.iol_market_snapshot_summary.available_count }}/{{ pipeline_observability.iol_market_snapshot_summary.total_symbols }} disponibles
-                </span>
-            </div>
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Fuentes externas</h5></div>
             <div class="card-body">
                 <div class="small text-muted mb-3">
-                    Usa CotizacionDetalle como fuente primaria y Cotizacion como fallback liviano. Sirve para validar precio puntual, horario, libro visible y disponibilidad operativa.
+                    Se mantiene sólo una lectura compacta de estado. El detalle técnico fino sale de la vista principal.
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr><th>Símbolo</th><th>Mercado</th><th>Fuente</th><th class="text-end">Último</th><th class="text-end">Var %</th><th>Hora</th><th class="text-end">Ops</th><th class="text-end">Puntas</th><th class="text-end">Spread</th><th>Estado</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for row in pipeline_observability.iol_market_snapshot_rows %}
-                            <tr>
-                                <td>
-                                    {{ row.simbolo }}
-                                    {% if row.descripcion %}
-                                    <div class="small text-muted">{{ row.descripcion }}</div>
-                                    {% endif %}
-                                </td>
-                                <td>{{ row.mercado }}</td>
-                                <td>
-                                    {% if row.snapshot_source_label %}
-                                    {{ row.snapshot_source_label }}
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    {% if row.ultimo_precio is not None %}
-                                    {{ row.ultimo_precio|floatformat:2 }}
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    {% if row.variacion is not None %}
-                                    {{ row.variacion|floatformat:2 }}
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                <td>{{ row.fecha_hora_label|default:"-" }}</td>
-                                <td class="text-end">{{ row.cantidad_operaciones|default:0 }}</td>
-                                <td class="text-end">{{ row.puntas_count|default:0 }}</td>
-                                <td class="text-end">
-                                    {% if row.spread_abs is not None %}
-                                    {{ row.spread_abs|floatformat:2 }}
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if row.snapshot_status == 'available' %}
-                                    <span class="badge text-bg-success">Disponible</span>
-                                    {% elif row.snapshot_status == 'unsupported' %}
-                                    <span class="badge text-bg-secondary">No elegible</span>
-                                    {% else %}
-                                    <span class="badge text-bg-danger">Sin snapshot</span>
-                                    {% endif %}
-                                    {% if row.snapshot_reason %}
-                                    <div class="small text-muted mt-1">{{ row.snapshot_reason }}</div>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="10" class="text-muted">Sin market snapshots observados para el portfolio actual.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="card border-secondary-subtle">
-            <div class="card-header bg-transparent">
-                <h5 class="mb-0">Motivos exactos de exclusión IOL por símbolo</h5>
-            </div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>Motivo</th><th class="text-end">Símbolos</th><th>Detalle</th><th>Lista</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in pipeline_observability.iol_historical_exclusion_rows %}
-                        <tr>
-                            <td>{{ row.reason_label }}</td>
-                            <td class="text-end">{{ row.count }}</td>
-                            <td class="small text-muted">{{ row.reason_text|default:"-" }}</td>
-                            <td class="small">{{ row.symbols|join:", " }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" class="text-muted">Sin exclusiones IOL observadas para el portfolio actual.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card border-warning-subtle">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Series macro críticas para decisión</h5>
-                <span class="badge {% if pipeline_observability.critical_local_macro_summary.overall_status == 'ready' %}text-bg-success{% elif pipeline_observability.critical_local_macro_summary.overall_status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
-                    {{ pipeline_observability.critical_local_macro_summary.ready_count }}/{{ pipeline_observability.critical_local_macro_summary.total_series }} listas
-                </span>
-            </div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr><th>Serie</th><th>Por qué importa</th><th>Fuente</th><th class="text-end">Rows</th><th>Última fecha</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in pipeline_observability.critical_local_macro_rows %}
-                        <tr>
-                            <td>{{ row.label }}</td>
-                            <td class="text-muted">{{ row.why }}</td>
-                            <td>{{ row.source }}</td>
-                            <td class="text-end">{{ row.rows_count }}</td>
-                            <td>{{ row.latest_date|default:"-" }}</td>
-                            <td>
-                                {% if row.status == 'ready' %}
-                                <span class="badge text-bg-success">Listo</span>
-                                {% elif row.status == 'not_configured' %}
-                                <span class="badge text-bg-secondary">Sin configurar</span>
-                                {% elif row.status == 'stale' %}
-                                <span class="badge text-bg-warning">Stale</span>
-                                {% else %}
-                                <span class="badge text-bg-danger">Sin datos</span>
+                <ul class="list-group list-group-flush">
+                    {% for row in pipeline_observability.external_source_status_rows %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <strong>{{ row.label }}</strong>
+                            <div class="small text-muted">
+                                <code>{{ row.endpoint }}</code>
+                                {% if row.detail %}
+                                · {{ row.detail }}
                                 {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="6" class="text-muted">Sin series macro críticas observadas.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de macro local</h5></div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Serie</th><th>Fuente</th><th>Frecuencia</th><th class="text-end">Rows</th><th>Última fecha</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in local_macro_status %}
-                        <tr>
-                            <td>{{ row.series_key }}</td>
-                            <td>{{ row.source }}</td>
-                            <td>{{ row.frequency }}</td>
-                            <td class="text-end">{{ row.rows_count }}</td>
-                            <td>{{ row.latest_date|default:"-" }}</td>
-                            <td>
-                                {% if row.status == 'ready' %}
-                                <span class="badge text-bg-success">Listo</span>
-                                {% elif row.status == 'not_configured' %}
-                                <span class="badge text-bg-secondary">Sin configurar</span>
-                                {% elif row.status == 'stale' %}
-                                <span class="badge text-bg-warning">Stale</span>
-                                {% else %}
-                                <span class="badge text-bg-danger">Sin datos</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                        <span class="badge {% if row.is_ready %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                            {% if row.is_ready %}Listo{% else %}Fallando{% endif %}
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item px-0 text-muted">Sin fuentes externas observadas.</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     </div>
 </section>
-
-<section class="row g-3 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de fuentes externas</h5></div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Fuente</th><th>Endpoint</th><th>Reported</th><th>Detalle</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in pipeline_observability.external_source_status_rows %}
-                        <tr>
-                            <td>{{ row.label }}</td>
-                            <td><code>{{ row.endpoint }}</code></td>
-                            <td>{{ row.reported_status|default:"-" }}</td>
-                            <td>{{ row.detail|default:"-" }}</td>
-                            <td>
-                                {% if row.is_ready %}
-                                <span class="badge text-bg-success">Listo</span>
-                                {% else %}
-                                <span class="badge text-bg-danger">Fallando</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="5" class="text-muted">Sin fuentes externas observadas.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section id="ops-observabilidad" class="mb-3">
-    <div class="border-start border-4 border-secondary ps-3 mb-3">
-        <h2 class="mb-1">Observabilidad interna</h2>
-        <p class="text-muted mb-0">Conteos, latencias medias y máximos para detectar cuellos de botella.</p>
-    </div>
-</section>
-
-<section class="row g-3">
-    <div class="col-lg-5">
-        <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Estado de snapshots</h5></div>
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr>
-                            <td><strong>Snapshots recientes</strong></td>
-                            <td class="text-end {% if snapshot_coverage.status == 'ok' %}text-success{% else %}text-warning{% endif %}">
-                                {{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Último snapshot</strong></td>
-                            <td class="text-end">{% if snapshot_coverage.latest_snapshot_at %}{{ snapshot_coverage.latest_snapshot_at }}{% else %}{{ snapshot_coverage.latest_snapshot_date|default:"-" }}{% endif %}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Gap máximo</strong></td>
-                            <td class="text-end">
-                                {% if snapshot_coverage.max_gap_days is not None %}
-                                {{ snapshot_coverage.max_gap_days }} días
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Tareas periódicas</strong></td>
-                            <td class="text-end {% if periodic_tasks_count > 0 %}text-success{% else %}text-danger{% endif %}">
-                                {{ periodic_tasks_count }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-7">
-        <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Métricas internas</h5></div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Metric</th><th class="text-end">Count</th><th class="text-end">Mean (ms)</th><th class="text-end">Max (ms)</th></tr>
-                    </thead>
-                    <tbody id="ops-metrics-body"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="row g-3 mt-1">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-transparent d-flex justify-content-between align-items-center gap-2">
-                <h5 class="mb-0">Continuidad diaria de snapshots</h5>
-                <span class="badge {% if snapshot_continuity.overall_status == 'healthy' %}text-bg-success{% elif snapshot_continuity.overall_status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
-                    {{ snapshot_continuity.overall_status }}
-                </span>
-            </div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>Fecha</th><th>Raw</th><th>Cuenta</th><th>Portfolio</th><th>Usable covarianza</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for row in snapshot_continuity.rows %}
-                        <tr>
-                            <td>{{ row.date }}</td>
-                            <td>{% if row.raw_snapshots_present %}{{ row.raw_assets_count }}{% else %}-{% endif %}</td>
-                            <td>{% if row.account_snapshot_present %}{{ row.account_rows_count }}{% else %}-{% endif %}</td>
-                            <td>{% if row.portfolio_snapshot_present %}si{% else %}no{% endif %}</td>
-                            <td>{% if row.usable_for_covariance %}si{% else %}no{% endif %}</td>
-                            <td>
-                                <span class="badge {% if row.status == 'healthy' %}text-bg-success{% elif row.status == 'warning' %}text-bg-warning{% else %}text-bg-danger{% endif %}">
-                                    {{ row.status }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="6" class="text-muted">Sin datos recientes</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="row g-3 mt-1">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Activación modelo de riesgo</h5></div>
-            <div class="card-body table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr><th>State Metric</th><th class="text-end">Count</th><th>Distribución</th><th>Último estado</th><th>Último detalle</th></tr>
-                    </thead>
-                    <tbody id="ops-states-body"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</section>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-fetch('/api/metrics/internal-observability/')
-  .then(r => r.json())
-  .then(data => {
-    const rows = (data.metrics || []).map(m => `
-      <tr>
-        <td>${m.metric_name}</td>
-        <td class="text-end">${m.count || 0}</td>
-        <td class="text-end">${m.mean_ms || '-'}</td>
-        <td class="text-end">${m.max_ms || '-'}</td>
-      </tr>
-    `).join('');
-    const stateRows = (data.states || []).map(s => {
-      const distribution = Object.entries(s.states || {}).map(([key, value]) => `${key}: ${value}`).join(' · ');
-      const extra = s.latest_extra || {};
-      const detailParts = [];
-      if (extra.observations !== undefined) detailParts.push(`obs ${extra.observations}`);
-      if (extra.coverage_pct !== undefined) detailParts.push(`coverage ${extra.coverage_pct}%`);
-      if (Array.isArray(extra.synced_series) && extra.synced_series.length) detailParts.push(`ok ${extra.synced_series.join(', ')}`);
-      if (Array.isArray(extra.skipped_series) && extra.skipped_series.length) detailParts.push(`skipped ${extra.skipped_series.join(', ')}`);
-      if (Array.isArray(extra.failed_series) && extra.failed_series.length) detailParts.push(`failed ${extra.failed_series.join(', ')}`);
-      if (extra.reason) detailParts.push(extra.reason);
-      return `
-      <tr>
-        <td>${s.metric_name}</td>
-        <td class="text-end">${s.count || 0}</td>
-        <td>${distribution || '-'}</td>
-        <td>${s.latest_state || '-'}</td>
-        <td>${detailParts.join(' · ') || '-'}</td>
-      </tr>
-    `;
-    }).join('');
-    document.getElementById('ops-metrics-body').innerHTML = rows || '<tr><td colspan="4" class="text-muted">Sin datos</td></tr>';
-    document.getElementById('ops-states-body').innerHTML = stateRows || '<tr><td colspan="5" class="text-muted">Sin datos</td></tr>';
-  })
-  .catch(() => {
-    document.getElementById('ops-metrics-body').innerHTML = '<tr><td colspan="4" class="text-danger">Error cargando datos de observabilidad</td></tr>';
-    document.getElementById('ops-states-body').innerHTML = '<tr><td colspan="5" class="text-danger">Error cargando estados de observabilidad</td></tr>';
-  });
-</script>
 {% endblock %}

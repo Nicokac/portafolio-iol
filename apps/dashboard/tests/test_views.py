@@ -2431,46 +2431,25 @@ class TestDashboardView:
         assert denied.status_code == 403
         allowed = staff_client.get(url)
         assert allowed.status_code == 200
-        assert 'Estado de benchmarks históricos' in allowed.content.decode()
-        assert 'Estado de macro local' in allowed.content.decode()
-        assert 'Series macro críticas para decisión' in allowed.content.decode()
-        assert 'Estado de fuentes externas' in allowed.content.decode()
+        assert 'Resumen unificado del pipeline' in allowed.content.decode()
+        assert 'Alertas operativas' in allowed.content.decode()
+        assert 'Fuentes externas' in allowed.content.decode()
         assert 'Sincronizar Macro Local' in allowed.content.decode()
-        assert 'Activación modelo de riesgo' in allowed.content.decode()
-        assert 'Continuidad diaria de snapshots' in allowed.content.decode()
-        assert 'Observabilidad interna' in allowed.content.decode()
+        assert 'Observabilidad interna' not in allowed.content.decode()
+        assert 'Continuidad diaria de snapshots' not in allowed.content.decode()
 
-    def test_ops_shows_snapshot_continuity_status(self, staff_client, monkeypatch):
-        class DummyContinuityService:
-            def build_report(self, lookback_days=14):
-                assert lookback_days == 14
-                return {
-                    'overall_status': 'warning',
-                    'rows': [
-                        {
-                            'date': '2026-03-14',
-                            'raw_snapshots_present': True,
-                            'raw_assets_count': 33,
-                            'account_snapshot_present': True,
-                            'account_rows_count': 2,
-                            'portfolio_snapshot_present': False,
-                            'usable_for_covariance': False,
-                            'status': 'warning',
-                        }
-                    ],
-                }
-
-        monkeypatch.setattr('apps.dashboard.views.DailySnapshotContinuityService', lambda: DummyContinuityService())
+    def test_ops_hides_heavy_operational_sections(self, staff_client):
         response = staff_client.get(reverse('dashboard:ops'))
         body = response.content.decode()
         assert response.status_code == 200
-        assert 'Continuidad diaria de snapshots' in body
-        assert '2026-03-14' in body
-        assert 'warning' in body
+        assert 'Última ejecución IOL por símbolo' not in body
+        assert 'Historial IOL agrupado por símbolo' not in body
+        assert 'Cobertura de históricos IOL por símbolo' not in body
+        assert 'Market snapshot puntual del portfolio' not in body
 
     def test_ops_shows_unified_pipeline_summary(self, staff_client, monkeypatch):
         class DummyPipelineObservabilityService:
-            def build_summary(self, lookback_days=30, integrity_days=120):
+            def build_ops_lite_summary(self, lookback_days=30, integrity_days=120):
                 assert lookback_days == 30
                 assert integrity_days == 120
                 return {
@@ -2845,74 +2824,18 @@ class TestDashboardView:
         assert '21/20 obs' in body
         assert 'Resumen benchmarks' in body
         assert '2/3' in body
-        assert 'Históricos IOL por símbolo' in body
-        assert '1/5 listos' in body
-        assert 'Market snapshot IOL' in body
-        assert '1/3 disponibles' in body
-        assert 'Market snapshot puntual del portfolio' in body
-        assert 'CotizacionDetalle' in body
-        assert 'IOL no devolvio cotizacion puntual para el instrumento.' in body
-        assert 'Símbolos cubiertos y faltantes del proxy IOL' in body or 'Simbolos cubiertos y faltantes del proxy IOL' in body
-        assert 'GGAL (BCBA)' in body
-        assert 'AAPL (NASDAQ)' in body
-        assert 'MSFT (NASDAQ)' in body
-        assert 'ADBAICA (BCBA)' in body
-        assert 'CAUCION (BCBA)' in body
-        assert 'No elegibles' in body
-        assert 'FCI: 1 · Otros: 1' in body or 'FCI: 1' in body
-        assert 'Historial IOL agrupado por símbolo' in body or 'Historial IOL agrupado por simbolo' in body
-        assert 'Atención inmediata en históricos IOL' in body or 'Atencion inmediata en historicos IOL' in body
-        assert 'Priorizá revisión manual de los símbolos fallidos' in body or 'Prioriza revision manual de los simbolos fallidos' in body
-        assert 'Ordenado por severidad y recuperabilidad' in body
-        assert 'Atención inmediata (1)' in body or 'Atencion inmediata (1)' in body
-        assert 'Recuperable (1)' in body
-        assert 'Estable (1)' in body
-        assert 'Última ejecución IOL por símbolo' in body or 'Ultima ejecucion IOL por simbolo' in body
-        assert 'Sync faltantes' in body
-        assert 'Reforzar parciales' in body
-        assert 'Reintentar metadata' in body
-        assert 'Atención inmediata' in body or 'Atencion inmediata' in body
-        assert 'Recuperable' in body
-        assert 'Estable' in body
-        assert 'Fallido' in body
-        assert 'Exitoso' in body
-        assert 'Flujos' in body
-        assert 'Filas' in body
-        assert 'staffuser' in body
-        assert 'NASDAQ:AAPL' in body
-        assert 'BCBA:GGAL' in body
-        assert 'NASDAQ:MSFT' in body
-        assert 'NYSE:KO' in body
-        assert '7' in body
-        assert 'Cobertura de históricos IOL por símbolo' in body
-        assert 'Motivos exactos de exclusión IOL por símbolo' in body or 'Motivos exactos de exclusion IOL por simbolo' in body
-        assert 'FCI confirmado por IOL' in body
-        assert 'Caución sin serie histórica de título' in body or 'Caucion sin serie historica de titulo' in body
-        assert 'GGAL' in body
-        assert 'NASDAQ' in body
-        assert 'Parcial' in body
-        assert 'Sin historia' in body
-        assert 'No elegible' in body
-        assert 'Clase: FCI confirmado' in body
-        assert 'Clase: no elegible por otros motivos' in body
-        assert 'Origen: Metadata de título' in body or 'Origen: Metadata de titulo' in body
-        assert 'Origen: Market snapshot' in body
-        assert 'Origen: Confirmación FCI' in body or 'Origen: Confirmacion FCI' in body
-        assert 'Origen: Clasificación local' in body or 'Origen: Clasificacion local' in body
         assert 'sin configurar 1' in body
         assert 'Series macro críticas' in body
         assert '4/7' in body
-        assert 'Series macro críticas para decisión' in body
-        assert 'USDARS MEP' in body
-        assert 'referencia financiera local' in body
-        assert 'UVA' in body
-        assert 'proxy de CER e inflacion indexada' in body
+        assert 'Alertas operativas' in body
         assert 'Fuentes externas' in body
-        assert '1/1' in body
-        assert 'ready' in body
-        assert 'Estado de fuentes externas' in body
         assert 'ArgentinaDatos' in body
         assert '/v1/estado' in body
+        assert 'Última ejecución IOL por símbolo' not in body
+        assert 'Historial IOL agrupado por símbolo' not in body
+        assert 'Cobertura de históricos IOL por símbolo' not in body
+        assert 'Market snapshot puntual del portfolio' not in body
+        assert 'Observabilidad interna' not in body
 
     def test_preferences_persisted_in_session(self, auth_client):
         url = reverse('dashboard:set_preferences')
