@@ -355,11 +355,16 @@ def metrics_returns(request):
         returns['metadata'] = build_metric_metadata(
             methodology='Time Weighted Return + returns by period over total portfolio value',
             data_basis='PortfolioSnapshot.total_iol',
-            limitations='Requires at least two historical snapshots in selected period',
+            limitations='Requires at least two historical snapshots in selected period; periods below 60 real days are flagged as partial history',
             extra={
                 'bases': METRIC_BASES,
                 'performance_families': PERFORMANCE_FAMILIES,
                 'primary_family': 'temporal_return_on_total_portfolio',
+                'history_guardrails': {
+                    'robust_history_min_days': TemporalMetricsService.ROBUST_HISTORY_DAYS,
+                    'minimum_observations': TemporalMetricsService.MIN_OBSERVATIONS,
+                    'warning_code_for_partial_history': 'partial_history',
+                },
                 'fields_basis': {
                     'total_period_return': 'total_portfolio',
                     'monthly_return': 'total_portfolio',
@@ -375,6 +380,7 @@ def metrics_returns(request):
                     'badlar_privada': 'total_portfolio',
                     'badlar_ytd': 'total_portfolio',
                     'portfolio_excess_ytd_vs_badlar': 'total_portfolio',
+                    'history_health': 'total_portfolio',
                 },
             },
         )

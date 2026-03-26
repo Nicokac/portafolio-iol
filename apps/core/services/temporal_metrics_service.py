@@ -22,6 +22,7 @@ class TemporalMetricsService:
     """Servicio para calculo de metricas temporales del portafolio."""
 
     ROBUST_HISTORY_DAYS = 60
+    MIN_OBSERVATIONS = 2
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -63,13 +64,11 @@ class TemporalMetricsService:
         if len(df) < 2:
             return self._fallback_returns_from_evolution(days)
 
-        returns = {
-            'observations': int(len(df.index)),
-            'history_span_days': int((df.index.max() - df.index.min()).days),
-            'requested_days': int(days),
-        }
-        returns['robust_history_min_days'] = self.ROBUST_HISTORY_DAYS
-        returns['robust_history_available'] = returns['history_span_days'] >= self.ROBUST_HISTORY_DAYS
+        returns = self._build_history_guardrails(
+            observations=int(len(df.index)),
+            history_span_days=int((df.index.max() - df.index.min()).days),
+            requested_days=int(days),
+        )
 
         if len(df) >= 2:
             initial_value = df['total_iol'].iloc[0]
@@ -121,13 +120,11 @@ class TemporalMetricsService:
             if len(df) < 2:
                 return {}
 
-            returns = {
-                'observations': int(len(df.index)),
-                'history_span_days': int((df.index.max() - df.index.min()).days),
-                'requested_days': int(days),
-            }
-            returns['robust_history_min_days'] = self.ROBUST_HISTORY_DAYS
-            returns['robust_history_available'] = returns['history_span_days'] >= self.ROBUST_HISTORY_DAYS
+            returns = self._build_history_guardrails(
+                observations=int(len(df.index)),
+                history_span_days=int((df.index.max() - df.index.min()).days),
+                requested_days=int(days),
+            )
             initial_value = df['total_iol'].iloc[0]
             final_value = df['total_iol'].iloc[-1]
             total_return = (final_value - initial_value) / initial_value * 100 if initial_value else 0
@@ -174,6 +171,48 @@ class TemporalMetricsService:
         cleaned = cleaned.dropna(subset=["total_iol"])
         cleaned = cleaned.loc[cleaned["total_iol"] > 0]
         return cleaned.sort_index()
+
+    @classmethod
+    def _build_history_guardrails(
+        cls,
+        *,
+        observations: int,
+        history_span_days: int,
+        requested_days: int,
+    ) -> Dict:
+        robust_history_available = history_span_days >= cls.ROBUST_HISTORY_DAYS
+        partial_window = history_span_days < requested_days
+
+        history_health = {
+            'status': 'robust' if robust_history_available else 'partial',
+            'message': (
+                f'Historia parcial: {history_span_days} dias reales sobre {requested_days} solicitados.'
+                if not robust_history_available
+                else 'Historia robusta disponible para la ventana solicitada.'
+            ),
+            'observations': int(observations),
+            'history_span_days': int(history_span_days),
+            'requested_days': int(requested_days),
+            'robust_history_min_days': cls.ROBUST_HISTORY_DAYS,
+            'partial_window': partial_window,
+            'minimum_observations': cls.MIN_OBSERVATIONS,
+        }
+
+        payload = {
+            'observations': int(observations),
+            'history_span_days': int(history_span_days),
+            'requested_days': int(requested_days),
+            'robust_history_min_days': cls.ROBUST_HISTORY_DAYS,
+            'robust_history_available': robust_history_available,
+            'partial_window': partial_window,
+            'history_health': history_health,
+        }
+
+        if not robust_history_available:
+            payload['warning'] = 'partial_history'
+            payload['warning_message'] = history_health['message']
+
+        return payload
 
     def _get_real_ytd_metrics(self) -> Dict:
         macro_context = self.local_macro_service.get_context_summary()

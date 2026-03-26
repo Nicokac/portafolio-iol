@@ -162,6 +162,21 @@ function formatFallbackLabel(source) {
     return source;
 }
 
+function buildPartialHistoryMessage(returns) {
+    if (!returns || returns.robust_history_available) return '';
+    const health = returns.history_health || {};
+    const observations = Number(health.observations ?? returns.observations ?? 0);
+    const historySpanDays = Number(health.history_span_days ?? returns.history_span_days ?? 0);
+    const requestedDays = Number(health.requested_days ?? returns.requested_days ?? 0);
+    const robustMinDays = Number(health.robust_history_min_days ?? returns.robust_history_min_days ?? 0);
+    const parts = [
+        health.message || `Historia parcial: ${historySpanDays} dias reales sobre ${requestedDays} solicitados.`,
+    ];
+    if (observations) parts.push(`Observaciones: ${observations}`);
+    if (robustMinDays) parts.push(`Minimo robusto: ${robustMinDays} dias`);
+    return parts.join(' | ');
+}
+
 Promise.all([
     fetch('/api/metrics/volatility/?days=365').then(r => r.json()),
     fetch('/api/metrics/benchmarking/?days=365').then(r => r.json()),
@@ -183,6 +198,8 @@ Promise.all([
     document.getElementById('m-max-dd-real').textContent = formatPctOrNA(ret.max_drawdown_real);
 
     const warningTexts = [];
+    const partialHistoryMessage = buildPartialHistoryMessage(ret);
+    if (partialHistoryMessage) warningTexts.push(`Retornos temporales (${partialHistoryMessage})`);
     if (hasInsufficientHistory(vol) || !robustHistory) warningTexts.push('Volatilidad y ratios');
     if (hasInsufficientHistory(bench)) warningTexts.push('Benchmarking');
     if (warningTexts.length) {

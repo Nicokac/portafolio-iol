@@ -87,6 +87,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo A2 - Guardrails de historia parcial
 
 - Prioridad: `P1`
+- Estado: `Implementado`
 - Problema:
   - con historia corta, los retornos temporales son tecnicamente validos pero semanticamente fragiles
 - Oportunidad:

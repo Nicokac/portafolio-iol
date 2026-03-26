@@ -73,6 +73,10 @@ class TestTemporalMetricsService:
         assert returns["portfolio_return_ytd_base_date"] == (today - timedelta(days=60)).isoformat()
         assert returns["robust_history_available"] is False
         assert returns["robust_history_min_days"] == 60
+        assert returns["warning"] == "partial_history"
+        assert returns["partial_window"] is True
+        assert returns["history_health"]["status"] == "partial"
+        assert "Historia parcial" in returns["history_health"]["message"]
 
     def test_portfolio_returns_ignores_zero_bootstrap_snapshot(self):
         today = timezone.now().date()
@@ -120,6 +124,20 @@ class TestTemporalMetricsService:
         assert returns["history_span_days"] == 1
         assert returns["total_period_return"] == 10.0
         assert returns["daily_return"] == 10.0
+
+    def test_build_history_guardrails_exposes_partial_history_contract(self):
+        payload = TemporalMetricsService._build_history_guardrails(
+            observations=3,
+            history_span_days=2,
+            requested_days=30,
+        )
+
+        assert payload["robust_history_available"] is False
+        assert payload["warning"] == "partial_history"
+        assert payload["partial_window"] is True
+        assert payload["history_health"]["status"] == "partial"
+        assert payload["history_health"]["observations"] == 3
+        assert payload["history_health"]["robust_history_min_days"] == 60
 
     @patch("apps.dashboard.selectors.get_evolucion_historica")
     def test_returns_fallback_when_single_snapshot(self, mock_evolution):

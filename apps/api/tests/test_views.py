@@ -322,6 +322,41 @@ class TestAPIInputValidation:
             assert 'max_drawdown_real' in body['metadata']['fields_basis']
             assert 'badlar_ytd' in body['metadata']['fields_basis']
             assert 'portfolio_excess_ytd_vs_badlar' in body['metadata']['fields_basis']
+            assert 'history_guardrails' in body['metadata']
+            assert body['metadata']['history_guardrails']['warning_code_for_partial_history'] == 'partial_history'
+
+    @patch('apps.api.views.TemporalMetricsService.get_portfolio_returns')
+    def test_metrics_returns_exposes_partial_history_guardrails(self, mock_get_returns, auth_client):
+        mock_get_returns.return_value = {
+            'total_period_return': -0.29,
+            'observations': 2,
+            'history_span_days': 1,
+            'requested_days': 30,
+            'robust_history_min_days': 60,
+            'robust_history_available': False,
+            'partial_window': True,
+            'warning': 'partial_history',
+            'warning_message': 'Historia parcial: 1 dias reales sobre 30 solicitados.',
+            'history_health': {
+                'status': 'partial',
+                'message': 'Historia parcial: 1 dias reales sobre 30 solicitados.',
+                'observations': 2,
+                'history_span_days': 1,
+                'requested_days': 30,
+                'robust_history_min_days': 60,
+                'partial_window': True,
+                'minimum_observations': 2,
+            },
+        }
+
+        response = auth_client.get(reverse('metrics-returns') + '?days=30')
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['warning'] == 'partial_history'
+        assert body['history_health']['status'] == 'partial'
+        assert body['history_health']['partial_window'] is True
+        assert body['metadata']['history_guardrails']['robust_history_min_days'] == 60
 
     def test_dashboard_kpis_includes_performance_family_metadata(self, auth_client):
         url = reverse('dashboard-kpis')
