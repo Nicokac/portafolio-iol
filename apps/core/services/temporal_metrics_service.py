@@ -58,6 +58,10 @@ class TemporalMetricsService:
         df['fecha'] = pd.to_datetime(df['fecha'])
         df['total_iol'] = pd.to_numeric(df['total_iol'], errors='coerce')
         df = df.set_index('fecha').sort_index()
+        df = self._sanitize_snapshot_series(df)
+
+        if len(df) < 2:
+            return self._fallback_returns_from_evolution(days)
 
         returns = {
             'observations': int(len(df.index)),
@@ -162,6 +166,14 @@ class TemporalMetricsService:
         drawdown = ((values - running_max) / running_max.replace(0, pd.NA)) * 100
         drawdown = drawdown.fillna(0.0)
         return float(drawdown.min())
+
+    @staticmethod
+    def _sanitize_snapshot_series(df: pd.DataFrame) -> pd.DataFrame:
+        cleaned = df.copy()
+        cleaned["total_iol"] = pd.to_numeric(cleaned["total_iol"], errors="coerce")
+        cleaned = cleaned.dropna(subset=["total_iol"])
+        cleaned = cleaned.loc[cleaned["total_iol"] > 0]
+        return cleaned.sort_index()
 
     def _get_real_ytd_metrics(self) -> Dict:
         macro_context = self.local_macro_service.get_context_summary()

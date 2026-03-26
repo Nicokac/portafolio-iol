@@ -7,6 +7,7 @@
 - `repo_hardening_and_decision_roadmap.md`
 - `data_pipeline.md`
 - `iol_endpoint_usage_map.md`
+- `iol_endpoint_execution_backlog.md`
 - `signals_and_recommendations.md`
 - `financial_methodology.md`
 - `incremental_portfolio_simulator.md`

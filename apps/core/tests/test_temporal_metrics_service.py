@@ -74,6 +74,53 @@ class TestTemporalMetricsService:
         assert returns["robust_history_available"] is False
         assert returns["robust_history_min_days"] == 60
 
+    def test_portfolio_returns_ignores_zero_bootstrap_snapshot(self):
+        today = timezone.now().date()
+        PortfolioSnapshot.objects.create(
+            fecha=today - timedelta(days=3),
+            total_iol=0,
+            liquidez_operativa=0,
+            cash_management=0,
+            portafolio_invertido=0,
+            rendimiento_total=0.0,
+            exposicion_usa=0.0,
+            exposicion_argentina=0.0,
+        )
+        PortfolioSnapshot.objects.create(
+            fecha=today - timedelta(days=1),
+            total_iol=1000,
+            liquidez_operativa=200,
+            cash_management=100,
+            portafolio_invertido=700,
+            rendimiento_total=0.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+        PortfolioSnapshot.objects.create(
+            fecha=today,
+            total_iol=1100,
+            liquidez_operativa=220,
+            cash_management=110,
+            portafolio_invertido=770,
+            rendimiento_total=10.0,
+            exposicion_usa=50.0,
+            exposicion_argentina=50.0,
+        )
+
+        with patch(
+            "apps.core.services.temporal_metrics_service.LocalMacroSeriesService.get_context_summary",
+            return_value={},
+        ), patch(
+            "apps.core.services.temporal_metrics_service.LocalMacroSeriesService.get_real_historical_metrics",
+            return_value={},
+        ):
+            returns = TemporalMetricsService().get_portfolio_returns(days=30)
+
+        assert returns["observations"] == 2
+        assert returns["history_span_days"] == 1
+        assert returns["total_period_return"] == 10.0
+        assert returns["daily_return"] == 10.0
+
     @patch("apps.dashboard.selectors.get_evolucion_historica")
     def test_returns_fallback_when_single_snapshot(self, mock_evolution):
         today = timezone.now().date()

@@ -387,6 +387,156 @@ Los endpoints con mayor potencial todavia no exprimido son:
 4. `portafolio/{pais}`
    - `parking` ya es visible, condiciona la decision tactica y puede frenar la ejecucion directa en `Planeacion`; falta decidir si merece integracion en recomendaciones persistidas o senales historicas
 
+## Matriz de KPIs de performance
+
+Esta seccion sirve para evitar comparar KPIs que hoy miden cosas distintas.
+
+### 1. Definicion operativa
+
+| KPI | Que mide realmente | Formula base | Base economica | Fuente primaria | Estado actual |
+| --- | --- | --- | --- | --- | --- |
+| `rendimiento_total_porcentaje` | ganancia acumulada del portafolio invertido | `ganancia_acumulada / costo_estimado_invertido` | costo estimado del portafolio invertido | `portafolio/{pais}` + agregacion local | estable |
+| `rendimiento_total_dinero` | ganancia acumulada en pesos del portafolio invertido | `sum(ganancia_dinero)` | PnL absoluto del bloque invertido | `portafolio/{pais}` | estable |
+| `total_period_return` | retorno del patrimonio total entre snapshots | `(valor_final - valor_inicial) / valor_inicial` | `PortfolioSnapshot.total_iol` | snapshots locales | estable con historia suficiente |
+| `twr_total_return` | retorno time-weighted descontando flujos operativos | `Π(1 + r_t) - 1` | `PortfolioSnapshot.total_iol` ajustado por flujos de `OperacionIOL` | snapshots + operaciones | estable con historia suficiente |
+
+### 2. Cuando conviene usar cada KPI
+
+| KPI | Mejor uso | No conviene usarlo para |
+| --- | --- | --- |
+| `rendimiento_total_porcentaje` | responder "cuanto rinde lo invertido contra su costo" | comparar performance temporal contra benchmarks o ventanas de tiempo |
+| `rendimiento_total_dinero` | mostrar ganancia acumulada absoluta | comparar carteras de distinto tamano sin normalizacion |
+| `total_period_return` | mostrar retorno total del patrimonio en una ventana concreta | aislar efecto de aportes y retiros |
+| `twr_total_return` | comparar performance temporal descontando flujos | explicar PnL acumulado de costo de compra |
+
+### 3. Endpoint fuente y trazabilidad
+
+| KPI | Endpoint fuente | Capa de app | Observacion |
+| --- | --- | --- | --- |
+| `rendimiento_total_porcentaje` | `GET /api/v2/portafolio/{pais}` | `dashboard_kpis` | depende de `gananciaPorcentaje` y `gananciaDinero` por activo |
+| `rendimiento_total_dinero` | `GET /api/v2/portafolio/{pais}` | `dashboard_kpis` | hoy es el mejor PnL acumulado absoluto disponible |
+| `total_period_return` | sin endpoint IOL directo; usa snapshots internos | `metrics_returns` | depende de continuidad de `PortfolioSnapshot.total_iol` |
+| `twr_total_return` | sin endpoint IOL directo; usa snapshots y `GET /api/v2/operaciones` | `metrics_returns` | es un KPI calculado por la app, no entregado por IOL |
+
+### 4. Ubicacion sugerida en UI
+
+| KPI | Donde deberia vivir en UI | Copy recomendado |
+| --- | --- | --- |
+| `rendimiento_total_porcentaje` | `Resumen` y card principal de portfolio actual | `Rendimiento acumulado sobre capital invertido` |
+| `rendimiento_total_dinero` | junto al KPI anterior y en detalle de portafolio | `Resultado acumulado en pesos` |
+| `total_period_return` | modulo temporal y comparaciones por ventana | `Retorno del patrimonio en el periodo` |
+| `twr_total_return` | `Estrategia`, benchmarking y comparador temporal | `Retorno ajustado por flujos (TWR)` |
+
+### Diferencia metodologica observada al 2026-03-26
+
+Con la base local actual:
+
+- `rendimiento_total_porcentaje`: `21.65%`
+- `rendimiento_total_dinero`: `ARS 2,342,901.03`
+- retorno sobre `total_patrimonio_modelado`: `10.00%`
+- retorno sobre `total_iol`: `9.79%`
+- `twr_total_return` reciente: `-0.29%`
+
+Diferencias mas relevantes:
+
+- `rendimiento_total_porcentaje` vs retorno sobre `total_patrimonio_modelado`: `11.65 pp`
+- `rendimiento_total_porcentaje` vs retorno sobre `total_iol`: `11.86 pp`
+- `rendimiento_total_porcentaje` vs `twr_total_return`: `21.94 pp`
+
+Lectura:
+
+- la brecha no indica error por si misma
+- indica que se estaban mezclando KPIs de costo acumulado con KPIs de retorno temporal
+- para producto conviene exponerlos como familias distintas y no como variantes del mismo numero
+
+## Roadmap de endpoints que pueden empujar la app
+
+El criterio de priorizacion es:
+
+1. impacto visible en producto
+2. mejora de cobertura de datos
+3. riesgo tecnico razonable
+4. esfuerzo incremental sobre lo ya implementado
+
+### Prioridad P1: impacto alto y riesgo bajo/medio
+
+| Endpoint | Oportunidad | Valor producto | Esfuerzo | Riesgo | Proximo paso sugerido |
+| --- | --- | --- | --- | --- | --- |
+| `GET /api/v2/Titulos/FCI` | catalogo completo de FCI | ranking, filtros, screener y comparador de fondos | Medio | Bajo | persistir catalogo diario de FCI y exponer screener en `Resumen/Estrategia` |
+| `GET /api/v2/Titulos/FCI/{simbolo}` | detalle enriquecido de cada fondo | mostrar `variacionMensual`, `variacionAnual`, perfil, rescate y minimo | Bajo | Bajo | ampliar ficha de FCI y clasificacion de liquidez/estrategia |
+| `GET /api/v2/Cotizaciones/MEP/{simbolo}` | valuacion MEP implicita por activo | mejor lectura de exposicion USD y comparacion ARS/USD | Medio | Medio | derivar `precio_mep_implicito` para CEDEARs y vista cambiaria |
+| `GET /api/v2/Cotizaciones/{Instrumento}/{Pais}/Todos` | market data masiva por instrumento | discovery, cobertura, ranking diario y universo operable | Medio | Medio | crear ingestor batch para bonos/opciones y coverage dashboard |
+
+### Prioridad P2: impacto alto pero con incertidumbre o acoplamiento mayor
+
+| Endpoint | Oportunidad | Valor producto | Esfuerzo | Riesgo | Proximo paso sugerido |
+| --- | --- | --- | --- | --- | --- |
+| `GET /api/v2/{pais}/Titulos/Cotizacion/Instrumentos` | discovery formal del universo por pais | evita hardcode de instrumentos y simplifica onboarding de paneles | Bajo | Bajo | usarlo para bootstrap de universo de cotizaciones |
+| `GET /api/v2/{pais}/Titulos/Cotizacion/Paneles/{instrumento}` | discovery formal de paneles | habilita navegacion dinamica por panel y expansion futura | Bajo | Medio | probar cobertura real y persistir catalogo de paneles |
+| `GET /api/v2/{mercado}/Titulos/{simbolo}/CotizacionDetalleMobile/{plazo}` | comparativa `t0/t1` persistida | mejora ejecucion tactica, spread por plazo y readiness | Medio | Medio | guardar snapshots por plazo y mostrar comparador `t0 vs t1` |
+| `GET /api/v2/{Mercado}/Titulos/{Simbolo}/Cotizacion` | endpoint de cotizacion parametrico por plazo | fallback mas explicito para capas ligeras | Bajo | Medio | validar si aporta algo distinto a la combinacion actual |
+
+### Prioridad P3: exploracion util, pero no base productiva todavia
+
+| Endpoint | Oportunidad | Valor producto | Esfuerzo | Riesgo | Proximo paso sugerido |
+| --- | --- | --- | --- | --- | --- |
+| `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos` | taxonomia por administradora | ordena catalogo FCI y comparadores por family grouping | Medio | Medio | probar permisos reales y crear feature flag |
+| `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos/{tipoFondo}` | screener filtrado remoto de FCI | menor trabajo de filtrado local | Medio | Medio/Alto | evaluar solo si `Administradoras` deja de responder `403` |
+| `GET /api/v2/cotizaciones-orleans/...` | posible universo operable alternativo | podria mejorar cobertura de operables o paneles | Medio | Alto | spike tecnico aislado antes de integracion |
+
+### Endpoint que hoy no conviene tomar como eje
+
+| Endpoint | Motivo |
+| --- | --- |
+| `seriehistorica` como unica fuente | ya mostro inestabilidad remota y errores `500` |
+| `FCI/Administradoras` sin validacion adicional | en pruebas reales devolvio `403` |
+| `Cotizaciones/{Instrumento}/{Panel}/{Pais}` como base primaria | en la muestra compartida devolvio `401`, por lo que necesita validacion antes de comprometer producto |
+
+## Roadmap por fase
+
+### Fase 1. Claridad de performance y UX
+
+- separar en UI la familia `acumulado sobre costo` de la familia `retorno temporal`
+- mostrar `rendimiento_total_dinero` junto a `rendimiento_total_porcentaje`
+- etiquetar `TWR` como retorno ajustado por flujos
+- mostrar warnings de historia parcial cuando haya menos de `60` dias robustos
+
+### Fase 2. Expansion FCI
+
+- persistir catalogo completo de `Titulos/FCI`
+- enriquecer ficha de fondos con `variacionMensual`, `variacionAnual`, `rescate`, `montoMinimo` y `perfilInversor`
+- crear comparador/screener de FCI por `tipoFondo`, moneda, rescate y horizonte
+- distinguir mejor `cash management` vs fondos de retorno real
+
+### Fase 3. Cobertura de mercado y discovery
+
+- usar `Titulos/Cotizacion/Instrumentos` y `Paneles/{instrumento}` para bootstrap de universo
+- crear jobs batch con `Cotizaciones/{Instrumento}/{Pais}/Todos`
+- mejorar cobertura de bonos, opciones y universos operables
+- exponer un tablero de cobertura y freshness por instrumento
+
+### Fase 4. Capa cambiaria y ejecucion tactica
+
+- integrar `Cotizaciones/MEP/{simbolo}` para lectura implicita en USD
+- persistir `CotizacionDetalleMobile/{plazo}` por `t0/t1`
+- construir comparadores de spread, operabilidad y profundidad por plazo
+- usar esa senal en `Planeacion` y recomendaciones
+
+## Recomendacion concreta de implementacion
+
+Orden sugerido:
+
+1. separar y renombrar KPIs en UI
+2. explotar `Titulos/FCI` y `Titulos/FCI/{simbolo}`
+3. integrar `Titulos/Cotizacion/Instrumentos` + `Cotizaciones/{Instrumento}/{Pais}/Todos`
+4. sumar `Cotizaciones/MEP/{simbolo}`
+5. explorar `Paneles/{instrumento}` y familia `orleans`
+
+Si hubiera que elegir solo dos frentes con mejor retorno hoy:
+
+- `FCI` para valor visible rapido en producto
+- `Cotizaciones/{Instrumento}/{Pais}/Todos` para ampliar cobertura de mercado y analytics
+
 ## Recomendacion de lectura
 
 Si la pregunta es:
