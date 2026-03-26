@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from apps.core.models import IOLHistoricalPriceSnapshot
 from apps.core.services.iol_api_client import IOLAPIClient
+from apps.parametros.models import ParametroActivo
 from apps.core.services.iol_market_snapshot_support import (
     build_current_portfolio_market_snapshot_payload,
     get_cached_current_portfolio_market_snapshot,
@@ -30,6 +31,7 @@ class IOLHistoricalPriceService:
     """Persistencia minima de historicos diarios por simbolo desde IOL."""
 
     CASH_MANAGEMENT_SYMBOLS = {"ADBAICA", "IOLPORA", "PRPEDOB"}
+    YFINANCE_SUPPORTED_PATRIMONIAL_TYPES = {"EQUITY", "ETF"}
     MARKET_SNAPSHOT_CACHE_KEY = "iol:current_portfolio_market_snapshot:v1"
     MARKET_SNAPSHOT_CACHE_TTL_SECONDS = 300
     MARKET_SNAPSHOT_HISTORY_LOOKBACK_DAYS = 7
@@ -45,9 +47,16 @@ class IOLHistoricalPriceService:
         self._title_metadata_cache: dict[tuple[str, str], dict] = {}
         self._fci_metadata_cache: dict[str, dict | None] = {}
         self._market_snapshot_cache: dict[tuple[str, str], dict | None] = {}
+        self._parametro_cache: dict[str, ParametroActivo | None] = {}
 
-    def sync_symbol_history(self, mercado: str, simbolo: str, params: dict | None = None) -> dict:
-        support = self.resolve_symbol_history_support(mercado=mercado, simbolo=simbolo)
+    def sync_symbol_history(
+        self,
+        mercado: str,
+        simbolo: str,
+        params: dict | None = None,
+        row: dict | None = None,
+    ) -> dict:
+        support = self.resolve_symbol_history_support(mercado=mercado, simbolo=simbolo, row=row)
         if not support.get("supported"):
             return {
                 "success": True,
@@ -60,6 +69,19 @@ class IOLHistoricalPriceService:
                 "eligibility_status": support.get("eligibility_status") or "unsupported",
                 "error": support.get("reason") or "Instrumento no elegible para históricos IOL",
             }
+
+        yfinance_support = self.resolve_symbol_history_support_via_yfinance(
+            mercado=mercado,
+            simbolo=simbolo,
+            row=row,
+        )
+        if yfinance_support.get("supported"):
+            return self._sync_symbol_history_from_yfinance(
+                mercado=mercado,
+                simbolo=simbolo,
+                params=params,
+                yfinance_support=yfinance_support,
+            )
 
         resolved_market = str(support.get("mercado") or mercado)
         raw_rows = self.client.get_titulo_historicos(resolved_market, simbolo, params=params)
@@ -127,7 +149,12 @@ class IOLHistoricalPriceService:
         success = True
         for row in latest_positions:
             processed += 1
-            result = self.sync_symbol_history(row["mercado"], row["simbolo"], params=params)
+            result = self.sync_symbol_history(
+                row["mercado"],
+                row["simbolo"],
+                params=params,
+                row=row,
+            )
             results[f'{row["mercado"]}:{row["simbolo"]}'] = result
             success = success and (bool(result.get("success")) or bool(result.get("skipped")))
 
@@ -181,9 +208,8 @@ class IOLHistoricalPriceService:
         snapshots = IOLHistoricalPriceSnapshot.objects.filter(
             simbolo=simbolo,
             mercado=mercado,
-            source="iol",
             fecha__range=(normalized_dates.min().date(), normalized_dates.max().date()),
-        ).order_by("fecha")
+        ).order_by("fecha", "source")
         if snapshots.count() < 2:
             return pd.Series(dtype=float)
 
@@ -193,7 +219,12 @@ class IOLHistoricalPriceService:
 
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["close"] = pd.to_numeric(df["close"], errors="coerce")
-        df = df.dropna(subset=["close"]).set_index("fecha").sort_index()
+        df = (
+            df.dropna(subset=["close"])
+            .drop_duplicates(subset=["fecha"], keep="first")
+            .set_index("fecha")
+            .sort_index()
+        )
         if len(df.index) < 2:
             return pd.Series(dtype=float)
         return df["close"].reindex(normalized_dates).ffill()
@@ -489,6 +520,159 @@ class IOLHistoricalPriceService:
             if snapshot:
                 return snapshot
         return None
+
+    def resolve_symbol_history_support_via_yfinance(
+        self,
+        *,
+        mercado: str,
+        simbolo: str,
+        row: dict | None = None,
+    ) -> dict:
+        simbolo_clean = str(simbolo or "").strip().upper()
+        if not simbolo_clean:
+            return {"supported": False, "provider": "", "ticker": ""}
+
+        parametro = self._get_parametro_activo(simbolo_clean)
+        tipo_patrimonial = self._normalize_text(getattr(parametro, "tipo_patrimonial", ""))
+        row_tipo = self._normalize_text((row or {}).get("tipo"))
+        is_supported_type = (
+            tipo_patrimonial in self.YFINANCE_SUPPORTED_PATRIMONIAL_TYPES
+            or "CEDEAR" in row_tipo
+            or "ACCION" in row_tipo
+            or "ETF" in row_tipo
+        )
+        if not is_supported_type:
+            return {"supported": False, "provider": "", "ticker": ""}
+
+        normalized_market = self._normalize_text(mercado)
+        ticker = ""
+        if normalized_market == "BCBA":
+            ticker = f"{simbolo_clean}.BA"
+        elif normalized_market in {"NASDAQ", "NYSE", "AMEX", "NYSEARCA", "ARCA"}:
+            ticker = simbolo_clean
+
+        if not ticker:
+            return {"supported": False, "provider": "", "ticker": ""}
+
+        return {
+            "supported": True,
+            "provider": "yfinance",
+            "ticker": ticker,
+            "mercado": mercado,
+            "simbolo": simbolo_clean,
+        }
+
+    def _sync_symbol_history_from_yfinance(
+        self,
+        *,
+        mercado: str,
+        simbolo: str,
+        params: dict | None,
+        yfinance_support: dict,
+    ) -> dict:
+        raw_rows = self._get_yfinance_historical_rows(
+            ticker=str(yfinance_support.get("ticker") or "").strip(),
+            params=params,
+        )
+        if raw_rows is None:
+            return {
+                "success": False,
+                "simbolo": simbolo,
+                "mercado": mercado,
+                "rows_received": 0,
+                "created": 0,
+                "updated": 0,
+                "eligibility_status": "supported",
+                "error": "Yahoo Finance historical prices unavailable",
+                "source": "yfinance",
+            }
+
+        normalized_rows = self._normalize_rows(raw_rows)
+        created = 0
+        updated = 0
+
+        with transaction.atomic():
+            for row in normalized_rows:
+                _, was_created = IOLHistoricalPriceSnapshot.objects.update_or_create(
+                    simbolo=simbolo,
+                    mercado=mercado,
+                    source="yfinance",
+                    fecha=row["fecha"],
+                    defaults={
+                        "open": row["open"],
+                        "high": row["high"],
+                        "low": row["low"],
+                        "close": row["close"],
+                        "volume": row["volume"],
+                    },
+                )
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
+
+        latest_date = max((row["fecha"] for row in normalized_rows), default=None)
+        return {
+            "success": True,
+            "simbolo": simbolo,
+            "mercado": mercado,
+            "rows_received": len(normalized_rows),
+            "created": created,
+            "updated": updated,
+            "latest_date": latest_date,
+            "eligibility_status": "supported",
+            "error": "",
+            "source": "yfinance",
+            "provider_ticker": yfinance_support.get("ticker") or "",
+        }
+
+    def _get_yfinance_historical_rows(self, *, ticker: str, params: dict | None = None) -> list[dict] | None:
+        try:
+            import yfinance as yf
+        except ImportError:
+            return None
+
+        start_date, end_date = self._resolve_history_window(params)
+        history = yf.Ticker(ticker).history(
+            start=start_date.isoformat(),
+            end=(pd.Timestamp(end_date) + pd.Timedelta(days=1)).date().isoformat(),
+            auto_adjust=False,
+        )
+        if history is None or history.empty:
+            return None
+
+        rows = []
+        for index, values in history.iterrows():
+            rows.append(
+                {
+                    "fecha": pd.to_datetime(index).date(),
+                    "open": values.get("Open"),
+                    "high": values.get("High"),
+                    "low": values.get("Low"),
+                    "close": values.get("Close"),
+                    "volume": values.get("Volume"),
+                }
+            )
+        return rows
+
+    @staticmethod
+    def _resolve_history_window(params: dict | None = None) -> tuple[date, date]:
+        params = params or {}
+        today = date.today()
+        default_start = (pd.Timestamp(today) - pd.Timedelta(days=365)).date()
+        start_date = IOLHistoricalPriceService._coerce_date(
+            params.get("fecha_desde") or params.get("fechaDesde") or params.get("desde") or default_start
+        )
+        end_date = IOLHistoricalPriceService._coerce_date(
+            params.get("fecha_hasta") or params.get("fechaHasta") or params.get("hasta") or today
+        )
+        return start_date or default_start, end_date or today
+
+    def _get_parametro_activo(self, simbolo: str) -> ParametroActivo | None:
+        cache_key = str(simbolo or "").strip().upper()
+        if cache_key not in self._parametro_cache:
+            self._parametro_cache[cache_key] = ParametroActivo.objects.filter(simbolo=cache_key).first()
+        return self._parametro_cache[cache_key]
 
     @staticmethod
     def _build_support_source_label(source_key: str | None) -> str:

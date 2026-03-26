@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.core.models import IOLHistoricalPriceSnapshot, IOLMarketSnapshotObservation
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
+from apps.parametros.models import ParametroActivo
 from apps.portafolio_iol.models import ActivoPortafolioSnapshot
 
 
@@ -86,6 +87,33 @@ def test_iol_historical_price_service_ignores_rows_without_date_or_close():
 
 
 @pytest.mark.django_db
+def test_iol_historical_price_service_syncs_equity_symbols_from_yfinance():
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    client = Mock()
+    service = IOLHistoricalPriceService(client=client)
+    service._get_yfinance_historical_rows = Mock(
+        return_value=[
+            {"fecha": date(2026, 3, 18), "open": 100.0, "high": 101.0, "low": 99.0, "close": 100.5, "volume": 10},
+            {"fecha": date(2026, 3, 19), "open": 101.0, "high": 102.0, "low": 100.0, "close": 101.5, "volume": 12},
+        ]
+    )
+
+    result = service.sync_symbol_history("BCBA", "AAPL")
+
+    assert result["success"] is True
+    assert result["source"] == "yfinance"
+    assert result["provider_ticker"] == "AAPL.BA"
+    assert IOLHistoricalPriceSnapshot.objects.filter(simbolo="AAPL", source="yfinance").count() == 2
+    client.get_titulo_historicos.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_iol_historical_price_service_builds_close_series():
     IOLHistoricalPriceSnapshot.objects.create(
         simbolo="GGAL",
@@ -111,6 +139,31 @@ def test_iol_historical_price_service_builds_close_series():
 
 
 @pytest.mark.django_db
+def test_iol_historical_price_service_builds_close_series_from_yfinance_when_iol_is_absent():
+    IOLHistoricalPriceSnapshot.objects.create(
+        simbolo="AAPL",
+        mercado="BCBA",
+        source="yfinance",
+        fecha=date(2026, 3, 18),
+        close=100,
+    )
+    IOLHistoricalPriceSnapshot.objects.create(
+        simbolo="AAPL",
+        mercado="BCBA",
+        source="yfinance",
+        fecha=date(2026, 3, 19),
+        close=102,
+    )
+
+    dates = pd.to_datetime(["2026-03-18", "2026-03-19"])
+    series = IOLHistoricalPriceService(client=Mock()).build_close_series("AAPL", "BCBA", dates)
+
+    assert len(series) == 2
+    assert float(series.iloc[0]) == 100.0
+    assert float(series.iloc[1]) == 102.0
+
+
+@pytest.mark.django_db
 def test_iol_historical_price_service_syncs_current_portfolio_symbols():
     _make_asset_snapshot("GGAL", "BCBA")
     _make_asset_snapshot("AAPL", "NASDAQ")
@@ -125,7 +178,13 @@ def test_iol_historical_price_service_syncs_current_portfolio_symbols():
         [{"fechaHora": "2026-03-18T17:00:00", "ultimoPrecio": 200.0}],
     ]
 
-    result = IOLHistoricalPriceService(client=client).sync_current_portfolio_symbols()
+    service = IOLHistoricalPriceService(client=client)
+    service._get_yfinance_historical_rows = Mock(
+        return_value=[
+            {"fecha": date(2026, 3, 18), "open": 200.0, "high": 201.0, "low": 199.0, "close": 200.5, "volume": 15},
+        ]
+    )
+    result = service.sync_current_portfolio_symbols()
 
     assert result["symbols_count"] == 2
     assert result["processed"] == 2
