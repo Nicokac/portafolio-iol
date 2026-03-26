@@ -18,6 +18,16 @@ class VaRService:
         self.historical_price_service = historical_price_service or IOLHistoricalPriceService()
         self.volatility_service = VolatilityService(historical_price_service=self.historical_price_service)
 
+    @staticmethod
+    def _sanitize_returns(returns: pd.Series) -> pd.Series:
+        if returns is None:
+            return pd.Series(dtype=float)
+        return (
+            pd.to_numeric(returns, errors="coerce")
+            .replace([np.inf, -np.inf], np.nan)
+            .dropna()
+        )
+
     def _get_returns_with_metadata(self, days: int = 252) -> tuple[pd.Series, str | None, int]:
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=days)
@@ -28,7 +38,9 @@ class VaRService:
 
         observations = snapshots.count()
         if observations < 2:
-            proxy_returns = self.volatility_service.build_iol_proxy_return_series(days=days)
+            proxy_returns = self._sanitize_returns(
+                self.volatility_service.build_iol_proxy_return_series(days=days)
+            )
             if not proxy_returns.empty:
                 return proxy_returns, "iol_historical_prices_proxy", int(len(proxy_returns.index) + 1)
             return pd.Series(dtype=float), None, observations
@@ -40,7 +52,7 @@ class VaRService:
         df["fecha"] = pd.to_datetime(df["fecha"])
         df["total_iol"] = pd.to_numeric(df["total_iol"], errors="coerce")
         df = df.set_index("fecha").sort_index()
-        return df["total_iol"].pct_change().dropna(), None, observations
+        return self._sanitize_returns(df["total_iol"].pct_change()), None, observations
 
     def _get_returns(self, days: int = 252) -> pd.Series:
         returns, _, _ = self._get_returns_with_metadata(days=days)

@@ -83,3 +83,18 @@ def test_var_service_uses_iol_proxy_fallback_when_snapshot_history_is_insufficie
     assert result["fallback_source"] == "iol_historical_prices_proxy"
     assert "historical_var_95_1d" in result
     assert "parametric_var_95_1d" in result
+
+
+def test_var_service_sanitizes_non_finite_returns_before_percentile(monkeypatch):
+    service = VaRService()
+    monkeypatch.setattr(
+        service,
+        "_get_returns",
+        lambda days=252: service._sanitize_returns(
+            __import__("pandas").Series([0.01, float("inf"), float("nan"), -0.02])
+        ),
+    )
+
+    result = service.historical_var(confidence=0.95, lookback_days=252)
+
+    assert result is not None
