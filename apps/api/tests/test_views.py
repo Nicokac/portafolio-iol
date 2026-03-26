@@ -385,6 +385,51 @@ class TestAPIInputValidation:
         assert body['strategy_profile']['classification'] == 'cash_management'
         assert body['metadata']['fields_basis']['strategy_profile'] == 'heuristic_classification'
 
+    @patch('apps.api.views.IOLFCIAdminTaxonomyService.get_taxonomy_probe')
+    def test_catalog_fci_admin_taxonomy_exposes_spike_status(self, mock_get_taxonomy_probe, auth_client):
+        mock_get_taxonomy_probe.return_value = {
+            'administradora': 'convexity',
+            'administradora_key': 'convexity',
+            'tipo_fondo': '',
+            'feature_enabled': False,
+            'remote_status': 'disabled',
+            'remote_reason': 'Spike remoto deshabilitado por feature flag.',
+            'local_taxonomy': {
+                'source': 'latest_fci_catalog_snapshot',
+                'captured_date': '2026-03-26',
+                'count': 1,
+                'items': [
+                    {
+                        'administradora': 'convexity',
+                        'identificador_tipo_fondo_fci': 'renta_fija_pesos',
+                        'nombre_tipo_fondo_fci': 'renta_fija_pesos',
+                        'funds_count': 2,
+                    }
+                ],
+                'mode': 'tipo_fondos_by_administradora',
+            },
+            'remote_taxonomy': {
+                'source': 'iol_remote_admin_taxonomy',
+                'count': 0,
+                'items': [],
+            },
+            'comparison': {
+                'local_count': 1,
+                'remote_count': 0,
+                'matched_count': 0,
+                'coverage_gap_count': 1,
+            },
+        }
+
+        response = auth_client.get(reverse('catalog-fci-admin-taxonomy', kwargs={'administradora': 'convexity'}))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body['administradora_key'] == 'convexity'
+        assert body['remote_status'] == 'disabled'
+        assert body['local_taxonomy']['count'] == 1
+        assert body['metadata']['feature_flag'] == 'IOL_FCI_ADMIN_TAXONOMY_SPIKE_ENABLED'
+
     @patch('apps.api.views.IOLMarketUniverseService.list_latest_universe')
     def test_catalog_market_universe_exposes_grouped_discovery(self, mock_list_latest_universe, auth_client):
         mock_list_latest_universe.return_value = {

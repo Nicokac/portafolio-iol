@@ -10,6 +10,7 @@ urlpatterns = [
     path('dashboard/senales-rebalanceo/', views.dashboard_senales_rebalanceo, name='dashboard-senales-rebalanceo'),
     path('catalogs/fci/', views.catalog_fci, name='catalog-fci'),
     path('catalogs/fci/<str:simbolo>/', views.catalog_fci_detail, name='catalog-fci-detail'),
+    path('catalogs/fci-admin-taxonomy/<str:administradora>/', views.catalog_fci_admin_taxonomy, name='catalog-fci-admin-taxonomy'),
     path('catalogs/market-universe/', views.catalog_market_universe, name='catalog-market-universe'),
     path('catalogs/market-coverage/', views.catalog_market_coverage, name='catalog-market-coverage'),
 

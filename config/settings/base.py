@@ -171,6 +171,9 @@ IOL_USERNAME = config('IOL_USERNAME', default='')
 IOL_PASSWORD = config('IOL_PASSWORD', default='')
 IOL_ACCESS_TOKEN = config('IOL_ACCESS_TOKEN', default='')
 IOL_BASE_URL = config('IOL_BASE_URL', default='https://api.invertironline.com')
+IOL_FCI_ADMIN_TAXONOMY_SPIKE_ENABLED = str(
+    config('IOL_FCI_ADMIN_TAXONOMY_SPIKE_ENABLED', default='False')
+).strip().lower() in {'1', 'true', 'yes', 'on'}
 ALPHA_VANTAGE_API_KEY = config('ALPHA_VANTAGE_API_KEY', default='')
 USDARS_MEP_API_URL = config(
     'USDARS_MEP_API_URL',

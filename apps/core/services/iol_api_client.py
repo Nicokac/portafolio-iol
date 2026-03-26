@@ -364,6 +364,30 @@ class IOLAPIClient:
         )
         return data if isinstance(data, list) else None
 
+    def get_fci_admin_tipo_fondos(self, administradora: str) -> Optional[List[Dict]]:
+        """Obtiene la taxonomia remota de tipos de fondo para una administradora FCI."""
+        administradora_path = quote(str(administradora or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/Titulos/FCI/Administradoras/{administradora_path}/TipoFondos"
+        data = self._request_json(
+            operation=f"get_fci_admin_tipo_fondos:{administradora}",
+            url=url,
+        )
+        return data if isinstance(data, list) else None
+
+    def get_fci_admin_tipo_fondo_funds(self, administradora: str, tipo_fondo: str) -> Optional[List[Dict]]:
+        """Obtiene el screener remoto de FCI por administradora y tipo de fondo."""
+        administradora_path = quote(str(administradora or "").strip(), safe="")
+        tipo_fondo_path = quote(str(tipo_fondo or "").strip(), safe="")
+        url = (
+            f"{self.base_url}/api/v2/Titulos/FCI/Administradoras/"
+            f"{administradora_path}/TipoFondos/{tipo_fondo_path}"
+        )
+        data = self._request_json(
+            operation=f"get_fci_admin_tipo_fondo_funds:{administradora}:{tipo_fondo}",
+            url=url,
+        )
+        return data if isinstance(data, list) else None
+
     def get_quote_instruments(self, pais: str) -> Optional[List[Dict]]:
         """Obtiene el catalogo de instrumentos de cotizacion para un pais."""
         pais_path = quote(str(pais or "").strip(), safe="")

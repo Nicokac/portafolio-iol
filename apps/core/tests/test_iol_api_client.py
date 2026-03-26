@@ -168,6 +168,32 @@ class TestIOLAPIClient:
         assert mock_get.call_args.args[0].endswith('/api/v2/Titulos/FCI')
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_fci_admin_tipo_fondos_success(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'administradora': 'convexity', 'identificadorTipoFondoFCI': 'plazo_fijo_pesos'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_fci_admin_tipo_fondos('convexity')
+
+        assert result == [{'administradora': 'convexity', 'identificadorTipoFondoFCI': 'plazo_fijo_pesos'}]
+        assert mock_get.call_args.args[0].endswith('/api/v2/Titulos/FCI/Administradoras/convexity/TipoFondos')
+
+    @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_fci_admin_tipo_fondo_funds_success(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = [{'simbolo': 'IOLCAMA', 'tipoFondo': 'renta_fija_pesos'}]
+        mock_get.return_value = mock_response
+
+        result = client.get_fci_admin_tipo_fondo_funds('convexity', 'renta_fija_pesos')
+
+        assert result == [{'simbolo': 'IOLCAMA', 'tipoFondo': 'renta_fija_pesos'}]
+        assert mock_get.call_args.args[0].endswith(
+            '/api/v2/Titulos/FCI/Administradoras/convexity/TipoFondos/renta_fija_pesos'
+        )
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_quote_instruments_success(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
         mock_response = Mock()

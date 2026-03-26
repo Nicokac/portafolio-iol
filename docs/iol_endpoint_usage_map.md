@@ -480,8 +480,8 @@ El criterio de priorizacion es:
 
 | Endpoint | Oportunidad | Valor producto | Esfuerzo | Riesgo | Proximo paso sugerido |
 | --- | --- | --- | --- | --- | --- |
-| `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos` | taxonomia por administradora | ordena catalogo FCI y comparadores por family grouping | Medio | Medio | probar permisos reales y crear feature flag |
-| `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos/{tipoFondo}` | screener filtrado remoto de FCI | menor trabajo de filtrado local | Medio | Medio/Alto | evaluar solo si `Administradoras` deja de responder `403` |
+| `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos` | taxonomia por administradora | ordena catalogo FCI y comparadores por family grouping | Medio | Medio | spike implementado bajo feature flag con fallback al catalogo local |
+| `GET /api/v2/Titulos/FCI/Administradoras/{administradora}/TipoFondos/{tipoFondo}` | screener filtrado remoto de FCI | menor trabajo de filtrado local | Medio | Medio/Alto | usar solo como contraste remoto; la base productiva sigue siendo el catalogo persistido |
 | `GET /api/v2/cotizaciones-orleans/...` | posible universo operable alternativo | podria mejorar cobertura de operables o paneles | Medio | Alto | spike tecnico aislado antes de integracion |
 
 ### Endpoint que hoy no conviene tomar como eje
@@ -489,7 +489,7 @@ El criterio de priorizacion es:
 | Endpoint | Motivo |
 | --- | --- |
 | `seriehistorica` como unica fuente | ya mostro inestabilidad remota y errores `500` |
-| `FCI/Administradoras` sin validacion adicional | en pruebas reales devolvio `403` |
+| `FCI/Administradoras` como dependencia productiva directa | en pruebas reales devolvio `403`; hoy solo se usa como spike controlado bajo feature flag y con fallback local |
 | `Cotizaciones/{Instrumento}/{Panel}/{Pais}` como base primaria | en la muestra compartida devolvio `401`, por lo que necesita validacion antes de comprometer producto |
 
 ## Roadmap por fase

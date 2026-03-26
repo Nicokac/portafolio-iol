@@ -17,6 +17,7 @@ from apps.core.services.liquidity.liquidity_service import LiquidityService
 from apps.core.services.data_quality.metadata_audit import MetadataAuditService
 from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
 from apps.core.services.iol_sync_audit import IOLSyncAuditService
+from apps.core.services.iol_fci_admin_taxonomy_service import IOLFCIAdminTaxonomyService
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
 from apps.core.services.iol_market_coverage_service import IOLMarketCoverageService
 from apps.core.services.iol_market_universe_service import IOLMarketUniverseService
@@ -643,6 +644,46 @@ def catalog_fci_detail(request, simbolo: str):
         return Response(payload, status=status.HTTP_200_OK)
     except Exception as e:
         return internal_error_response(e, "catalog_fci_detail")
+
+
+@api_view(['GET'])
+def catalog_fci_admin_taxonomy(request, administradora: str):
+    """Spike controlado para contrastar taxonomia FCI remota por administradora contra el catalogo local."""
+    try:
+        limit = request.query_params.get('limit')
+        if limit is not None:
+            limit = int(limit)
+            if limit <= 0:
+                raise ValueError
+    except ValueError:
+        return Response(
+            {'error': 'Parámetro limit debe ser un número entero positivo'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        payload = IOLFCIAdminTaxonomyService().get_taxonomy_probe(
+            administradora=administradora,
+            tipo_fondo=request.query_params.get('tipo_fondo'),
+            limit=limit or 25,
+        )
+        payload['metadata'] = build_metric_metadata(
+            methodology='Controlled spike: compare remote IOL taxonomy by administradora against latest persisted local FCI catalog',
+            data_basis='GET /api/v2/Titulos/FCI/Administradoras/... + IOLFCICatalogSnapshot latest captured_date',
+            limitations='Remote endpoint is optional behind feature flag and may return 403/401; local taxonomy remains the safe source of truth',
+            extra={
+                'fields_basis': {
+                    'local_taxonomy': 'latest_fci_catalog',
+                    'remote_taxonomy': 'remote_admin_taxonomy_spike',
+                    'comparison': 'local_vs_remote_taxonomy_spike',
+                },
+                'available_filters': ['tipo_fondo', 'limit'],
+                'feature_flag': 'IOL_FCI_ADMIN_TAXONOMY_SPIKE_ENABLED',
+            },
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+    except Exception as e:
+        return internal_error_response(e, "catalog_fci_admin_taxonomy")
 
 
 @api_view(['GET'])

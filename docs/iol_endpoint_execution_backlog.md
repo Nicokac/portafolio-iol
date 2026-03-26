@@ -277,6 +277,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo E1 - Taxonomia remota de administradoras FCI
 
 - Prioridad: `P3`
+- Estado: `Implementado como spike controlado`
 - Problema:
   - la familia `Administradoras` puede ordenar mejor el catalogo FCI, pero en pruebas reales hubo `403`
 - Oportunidad:
@@ -294,7 +295,9 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 - Riesgo:
   - medio/alto
 - Criterio de aceptacion:
-  - solo avanzar si el endpoint responde de forma estable y autenticada
+  - existe lectura comparativa entre taxonomia local y remota
+  - el endpoint remoto queda desacoplado de la base productiva mediante feature flag
+  - un `403/401` remoto se expone como estado observado y no rompe el catalogo local
 
 ### Modulo E2 - Familia Orleans
 
