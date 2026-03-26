@@ -21,10 +21,16 @@ _MONEDA_TRADUCCIONES = {
 }
 
 
-def build_portafolio_enriquecido(portafolio: list, parametros: dict, fci_profiles: dict | None = None) -> Dict:
+def build_portafolio_enriquecido(
+    portafolio: list,
+    parametros: dict,
+    fci_profiles: dict | None = None,
+    mep_profiles: dict | None = None,
+) -> Dict:
     """Clasifica y enriquece el portafolio con metadata. Funcion pura dado portafolio y parametros."""
     total_portafolio = sum(activo.valorizado for activo in portafolio)
     fci_profiles = fci_profiles or {}
+    mep_profiles = mep_profiles or {}
 
     liquidez: List[Dict] = []
     fci_cash_management: List[Dict] = []
@@ -49,6 +55,7 @@ def build_portafolio_enriquecido(portafolio: list, parametros: dict, fci_profile
             'moneda_traducida': moneda_traducida,
             'peso_porcentual': peso_porcentual,
             'fci_profile': fci_profiles.get(activo.simbolo.upper()),
+            'mep_profile': _build_position_mep_profile(activo, mep_profiles.get(activo.simbolo.upper())),
         }
 
         simbolo_upper = activo.simbolo.upper()
@@ -78,6 +85,21 @@ def _is_cash_management_fci(activo, fci_profile: dict | None) -> bool:
         return False
     strategy_profile = (fci_profile or {}).get('strategy_profile') or {}
     return strategy_profile.get('classification') == 'cash_management'
+
+
+def _build_position_mep_profile(activo, mep_profile: dict | None) -> dict | None:
+    if not mep_profile:
+        return None
+    try:
+        mep_price = float(mep_profile.get('mep_price_ars') or 0)
+        valorizado = float(getattr(activo, 'valorizado', 0) or 0)
+    except (TypeError, ValueError):
+        return mep_profile
+    if mep_price <= 0 or valorizado <= 0:
+        return mep_profile
+    enriched = dict(mep_profile)
+    enriched['implicit_usd_value'] = round(valorizado / mep_price, 2)
+    return enriched
 
 
 def extract_resumen_cash_components(resumen: list) -> Dict[str, Decimal]:

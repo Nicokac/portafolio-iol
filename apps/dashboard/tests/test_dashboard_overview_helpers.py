@@ -42,6 +42,24 @@ def test_build_current_enriched_portfolio_passes_fci_profiles_when_available(db)
     assert "IOLCAMA" in result["fci_profiles"]
 
 
+def test_build_current_enriched_portfolio_passes_mep_profiles_for_cedears(db):
+    result = build_current_enriched_portfolio(
+        get_latest_portafolio_data_fn=lambda: [
+            SimpleNamespace(simbolo="AAPL", tipo="CEDEARS"),
+            SimpleNamespace(simbolo="AL30", tipo="TitulosPublicos"),
+        ],
+        build_portafolio_enriquecido_fn=lambda portafolio, parametros, fci_profiles=None, mep_profiles=None: {
+            "portafolio": portafolio,
+            "parametros": parametros,
+            "fci_profiles": fci_profiles,
+            "mep_profiles": mep_profiles,
+        },
+        get_mep_quotes_by_symbols_fn=lambda simbolos: {"AAPL": {"mep_price_ars": 1392.26}},
+    )
+
+    assert result["mep_profiles"] == {"AAPL": {"mep_price_ars": 1392.26}}
+
+
 def test_build_riesgo_portafolio_payload_uses_kpis_liquidity_and_total():
     captured = {}
 

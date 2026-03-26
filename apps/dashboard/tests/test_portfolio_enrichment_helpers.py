@@ -173,6 +173,26 @@ def test_build_portafolio_enriquecido_enriquece_con_parametros():
     assert item['pais_exposicion'] == 'USA'
 
 
+def test_build_portafolio_enriquecido_assigns_mep_profile_for_cedears():
+    portafolio = [_make_activo('AAPL', 2784.52, tipo='CEDEARS')]
+    result = build_portafolio_enriquecido(
+        portafolio,
+        {},
+        mep_profiles={
+            'AAPL': {
+                'symbol': 'AAPL',
+                'mep_price_ars': 1392.26,
+                'source': 'iol_mep_endpoint',
+            }
+        },
+    )
+
+    item = result['inversion'][0]
+    assert item['mep_profile']['mep_price_ars'] == 1392.26
+    assert item['mep_profile']['source'] == 'iol_mep_endpoint'
+    assert item['mep_profile']['implicit_usd_value'] == 2.0
+
+
 def test_build_portafolio_enriquecido_sin_parametro_usa_na():
     portafolio = [_make_activo('UNKNOWN', 10000)]
     result = build_portafolio_enriquecido(portafolio, {})

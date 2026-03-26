@@ -396,6 +396,19 @@ class IOLAPIClient:
         )
         return data if isinstance(data, dict) else None
 
+    def get_mep_quote(self, simbolo: str) -> Optional[float]:
+        """Obtiene la valuacion MEP implicita para un simbolo."""
+        simbolo_path = quote(str(simbolo or "").strip(), safe="")
+        url = f"{self.base_url}/api/v2/Cotizaciones/MEP/{simbolo_path}"
+        data = self._request_json(
+            operation=f"get_mep_quote:{simbolo}",
+            url=url,
+        )
+        try:
+            return float(data)
+        except (TypeError, ValueError):
+            return None
+
     def get_titulo_cotizacion(
         self,
         mercado: str,

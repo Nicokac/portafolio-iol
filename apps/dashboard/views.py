@@ -39,6 +39,7 @@ from apps.dashboard.selectors import (
     get_dashboard_kpis,
     get_distribucion_moneda,
     get_distribucion_moneda_operativa,
+    get_implicit_fx_summary,
     get_distribucion_pais,
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
@@ -127,6 +128,7 @@ class DashboardContextMixin:
         context['distribucion_tipo'] = to_json(get_distribucion_tipo_patrimonial(base='total_activos'))
         context['distribucion_moneda'] = to_json(get_distribucion_moneda())
         context['distribucion_moneda_operativa'] = to_json(get_distribucion_moneda_operativa())
+        context['implicit_fx_summary'] = get_implicit_fx_summary()
         context['riesgo_portafolio'] = get_riesgo_portafolio()
         context['riesgo_portafolio_detallado'] = get_riesgo_portafolio_detallado()
         context['concentracion_sector'] = get_concentracion_sector()

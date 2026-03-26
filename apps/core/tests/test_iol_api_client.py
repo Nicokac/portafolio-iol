@@ -204,6 +204,18 @@ class TestIOLAPIClient:
         assert mock_get.call_args.args[0].endswith('/api/v2/Cotizaciones/Bonos/argentina/Todos')
 
     @patch('apps.core.services.iol_api_client.requests.get')
+    def test_get_mep_quote_success(self, mock_get, client):
+        client.token_manager.get_valid_token.return_value = 'test_token'
+        mock_response = Mock()
+        mock_response.json.return_value = 1392.26
+        mock_get.return_value = mock_response
+
+        result = client.get_mep_quote('AAPL')
+
+        assert result == 1392.26
+        assert mock_get.call_args.args[0].endswith('/api/v2/Cotizaciones/MEP/AAPL')
+
+    @patch('apps.core.services.iol_api_client.requests.get')
     def test_get_operaciones_success(self, mock_get, client):
         client.token_manager.get_valid_token.return_value = 'test_token'
         mock_response = Mock()

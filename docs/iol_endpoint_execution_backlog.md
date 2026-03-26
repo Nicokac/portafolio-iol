@@ -224,6 +224,7 @@ Corresponde a exploraciones utiles, pero no aptas todavia como base productiva.
 ### Modulo D1 - Valuacion MEP implicita
 
 - Prioridad: `P1`
+- Estado: `Implementado`
 - Problema:
   - hoy falta una lectura cambiaria implicita por activo integrada al portfolio
 - Oportunidad:

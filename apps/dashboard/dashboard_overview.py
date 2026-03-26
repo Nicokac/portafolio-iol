@@ -27,13 +27,21 @@ def build_current_enriched_portfolio(
     get_latest_portafolio_data_fn: Callable[[], list],
     build_portafolio_enriquecido_fn: Callable[[list, dict], Dict[str, List[Dict]]],
     get_fci_profiles_by_symbols_fn: Callable[[list[str]], Dict[str, Dict]] | None = None,
+    get_mep_quotes_by_symbols_fn: Callable[[list[str]], Dict[str, Dict]] | None = None,
 ) -> Dict[str, List[Dict]]:
     portafolio = get_latest_portafolio_data_fn()
     simbolos = [activo.simbolo for activo in portafolio]
     parametros = {p.simbolo: p for p in ParametroActivo.objects.filter(simbolo__in=simbolos)}
     fci_symbols = [activo.simbolo for activo in portafolio if getattr(activo, "tipo", "") == "FondoComundeInversion"]
+    cedear_symbols = [activo.simbolo for activo in portafolio if getattr(activo, "tipo", "") == "CEDEARS"]
     fci_profiles = get_fci_profiles_by_symbols_fn(fci_symbols) if get_fci_profiles_by_symbols_fn else {}
-    return build_portafolio_enriquecido_fn(portafolio, parametros, fci_profiles=fci_profiles)
+    mep_profiles = get_mep_quotes_by_symbols_fn(cedear_symbols) if get_mep_quotes_by_symbols_fn else {}
+    return build_portafolio_enriquecido_fn(
+        portafolio,
+        parametros,
+        fci_profiles=fci_profiles,
+        mep_profiles=mep_profiles,
+    )
 
 
 def build_dashboard_kpis_payload(

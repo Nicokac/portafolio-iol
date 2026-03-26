@@ -1,0 +1,8 @@
+{% if item.mep_profile %}
+<div class="small text-muted mt-1">
+    MEP implícito: {{ item.mep_profile.mep_price_ars|currency:2 }}
+    {% if item.mep_profile.implicit_usd_value %}
+    · USD implícitos: {{ item.mep_profile.implicit_usd_value|floatformat:2 }}
+    {% endif %}
+</div>
+{% endif %}

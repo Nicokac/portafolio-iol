@@ -14,6 +14,7 @@ from apps.portafolio_iol.models import ActivoPortafolioSnapshot, PortfolioSnapsh
 from apps.core.models import Alert
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
+from apps.core.services.iol_mep_service import IOLMEPService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
@@ -272,6 +273,7 @@ def get_portafolio_enriquecido_actual() -> Dict[str, List[Dict]]:
             get_latest_portafolio_data_fn=get_latest_portafolio_data,
             build_portafolio_enriquecido_fn=build_portafolio_enriquecido,
             get_fci_profiles_by_symbols_fn=IOLFCICatalogService().get_profiles_for_symbols,
+            get_mep_quotes_by_symbols_fn=IOLMEPService().get_mep_quotes_by_symbols,
         )
 
     return _get_cached_selector_result("portafolio_enriquecido_actual", build)
@@ -400,6 +402,15 @@ def get_concentracion_moneda() -> Dict[str, float]:
 
 def get_concentracion_moneda_operativa() -> Dict[str, float]:
     return build_concentracion_from_distribucion(get_distribucion_moneda_operativa())
+
+
+def get_implicit_fx_summary() -> Dict:
+    inversion = get_portafolio_enriquecido_actual()['inversion']
+    relevant_positions = [
+        item for item in inversion
+        if getattr(item.get('activo'), 'tipo', '') == 'CEDEARS'
+    ]
+    return IOLMEPService().build_implicit_fx_summary(relevant_positions=relevant_positions)
 
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:
