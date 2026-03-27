@@ -27,16 +27,18 @@ No intenta redisenar identidad visual completa ni rehacer frontend en SPA.
 
 Se verificaron directamente estos puntos del repositorio:
 
-- `templates/dashboard/planeacion.html` tiene `2619` lineas
-- `templates/dashboard/estrategia.html` tiene `681` lineas
-- `templates/dashboard/resumen.html` tiene `481` lineas
-- `templates/base.html` expone en el navbar principal tanto flujo actual como accesos `legacy`
+- `templates/dashboard/planeacion.html` tiene `2289` lineas incluso despues del recorte principal
+- `templates/dashboard/estrategia.html` tiene `201` lineas y ya funciona como hoja ejecutiva
+- `templates/dashboard/resumen.html` tiene `464` lineas y sigue siendo la hoja diaria mas clara
+- `templates/base.html` ya separa flujo principal de superficies tecnicas, pero aun sostiene una ruta duplicada para `Resumen`
 - `apps/dashboard/views.py` concentra un `DashboardContextMixin` amplio y multiples acciones operativas
 - `apps/dashboard/urls.py` mezcla pantallas principales, detalles analiticos y acciones internas dentro de la misma familia de rutas
 - `PortfolioParameters` ya expone validaciones en `clean()` y constraints de base alineados para rangos y suma de targets
 - `OperacionIOL`, `PortfolioSnapshot` y `PositionSnapshot` requerian constraints de dominio explicitos para montos o cantidades invalidas
 - `.github/workflows/ci.yml` tiene contenido real y no placeholders
 - `Ops` ya fue simplificada con una ruta liviana basada en `build_ops_lite_summary()`
+- `apps/dashboard/views.py` sigue concentrando un `DashboardContextMixin` grande que alimenta demasiadas pantallas
+- `docs/dashboard_surface_inventory.md` ya distingue flujo principal, experto, staff visible y staff oculto
 
 ## Principios rectores
 
@@ -199,6 +201,25 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/core/services/pipeline_observability_service.py`
     - `apps/dashboard/views.py`
     - `templates/dashboard/ops.html`
+
+### Reevaluacion post-iteracion
+
+La auditoria posterior a `E2` muestra una mejora material del flujo principal, pero todavia quedan cuatro focos reales de friccion:
+
+1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2289` lineas.
+2. `DashboardContextMixin` sigue cargando demasiado contexto compartido para hojas con roles distintos.
+3. siguen existiendo tres acciones `staff` ocultas de historicos IOL que ya no tienen entrada visible en UI.
+4. `ResumenView` sigue expuesto por dos rutas (`dashboard` y `resumen`), lo que mantiene una duplicidad innecesaria.
+
+### Proxima ola sugerida
+
+- `A2 - Desacople de DashboardContextMixin`
+- `B3 - Reduccion de llamadas frontend no esenciales`
+- poda o migracion fuera del dashboard de:
+  - `dashboard:sync_iol_historical_prices`
+  - `dashboard:sync_iol_historical_prices_partial`
+  - `dashboard:sync_iol_historical_prices_retry_metadata`
+- unificacion futura de la ruta canonica de `Resumen`
 
 ## Track A - Navegacion y arquitectura de pantallas
 
