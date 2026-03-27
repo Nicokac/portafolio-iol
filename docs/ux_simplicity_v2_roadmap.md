@@ -178,6 +178,17 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/operaciones_iol/migrations/0006_rename_operacione_pais_co_7f9ad6_idx_operaciones_pais_co_640e0d_idx_and_more.py`
     - `apps/portafolio_iol/migrations/0005_portfoliosnapshot_portfolio_snapshot_non_negative_amounts_and_more.py`
 
+- `E2 - Auditoria de funciones y vistas realmente usadas`
+  - estado: `implementado`
+  - resultado:
+    - se documento el inventario real de superficies del dashboard
+    - quedo separada la clasificacion entre flujo principal, experto, staff visible y staff oculto
+    - se dejaron identificadas como primera poda futura las acciones ocultas de historicos IOL
+  - archivos principales:
+    - `docs/dashboard_surface_inventory.md`
+    - `docs/ux_simplicity_v2_roadmap.md`
+    - `docs/README.md`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

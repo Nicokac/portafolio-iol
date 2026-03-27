@@ -6,6 +6,7 @@
 
 - `repo_hardening_and_decision_roadmap.md`
 - `ux_simplicity_v2_roadmap.md`
+- `dashboard_surface_inventory.md`
 - `data_pipeline.md`
 - `iol_endpoint_usage_map.md`
 - `iol_endpoint_execution_backlog.md`
