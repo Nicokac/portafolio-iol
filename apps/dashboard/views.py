@@ -233,6 +233,11 @@ class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
         return context
 
 
+class LaboratorioView(PlaneacionView):
+    template_name = 'dashboard/laboratorio.html'
+    active_section = 'planeacion'
+
+
 class ResumenView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
     template_name = 'dashboard/resumen.html'
     active_section = 'resumen'

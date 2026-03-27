@@ -82,6 +82,20 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/tests/test_feature_flows.py`
     - `apps/dashboard/tests/test_views.py`
 
+- `B2 - Extraccion de simulacion y optimizacion a Laboratorio`
+  - estado: `implementado`
+  - resultado:
+    - `Planeacion` ya no muestra simulacion tactica, contraste legacy, optimizacion ni config base dentro de la misma hoja
+    - se creo `Laboratorio` como superficie separada para herramientas avanzadas
+    - el flujo principal de aportes quedo aislado de herramientas secundarias
+  - archivos principales:
+    - `apps/dashboard/views.py`
+    - `apps/dashboard/urls.py`
+    - `templates/dashboard/planeacion.html`
+    - `templates/dashboard/laboratorio.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

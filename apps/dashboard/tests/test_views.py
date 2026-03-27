@@ -1787,12 +1787,13 @@ class TestDashboardView:
         assert 'Mejor retorno' in body
         assert 'Reaplicar en comparador manual' in body
         assert 'Comparador manual de planes incrementales' in body
-        assert 'Herramienta secundaria: plan mensual por perfil' in body
-        assert 'Plan mensual por perfil' in body
-        assert 'Generar plan de contraste' in body
-        assert 'Simulación táctica' in body
-        assert 'Optimización teórica' in body
-        assert 'Configuración base' in body
+        assert 'Herramienta secundaria: plan mensual por perfil' not in body
+        assert 'Plan mensual por perfil' not in body
+        assert 'Generar plan de contraste' not in body
+        assert 'Simulación táctica' not in body
+        assert 'Optimización teórica' not in body
+        assert 'Configuración base' not in body
+        assert 'Abrir Laboratorio' in body
         assert 'Checklist de adopción de propuesta incremental' not in body
         assert 'Workflow de decisión manual' not in body
         assert 'Resumen ejecutivo de seguimiento incremental' not in body

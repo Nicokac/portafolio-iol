@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block title %}Laboratorio - Portafolio IOL{% endblock %}
+
+{% block content %}
+<h1>Laboratorio de Planeación</h1>
+
+<div class="alert alert-secondary mb-4">
+    <strong>Objetivo de esta hoja:</strong>
+    <span class="text-muted">reunir herramientas de contraste, simulación y configuración que no forman parte del flujo principal del aporte mensual.</span>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <h2 class="h5 mb-1">Uso recomendado</h2>
+                <p class="text-muted mb-0">Entrá acá sólo después de revisar `Planeación` si necesitás validar escenarios puntuales, contrastar contra un generador genérico o tocar configuración base.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:planeacion' %}#planeacion-aportes">Volver a Planeación</a>
+                <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mb-4">
+    <div class="border-start border-4 border-success ps-3">
+        <h2 class="mb-1">Simulación táctica</h2>
+        <p class="text-muted mb-0">Soporte secundario para validar operaciones puntuales o rebalanceos fuera del flujo principal de aportes.</p>
+    </div>
+</section>
+<div class="alert alert-light border mb-4">
+    <strong>Cuándo usar este bloque:</strong>
+    <span class="text-muted">después de definir la idea de aporte en la hoja principal, o cuando necesitás revisar una compra, venta o rebalanceo puntual por separado.</span>
+</div>
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Simulador rápido</h5>
+                <small>Compra, venta y rebalanceo hipotético</small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="simulation-activo" class="form-label">Activo</label>
+                        <select class="form-select" id="simulation-activo">
+                            <option value="">Seleccionar...</option>
+                            <option value="SPY">SPY (S&P 500)</option>
+                            <option value="EEM">EEM (Mercados Emergentes)</option>
+                            <option value="QQQ">QQQ (Nasdaq)</option>
+                            <option value="GGAL">GGAL (Banco Galicia)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="simulation-capital" class="form-label">Capital a invertir ($)</label>
+                        <input type="number" class="form-control" id="simulation-capital" placeholder="100000" min="1000">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="simulation-quantity" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="simulation-quantity" placeholder="10" min="1" step="0.01">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="simulation-price" class="form-label">Precio estimado</label>
+                        <input type="number" class="form-control" id="simulation-price" placeholder="25000" min="0.01" step="0.01">
+                    </div>
+                </div>
+                <div class="row g-2 mt-3">
+                    <div class="col-md-4"><button class="btn btn-success w-100" onclick="runSimulation()">Simular compra</button></div>
+                    <div class="col-md-4"><button class="btn btn-outline-danger w-100" onclick="runSaleSimulation()">Simular venta</button></div>
+                    <div class="col-md-4"><button class="btn btn-outline-primary w-100" onclick="runRebalanceSimulation()">Simular rebalanceo</button></div>
+                </div>
+                <div class="mt-3">
+                    <label for="rebalance-json" class="form-label">Rebalanceo (JSON pesos %)</label>
+                    <textarea class="form-control" id="rebalance-json" rows="3" placeholder='{"SPY": 30, "AAPL": 20, "GGAL": 10}'></textarea>
+                </div>
+                <div id="simulation-result" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6>Resultado de simulación</h6>
+                    <div id="simulation-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-light"><h5 class="mb-0">Contexto rápido</h5></div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">Perfil UI actual: <strong>{{ risk_profile|default:'moderado' }}</strong></p>
+                <p class="small text-muted mb-2">Total patrimonio modelado: <strong>{{ kpis.total_patrimonio_modelado|currency:0 }}</strong></p>
+                <p class="small text-muted mb-2">Cash disponible: <strong>{{ kpis.cash_disponible_broker|currency:0 }}</strong></p>
+                {% if kpis.cash_a_liquidar_broker %}
+                <p class="small text-muted mb-2">Cash a liquidar: <strong>{{ kpis.cash_a_liquidar_broker|currency:0 }}</strong></p>
+                {% endif %}
+                <p class="small text-muted mb-0">Caucion colocada: <strong>{{ kpis.caucion_colocada|currency:0 }}</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mb-4">
+    <div class="border-start border-4 border-info ps-3">
+        <h2 class="mb-1">Plan mensual por perfil</h2>
+        <p class="text-muted mb-0">Generador legacy para contraste rápido, fuera del flujo incremental principal.</p>
+    </div>
+</section>
+<div class="alert alert-light border mb-4">
+    <strong>Cómo leerlo:</strong>
+    <span class="text-muted">usalo como contraste genérico. No reemplaza la propuesta incremental construida en la hoja principal.</span>
+</div>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Plan mensual por perfil</h5>
+                <small>Distribución automática genérica de nuevos capitales</small>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="monthly-amount" class="form-label">Aporte mensual ($)</label>
+                    <input type="number" class="form-control" id="monthly-amount" placeholder="500000" min="10000">
+                </div>
+                <div class="mb-3">
+                    <label for="risk-profile" class="form-label">Perfil de riesgo</label>
+                    <select class="form-select" id="risk-profile">
+                        <option value="conservador">Conservador</option>
+                        <option value="moderado" selected>Moderado</option>
+                        <option value="agresivo">Agresivo</option>
+                    </select>
+                </div>
+                <button class="btn btn-info w-100" onclick="runMonthlyPlan()">Generar plan de contraste</button>
+                <div id="monthly-plan-result" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6>Distribución sugerida</h6>
+                    <div id="monthly-plan-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 border-info-subtle">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Cuándo usarlo</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 text-muted">
+                    <li>Usalo como contraste rápido si querés una referencia genérica por perfil.</li>
+                    <li>Comparalo contra la propuesta incremental visible en `Planeación` antes de ejecutar cambios.</li>
+                    <li>Si ambos difieren mucho, el flujo principal sigue siendo revisar el núcleo decisional y no este bloque legacy.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mb-4">
+    <div class="border-start border-4 border-warning ps-3">
+        <h2 class="mb-1">Optimización teórica</h2>
+        <p class="text-muted mb-0">Contraste secundario contra asignaciones teóricas o target de cartera.</p>
+    </div>
+</section>
+<div class="alert alert-light border mb-4">
+    <strong>Cómo leerlo:</strong>
+    <span class="text-muted">estos métodos sirven para exploración. No reemplazan el motor incremental ni la propuesta preferida visible en `Planeación`.</span>
+</div>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">Optimización de portafolio</h5>
+                <small>Asignaciones óptimas por diferentes métodos</small>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-warning" onclick="runOptimization('risk_parity')">Risk Parity</button>
+                    <button class="btn btn-outline-warning" onclick="runOptimization('markowitz')">Markowitz</button>
+                    <button class="btn btn-outline-warning" onclick="runOptimization('target')">Asignación objetivo</button>
+                </div>
+                <div id="optimization-result" class="mt-3" style="display: none;">
+                    <hr>
+                    <h6>Resultado de optimización</h6>
+                    <div id="optimization-details"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 border-warning-subtle">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Criterio de uso</h5>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 text-muted">
+                    <li><strong>Risk parity:</strong> para balancear riesgo entre bloques.</li>
+                    <li><strong>Markowitz:</strong> para explorar eficiencia teórica, no para ejecutar ciegamente.</li>
+                    <li><strong>Asignación objetivo:</strong> para contrastar contra tu política deseada.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mb-4">
+    <div class="border-start border-4 border-secondary ps-3">
+        <h2 class="mb-1">Configuración base</h2>
+        <p class="text-muted mb-0">Ajustes estructurales de pesos objetivo. No forman parte de la lectura principal del aporte mensual.</p>
+    </div>
+</section>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Parámetros de estrategia</h5>
+                <small>Configuración editable de pesos objetivo</small>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3"><label for="liquidez-target" class="form-label">Liquidez objetivo (%)</label><input type="number" class="form-control" id="liquidez-target" min="0" max="100" step="0.1" value="20"></div>
+                    <div class="col-md-3"><label for="usa-target" class="form-label">USA objetivo (%)</label><input type="number" class="form-control" id="usa-target" min="0" max="100" step="0.1" value="40"></div>
+                    <div class="col-md-3"><label for="argentina-target" class="form-label">Argentina objetivo (%)</label><input type="number" class="form-control" id="argentina-target" min="0" max="100" step="0.1" value="30"></div>
+                    <div class="col-md-3"><label for="emerging-target" class="form-label">Emerging objetivo (%)</label><input type="number" class="form-control" id="emerging-target" min="0" max="100" step="0.1" value="10"></div>
+                </div>
+                <div class="mt-3"><button class="btn btn-secondary" onclick="savePortfolioParams()">Guardar parámetros</button><span id="params-save-status" class="ms-2"></span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+    const inputToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (inputToken && inputToken.value) return inputToken.value;
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
+}
+
+function runSimulation() {
+    const activo = document.getElementById('simulation-activo').value;
+    const capital = parseFloat(document.getElementById('simulation-capital').value);
+    const quantity = parseFloat(document.getElementById('simulation-quantity').value);
+    const price = parseFloat(document.getElementById('simulation-price').value);
+    if (!activo || !capital) return;
+    fetch('/api/simulation/purchase/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ simbolo: activo, capital_amount: capital, quantity: quantity, estimated_price: price }) })
+    .then(r => r.json()).then(data => {
+        document.getElementById('simulation-details').innerHTML = `<pre class="small mb-0">${JSON.stringify(data, null, 2)}</pre>`;
+        document.getElementById('simulation-result').style.display = 'block';
+    });
+}
+
+function runSaleSimulation() {
+    const activo = document.getElementById('simulation-activo').value;
+    const quantity = parseFloat(document.getElementById('simulation-quantity').value);
+    if (!activo || !quantity) return;
+    fetch('/api/simulation/sale/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ simbolo: activo, quantity: quantity }) })
+    .then(r => r.json()).then(data => {
+        document.getElementById('simulation-details').innerHTML = `<pre class="small mb-0">${JSON.stringify(data, null, 2)}</pre>`;
+        document.getElementById('simulation-result').style.display = 'block';
+    });
+}
+
+function runRebalanceSimulation() {
+    const payload = document.getElementById('rebalance-json').value;
+    if (!payload) return;
+    fetch('/api/simulation/rebalance/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: payload })
+    .then(r => r.json()).then(data => {
+        document.getElementById('simulation-details').innerHTML = `<pre class="small mb-0">${JSON.stringify(data, null, 2)}</pre>`;
+        document.getElementById('simulation-result').style.display = 'block';
+    });
+}
+
+function runMonthlyPlan() {
+    const amount = document.getElementById('monthly-amount').value;
+    const riskProfile = document.getElementById('risk-profile').value;
+    if (!amount) return;
+    fetch('/api/monthly-plan/custom/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ monthly_amount: parseFloat(amount), risk_profile: riskProfile, investment_horizon: 'medio' }) })
+    .then(r => r.json()).then(data => {
+        document.getElementById('monthly-plan-details').innerHTML = `<pre class="small mb-0">${JSON.stringify(data, null, 2)}</pre>`;
+        document.getElementById('monthly-plan-result').style.display = 'block';
+    });
+}
+
+function runOptimization(method) {
+    fetch('/api/optimization/portfolio/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ method: method }) })
+    .then(r => r.json()).then(data => {
+        if (data.error) {
+            document.getElementById('optimization-details').innerHTML = `<div class="alert alert-warning mb-0">${data.error}</div>`;
+        } else {
+            let html = `<div class="alert alert-success">Método: ${data.metodo}</div><table class="table table-sm"><thead><tr><th>Activo</th><th>Peso</th></tr></thead><tbody>`;
+            Object.entries(data.pesos_optimos).forEach(([a, p]) => { html += `<tr><td>${a}</td><td>${p.toFixed(1)}%</td></tr>`; });
+            html += '</tbody></table>';
+            if (data.sharpe_ratio) html += `<strong>Sharpe Ratio:</strong> ${data.sharpe_ratio.toFixed(2)}`;
+            document.getElementById('optimization-details').innerHTML = html;
+        }
+        document.getElementById('optimization-result').style.display = 'block';
+    });
+}
+
+function loadPortfolioParameters() {
+    fetch('/api/portfolio/parameters/').then(r => r.json()).then(data => {
+        if (!data.error) {
+            document.getElementById('liquidez-target').value = data.liquidez_target;
+            document.getElementById('usa-target').value = data.usa_target;
+            document.getElementById('argentina-target').value = data.argentina_target;
+            document.getElementById('emerging-target').value = data.emerging_target;
+        }
+    });
+}
+
+function savePortfolioParams() {
+    const data = { liquidez_target: parseFloat(document.getElementById('liquidez-target').value), usa_target: parseFloat(document.getElementById('usa-target').value), argentina_target: parseFloat(document.getElementById('argentina-target').value), emerging_target: parseFloat(document.getElementById('emerging-target').value) };
+    fetch('/api/portfolio/parameters/update/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify(data) })
+    .then(r => r.json()).then(data => {
+        const status = document.getElementById('params-save-status');
+        status.innerHTML = data.message ? '<span class="text-success">OK Guardado</span>' : '<span class="text-danger">Error</span>';
+        setTimeout(() => status.innerHTML = '', 3000);
+    });
+}
+
+loadPortfolioParameters();
+</script>
+{% endblock %}
