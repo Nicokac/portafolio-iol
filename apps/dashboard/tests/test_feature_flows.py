@@ -20,6 +20,7 @@ class TestDashboardFeatureFlows:
             ("dashboard:resumen", "dashboard/resumen.html", ["kpis", "alerts", "macro_local"]),
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo", "analytics_v2_summary"]),
+            ("dashboard:cartera_detalle", "dashboard/cartera_detalle.html", ["kpis", "portafolio", "market_snapshot_feature"]),
             ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
             ("dashboard:laboratorio", "dashboard/laboratorio.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
@@ -36,18 +37,23 @@ class TestDashboardFeatureFlows:
         for key in required_context_keys:
             assert key in response.context
 
-    def test_strategy_page_excludes_operational_modules(self, auth_client):
+    def test_strategy_page_keeps_executive_reading_and_moves_inventory_out(self, auth_client):
         response = auth_client.get(reverse("dashboard:estrategia"))
         content = response.content.decode("utf-8")
 
         assert response.status_code == 200
-        assert "recommendations-container" not in content
-        assert "simulation-activo" not in content
-        assert "monthly-plan-result" not in content
-        assert "optimization-result" not in content
+        assert "Resumen ejecutivo" in content
+        assert "Analytics v2" in content
+        assert "Senales de Rebalanceo" in content
+        assert "Evolucion Historica" in content
+        assert "Abrir cartera detallada" in content
+        assert "Cartera detallada y capa operativa" in content
         assert "Estado FX" in content
         assert "UVA anualizada 30d" in content
-        assert "Posiciones completas" in content
+        assert "Posiciones completas" not in content
+        assert "Portafolio Invertido Completo" not in content
+        assert "FCI / Cash Management" not in content
+        assert "Capa operativa puntual" not in content
 
     def test_planeacion_page_contains_critical_modules(self, auth_client):
         response = auth_client.get(reverse("dashboard:planeacion"))
@@ -136,6 +142,19 @@ class TestDashboardFeatureFlows:
         assert "Optimización teórica" in content
         assert "Configuración base" in content
         assert "Guardar parámetros" in content
+
+    def test_cartera_detalle_page_contains_inventory_and_operational_modules(self, auth_client):
+        response = auth_client.get(reverse("dashboard:cartera_detalle"))
+        content = response.content.decode("utf-8")
+
+        assert response.status_code == 200
+        assert "Cartera detallada" in content
+        assert "Inventario completo y capa operativa" in content
+        assert "Capa operativa puntual" in content
+        assert "Liquidez Operativa" in content
+        assert "FCI / Cash Management" in content
+        assert "Top 5 Posiciones" in content
+        assert "Portafolio Invertido Completo" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
         auth_client.post(

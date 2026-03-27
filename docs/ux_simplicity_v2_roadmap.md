@@ -96,6 +96,20 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/tests/test_feature_flows.py`
     - `apps/dashboard/tests/test_views.py`
 
+- `C1 - Separar lectura estrategica de inventario detallado`
+  - estado: `implementado`
+  - resultado:
+    - `Estrategia` quedo enfocada en lectura ejecutiva, analytics, riesgo y senales
+    - el inventario completo y la capa operativa puntual pasaron a `Cartera detallada`
+    - se redujo la mezcla entre lectura estrategica y auditoria de posiciones
+  - archivos principales:
+    - `apps/dashboard/views.py`
+    - `apps/dashboard/urls.py`
+    - `templates/dashboard/estrategia.html`
+    - `templates/dashboard/cartera_detalle.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views_ux_simplicity.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

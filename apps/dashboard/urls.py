@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.dashboard.views import (
     AnalisisView,
+    CarteraDetalleView,
     DashboardView,
     DecideIncrementalProposalView,
     BulkDecideIncrementalProposalView,
@@ -40,6 +41,7 @@ urlpatterns = [
     path('analisis/performance/', PerformanceView.as_view(), name='performance'),
     path('analisis/metricas/', MetricasView.as_view(), name='metricas'),
     path('estrategia/', DashboardView.as_view(), name='estrategia'),
+    path('estrategia/cartera/', CarteraDetalleView.as_view(), name='cartera_detalle'),
     path('estrategia/risk-contribution/', RiskContributionDetailView.as_view(), name='risk_contribution_detail'),
     path('estrategia/scenario-analysis/', ScenarioAnalysisDetailView.as_view(), name='scenario_analysis_detail'),
     path('estrategia/factor-exposure/', FactorExposureDetailView.as_view(), name='factor_exposure_detail'),
