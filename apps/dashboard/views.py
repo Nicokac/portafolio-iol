@@ -11,8 +11,6 @@ from django.contrib.auth.views import redirect_to_login
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import TemplateView
 from django.views import View
-from apps.core.services.data_quality.snapshot_integrity import SnapshotIntegrityService
-from apps.core.services.iol_sync_audit import IOLSyncAuditService
 from apps.core.services.iol_sync_service import IOLSyncService
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.local_macro_series_service import LocalMacroSeriesService
@@ -100,8 +98,18 @@ def _build_planeacion_history_redirect_url(post_data) -> str:
     return f"{redirect_url}#planeacion-aportes"
 
 
-class DashboardContextMixin:
+class DashboardBaseContextMixin:
     active_section = 'estrategia'
+
+    @staticmethod
+    def serialize_chart_data(data):
+        return json.dumps(data, default=lambda o: float(o) if isinstance(o, Decimal) else str(o))
+
+    @staticmethod
+    def _ensure_context_value(context, key, factory):
+        if key not in context:
+            context[key] = factory()
+        return context[key]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -110,17 +118,55 @@ class DashboardContextMixin:
         context['ui_mode'] = self.request.session.get('ui_mode', 'compacto')
         context['risk_profile'] = self.request.session.get('risk_profile', 'moderado')
         context['current_path'] = self.request.get_full_path()
+        return context
 
-        context['kpis'] = get_dashboard_kpis()
-        context['macro_local'] = get_macro_local_context(context['kpis'].get('total_iol'))
-        context['portafolio'] = get_portafolio_enriquecido_actual()
+
+class DashboardKpiContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        self._ensure_context_value(context, 'kpis', get_dashboard_kpis)
+        return context
+
+
+class DashboardPortfolioContextMixin(DashboardKpiContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        self._ensure_context_value(context, 'portafolio', get_portafolio_enriquecido_actual)
+        return context
+
+
+class DashboardMacroContextMixin(DashboardKpiContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        total_iol = context['kpis'].get('total_iol')
+        self._ensure_context_value(context, 'macro_local', lambda: get_macro_local_context(total_iol))
+        return context
+
+
+class DashboardMarketSupportContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         context['market_snapshot_feature'] = get_market_snapshot_feature_context()
         context['market_snapshot_history_feature'] = get_market_snapshot_history_feature_context()
         context['parking_feature'] = get_portfolio_parking_feature_context()
+        context['analytics_mensual'] = get_analytics_mensual()
+        return context
 
-        def to_json(data):
-            return json.dumps(data, default=lambda o: float(o) if isinstance(o, Decimal) else str(o))
 
+class DashboardRiskSignalsContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['senales_rebalanceo'] = get_senales_rebalanceo()
+        context['riesgo_portafolio'] = get_riesgo_portafolio()
+        context['riesgo_portafolio_detallado'] = get_riesgo_portafolio_detallado()
+        context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
+        return context
+
+
+class DashboardAnalyticsContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        to_json = self.serialize_chart_data
         context['distribucion_sector'] = to_json(get_distribucion_sector(base='portafolio_invertido'))
         context['distribucion_pais'] = to_json(get_distribucion_pais(base='portafolio_invertido'))
         context['distribucion_pais_total_iol'] = to_json(get_distribucion_pais(base='total_iol'))
@@ -128,32 +174,35 @@ class DashboardContextMixin:
         context['distribucion_moneda'] = to_json(get_distribucion_moneda())
         context['distribucion_moneda_operativa'] = to_json(get_distribucion_moneda_operativa())
         context['implicit_fx_summary'] = get_implicit_fx_summary()
-        context['riesgo_portafolio'] = get_riesgo_portafolio()
-        context['riesgo_portafolio_detallado'] = get_riesgo_portafolio_detallado()
         context['concentracion_sector'] = get_concentracion_sector()
         context['concentracion_sector_agregado'] = get_concentracion_sector_agregado()
         context['concentracion_pais'] = get_concentracion_pais(base='portafolio_invertido')
         context['concentracion_pais_total_iol'] = get_concentracion_pais(base='total_iol')
         context['concentracion_tipo'] = get_concentracion_tipo_patrimonial(base='total_activos')
-        context['concentracion_sector_json'] = to_json(get_concentracion_sector())
-        context['concentracion_sector_agregado_json'] = to_json(get_concentracion_sector_agregado())
-        context['concentracion_pais_json'] = to_json(get_concentracion_pais(base='portafolio_invertido'))
-        context['concentracion_pais_total_iol_json'] = to_json(get_concentracion_pais(base='total_iol'))
-        context['concentracion_tipo_json'] = to_json(get_concentracion_tipo_patrimonial(base='total_activos'))
+        context['concentracion_sector_json'] = to_json(context['concentracion_sector'])
+        context['concentracion_sector_agregado_json'] = to_json(context['concentracion_sector_agregado'])
+        context['concentracion_pais_json'] = to_json(context['concentracion_pais'])
+        context['concentracion_pais_total_iol_json'] = to_json(context['concentracion_pais_total_iol'])
+        context['concentracion_tipo_json'] = to_json(context['concentracion_tipo'])
         context['concentracion_moneda_json'] = to_json(get_concentracion_moneda())
         context['concentracion_moneda_operativa_json'] = to_json(get_concentracion_moneda_operativa())
-        context['analytics_mensual'] = get_analytics_mensual()
         context['analytics_v2_summary'] = get_analytics_v2_dashboard_summary()
+        return context
 
+
+class DashboardEvolutionContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        to_json = self.serialize_chart_data
         evolucion_historica_obj = get_evolucion_historica()
         context['evolucion_historica_obj'] = evolucion_historica_obj
         context['evolucion_historica'] = to_json(evolucion_historica_obj)
+        return context
 
-        context['senales_rebalanceo'] = get_senales_rebalanceo()
-        context['snapshot_integrity'] = SnapshotIntegrityService().run_checks(days=120)
-        context['snapshot_coverage'] = get_snapshot_coverage_summary(days=90)
-        context['sync_audit'] = IOLSyncAuditService().run_audit(freshness_hours=24)
 
+class DashboardAlertsContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         alerts = get_active_alerts()
         context['alerts'] = alerts
         context['alerts_critical_count'] = sum(1 for alert in alerts if alert.get('severidad') == 'critical')
@@ -161,22 +210,40 @@ class DashboardContextMixin:
         return context
 
 
-class DashboardView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class DashboardView(
+    LoginRequiredMixin,
+    DashboardKpiContextMixin,
+    DashboardRiskSignalsContextMixin,
+    DashboardAnalyticsContextMixin,
+    DashboardEvolutionContextMixin,
+    TemplateView,
+):
     template_name = 'dashboard/estrategia.html'
     active_section = 'estrategia'
 
 
-class CarteraDetalleView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class CarteraDetalleView(
+    LoginRequiredMixin,
+    DashboardPortfolioContextMixin,
+    DashboardMarketSupportContextMixin,
+    TemplateView,
+):
     template_name = 'dashboard/cartera_detalle.html'
     active_section = 'estrategia'
 
 
-class RiesgoAvanzadoView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class RiesgoAvanzadoView(
+    LoginRequiredMixin,
+    DashboardKpiContextMixin,
+    DashboardRiskSignalsContextMixin,
+    DashboardAnalyticsContextMixin,
+    TemplateView,
+):
     template_name = 'dashboard/riesgo_avanzado.html'
     active_section = 'estrategia'
 
 
-class RiskContributionDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class RiskContributionDetailView(LoginRequiredMixin, DashboardBaseContextMixin, TemplateView):
     template_name = 'dashboard/risk_contribution_detail.html'
     active_section = 'estrategia'
 
@@ -186,7 +253,7 @@ class RiskContributionDetailView(LoginRequiredMixin, DashboardContextMixin, Temp
         return context
 
 
-class ScenarioAnalysisDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class ScenarioAnalysisDetailView(LoginRequiredMixin, DashboardBaseContextMixin, TemplateView):
     template_name = 'dashboard/scenario_analysis_detail.html'
     active_section = 'estrategia'
 
@@ -196,7 +263,7 @@ class ScenarioAnalysisDetailView(LoginRequiredMixin, DashboardContextMixin, Temp
         return context
 
 
-class FactorExposureDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class FactorExposureDetailView(LoginRequiredMixin, DashboardBaseContextMixin, TemplateView):
     template_name = 'dashboard/factor_exposure_detail.html'
     active_section = 'estrategia'
 
@@ -206,7 +273,7 @@ class FactorExposureDetailView(LoginRequiredMixin, DashboardContextMixin, Templa
         return context
 
 
-class StressFragilityDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class StressFragilityDetailView(LoginRequiredMixin, DashboardBaseContextMixin, TemplateView):
     template_name = 'dashboard/stress_fragility_detail.html'
     active_section = 'estrategia'
 
@@ -216,7 +283,7 @@ class StressFragilityDetailView(LoginRequiredMixin, DashboardContextMixin, Templ
         return context
 
 
-class ExpectedReturnDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class ExpectedReturnDetailView(LoginRequiredMixin, DashboardBaseContextMixin, TemplateView):
     template_name = 'dashboard/expected_return_detail.html'
     active_section = 'estrategia'
 
@@ -226,7 +293,13 @@ class ExpectedReturnDetailView(LoginRequiredMixin, DashboardContextMixin, Templa
         return context
 
 
-class PlaneacionView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class PlaneacionView(
+    LoginRequiredMixin,
+    DashboardPortfolioContextMixin,
+    DashboardRiskSignalsContextMixin,
+    DashboardMarketSupportContextMixin,
+    TemplateView,
+):
     template_name = 'dashboard/planeacion.html'
     active_section = 'planeacion'
 
@@ -248,22 +321,35 @@ class LaboratorioView(PlaneacionView):
     active_section = 'planeacion'
 
 
-class ResumenView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class ResumenView(
+    LoginRequiredMixin,
+    DashboardMacroContextMixin,
+    DashboardRiskSignalsContextMixin,
+    DashboardMarketSupportContextMixin,
+    DashboardEvolutionContextMixin,
+    DashboardAlertsContextMixin,
+    TemplateView,
+):
     template_name = 'dashboard/resumen.html'
     active_section = 'resumen'
 
 
-class AnalisisView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class AnalisisView(
+    LoginRequiredMixin,
+    DashboardRiskSignalsContextMixin,
+    DashboardAnalyticsContextMixin,
+    TemplateView,
+):
     template_name = 'dashboard/analisis.html'
     active_section = 'analisis'
 
 
-class PerformanceView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class PerformanceView(LoginRequiredMixin, DashboardKpiContextMixin, TemplateView):
     template_name = 'dashboard/performance.html'
     active_section = 'analisis'
 
 
-class MetricasView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+class MetricasView(LoginRequiredMixin, DashboardKpiContextMixin, TemplateView):
     template_name = 'dashboard/metricas.html'
     active_section = 'analisis'
 
@@ -422,7 +508,7 @@ class RunSyncView(StaffRequiredMixin, View):
             failed = [key for key, value in results.items() if value is False]
             failed_text = ", ".join(failed) if failed else "sync"
             messages.error(request, f"Sincronizacion incompleta. Fallo en: {failed_text}.")
-        return redirect('dashboard:resumen')
+        return redirect('dashboard:dashboard')
 
 
 class GenerateSnapshotView(StaffRequiredMixin, View):
@@ -444,7 +530,7 @@ class GenerateSnapshotView(StaffRequiredMixin, View):
                 messages.success(request, f"Snapshot disponible para {snapshot.fecha}.")
         else:
             messages.error(request, "No fue posible generar el snapshot.")
-        return redirect('dashboard:resumen')
+        return redirect('dashboard:dashboard')
 
 
 class SyncBenchmarksView(StaffRequiredMixin, View):

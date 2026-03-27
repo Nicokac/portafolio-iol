@@ -30,14 +30,14 @@ Se verificaron directamente estos puntos del repositorio:
 - `templates/dashboard/planeacion.html` tiene `2289` lineas incluso despues del recorte principal
 - `templates/dashboard/estrategia.html` tiene `201` lineas y ya funciona como hoja ejecutiva
 - `templates/dashboard/resumen.html` tiene `464` lineas y sigue siendo la hoja diaria mas clara
-- `templates/base.html` ya separa flujo principal de superficies tecnicas, pero aun sostiene una ruta duplicada para `Resumen`
-- `apps/dashboard/views.py` concentra un `DashboardContextMixin` amplio y multiples acciones operativas
+- `templates/base.html` ya separa flujo principal de superficies tecnicas y usa `dashboard:dashboard` como ruta canonica de `Resumen`
+- `apps/dashboard/views.py` ya no usa un solo `DashboardContextMixin`, pero todavia concentra acciones operativas que conviene seguir podando
 - `apps/dashboard/urls.py` mezcla pantallas principales, detalles analiticos y acciones internas dentro de la misma familia de rutas
 - `PortfolioParameters` ya expone validaciones en `clean()` y constraints de base alineados para rangos y suma de targets
 - `OperacionIOL`, `PortfolioSnapshot` y `PositionSnapshot` requerian constraints de dominio explicitos para montos o cantidades invalidas
 - `.github/workflows/ci.yml` tiene contenido real y no placeholders
 - `Ops` ya fue simplificada con una ruta liviana basada en `build_ops_lite_summary()`
-- `apps/dashboard/views.py` sigue concentrando un `DashboardContextMixin` grande que alimenta demasiadas pantallas
+- `apps/dashboard/views.py` ya separa familias de contexto por superficie, con margen adicional para seguir desacoplando acciones internas
 - `docs/dashboard_surface_inventory.md` ya distingue flujo principal, experto, staff visible y staff oculto
 
 ## Principios rectores
@@ -202,24 +202,84 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/views.py`
     - `templates/dashboard/ops.html`
 
+- `A2 - Desacople de DashboardContextMixin`
+  - estado: `implementado`
+  - resultado:
+    - `Resumen`, `Estrategia`, `Cartera detallada`, `Planeacion`, `Performance` y `Metricas` ya no reciben el mismo paquete grande de contexto
+    - cada superficie carga solo las familias de datos que realmente renderiza
+    - `Performance` y `Metricas` dejaron de heredar analytics, market snapshot, macro y portfolio completo
+    - `Resumen` quedo como ruta canonica en `dashboard:dashboard`, mientras `dashboard:resumen` sigue como redirect de compatibilidad
+  - archivos principales:
+    - `apps/dashboard/views.py`
+    - `apps/dashboard/urls.py`
+    - `templates/base.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views.py`
+    - `apps/core/tests/test_url_conventions.py`
+
 ### Reevaluacion post-iteracion
 
-La auditoria posterior a `E2` muestra una mejora material del flujo principal, pero todavia quedan cuatro focos reales de friccion:
+La auditoria posterior a `A2` muestra una mejora material del flujo principal, pero todavia quedan tres focos reales de friccion:
 
 1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2289` lineas.
-2. `DashboardContextMixin` sigue cargando demasiado contexto compartido para hojas con roles distintos.
-3. siguen existiendo tres acciones `staff` ocultas de historicos IOL que ya no tienen entrada visible en UI.
-4. `ResumenView` sigue expuesto por dos rutas (`dashboard` y `resumen`), lo que mantiene una duplicidad innecesaria.
+2. siguen existiendo tres acciones `staff` ocultas de historicos IOL que ya no tienen entrada visible en UI.
+3. `Analisis`, `Performance` y `Metricas` todavia se presentan como tres centros separados, aunque ya se comportan como una misma familia.
+
+### Decisiones cerradas para fase 2
+
+- Los historicos IOL si ayudan a mejorar la decision de compra, pero como soporte de calidad de senal, contexto de ejecucion y robustez analitica.
+- Por simplicidad UX no deben volver al flujo principal como acciones visibles del dashboard.
+- La ruta canonica de `Resumen` pasa a ser `dashboard:dashboard`.
+- `dashboard:resumen` queda solo como alias de compatibilidad.
+- `Analisis`, `Performance` y `Metricas` pueden converger en una fase posterior si el recorte mantiene claridad y no vuelve a inflar la hoja resultante.
 
 ### Proxima ola sugerida
 
-- `A2 - Desacople de DashboardContextMixin`
 - `B3 - Reduccion de llamadas frontend no esenciales`
 - poda o migracion fuera del dashboard de:
   - `dashboard:sync_iol_historical_prices`
   - `dashboard:sync_iol_historical_prices_partial`
   - `dashboard:sync_iol_historical_prices_retry_metadata`
-- unificacion futura de la ruta canonica de `Resumen`
+- convergencia exploratoria de:
+  - `dashboard:analisis`
+  - `dashboard:performance`
+  - `dashboard:metricas`
+
+### Roadmap de fase 2
+
+#### Modulo F2 - Historiales IOL fuera del dashboard web
+
+- Prioridad: `P1`
+- Problema:
+  - las acciones de historicos IOL siguen vivas en routing, pero ya no tienen entrada visible ni deben competir con UX principal
+- Cambio esperado:
+  - mover esas acciones a admin, command o consola tecnica
+  - mantener los historicos como pipeline de soporte para decisiones de compra, no como CTA de interfaz principal
+- Criterio de aceptacion:
+  - no quedan acciones de historicos IOL dentro de la familia web del dashboard principal
+
+#### Modulo F3 - Centro unificado de analisis
+
+- Prioridad: `P1`
+- Problema:
+  - `Analisis`, `Performance` y `Metricas` ya se leen como una misma familia, pero siguen separados en tres pantallas
+- Cambio esperado:
+  - explorar una convergencia en una sola superficie analitica con subsecciones claras
+  - preservar profundidad sin reintroducir una pantalla sobredimensionada
+- Criterio de aceptacion:
+  - propuesta de arquitectura unica o decision documentada de no converger
+
+#### Modulo F4 - Planeacion todavia mas liviana
+
+- Prioridad: `P1`
+- Problema:
+  - `Planeacion` sigue siendo la superficie mas pesada del producto
+- Cambio esperado:
+  - lazy load de bloques secundarios
+  - menos fetch iniciales
+  - menor longitud visible antes de llegar a `Aportes`
+- Criterio de aceptacion:
+  - evidencia de menor carga inicial y menor ruido visual
 
 ## Track A - Navegacion y arquitectura de pantallas
 

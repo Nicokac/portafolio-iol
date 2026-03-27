@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from apps.dashboard.views import (
     AnalisisView,
@@ -37,7 +38,7 @@ app_name = 'dashboard'
 
 urlpatterns = [
     path('', ResumenView.as_view(), name='dashboard'),
-    path('panel/resumen/', ResumenView.as_view(), name='resumen'),
+    path('panel/resumen/', RedirectView.as_view(pattern_name='dashboard:dashboard', permanent=False), name='resumen'),
     path('analisis/', AnalisisView.as_view(), name='analisis'),
     path('analisis/performance/', PerformanceView.as_view(), name='performance'),
     path('analisis/metricas/', MetricasView.as_view(), name='metricas'),

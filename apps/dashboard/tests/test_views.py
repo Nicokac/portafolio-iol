@@ -51,10 +51,11 @@ class TestDashboardView:
     def test_resumen_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:resumen')
         response = auth_client.get(url)
-        assert response.status_code == 200
+        assert response.status_code == 302
+        assert response['Location'].endswith(reverse('dashboard:dashboard'))
 
     def test_resumen_shows_macro_exposure_and_liquidity_labels(self, auth_client):
-        response = auth_client.get(reverse('dashboard:resumen'))
+        response = auth_client.get(reverse('dashboard:dashboard'))
         body = response.content.decode()
         assert 'Exposición USA' in body
         assert 'Exposición Argentina' in body
@@ -102,7 +103,7 @@ class TestDashboardView:
                 ],
             },
         )
-        response = auth_client.get(reverse('dashboard:resumen'))
+        response = auth_client.get(reverse('dashboard:dashboard'))
         body = response.content.decode()
         assert 'Pulso de mercado puntual' in body
         assert 'CotizacionDetalle' in body
@@ -136,7 +137,7 @@ class TestDashboardView:
                 ],
             },
         )
-        response = auth_client.get(reverse('dashboard:resumen'))
+        response = auth_client.get(reverse('dashboard:dashboard'))
         body = response.content.decode()
         assert 'Parking visible en cartera' in body
         assert 'Con parking' in body
@@ -2858,11 +2859,11 @@ class TestDashboardView:
         assert response['Location'] == '/'
 
     def test_base_navigation_prioritizes_main_flow_and_hides_ui_mode_switch(self, auth_client):
-        response = auth_client.get(reverse('dashboard:resumen'))
+        response = auth_client.get(reverse('dashboard:dashboard'))
         body = response.content.decode()
 
         assert response.status_code == 200
-        assert 'href="/panel/resumen/"' in body
+        assert 'href="/"' in body
         assert 'href="/planeacion/"' in body
         assert 'href="/estrategia/"' in body
         assert 'Más' in body
@@ -2877,7 +2878,7 @@ class TestDashboardView:
         assert 'Parámetros' not in body
 
     def test_staff_user_dropdown_exposes_technical_surfaces(self, staff_client):
-        response = staff_client.get(reverse('dashboard:resumen'))
+        response = staff_client.get(reverse('dashboard:dashboard'))
         body = response.content.decode()
 
         assert response.status_code == 200
@@ -3228,9 +3229,9 @@ class TestDashboardView:
                 }
 
         monkeypatch.setattr('apps.dashboard.views.IOLHistoricalPriceService', lambda: DummyService())
-        response = staff_client.post(reverse('dashboard:refresh_iol_market_snapshot'), {'next': reverse('dashboard:resumen')})
+        response = staff_client.post(reverse('dashboard:refresh_iol_market_snapshot'), {'next': reverse('dashboard:dashboard')})
         assert response.status_code == 302
-        assert response['Location'].endswith(reverse('dashboard:resumen'))
+        assert response['Location'].endswith(reverse('dashboard:dashboard'))
         messages = list(get_messages(response.wsgi_request))
         assert any('Market snapshot IOL refrescado con cobertura parcial' in str(message) for message in messages)
         audit = SensitiveActionAudit.objects.get(action='refresh_iol_market_snapshot')
