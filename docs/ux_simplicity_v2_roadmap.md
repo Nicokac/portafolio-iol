@@ -435,8 +435,15 @@ La siguiente iteracion ya no deberia perseguir grandes movimientos de arquitectu
 - Cambio esperado:
   - revisar y podar residuos tecnicos del dashboard
 - Criterio de aceptacion:
-  - inventario actualizado
-  - residuos tecnicos principales eliminados o marcados para deprecacion
+  - estado: `implementado`
+  - resultado:
+    - se eliminaron de `views.py` las vistas web de sync historico IOL que ya no tenian ruta ni entrada visible
+    - se retiraron tests heredados que seguian apuntando a esas rutas obsoletas
+    - el inventario tecnico ya refleja que esas capacidades viven solo como management commands
+  - archivos principales:
+    - `apps/dashboard/views.py`
+    - `apps/dashboard/tests/test_views.py`
+    - `docs/dashboard_surface_inventory.md`
 
 ## Track A - Navegacion y arquitectura de pantallas
 

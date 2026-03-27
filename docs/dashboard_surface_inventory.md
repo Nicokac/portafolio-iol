@@ -63,13 +63,13 @@ Se uso para cerrar el modulo `E2 - Auditoria de funciones y vistas realmente usa
 | `dashboard:refresh_iol_market_snapshot` | `RefreshIOLMarketSnapshotView` | mantener | boton visible para staff en `ops.html` y panel de market snapshot |
 | `dashboard:sync_benchmarks` | `SyncBenchmarksView` | mantener | boton visible para staff en `ops.html` |
 
-### Staff ocultas o migradas fuera del dashboard web
+### Capacidades tecnicas retiradas del dashboard web
 
-| Ruta | Vista | Estado actual | Observacion |
-|---|---|---|---|
-| `dashboard:sync_iol_historical_prices` | `SyncIOLHistoricalPricesView` | retirada | la capacidad se mantiene por `python manage.py sync_iol_historical_prices --statuses=missing` |
-| `dashboard:sync_iol_historical_prices_partial` | `SyncIOLHistoricalPricesPartialView` | retirada | la capacidad se mantiene por `python manage.py sync_iol_historical_prices --statuses=partial` |
-| `dashboard:sync_iol_historical_prices_retry_metadata` | `SyncIOLHistoricalPricesRetryMetadataView` | retirada | la capacidad se mantiene por `python manage.py sync_iol_historical_prices --statuses=unsupported --eligibility-reason-keys=title_metadata_unresolved` |
+Estas capacidades ya no existen como vistas del `dashboard` y quedaron absorbidas por tooling tecnico fuera de la web:
+
+- `sync_iol_historical_prices --statuses=missing`
+- `sync_iol_historical_prices --statuses=partial`
+- `sync_iol_historical_prices --statuses=unsupported --eligibility-reason-keys=title_metadata_unresolved`
 
 ### Acciones del flujo de planeacion
 
@@ -90,26 +90,7 @@ Evidencia:
 
 ## Candidatos a deprecacion prioritaria
 
-### 1. Acciones staff ocultas de historicos IOL
-
-Rutas:
-
-- `dashboard:sync_iol_historical_prices`
-- `dashboard:sync_iol_historical_prices_partial`
-- `dashboard:sync_iol_historical_prices_retry_metadata`
-
-Resolucion:
-
-- ya no forman parte del dashboard web
-- la operacion se resuelve por management command
-- si en el futuro hace falta una consola tecnica, conviene crearla fuera de la familia `dashboard`
-
-Decision sugerida:
-
-- `mantener en observacion corta`
-- si nadie las usa en una iteracion mas, moverlas fuera del dashboard web
-
-### 2. Alias doble de resumen
+### 1. Alias doble de resumen
 
 Rutas:
 
