@@ -37,14 +37,7 @@ class PortfolioSnapshotService:
         kpis = get_dashboard_kpis()
         distribucion_pais = get_distribucion_pais()
 
-        exposicion_usa = 0.0
-        exposicion_argentina = 0.0
-
-        for pais, valor in distribucion_pais.items():
-            if pais.lower() in ["usa", "estados unidos"]:
-                exposicion_usa = valor
-            elif pais.lower() == "argentina":
-                exposicion_argentina = valor
+        exposicion_usa, exposicion_argentina = self._extract_country_exposures(distribucion_pais)
 
         snapshot_payload = {
             "total_iol": kpis["total_iol"],
@@ -81,6 +74,35 @@ class PortfolioSnapshotService:
 
         snapshot._refresh_action = refresh_action  # noqa: SLF001
         return snapshot
+
+    @staticmethod
+    def _extract_country_exposures(distribucion_pais: dict) -> tuple[float, float]:
+        normalized_distribution = {}
+        for pais, valor in (distribucion_pais or {}).items():
+            try:
+                normalized_distribution[str(pais).strip().lower()] = float(valor or 0.0)
+            except (TypeError, ValueError):
+                normalized_distribution[str(pais).strip().lower()] = 0.0
+
+        positive_total = sum(value for value in normalized_distribution.values() if value > 0)
+        values_look_like_amounts = positive_total > 100.0 or any(value > 100.0 for value in normalized_distribution.values())
+
+        if values_look_like_amounts and positive_total > 0:
+            normalized_distribution = {
+                pais: (value / positive_total) * 100.0 if value > 0 else 0.0
+                for pais, value in normalized_distribution.items()
+            }
+
+        usa_exposure = 0.0
+        argentina_exposure = 0.0
+        for pais, valor in normalized_distribution.items():
+            bounded_value = max(0.0, min(float(valor or 0.0), 100.0))
+            if pais in {"usa", "estados unidos"}:
+                usa_exposure = bounded_value
+            elif pais == "argentina":
+                argentina_exposure = bounded_value
+
+        return usa_exposure, argentina_exposure
 
     def _create_position_snapshots(self, snapshot: PortfolioSnapshot):
         portafolio = get_portafolio_enriquecido_actual()
