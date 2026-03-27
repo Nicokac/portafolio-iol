@@ -417,7 +417,15 @@ La siguiente iteracion ya no deberia perseguir grandes movimientos de arquitectu
     - seguimiento
     - comparadores
 - Criterio de aceptacion:
-  - propuesta implementada o descarte razonado documentado
+  - estado: `implementado`
+  - resultado:
+    - `Planeacion` paso a separar `Validacion`, `Seguimiento` y `Comparadores` en panes internos suaves
+    - el flujo principal de `Aportes` sigue primero y el CTA `Explorar alternativas` ahora baja directo a los bloques segmentados
+    - la hoja mantiene continuidad visual sin obligar a leer todos los bloques secundarios al mismo tiempo
+  - archivos principales:
+    - `templates/dashboard/planeacion.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views.py`
 
 ### Modulo I3 - Poda tecnica final del dashboard
 

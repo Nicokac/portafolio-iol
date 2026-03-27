@@ -511,7 +511,7 @@
                                     {% endif %}
                                     <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
                                         <button type="button" class="btn {% if decision.execution_gate.primary_cta_tone == 'warning' %}btn-warning text-dark{% else %}btn-success{% endif %}">{{ decision.execution_gate.primary_cta_label|default:"Ejecutar decisión" }}</button>
-                                        <a class="btn btn-outline-primary" href="#planeacion-exploracion">Explorar alternativas</a>
+                                        <a class="btn btn-outline-primary" href="#planeacion-bloques-secundarios">Explorar alternativas</a>
                                         <button type="button" class="btn btn-outline-secondary">Postergar</button>
                                     </div>
                                 </div>
@@ -522,10 +522,28 @@
             </div>
             {% endwith %}
         </section>
-        <details id="planeacion-exploracion" class="mb-4">
+        <section id="planeacion-bloques-secundarios" class="mb-4">
+            <div class="border-start border-4 border-secondary ps-3 mb-3">
+                <h3 class="h5 mb-1">Bloques secundarios</h3>
+                <p class="text-muted mb-0">Validación, seguimiento y comparadores quedan segmentados para que el flujo principal no compita con todo al mismo tiempo.</p>
+            </div>
+            <ul class="nav nav-pills gap-2 mb-3" id="planeacion-secondary-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="btn btn-outline-primary active" id="planeacion-validacion-tab" data-bs-toggle="pill" data-bs-target="#planeacion-validacion-pane" type="button" role="tab" aria-controls="planeacion-validacion-pane" aria-selected="true">Validación</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="btn btn-outline-secondary" id="planeacion-seguimiento-tab" data-bs-toggle="pill" data-bs-target="#planeacion-seguimiento-pane" type="button" role="tab" aria-controls="planeacion-seguimiento-pane" aria-selected="false">Seguimiento</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="btn btn-outline-dark" id="planeacion-comparadores-tab" data-bs-toggle="pill" data-bs-target="#planeacion-comparadores-pane" type="button" role="tab" aria-controls="planeacion-comparadores-pane" aria-selected="false">Comparadores</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="planeacion-secondary-tabs-content">
+                <div class="tab-pane fade show active" id="planeacion-validacion-pane" role="tabpanel" aria-labelledby="planeacion-validacion-tab" tabindex="0">
+        <details id="planeacion-exploracion" class="mb-4" open>
             <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
-                Exploración
-                <span class="text-muted fw-normal small ms-2">Detalles, comparadores, simulación táctica y seguimiento solo si necesitás salir del modo decisión.</span>
+                Validación y detalle del modo decisión
+                <span class="text-muted fw-normal small ms-2">Detalle ampliado de la propuesta mensual y su impacto incremental.</span>
             </summary>
             <div class="mt-3">
         <div class="border-start border-4 border-success ps-3 mb-4">
@@ -833,11 +851,9 @@
         </div>
             </div>
         </details>
-        <div class="alert alert-light border mb-4">
-            <strong>Bloques secundarios.</strong>
-            <span class="text-muted">Seguimiento, governance y comparadores quedan más abajo y plegados para que el recorrido principal termine antes.</span>
-        </div>
-        <details class="mb-4">
+                </div>
+                <div class="tab-pane fade" id="planeacion-seguimiento-pane" role="tabpanel" aria-labelledby="planeacion-seguimiento-tab" tabindex="0">
+        <details class="mb-4" open>
             <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
                 Seguimiento y governance
                 <span class="text-muted fw-normal small ms-2">Baseline, decisiones manuales e historial persistido fuera del núcleo de decisión.</span>
@@ -1761,7 +1777,9 @@
         </div>
             </div>
         </details>
-        <details class="mb-4">
+                </div>
+                <div class="tab-pane fade" id="planeacion-comparadores-pane" role="tabpanel" aria-labelledby="planeacion-comparadores-tab" tabindex="0">
+        <details class="mb-4" open>
             <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
                 Exploración y comparación
                 <span class="text-muted fw-normal small ms-2">Comparadores y herramientas secundarias para validar alternativas.</span>
@@ -2249,9 +2267,8 @@
             </div>
         </details>
             </div>
-        </details>
             </div>
-        </details>
+        </section>
     </div>
 </div>
 {% endblock %}
