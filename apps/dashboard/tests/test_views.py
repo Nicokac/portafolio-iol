@@ -2866,14 +2866,27 @@ class TestDashboardView:
         assert 'href="/planeacion/"' in body
         assert 'href="/estrategia/"' in body
         assert 'Más' in body
-        assert 'Datos IOL' in body
-        assert 'Portafolio base' in body
-        assert 'Config técnica' in body
+        assert 'Datos IOL' not in body
+        assert 'Portafolio base' not in body
+        assert 'Config técnica' not in body
+        assert 'Herramientas técnicas' not in body
         assert 'Power user' not in body
         assert 'Vista rápida' not in body
         assert 'name="ui_mode"' not in body
         assert 'Resumen IOL' not in body
         assert 'Parámetros' not in body
+
+    def test_staff_user_dropdown_exposes_technical_surfaces(self, staff_client):
+        response = staff_client.get(reverse('dashboard:resumen'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Herramientas técnicas' in body
+        assert 'Datos IOL' in body
+        assert 'Portafolio base' in body
+        assert 'Operaciones' in body
+        assert 'Config técnica' in body
+        assert 'Ops / Observabilidad' in body
 
     def test_dashboard_view_class_is_protected(self):
         from apps.dashboard.views import DashboardView

@@ -137,6 +137,17 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/tests/test_feature_flows.py`
     - `apps/dashboard/tests/test_views_ux_simplicity.py`
 
+- `D1 - Retirar legacy del primer nivel`
+  - estado: `implementado`
+  - resultado:
+    - los accesos `legacy` salieron del menu visible para usuario final
+    - las superficies tecnicas quedaron encapsuladas en el dropdown de usuario para staff
+    - `Planeacion` dejo de mencionar explicitamente contraste `legacy`
+  - archivos principales:
+    - `templates/base.html`
+    - `templates/dashboard/planeacion.html`
+    - `apps/dashboard/tests/test_views.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

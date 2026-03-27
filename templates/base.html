@@ -43,26 +43,6 @@
                             <li>
                                 <a class="dropdown-item {% if active_section == 'metricas' %}active{% endif %}" href="{% url 'dashboard:metricas' %}">Métricas</a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><h6 class="dropdown-header">Datos y soporte</h6></li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'resumen_iol:resumen_list' %}">Datos IOL</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'portafolio_iol:portafolio_list' %}">Portafolio base</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'operaciones_iol:operaciones_list' %}">Operaciones</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'parametros:parametros_list' %}">Config técnica</a>
-                            </li>
-                            {% if user.is_staff %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Ops / Observabilidad</a>
-                            </li>
-                            {% endif %}
                         </ul>
                     </li>
                 </ul>
@@ -89,6 +69,15 @@
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><h6 class="dropdown-header">{{ user.username }}</h6></li>
                                 <li><span class="dropdown-item-text text-muted small">Navegación simplificada activa</span></li>
+                                {% if user.is_staff %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Herramientas técnicas</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'resumen_iol:resumen_list' %}">Datos IOL</a></li>
+                                <li><a class="dropdown-item" href="{% url 'portafolio_iol:portafolio_list' %}">Portafolio base</a></li>
+                                <li><a class="dropdown-item" href="{% url 'operaciones_iol:operaciones_list' %}">Operaciones</a></li>
+                                <li><a class="dropdown-item" href="{% url 'parametros:parametros_list' %}">Config técnica</a></li>
+                                <li><a class="dropdown-item {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Ops / Observabilidad</a></li>
+                                {% endif %}
                             </ul>
                         </li>
                         <li class="nav-item">
