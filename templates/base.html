@@ -72,11 +72,11 @@
                                 {% if user.is_staff %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><h6 class="dropdown-header">Herramientas técnicas</h6></li>
-                                <li><a class="dropdown-item" href="{% url 'resumen_iol:resumen_list' %}">Datos IOL</a></li>
-                                <li><a class="dropdown-item" href="{% url 'portafolio_iol:portafolio_list' %}">Portafolio base</a></li>
-                                <li><a class="dropdown-item" href="{% url 'operaciones_iol:operaciones_list' %}">Operaciones</a></li>
-                                <li><a class="dropdown-item" href="{% url 'parametros:parametros_list' %}">Config técnica</a></li>
-                                <li><a class="dropdown-item {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Ops / Observabilidad</a></li>
+                                <li><a class="dropdown-item" href="{% url 'resumen_iol:resumen_list' %}">Cuentas IOL</a></li>
+                                <li><a class="dropdown-item" href="{% url 'portafolio_iol:portafolio_list' %}">Cartera técnica</a></li>
+                                <li><a class="dropdown-item" href="{% url 'operaciones_iol:operaciones_list' %}">Operaciones IOL</a></li>
+                                <li><a class="dropdown-item" href="{% url 'parametros:parametros_list' %}">Parámetros técnicos</a></li>
+                                <li><a class="dropdown-item {% if active_section == 'ops' %}active{% endif %}" href="{% url 'dashboard:ops' %}">Observabilidad</a></li>
                                 {% endif %}
                             </ul>
                         </li>

@@ -148,6 +148,20 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `templates/dashboard/planeacion.html`
     - `apps/dashboard/tests/test_views.py`
 
+- `D2 - Renombrado de pantallas ambiguas`
+  - estado: `implementado`
+  - resultado:
+    - las superficies tecnicas quedaron nombradas de forma explicita y menos ambigua
+    - `Datos IOL`, `Portafolio base`, `Config técnica` y `Ops / Observabilidad` pasaron a nombres mas claros para soporte tecnico
+    - la diferencia entre flujo principal y herramientas de soporte quedo mas marcada
+  - archivos principales:
+    - `templates/base.html`
+    - `templates/resumen_iol/resumen_list.html`
+    - `templates/portafolio_iol/portafolio_list.html`
+    - `templates/parametros/parametros_list.html`
+    - `templates/operaciones_iol/operaciones_list.html`
+    - `apps/dashboard/tests/test_views.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

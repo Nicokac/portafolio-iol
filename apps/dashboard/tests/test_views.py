@@ -2882,11 +2882,11 @@ class TestDashboardView:
 
         assert response.status_code == 200
         assert 'Herramientas técnicas' in body
-        assert 'Datos IOL' in body
-        assert 'Portafolio base' in body
-        assert 'Operaciones' in body
-        assert 'Config técnica' in body
-        assert 'Ops / Observabilidad' in body
+        assert 'Cuentas IOL' in body
+        assert 'Cartera técnica' in body
+        assert 'Operaciones IOL' in body
+        assert 'Parámetros técnicos' in body
+        assert 'Observabilidad' in body
 
     def test_dashboard_view_class_is_protected(self):
         from apps.dashboard.views import DashboardView
