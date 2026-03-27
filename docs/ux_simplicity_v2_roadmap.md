@@ -233,10 +233,10 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
 
 ### Reevaluacion post-iteracion
 
-La auditoria posterior a `F3` y `F4` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
+La auditoria posterior a `G1` y `G2` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
 
-1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2353` lineas, aunque ya llega mas rapido al flujo principal y difiere parte de la carga secundaria.
-2. `Centro analitico` ya absorbio `Performance` y `Metricas`, pero ahora conviene vigilar que no vuelva a inflarse con nueva densidad visual.
+1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2353` lineas, aunque ya oculto mas contexto secundario detras de detalles.
+2. `Centro analitico` ya absorbio `Performance` y `Metricas`, pero ahora conviene vigilar que no vuelva a inflarse con nueva densidad visual o fetches innecesarios.
 
 ### Decisiones cerradas para fase 2
 
@@ -248,8 +248,8 @@ La auditoria posterior a `F3` y `F4` muestra una mejora material del flujo princ
 
 ### Proxima ola sugerida
 
-- `G1 - Poda de vistas y templates ya absorbidos`
-- `G2 - Reduccion adicional de densidad en Planeacion`
+- `H1 - Limpieza fina de aliases y documentacion residual`
+- `H2 - Planeacion por bloques con carga diferida adicional`
 
 ### Roadmap de fase 2
 
@@ -304,6 +304,44 @@ La auditoria posterior a `F3` y `F4` muestra una mejora material del flujo princ
     - `recommendations`, `alerts` y `rebalance` se cargan solo al abrir `Diagnostico previo`
     - el contexto operativo puntual quedo plegado detras de `Abrir contexto operativo opcional`
     - el flujo principal llega mas rapido a `Aportes` sin perder herramientas secundarias
+  - archivos principales:
+    - `templates/dashboard/planeacion.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+
+#### Modulo G1 - Poda de vistas y templates ya absorbidos
+
+- Prioridad: `P1`
+- Problema:
+  - la convergencia del centro analitico dejo artefactos de UI y documentacion que ya no sostienen una superficie propia
+- Cambio esperado:
+  - retirar templates absorbidos
+  - alinear labels y rutas residuales con el nuevo centro analitico
+- Criterio de aceptacion:
+  - estado: `implementado`
+  - resultado:
+    - los templates dedicados de `Performance` y `Metricas` fueron retirados
+    - la familia analitica ya no conserva restos visuales de la separacion previa
+    - el inventario del dashboard distingue mejor entre superficie visible y aliases de compatibilidad
+  - archivos principales:
+    - `templates/dashboard/performance.html`
+    - `templates/dashboard/metricas.html`
+    - `apps/dashboard/portfolio_enrichment.py`
+    - `docs/dashboard_surface_inventory.md`
+
+#### Modulo G2 - Reduccion adicional de densidad en Planeacion
+
+- Prioridad: `P1`
+- Problema:
+  - aunque el flujo principal mejoro, la hoja sigue mostrando demasiado contexto antes y despues de la decision principal
+- Cambio esperado:
+  - plegar contexto patrimonial y bloques secundarios para que la decision aparezca antes
+  - compactar accesos a laboratorio y soporte
+- Criterio de aceptacion:
+  - estado: `implementado`
+  - resultado:
+    - `Laboratorio de apoyo` paso de card completa a alerta compacta
+    - `Universo patrimonial` quedo plegado bajo demanda
+    - la longitud visible inicial de la hoja baja sin perder informacion
   - archivos principales:
     - `templates/dashboard/planeacion.html`
     - `apps/dashboard/tests/test_feature_flows.py`

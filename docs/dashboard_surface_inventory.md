@@ -30,12 +30,17 @@ Se uso para cerrar el modulo `E2 - Auditoria de funciones y vistas realmente usa
 
 | Ruta | Vista | Estado | Evidencia |
 |---|---|---|---|
-| `dashboard:analisis` | `AnalisisView` | mantener como secundaria | visible en dropdown `Mas` en [templates/base.html](/c:/Users/kachu/Documents/portafolio_iol_notebook/portafolio-iol/templates/base.html) |
-| `dashboard:performance` | `PerformanceView` | mantener como secundaria | visible en dropdown y vinculada desde `Analisis` / `Metricas` |
-| `dashboard:metricas` | `MetricasView` | mantener como secundaria | visible en dropdown y vinculada desde `Performance` |
+| `dashboard:analisis` | `AnalisisView` | mantener como secundaria | visible en dropdown `Mas` en [templates/base.html](/c:/Users/kachu/Documents/portafolio_iol_notebook/portafolio-iol/templates/base.html) y unifica composición, performance y métricas |
 | `dashboard:cartera_detalle` | `CarteraDetalleView` | mantener | visible desde `Estrategia` como extension operativa puntual |
 | `dashboard:laboratorio` | `LaboratorioView` | mantener | visible desde `Planeacion` como superficie avanzada separada |
 | `dashboard:riesgo_avanzado` | `RiesgoAvanzadoView` | mantener | visible desde `Estrategia` como unico entry point analitico profundo |
+
+### Redirects de compatibilidad
+
+| Ruta | Vista | Estado | Evidencia |
+|---|---|---|---|
+| `dashboard:performance` | `PerformanceView` | mantener como alias tecnico | redirige a `dashboard:analisis#analisis-performance` |
+| `dashboard:metricas` | `MetricasView` | mantener como alias tecnico | redirige a `dashboard:analisis#analisis-metricas` |
 
 ### Expertas visibles desde hojas avanzadas
 
