@@ -5,7 +5,7 @@
 <h1>Estrategia del Portafolio</h1>
 
 <div class="alert alert-info mb-4">
-    <strong>Bases de Calculo:</strong>
+    <strong>Como leer esta hoja:</strong>
     <ul class="mb-0 mt-2">
         <li><strong>Total patrimonio modelado:</strong> capital invertido analizado + caucion colocada + FCI cash management + cash disponible broker.</li>
         <li><strong>Capital invertido analizado:</strong> solo activos de inversion; excluye cash real y FCI cash management.</li>
@@ -51,13 +51,13 @@
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Total patrimonio modelado</h6><h4 class="card-text text-primary">{{ kpis.total_patrimonio_modelado|currency:0 }}</h4><small class="text-muted">Invertido + caucion + FCI + cash broker</small></div></div></div>
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Top 10 Concentracion</h6><h4 class="card-text text-danger">{{ kpis.top_10_concentracion|pct:1 }}</h4><small class="text-muted">Base: Portafolio Invertido</small></div></div></div>
     <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Rendimiento acumulado invertido</h6><h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|pct:2 }}</h4><small class="text-muted">Familia acumulada</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Proxy preliminar de volatilidad</h6>{% if riesgo_portafolio.volatilidad_estimada is not None %}<h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|pct:1 }}</h4><small class="text-muted">Retornos netos de flujos</small>{% else %}<h4 class="card-text text-warning">Historico insuficiente</h4><small class="text-muted">No confiable todavia</small>{% endif %}</div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Volatilidad estimada</h6>{% if riesgo_portafolio.volatilidad_estimada is not None %}<h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|pct:1 }}</h4><small class="text-muted">Retornos netos de flujos</small>{% else %}<h4 class="card-text text-warning">Historico insuficiente</h4><small class="text-muted">No confiable todavia</small>{% endif %}</div></div></div>
 </div>
 
 <div class="mb-4">
     {% if kpis.top_10_concentracion > 70 %}<span class="badge bg-danger me-2">Riesgo alto: concentracion Top 10 > 70%</span>{% endif %}
     {% if kpis.pct_liquidez_operativa < 10 %}<span class="badge bg-warning text-dark me-2">Liquidez operativa baja: menor al 10%</span>{% endif %}
-    {% if riesgo_portafolio.stress_worst_case_pct and riesgo_portafolio.stress_worst_case_pct < -10 %}<span class="badge bg-danger me-2">Stress severo: escenario peor a -10%</span>{% endif %}
+    {% if riesgo_portafolio.stress_worst_case_pct and riesgo_portafolio.stress_worst_case_pct < -10 %}<span class="badge bg-danger me-2">Fragilidad alta: escenario peor a -10%</span>{% endif %}
     {% if snapshot_coverage.status != 'ok' %}<span class="badge bg-warning text-dark me-2">Historia de snapshots insuficiente para riesgo robusto</span>{% endif %}
 </div>
 
@@ -81,7 +81,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
                     <h3 class="h5 mb-1">Analytics v2</h3>
-                    <p class="text-muted mb-0">Sintesis ejecutiva de riesgo, escenarios, factores, fragilidad y retorno esperado estructural, sin fragmentar la lectura en multiples modulos.</p>
+                    <p class="text-muted mb-0">Sintesis ejecutiva de riesgo, escenarios, factores, fragilidad y retorno esperado, sin fragmentar la lectura en multiples modulos.</p>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <span class="badge text-bg-dark">Integracion MVP</span>
@@ -105,32 +105,32 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Risk Contribution</strong></td>
+                        <td><strong>Activo que mas explica el riesgo</strong></td>
                         <td>{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</td>
                         <td>{% if analytics_v2_summary.risk_contribution.top_asset %}{{ analytics_v2_summary.risk_contribution.top_asset.contribution_pct|pct:1 }} del riesgo proxy{% else %}Sin datos suficientes{% endif %}</td>
                     </tr>
                     <tr>
-                        <td><strong>Scenario Analysis</strong></td>
+                        <td><strong>Escenario mas adverso</strong></td>
                         <td>{{ analytics_v2_summary.scenario_analysis.worst_label }}</td>
                         <td>Arg: {{ analytics_v2_summary.scenario_analysis.argentina_stress_pct|pct:1 }} | Tech: {{ analytics_v2_summary.scenario_analysis.tech_shock_pct|pct:1 }}</td>
                     </tr>
                     <tr>
-                        <td><strong>Factor Exposure</strong></td>
+                        <td><strong>Factor dominante</strong></td>
                         <td>{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"N/D"|title }}</td>
                         <td>{% if analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct is not None %}{{ analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct|pct:1 }} clasificado{% else %}Sin datos suficientes{% endif %}</td>
                     </tr>
                     <tr>
-                        <td><strong>Stress Testing</strong></td>
+                        <td><strong>Fragilidad ante stress</strong></td>
                         <td>{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</td>
                         <td>Loss {{ analytics_v2_summary.stress_testing.total_loss_pct|pct:1 }}</td>
                     </tr>
                     <tr>
-                        <td><strong>Expected Return</strong></td>
+                        <td><strong>Retorno estructural</strong></td>
                         <td>{% if analytics_v2_summary.expected_return.expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</td>
                         <td>Real: {% if analytics_v2_summary.expected_return.real_expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.real_expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</td>
                     </tr>
                     <tr>
-                        <td><strong>Macro Local</strong></td>
+                        <td><strong>Macro local</strong></td>
                         <td>{% if analytics_v2_summary.local_macro.fx_signal_state %}{{ analytics_v2_summary.local_macro.fx_signal_state|title }}{% else %}N/D{% endif %}</td>
                         <td>Estado FX, UVA anualizada 30d y riesgo pais</td>
                     </tr>

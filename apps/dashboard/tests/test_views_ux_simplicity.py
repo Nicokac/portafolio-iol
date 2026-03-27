@@ -21,14 +21,19 @@ class TestDashboardUxSimplicityViews:
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
 
-        assert 'Bases de Calculo' in body
+        assert 'Como leer esta hoja:' in body
         assert 'Lectura del portafolio' in body
         assert 'Resumen ejecutivo' in body
         assert 'Cartera detallada y capa operativa' in body
         assert 'Abrir cartera detallada' in body
         assert 'Analytics v2' in body
         assert 'Abrir riesgo avanzado' in body
-        assert 'Macro Local' in body
+        assert 'Activo que mas explica el riesgo' in body
+        assert 'Escenario mas adverso' in body
+        assert 'Factor dominante' in body
+        assert 'Fragilidad ante stress' in body
+        assert 'Retorno estructural' in body
+        assert 'Macro local' in body
         assert 'Estado FX' in body
         assert 'UVA anualizada 30d' in body
         assert 'Senales de Rebalanceo' in body
@@ -81,7 +86,7 @@ class TestDashboardUxSimplicityViews:
         body = response.content.decode()
 
         assert 'Liquidez Operativa' in body
-        assert 'FCI / Cash Management' in body
+        assert 'FCI y Cash Management' in body
         assert 'Top 5 Posiciones' in body
         assert 'Portafolio Invertido Completo' in body
         assert 'Ultimo Precio' in body
@@ -93,9 +98,9 @@ class TestDashboardUxSimplicityViews:
         assert response.status_code == 200
         assert 'Riesgo avanzado' in body
         assert 'Analitica avanzada en un solo lugar' in body
-        assert 'Risk Contribution' in body
-        assert 'Scenario Analysis' in body
-        assert 'Factor Exposure' in body
-        assert 'Stress Testing' in body
-        assert 'Expected Return' in body
+        assert 'Activo que mas explica el riesgo' in body
+        assert 'Escenario mas adverso' in body
+        assert 'Factor dominante' in body
+        assert 'Fragilidad ante stress' in body
+        assert 'Retorno estructural' in body
         assert 'Abrir modulo' in body

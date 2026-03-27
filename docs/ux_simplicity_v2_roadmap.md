@@ -124,6 +124,19 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/tests/test_feature_flows.py`
     - `apps/dashboard/tests/test_views_ux_simplicity.py`
 
+- `C3 - Correccion de labels y microcopy criticos`
+  - estado: `implementado`
+  - resultado:
+    - se corrigieron labels visibles y microcopy confuso en `Estrategia`, `Cartera detallada` y `Riesgo avanzado`
+    - la lectura principal usa nombres mas claros y menos jerga innecesaria
+    - se eliminaron varios textos tecnicos que agregaban ruido sin aportar decision
+  - archivos principales:
+    - `templates/dashboard/estrategia.html`
+    - `templates/dashboard/cartera_detalle.html`
+    - `templates/dashboard/riesgo_avanzado.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views_ux_simplicity.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

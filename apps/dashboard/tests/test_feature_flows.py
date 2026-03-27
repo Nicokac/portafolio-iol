@@ -43,6 +43,7 @@ class TestDashboardFeatureFlows:
         content = response.content.decode("utf-8")
 
         assert response.status_code == 200
+        assert "Como leer esta hoja:" in content
         assert "Resumen ejecutivo" in content
         assert "Analytics v2" in content
         assert "Abrir riesgo avanzado" in content
@@ -52,6 +53,12 @@ class TestDashboardFeatureFlows:
         assert "Cartera detallada y capa operativa" in content
         assert "Estado FX" in content
         assert "UVA anualizada 30d" in content
+        assert "Activo que mas explica el riesgo" in content
+        assert "Escenario mas adverso" in content
+        assert "Factor dominante" in content
+        assert "Fragilidad ante stress" in content
+        assert "Retorno estructural" in content
+        assert "Macro local" in content
         assert "Posiciones completas" not in content
         assert "Portafolio Invertido Completo" not in content
         assert "FCI / Cash Management" not in content
@@ -152,10 +159,10 @@ class TestDashboardFeatureFlows:
 
         assert response.status_code == 200
         assert "Cartera detallada" in content
-        assert "Inventario completo y capa operativa" in content
+        assert "Inventario completo y operabilidad" in content
         assert "Capa operativa puntual" in content
         assert "Liquidez Operativa" in content
-        assert "FCI / Cash Management" in content
+        assert "FCI y Cash Management" in content
         assert "Top 5 Posiciones" in content
         assert "Portafolio Invertido Completo" in content
 
@@ -166,11 +173,11 @@ class TestDashboardFeatureFlows:
         assert response.status_code == 200
         assert "Riesgo avanzado" in content
         assert "Analitica avanzada en un solo lugar" in content
-        assert "Risk Contribution" in content
-        assert "Scenario Analysis" in content
-        assert "Factor Exposure" in content
-        assert "Stress Testing" in content
-        assert "Expected Return" in content
+        assert "Activo que mas explica el riesgo" in content
+        assert "Escenario mas adverso" in content
+        assert "Factor dominante" in content
+        assert "Fragilidad ante stress" in content
+        assert "Retorno estructural" in content
         assert "Abrir modulo" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
