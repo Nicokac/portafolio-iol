@@ -54,21 +54,21 @@ La meta no es listar archivos sin contexto, sino responder qué capacidades real
 | Estrategia | Factor exposure detallado | UI completa | `/estrategia/factor-exposure/` | `get_factor_exposure_detail()`, `FactorExposureService` | Drill-down visible con factores, dominancia y activos clasificados/unknown. |
 | Estrategia | Stress fragility detallado | UI completa | `/estrategia/stress-fragility/` | `get_stress_fragility_detail()`, `StressFragilityService` | Drill-down visible con score, pérdidas y vulnerabilidad por bloque. |
 | Estrategia | Expected return detallado | UI completa | `/estrategia/expected-return/` | `get_expected_return_detail()`, `ExpectedReturnService` | Drill-down visible con buckets, retorno nominal/real y composición esperada. |
-| Análisis | Hoja Análisis | UI completa | `/analisis/` | selectors dashboard | Vista de composición, concentración y riesgo. |
+| Análisis | Centro analítico | UI completa | `/analisis/` | `AnalisisView`, selectors dashboard + APIs métricas | Vista unificada de composición, performance y métricas cuantitativas. |
 | Análisis | Distribución sectorial | UI completa | `Análisis` | `get_distribucion_sector()` | Visible en tablas/gráficos. |
 | Análisis | Distribución geográfica | UI completa | `Análisis` | `get_distribucion_pais()` | Visible sobre bases distintas. |
 | Análisis | Distribución patrimonial | UI completa | `Análisis` | `get_distribucion_tipo_patrimonial()` | Visible como lectura composicional. |
 | Análisis | Riesgo detallado descriptivo | UI completa | `Análisis` | selectors dashboard | `% USA`, `% Argentina`, `% Tech`, liquidez, etc. |
-| Performance | Hoja Performance | UI completa | `/analisis/performance/` | `PerformanceView` + APIs | Hoja dinámica consumiendo métricas históricas. |
-| Performance | Retornos históricos | UI completa | `Performance` + `/api/metrics/returns/` | `TemporalMetricsService` | Visible en UI y expuesto por API. |
-| Performance | Comparación histórica por períodos | UI completa | `Performance` + `/api/metrics/historical-comparison/` | `TemporalMetricsService` | Visible en UI y disponible por API. |
-| Performance | Evolución histórica | UI completa | `Performance` + `/api/historical/evolution/` | `PortfolioSnapshot`, fallback histórico | Visible en UI y disponible por API. |
-| Performance | Comparación macro histórica | UI completa | `Performance` + `/api/metrics/macro-comparison/` | `LocalMacroSeriesService` | Visible en UI y disponible por API. |
-| Performance | Curva vs benchmark compuesto | UI completa | `Performance` + `/api/metrics/benchmark-curve/` | `TrackingErrorService` y benchmarking | Visible en UI y disponible por API. |
-| Métricas | Hoja Métricas | UI completa | `/analisis/metricas/` | `MetricasView` + APIs | Centro de métricas cuantitativas actuales. |
-| Métricas | Volatilidad | UI completa | `Métricas` + `/api/metrics/volatility/` | `TemporalMetricsService` | Visible en UI y expuesto por API. |
-| Métricas | Benchmarking | UI completa | `Métricas` + `/api/metrics/benchmarking/` | `TrackingErrorService` | Visible en UI y expuesto por API. |
-| Métricas | Returns agregados | UI completa | `Métricas` + `/api/metrics/returns/` | `TemporalMetricsService` | Visible en UI y expuesto por API. |
+| Análisis | Retornos históricos | UI completa | `Centro analítico` + `/api/metrics/returns/` | `TemporalMetricsService` | Visible en UI y expuesto por API. |
+| Análisis | Comparación histórica por períodos | UI completa | `Centro analítico` + `/api/metrics/historical-comparison/` | `TemporalMetricsService` | Visible en UI y disponible por API. |
+| Análisis | Evolución histórica | UI completa | `Centro analítico` + `/api/historical/evolution/` | `PortfolioSnapshot`, fallback histórico | Visible en UI y disponible por API. |
+| Análisis | Comparación macro histórica | UI completa | `Centro analítico` + `/api/metrics/macro-comparison/` | `LocalMacroSeriesService` | Visible en UI y disponible por API. |
+| Análisis | Curva vs benchmark compuesto | UI completa | `Centro analítico` + `/api/metrics/benchmark-curve/` | `TrackingErrorService` y benchmarking | Visible en UI y disponible por API. |
+| Análisis | Volatilidad | UI completa | `Centro analítico` + `/api/metrics/volatility/` | `TemporalMetricsService` | Visible en UI y expuesto por API. |
+| Análisis | Benchmarking | UI completa | `Centro analítico` + `/api/metrics/benchmarking/` | `TrackingErrorService` | Visible en UI y expuesto por API. |
+| Análisis | Returns agregados | UI completa | `Centro analítico` + `/api/metrics/returns/` | `TemporalMetricsService` | Visible en UI y expuesto por API. |
+| Análisis | Alias legacy `performance` | UI completa | `/analisis/performance/` | `PerformanceView` redirect | Alias de compatibilidad hacia `#analisis-performance`. |
+| Análisis | Alias legacy `metricas` | UI completa | `/analisis/metricas/` | `MetricasView` redirect | Alias de compatibilidad hacia `#analisis-metricas`. |
 | Métricas | VaR | API-only | `/api/metrics/var/` | `VaRService` | Hay endpoint, pero no hoja específica dedicada en UI actual. |
 | Métricas | CVaR | API-only | `/api/metrics/cvar/` | `CVaRService` | Igual que VaR: endpoint sí, superficie UI dedicada no. |
 | Métricas | Attribution | API-only | `/api/metrics/attribution/` | `AttributionService` | No aparece como bloque visible propio en UI actual. |
@@ -137,8 +137,7 @@ La app ya expone en UI, de forma usable:
 - Resumen
 - Estrategia
 - Análisis
-- Performance
-- Métricas
+- centro analítico unificado con performance y métricas
 - Planeación
 - Ops
 - acciones staff de sincronización
