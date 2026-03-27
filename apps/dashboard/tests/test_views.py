@@ -148,7 +148,18 @@ class TestDashboardView:
         response = auth_client.get(url)
         assert response.status_code == 200
 
-    def test_analisis_shows_base_labels_and_aggregated_sector_view(self, auth_client):
+    def test_analisis_shows_unified_center_labels_and_aggregated_sector_view_v2(self, auth_client):
+        response = auth_client.get(reverse('dashboard:analisis'))
+        body = response.content.decode()
+        assert 'Centro analítico' in body
+        assert 'Composición, performance y métricas cuantitativas en una sola superficie' in body
+        assert 'Base: Portafolio Invertido' in body
+        assert 'Base: Total IOL' in body
+        assert 'Vista agregada opcional de sectores' in body
+        assert 'Performance temporal' in body
+        assert 'Métricas cuantitativas' in body
+
+    def xtest_analisis_shows_base_labels_and_aggregated_sector_view(self, auth_client):
         response = auth_client.get(reverse('dashboard:analisis'))
         body = response.content.decode()
         assert 'Análisis de composición y riesgo' in body
@@ -2407,7 +2418,7 @@ class TestDashboardView:
         assert 'Comparador por candidato' in body
         assert 'Comparador manual' in body
 
-    def test_performance_route_accessible_authenticated(self, auth_client):
+    def xtest_performance_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:performance')
         response = auth_client.get(url)
         assert response.status_code == 200
@@ -2420,7 +2431,7 @@ class TestDashboardView:
         assert 'Cobertura:' in body
         assert 'formatCoverageNote' in body
 
-    def test_metricas_route_accessible_authenticated(self, auth_client):
+    def xtest_metricas_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:metricas')
         response = auth_client.get(url)
         assert response.status_code == 200
@@ -2429,6 +2440,15 @@ class TestDashboardView:
         assert 'Fallback retornos' in body
         assert 'Fallback volatilidad' in body
         assert 'Fallback benchmarking' in body
+
+    def test_performance_and_metricas_routes_redirect_to_analysis_center(self, auth_client):
+        performance = auth_client.get(reverse('dashboard:performance'))
+        metricas = auth_client.get(reverse('dashboard:metricas'))
+
+        assert performance.status_code == 302
+        assert performance['Location'].endswith(f"{reverse('dashboard:analisis')}#analisis-performance")
+        assert metricas.status_code == 302
+        assert metricas['Location'].endswith(f"{reverse('dashboard:analisis')}#analisis-metricas")
 
     def test_ops_requires_staff(self, auth_client, staff_client):
         url = reverse('dashboard:ops')

@@ -29,19 +29,13 @@
                         <a class="nav-link {% if active_section == 'estrategia' %}active{% endif %}" href="{% url 'dashboard:estrategia' %}">Estrategia</a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if active_section == 'analisis' or active_section == 'performance' or active_section == 'metricas' or active_section == 'ops' %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle {% if active_section == 'analisis' or active_section == 'ops' %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Más
                         </a>
                         <ul class="dropdown-menu">
                             <li><h6 class="dropdown-header">Exploración</h6></li>
                             <li>
-                                <a class="dropdown-item {% if active_section == 'analisis' %}active{% endif %}" href="{% url 'dashboard:analisis' %}">Análisis</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {% if active_section == 'performance' %}active{% endif %}" href="{% url 'dashboard:performance' %}">Performance</a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {% if active_section == 'metricas' %}active{% endif %}" href="{% url 'dashboard:metricas' %}">Métricas</a>
+                                <a class="dropdown-item {% if active_section == 'analisis' %}active{% endif %}" href="{% url 'dashboard:analisis' %}">Centro analítico</a>
                             </li>
                         </ul>
                     </li>

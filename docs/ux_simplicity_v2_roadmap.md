@@ -233,10 +233,10 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
 
 ### Reevaluacion post-iteracion
 
-La auditoria posterior a `F4` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
+La auditoria posterior a `F3` y `F4` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
 
 1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2353` lineas, aunque ya llega mas rapido al flujo principal y difiere parte de la carga secundaria.
-2. `Analisis`, `Performance` y `Metricas` todavia se presentan como tres centros separados, aunque ya se comportan como una misma familia.
+2. `Centro analitico` ya absorbio `Performance` y `Metricas`, pero ahora conviene vigilar que no vuelva a inflarse con nueva densidad visual.
 
 ### Decisiones cerradas para fase 2
 
@@ -248,12 +248,8 @@ La auditoria posterior a `F4` muestra una mejora material del flujo principal, p
 
 ### Proxima ola sugerida
 
-- `F3 - Centro unificado de analisis`
-- despues:
-  - convergencia exploratoria de:
-    - `dashboard:analisis`
-    - `dashboard:performance`
-    - `dashboard:metricas`
+- `G1 - Poda de vistas y templates ya absorbidos`
+- `G2 - Reduccion adicional de densidad en Planeacion`
 
 ### Roadmap de fase 2
 
@@ -279,6 +275,17 @@ La auditoria posterior a `F4` muestra una mejora material del flujo principal, p
   - preservar profundidad sin reintroducir una pantalla sobredimensionada
 - Criterio de aceptacion:
   - propuesta de arquitectura unica o decision documentada de no converger
+  - estado: `implementado`
+  - resultado:
+    - `Analisis` paso a ser el centro unico visible para composicion, performance y metricas
+    - `dashboard:performance` y `dashboard:metricas` quedaron como redirects de compatibilidad a anclas internas
+    - la navegacion dejo de mostrar tres accesos distintos para la misma familia analitica
+  - archivos principales:
+    - `apps/dashboard/views.py`
+    - `templates/dashboard/analisis.html`
+    - `templates/base.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views.py`
 
 #### Modulo F4 - Planeacion todavia mas liviana
 

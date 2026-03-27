@@ -336,6 +336,7 @@ class ResumenView(
 
 class AnalisisView(
     LoginRequiredMixin,
+    DashboardKpiContextMixin,
     DashboardRiskSignalsContextMixin,
     DashboardAnalyticsContextMixin,
     TemplateView,
@@ -344,14 +345,23 @@ class AnalisisView(
     active_section = 'analisis'
 
 
-class PerformanceView(LoginRequiredMixin, DashboardKpiContextMixin, TemplateView):
-    template_name = 'dashboard/performance.html'
+class AnalysisSectionRedirectView(LoginRequiredMixin, View):
+    section_anchor = ''
     active_section = 'analisis'
 
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        target = reverse('dashboard:analisis')
+        if self.section_anchor:
+            target = f"{target}#{self.section_anchor}"
+        return redirect(target)
 
-class MetricasView(LoginRequiredMixin, DashboardKpiContextMixin, TemplateView):
-    template_name = 'dashboard/metricas.html'
-    active_section = 'analisis'
+
+class PerformanceView(AnalysisSectionRedirectView):
+    section_anchor = 'analisis-performance'
+
+
+class MetricasView(AnalysisSectionRedirectView):
+    section_anchor = 'analisis-metricas'
 
 
 class OpsView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):

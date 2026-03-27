@@ -17,14 +17,12 @@ class TestDashboardFeatureFlows:
         ("route_name", "expected_template", "required_context_keys"),
         [
             ("dashboard:dashboard", "dashboard/resumen.html", ["kpis", "alerts", "macro_local", "market_snapshot_feature", "parking_feature", "evolucion_historica"]),
-            ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
+            ("dashboard:analisis", "dashboard/analisis.html", ["kpis", "concentracion_sector", "riesgo_portafolio_detallado", "analytics_v2_summary"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "senales_rebalanceo", "analytics_v2_summary", "evolucion_historica"]),
             ("dashboard:cartera_detalle", "dashboard/cartera_detalle.html", ["kpis", "portafolio", "market_snapshot_feature"]),
             ("dashboard:riesgo_avanzado", "dashboard/riesgo_avanzado.html", ["kpis", "analytics_v2_summary", "riesgo_portafolio"]),
             ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
             ("dashboard:laboratorio", "dashboard/laboratorio.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary"]),
-            ("dashboard:performance", "dashboard/performance.html", ["kpis"]),
-            ("dashboard:metricas", "dashboard/metricas.html", ["kpis"]),
         ],
     )
     def test_dashboard_routes_have_template_and_context(
@@ -37,16 +35,15 @@ class TestDashboardFeatureFlows:
         for key in required_context_keys:
             assert key in response.context
 
-    def test_lightweight_centers_do_not_receive_full_dashboard_payload(self, auth_client):
-        performance = auth_client.get(reverse("dashboard:performance"))
-        metricas = auth_client.get(reverse("dashboard:metricas"))
+    def test_analysis_center_keeps_context_focused(self, auth_client):
+        response = auth_client.get(reverse("dashboard:analisis"))
 
-        for response in (performance, metricas):
-            assert response.status_code == 200
-            assert "analytics_v2_summary" not in response.context
-            assert "market_snapshot_feature" not in response.context
-            assert "portafolio" not in response.context
-            assert "macro_local" not in response.context
+        assert response.status_code == 200
+        assert "analytics_v2_summary" in response.context
+        assert "portafolio" not in response.context
+        assert "market_snapshot_feature" not in response.context
+        assert "macro_local" not in response.context
+        assert "alerts" not in response.context
 
     def test_resumen_and_estrategia_now_load_distinct_context_families(self, auth_client):
         resumen = auth_client.get(reverse("dashboard:dashboard"))
@@ -64,6 +61,34 @@ class TestDashboardFeatureFlows:
         assert "concentracion_sector" in estrategia.context
         assert "alerts" not in estrategia.context
         assert "macro_local" not in estrategia.context
+
+    def test_analysis_center_absorbs_performance_and_metrics(self, auth_client):
+        response = auth_client.get(reverse("dashboard:analisis"))
+        content = response.content.decode("utf-8")
+
+        assert response.status_code == 200
+        assert "Centro analítico" in content
+        assert "Composición, performance y métricas cuantitativas en una sola superficie" in content
+        assert "Composición y concentración" in content
+        assert "Performance temporal" in content
+        assert "Métricas cuantitativas" in content
+        assert "Portafolio vs benchmark compuesto" in content
+        assert "Detalle de métricas" in content
+        assert "id=\"analisis-performance\"" in content
+        assert "id=\"analisis-metricas\"" in content
+
+    @pytest.mark.parametrize(
+        ("route_name", "anchor"),
+        [
+            ("dashboard:performance", "#analisis-performance"),
+            ("dashboard:metricas", "#analisis-metricas"),
+        ],
+    )
+    def test_analysis_legacy_routes_redirect_to_center_sections(self, auth_client, route_name, anchor):
+        response = auth_client.get(reverse(route_name))
+
+        assert response.status_code == 302
+        assert response["Location"].endswith(f"{reverse('dashboard:analisis')}{anchor}")
 
     def test_legacy_resumen_route_redirects_to_canonical_dashboard(self, auth_client):
         response = auth_client.get(reverse("dashboard:resumen"))
