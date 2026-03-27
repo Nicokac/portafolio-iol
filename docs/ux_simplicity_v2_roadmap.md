@@ -233,9 +233,9 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
 
 ### Reevaluacion post-iteracion
 
-La auditoria posterior a `F2` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
+La auditoria posterior a `F4` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
 
-1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2289` lineas.
+1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2353` lineas, aunque ya llega mas rapido al flujo principal y difiere parte de la carga secundaria.
 2. `Analisis`, `Performance` y `Metricas` todavia se presentan como tres centros separados, aunque ya se comportan como una misma familia.
 
 ### Decisiones cerradas para fase 2
@@ -248,11 +248,12 @@ La auditoria posterior a `F2` muestra una mejora material del flujo principal, p
 
 ### Proxima ola sugerida
 
-- `B3 - Reduccion de llamadas frontend no esenciales`
-- convergencia exploratoria de:
-  - `dashboard:analisis`
-  - `dashboard:performance`
-  - `dashboard:metricas`
+- `F3 - Centro unificado de analisis`
+- despues:
+  - convergencia exploratoria de:
+    - `dashboard:analisis`
+    - `dashboard:performance`
+    - `dashboard:metricas`
 
 ### Roadmap de fase 2
 
@@ -290,6 +291,15 @@ La auditoria posterior a `F2` muestra una mejora material del flujo principal, p
   - menor longitud visible antes de llegar a `Aportes`
 - Criterio de aceptacion:
   - evidencia de menor carga inicial y menor ruido visual
+  - estado: `implementado`
+  - resultado:
+    - el bloque de diagnostico previo ya no dispara fetch inicial al renderizar la hoja
+    - `recommendations`, `alerts` y `rebalance` se cargan solo al abrir `Diagnostico previo`
+    - el contexto operativo puntual quedo plegado detras de `Abrir contexto operativo opcional`
+    - el flujo principal llega mas rapido a `Aportes` sin perder herramientas secundarias
+  - archivos principales:
+    - `templates/dashboard/planeacion.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
 
 ## Track A - Navegacion y arquitectura de pantallas
 
