@@ -27,6 +27,7 @@ class TestDashboardUxSimplicityViews:
         assert 'Cartera detallada y capa operativa' in body
         assert 'Abrir cartera detallada' in body
         assert 'Analytics v2' in body
+        assert 'Abrir riesgo avanzado' in body
         assert 'Macro Local' in body
         assert 'Estado FX' in body
         assert 'UVA anualizada 30d' in body
@@ -36,6 +37,7 @@ class TestDashboardUxSimplicityViews:
         assert 'Portafolio Invertido Completo' not in body
         assert 'FCI / Cash Management' not in body
         assert 'Capa operativa puntual' not in body
+        assert 'Ver detalle' not in body
 
     def test_cartera_detalle_renders_market_snapshot_panel(self, auth_client, monkeypatch):
         monkeypatch.setattr(
@@ -83,3 +85,17 @@ class TestDashboardUxSimplicityViews:
         assert 'Top 5 Posiciones' in body
         assert 'Portafolio Invertido Completo' in body
         assert 'Ultimo Precio' in body
+
+    def test_riesgo_avanzado_groups_advanced_analytics(self, auth_client):
+        response = auth_client.get(reverse('dashboard:riesgo_avanzado'))
+        body = response.content.decode()
+
+        assert response.status_code == 200
+        assert 'Riesgo avanzado' in body
+        assert 'Analitica avanzada en un solo lugar' in body
+        assert 'Risk Contribution' in body
+        assert 'Scenario Analysis' in body
+        assert 'Factor Exposure' in body
+        assert 'Stress Testing' in body
+        assert 'Expected Return' in body
+        assert 'Abrir modulo' in body

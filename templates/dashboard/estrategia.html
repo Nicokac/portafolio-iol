@@ -81,62 +81,62 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
                     <h3 class="h5 mb-1">Analytics v2</h3>
-                    <p class="text-muted mb-0">Capa explicativa para leer contribucion al riesgo, escenarios, factores, fragilidad y retorno esperado estructural.</p>
+                    <p class="text-muted mb-0">Sintesis ejecutiva de riesgo, escenarios, factores, fragilidad y retorno esperado estructural, sin fragmentar la lectura en multiples modulos.</p>
                 </div>
-                <span class="badge text-bg-dark">Integracion MVP</span>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge text-bg-dark">Integracion MVP</span>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:riesgo_avanzado' %}">Abrir riesgo avanzado</a>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<div class="row mb-4">
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="text-muted small">Risk Contribution</div>
-            <div class="h5 mb-1">{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</div>
-            <div class="small text-body-secondary">{% if analytics_v2_summary.risk_contribution.top_asset %}{{ analytics_v2_summary.risk_contribution.top_asset.contribution_pct|pct:1 }} del riesgo proxy{% else %}Sin datos{% endif %}</div>
-            <div class="mt-3"><a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:risk_contribution_detail' %}">Ver detalle</a></div>
-        </div></div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="text-muted small">Scenario Analysis</div>
-            <div class="h5 mb-1">{{ analytics_v2_summary.scenario_analysis.worst_label }}</div>
-            <div class="small text-body-secondary">Arg: {{ analytics_v2_summary.scenario_analysis.argentina_stress_pct|pct:1 }} | Tech: {{ analytics_v2_summary.scenario_analysis.tech_shock_pct|pct:1 }}</div>
-            <div class="mt-3"><a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:scenario_analysis_detail' %}">Ver detalle</a></div>
-        </div></div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="text-muted small">Factor Exposure</div>
-            <div class="h5 mb-1">{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"N/D"|title }}</div>
-            <div class="small text-body-secondary">{% if analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct is not None %}{{ analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct|pct:1 }} clasificado{% else %}Sin datos{% endif %}</div>
-            <div class="mt-3"><a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:factor_exposure_detail' %}">Ver detalle</a></div>
-        </div></div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="text-muted small">Stress Testing</div>
-            <div class="h5 mb-1">{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</div>
-            <div class="small text-body-secondary">Loss {{ analytics_v2_summary.stress_testing.total_loss_pct|pct:1 }}</div>
-            <div class="mt-3"><a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:stress_fragility_detail' %}">Ver detalle</a></div>
-        </div></div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="text-muted small">Expected Return Simple</div>
-            <div class="h5 mb-1">{% if analytics_v2_summary.expected_return.expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</div>
-            <div class="small text-body-secondary">Real: {% if analytics_v2_summary.expected_return.real_expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.real_expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</div>
-            <div class="mt-3"><a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:expected_return_detail' %}">Ver detalle</a></div>
-        </div></div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100"><div class="card-body">
-            <div class="text-muted small">Macro Local</div>
-            <div class="h5 mb-1">{% if analytics_v2_summary.local_macro.fx_signal_state %}{{ analytics_v2_summary.local_macro.fx_signal_state|title }}{% else %}N/D{% endif %}</div>
-            <div class="small text-body-secondary">Estado FX | UVA anualizada 30d | Riesgo pais</div>
-            <div class="small text-body-secondary mt-2">Brecha FX, Spread MEP / CCL, Tasa real BADLAR vs UVA y peso soberano local.</div>
-        </div></div>
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Lectura</th>
+                        <th>Dato principal</th>
+                        <th>Interpretacion corta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Risk Contribution</strong></td>
+                        <td>{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</td>
+                        <td>{% if analytics_v2_summary.risk_contribution.top_asset %}{{ analytics_v2_summary.risk_contribution.top_asset.contribution_pct|pct:1 }} del riesgo proxy{% else %}Sin datos suficientes{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Scenario Analysis</strong></td>
+                        <td>{{ analytics_v2_summary.scenario_analysis.worst_label }}</td>
+                        <td>Arg: {{ analytics_v2_summary.scenario_analysis.argentina_stress_pct|pct:1 }} | Tech: {{ analytics_v2_summary.scenario_analysis.tech_shock_pct|pct:1 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Factor Exposure</strong></td>
+                        <td>{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"N/D"|title }}</td>
+                        <td>{% if analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct is not None %}{{ analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct|pct:1 }} clasificado{% else %}Sin datos suficientes{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Stress Testing</strong></td>
+                        <td>{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</td>
+                        <td>Loss {{ analytics_v2_summary.stress_testing.total_loss_pct|pct:1 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Expected Return</strong></td>
+                        <td>{% if analytics_v2_summary.expected_return.expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</td>
+                        <td>Real: {% if analytics_v2_summary.expected_return.real_expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.real_expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Macro Local</strong></td>
+                        <td>{% if analytics_v2_summary.local_macro.fx_signal_state %}{{ analytics_v2_summary.local_macro.fx_signal_state|title }}{% else %}N/D{% endif %}</td>
+                        <td>Estado FX, UVA anualizada 30d y riesgo pais</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 

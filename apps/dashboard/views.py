@@ -171,6 +171,11 @@ class CarteraDetalleView(LoginRequiredMixin, DashboardContextMixin, TemplateView
     active_section = 'estrategia'
 
 
+class RiesgoAvanzadoView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
+    template_name = 'dashboard/riesgo_avanzado.html'
+    active_section = 'estrategia'
+
+
 class RiskContributionDetailView(LoginRequiredMixin, DashboardContextMixin, TemplateView):
     template_name = 'dashboard/risk_contribution_detail.html'
     active_section = 'estrategia'

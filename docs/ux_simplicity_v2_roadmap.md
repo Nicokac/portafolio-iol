@@ -110,6 +110,20 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/tests/test_feature_flows.py`
     - `apps/dashboard/tests/test_views_ux_simplicity.py`
 
+- `C2 - Consolidacion de Analytics v2`
+  - estado: `implementado`
+  - resultado:
+    - `Estrategia` paso de multiples tarjetas con CTAs competidores a una sola sintesis ejecutiva
+    - se creo `Riesgo avanzado` como entrada unica para modulos analiticos profundos
+    - bajo la fragmentacion de lectura dentro de la hoja estrategica
+  - archivos principales:
+    - `apps/dashboard/views.py`
+    - `apps/dashboard/urls.py`
+    - `templates/dashboard/estrategia.html`
+    - `templates/dashboard/riesgo_avanzado.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views_ux_simplicity.py`
+
 - `F1 - Ops Lite`
   - estado: `implementado`
   - resultado:

@@ -21,6 +21,7 @@ class TestDashboardFeatureFlows:
             ("dashboard:analisis", "dashboard/analisis.html", ["concentracion_sector", "riesgo_portafolio_detallado"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "portafolio", "senales_rebalanceo", "analytics_v2_summary"]),
             ("dashboard:cartera_detalle", "dashboard/cartera_detalle.html", ["kpis", "portafolio", "market_snapshot_feature"]),
+            ("dashboard:riesgo_avanzado", "dashboard/riesgo_avanzado.html", ["kpis", "analytics_v2_summary", "riesgo_portafolio"]),
             ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
             ("dashboard:laboratorio", "dashboard/laboratorio.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary"]),
             ("dashboard:performance", "dashboard/performance.html", ["kpis", "evolucion_historica"]),
@@ -44,6 +45,7 @@ class TestDashboardFeatureFlows:
         assert response.status_code == 200
         assert "Resumen ejecutivo" in content
         assert "Analytics v2" in content
+        assert "Abrir riesgo avanzado" in content
         assert "Senales de Rebalanceo" in content
         assert "Evolucion Historica" in content
         assert "Abrir cartera detallada" in content
@@ -54,6 +56,7 @@ class TestDashboardFeatureFlows:
         assert "Portafolio Invertido Completo" not in content
         assert "FCI / Cash Management" not in content
         assert "Capa operativa puntual" not in content
+        assert "Ver detalle" not in content
 
     def test_planeacion_page_contains_critical_modules(self, auth_client):
         response = auth_client.get(reverse("dashboard:planeacion"))
@@ -155,6 +158,20 @@ class TestDashboardFeatureFlows:
         assert "FCI / Cash Management" in content
         assert "Top 5 Posiciones" in content
         assert "Portafolio Invertido Completo" in content
+
+    def test_riesgo_avanzado_page_groups_advanced_modules(self, auth_client):
+        response = auth_client.get(reverse("dashboard:riesgo_avanzado"))
+        content = response.content.decode("utf-8")
+
+        assert response.status_code == 200
+        assert "Riesgo avanzado" in content
+        assert "Analitica avanzada en un solo lugar" in content
+        assert "Risk Contribution" in content
+        assert "Scenario Analysis" in content
+        assert "Factor Exposure" in content
+        assert "Stress Testing" in content
+        assert "Expected Return" in content
+        assert "Abrir modulo" in content
 
     def test_preferences_are_reflected_in_body_class(self, auth_client):
         auth_client.post(
