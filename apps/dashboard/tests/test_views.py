@@ -359,11 +359,11 @@ class TestDashboardView:
         assert 'Sin agregados por sector.' in body
         assert 'Sin detalle por activo disponible.' in body
 
-    def test_estrategia_contains_scenario_analysis_detail_link(self, auth_client):
+    def test_estrategia_contains_riesgo_avanzado_link_for_scenario_analysis(self, auth_client):
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
         assert response.status_code == 200
-        assert reverse('dashboard:scenario_analysis_detail') in body
+        assert reverse('dashboard:riesgo_avanzado') in body
 
     def test_factor_exposure_detail_route_accessible_authenticated(self, auth_client):
         response = auth_client.get(reverse('dashboard:factor_exposure_detail'))
@@ -397,11 +397,11 @@ class TestDashboardView:
         assert 'Sin factores disponibles.' in body
         assert 'Sin activos sin clasificación.' in body
 
-    def test_estrategia_contains_factor_exposure_detail_link(self, auth_client):
+    def test_estrategia_contains_riesgo_avanzado_link_for_factor_exposure(self, auth_client):
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
         assert response.status_code == 200
-        assert reverse('dashboard:factor_exposure_detail') in body
+        assert reverse('dashboard:riesgo_avanzado') in body
 
     def test_stress_fragility_detail_route_accessible_authenticated(self, auth_client):
         response = auth_client.get(reverse('dashboard:stress_fragility_detail'))
@@ -436,11 +436,11 @@ class TestDashboardView:
         assert 'Sin breakdown por sector.' in body
         assert 'Sin breakdown por activo.' in body
 
-    def test_estrategia_contains_stress_fragility_detail_link(self, auth_client):
+    def test_estrategia_contains_riesgo_avanzado_link_for_stress_fragility(self, auth_client):
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
         assert response.status_code == 200
-        assert reverse('dashboard:stress_fragility_detail') in body
+        assert reverse('dashboard:riesgo_avanzado') in body
 
     def test_expected_return_detail_route_accessible_authenticated(self, auth_client):
         response = auth_client.get(reverse('dashboard:expected_return_detail'))
@@ -476,31 +476,21 @@ class TestDashboardView:
         assert 'Sin breakdown por bucket disponible.' in body
         assert 'El servicio actual no expone detalle por activo para Expected Return.' in body
 
-    def test_estrategia_contains_expected_return_detail_link(self, auth_client):
+    def test_estrategia_contains_riesgo_avanzado_link_for_expected_return(self, auth_client):
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
         assert response.status_code == 200
-        assert reverse('dashboard:expected_return_detail') in body
+        assert reverse('dashboard:riesgo_avanzado') in body
 
-    def test_estrategia_uses_patrimonial_sync_status_for_main_badge(self, auth_client, monkeypatch):
-        class DummySyncAuditService:
-            def run_audit(self, freshness_hours=24):
-                assert freshness_hours == 24
-                return {
-                    'status': 'warning',
-                    'patrimonial_status': 'ok',
-                    'issues_count': 1,
-                    'issues': ['operations'],
-                    'token': {'status': 'ok'},
-                    'snapshots': {'status': 'ok', 'reasons': []},
-                    'operations': {'status': 'warning', 'reason': 'stale_operations'},
-                }
-
-        monkeypatch.setattr('apps.dashboard.views.IOLSyncAuditService', lambda: DummySyncAuditService())
+    def test_estrategia_uses_snapshot_coverage_warning_for_main_badge(self, auth_client, monkeypatch):
+        monkeypatch.setattr(
+            'apps.dashboard.views.get_snapshot_coverage_summary',
+            lambda days=90: {'status': 'warning', 'days_available': 3, 'days_requested': 90},
+        )
         response = auth_client.get(reverse('dashboard:estrategia'))
         body = response.content.decode()
         assert response.status_code == 200
-        assert 'bg-success' in body
+        assert 'Historia de snapshots insuficiente para riesgo robusto' in body
 
     def test_planeacion_route_accessible_authenticated(self, auth_client):
         url = reverse('dashboard:planeacion')
