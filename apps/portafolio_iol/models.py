@@ -83,6 +83,38 @@ class PortfolioSnapshot(models.Model):
         indexes = [
             models.Index(fields=['fecha']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(total_iol__gte=0)
+                    & models.Q(liquidez_operativa__gte=0)
+                    & models.Q(cash_management__gte=0)
+                    & models.Q(portafolio_invertido__gte=0)
+                    & (
+                        models.Q(total_patrimonio_modelado__gte=0)
+                        | models.Q(total_patrimonio_modelado__isnull=True)
+                    )
+                    & (
+                        models.Q(cash_disponible_broker__gte=0)
+                        | models.Q(cash_disponible_broker__isnull=True)
+                    )
+                    & (
+                        models.Q(caucion_colocada__gte=0)
+                        | models.Q(caucion_colocada__isnull=True)
+                    )
+                ),
+                name="portfolio_snapshot_non_negative_amounts",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(exposicion_usa__gte=0)
+                    & models.Q(exposicion_usa__lte=100)
+                    & models.Q(exposicion_argentina__gte=0)
+                    & models.Q(exposicion_argentina__lte=100)
+                ),
+                name="portfolio_snapshot_exposure_range_valid",
+            ),
+        ]
 
     def __str__(self):
         return f"Portfolio Snapshot {self.fecha}"
@@ -133,6 +165,16 @@ class PositionSnapshot(models.Model):
             models.Index(fields=['snapshot', 'pais']),
         ]
         unique_together = ['snapshot', 'simbolo']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(valorizado__gte=0),
+                name="position_snapshot_non_negative_valorizado",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(peso__gte=0, peso__lte=100),
+                name="position_snapshot_weight_range_valid",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.simbolo} - {self.snapshot.fecha}"

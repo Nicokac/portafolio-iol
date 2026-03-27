@@ -38,6 +38,22 @@ class OperacionIOL(models.Model):
             models.Index(fields=['estado']),
             models.Index(fields=['pais_consulta']),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(cantidad__gte=0) | models.Q(cantidad__isnull=True))
+                    & (models.Q(monto__gte=0) | models.Q(monto__isnull=True))
+                    & (models.Q(precio__gte=0) | models.Q(precio__isnull=True))
+                    & (models.Q(cantidad_operada__gte=0) | models.Q(cantidad_operada__isnull=True))
+                    & (models.Q(precio_operado__gte=0) | models.Q(precio_operado__isnull=True))
+                    & (models.Q(monto_operado__gte=0) | models.Q(monto_operado__isnull=True))
+                    & (models.Q(monto_operacion__gte=0) | models.Q(monto_operacion__isnull=True))
+                    & (models.Q(aranceles_ars__gte=0) | models.Q(aranceles_ars__isnull=True))
+                    & (models.Q(aranceles_usd__gte=0) | models.Q(aranceles_usd__isnull=True))
+                ),
+                name="operacion_iol_non_negative_amounts",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.numero} - {self.simbolo} - {self.fecha_orden}"

@@ -33,8 +33,8 @@ Se verificaron directamente estos puntos del repositorio:
 - `templates/base.html` expone en el navbar principal tanto flujo actual como accesos `legacy`
 - `apps/dashboard/views.py` concentra un `DashboardContextMixin` amplio y multiples acciones operativas
 - `apps/dashboard/urls.py` mezcla pantallas principales, detalles analiticos y acciones internas dentro de la misma familia de rutas
-- `PortfolioParameters` valida rangos y suma de targets en `clean()`, pero no en `CheckConstraint`
-- `OperacionIOL`, `PortfolioSnapshot` y `PositionSnapshot` no muestran constraints de dominio para montos o cantidades invalidas
+- `PortfolioParameters` ya expone validaciones en `clean()` y constraints de base alineados para rangos y suma de targets
+- `OperacionIOL`, `PortfolioSnapshot` y `PositionSnapshot` requerian constraints de dominio explicitos para montos o cantidades invalidas
 - `.github/workflows/ci.yml` tiene contenido real y no placeholders
 - `Ops` ya fue simplificada con una ruta liviana basada en `build_ops_lite_summary()`
 
@@ -161,6 +161,22 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `templates/parametros/parametros_list.html`
     - `templates/operaciones_iol/operaciones_list.html`
     - `apps/dashboard/tests/test_views.py`
+
+- `E1 - CheckConstraint para parametros y montos`
+  - estado: `implementado`
+  - resultado:
+    - `PortfolioParameters` quedo alineado entre validacion Python y constraints declarados en el modelo
+    - `OperacionIOL` ya rechaza montos y cantidades negativas a nivel base de datos
+    - `PortfolioSnapshot` y `PositionSnapshot` ya rechazan montos negativos y pesos fuera de rango
+  - archivos principales:
+    - `apps/core/models.py`
+    - `apps/core/tests/test_model_constraints.py`
+    - `apps/operaciones_iol/models.py`
+    - `apps/operaciones_iol/tests/test_model_constraints.py`
+    - `apps/portafolio_iol/models.py`
+    - `apps/portafolio_iol/tests/test_model_constraints.py`
+    - `apps/operaciones_iol/migrations/0006_rename_operacione_pais_co_7f9ad6_idx_operaciones_pais_co_640e0d_idx_and_more.py`
+    - `apps/portafolio_iol/migrations/0005_portfoliosnapshot_portfolio_snapshot_non_negative_amounts_and_more.py`
 
 - `F1 - Ops Lite`
   - estado: `implementado`
