@@ -1327,11 +1327,9 @@ def portfolio_parameters_get(request):
 
     try:
         params = PortfolioParameters.get_active_parameters()
-        if not params:
-            return Response(
-                {'error': 'No hay parámetros activos'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        is_persisted = params is not None
+        if not is_persisted:
+            params = PortfolioParameters()
 
         data = {
             'id': params.id,
@@ -1344,7 +1342,8 @@ def portfolio_parameters_get(request):
             'risk_free_rate': float(params.risk_free_rate),
             'rebalance_threshold': float(params.rebalance_threshold),
             'is_valid': params.is_valid_allocation(),
-            'total_allocation': float(params.total_target_allocation)
+            'total_allocation': float(params.total_target_allocation),
+            'is_persisted': is_persisted,
         }
         return Response(data, status=status.HTTP_200_OK)
     except Exception as e:

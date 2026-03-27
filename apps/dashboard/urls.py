@@ -1,7 +1,9 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from apps.dashboard.views import (
     AnalisisView,
+    CarteraDetalleView,
     DashboardView,
     DecideIncrementalProposalView,
     BulkDecideIncrementalProposalView,
@@ -10,6 +12,8 @@ from apps.dashboard.views import (
     MetricasView,
     OpsView,
     PlaneacionView,
+    LaboratorioView,
+    RiesgoAvanzadoView,
     PromoteIncrementalBacklogFrontView,
     PromoteIncrementalProposalBaselineView,
     ReactivateDeferredIncrementalProposalView,
@@ -25,26 +29,26 @@ from apps.dashboard.views import (
     SetPreferencesView,
     SyncLocalMacroView,
     SyncBenchmarksView,
-    SyncIOLHistoricalPricesView,
-    SyncIOLHistoricalPricesPartialView,
-    SyncIOLHistoricalPricesRetryMetadataView,
 )
 
 app_name = 'dashboard'
 
 urlpatterns = [
     path('', ResumenView.as_view(), name='dashboard'),
-    path('panel/resumen/', ResumenView.as_view(), name='resumen'),
+    path('panel/resumen/', RedirectView.as_view(pattern_name='dashboard:dashboard', permanent=False), name='resumen'),
     path('analisis/', AnalisisView.as_view(), name='analisis'),
     path('analisis/performance/', PerformanceView.as_view(), name='performance'),
     path('analisis/metricas/', MetricasView.as_view(), name='metricas'),
     path('estrategia/', DashboardView.as_view(), name='estrategia'),
+    path('estrategia/cartera/', CarteraDetalleView.as_view(), name='cartera_detalle'),
+    path('estrategia/riesgo-avanzado/', RiesgoAvanzadoView.as_view(), name='riesgo_avanzado'),
     path('estrategia/risk-contribution/', RiskContributionDetailView.as_view(), name='risk_contribution_detail'),
     path('estrategia/scenario-analysis/', ScenarioAnalysisDetailView.as_view(), name='scenario_analysis_detail'),
     path('estrategia/factor-exposure/', FactorExposureDetailView.as_view(), name='factor_exposure_detail'),
     path('estrategia/stress-fragility/', StressFragilityDetailView.as_view(), name='stress_fragility_detail'),
     path('estrategia/expected-return/', ExpectedReturnDetailView.as_view(), name='expected_return_detail'),
     path('planeacion/', PlaneacionView.as_view(), name='planeacion'),
+    path('planeacion/laboratorio/', LaboratorioView.as_view(), name='laboratorio'),
     path('planeacion/guardar-propuesta/', SavePreferredIncrementalProposalView.as_view(), name='save_incremental_proposal'),
     path('planeacion/promover-baseline/', PromoteIncrementalProposalBaselineView.as_view(), name='promote_incremental_baseline'),
     path('planeacion/promover-frente-backlog/', PromoteIncrementalBacklogFrontView.as_view(), name='promote_incremental_backlog_front'),
@@ -57,8 +61,5 @@ urlpatterns = [
     path('acciones/snapshot/', GenerateSnapshotView.as_view(), name='generate_snapshot'),
     path('acciones/benchmarks/', SyncBenchmarksView.as_view(), name='sync_benchmarks'),
     path('acciones/macro-local/', SyncLocalMacroView.as_view(), name='sync_local_macro'),
-    path('acciones/iol-historicos/', SyncIOLHistoricalPricesView.as_view(), name='sync_iol_historical_prices'),
-    path('acciones/iol-historicos-parciales/', SyncIOLHistoricalPricesPartialView.as_view(), name='sync_iol_historical_prices_partial'),
-    path('acciones/iol-historicos-reintentar-metadata/', SyncIOLHistoricalPricesRetryMetadataView.as_view(), name='sync_iol_historical_prices_retry_metadata'),
     path('acciones/iol-market-snapshot/', RefreshIOLMarketSnapshotView.as_view(), name='refresh_iol_market_snapshot'),
 ]

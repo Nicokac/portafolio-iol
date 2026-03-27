@@ -190,3 +190,29 @@ class TestPortfolioSnapshotService:
         service.api_client.get_estado_cuenta.side_effect = Exception('Network error')
         result = service.sync_iol_data()
         assert result["success"] is False
+
+    def test_extract_country_exposures_normalizes_absolute_amounts(self, service):
+        usa, argentina = service._extract_country_exposures(
+            {
+                'USA': 6428750.0,
+                'Argentina': 4223603.6742,
+                'Latam': 885150.0,
+                'Europa': 780020.0,
+            }
+        )
+
+        assert 0 <= usa <= 100
+        assert 0 <= argentina <= 100
+        assert usa == pytest.approx(52.1919, rel=1e-4)
+        assert argentina == pytest.approx(34.2863, rel=1e-4)
+
+    def test_extract_country_exposures_preserves_percentage_distribution(self, service):
+        usa, argentina = service._extract_country_exposures(
+            {
+                'USA': 60.0,
+                'Argentina': 40.0,
+            }
+        )
+
+        assert usa == 60.0
+        assert argentina == 40.0

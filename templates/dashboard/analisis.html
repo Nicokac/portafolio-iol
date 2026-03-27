@@ -1,17 +1,16 @@
-﻿{% extends 'base.html' %}
-{% block title %}Análisis - Portafolio IOL{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Centro analítico - Portafolio IOL{% endblock %}
 
 {% block content %}
 <section class="dashboard-hero mb-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
-            <h1 class="mb-1">Análisis de composición y riesgo</h1>
-            <p class="text-muted mb-0">Vista detallada para entender concentración, exposición y lectura de riesgo.</p>
+            <h1 class="mb-1">Centro analítico</h1>
+            <p class="text-muted mb-0">Composición, performance y métricas cuantitativas en una sola superficie para evitar saltar entre tres pantallas.</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{% url 'dashboard:performance' %}" class="btn btn-outline-primary">Centro de Performance</a>
-            <a href="{% url 'dashboard:metricas' %}" class="btn btn-outline-secondary">Centro de Métricas</a>
-            <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Ir a Estrategia</a>
+            <a href="{% url 'dashboard:estrategia' %}" class="btn btn-primary">Volver a Estrategia</a>
+            <a href="{% url 'dashboard:planeacion' %}" class="btn btn-outline-secondary">Ir a Planeación</a>
         </div>
     </div>
 </section>
@@ -21,23 +20,55 @@
         <div class="card-body py-3">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
-                    <h2 class="h5 mb-1">Mapa de análisis</h2>
-                    <p class="text-muted mb-0">Primero distribución visual. Después concentración y métricas de riesgo detallado.</p>
+                    <h2 class="h5 mb-1">Mapa del centro analítico</h2>
+                    <p class="text-muted mb-0">Primero composición y concentración. Después performance temporal. Al final ratios y trazabilidad cuantitativa.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-sm btn-outline-primary" href="#analisis-distribucion">Distribución</a>
-                    <a class="btn btn-sm btn-outline-warning" href="#analisis-concentracion">Concentración</a>
-                    <a class="btn btn-sm btn-outline-danger" href="#analisis-riesgo">Riesgo</a>
+                    <a class="btn btn-sm btn-outline-primary" href="#analisis-composicion">Composición</a>
+                    <a class="btn btn-sm btn-outline-danger" href="#analisis-performance">Performance</a>
+                    <a class="btn btn-sm btn-outline-dark" href="#analisis-metricas">Métricas</a>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<section id="analisis-distribucion" class="mb-3">
+<section class="mb-4">
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Bloque 1</div>
+                    <h2 class="h5">Composición y riesgo</h2>
+                    <p class="text-muted mb-0">Sesgos por sector, país y concentración del portafolio.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Bloque 2</div>
+                    <h2 class="h5">Performance temporal</h2>
+                    <p class="text-muted mb-0">Retornos, drawdown y comparación contra benchmark y contexto macro.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="small text-muted mb-2">Bloque 3</div>
+                    <h2 class="h5">Métricas cuantitativas</h2>
+                    <p class="text-muted mb-0">Volatilidad, Sharpe, tracking error e información de benchmarking.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="analisis-composicion" class="mb-3">
     <div class="border-start border-4 border-primary ps-3 mb-3">
-        <h2 class="mb-1">Distribución de la cartera</h2>
-        <p class="text-muted mb-0">Lectura visual de sector, país y tipo patrimonial para detectar sesgos de composición. Base principal: portafolio invertido.</p>
+        <h2 class="mb-1">Composición y concentración</h2>
+        <p class="text-muted mb-0">Lectura visual de sector, país, tipo patrimonial y señales de concentración. Base principal: portafolio invertido.</p>
     </div>
 </section>
 
@@ -62,7 +93,7 @@
     </div>
     <div class="col-lg-4">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Clasificación patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Clasificación patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo patrimonial</h5></div>
             <div class="card-body">
                 <div class="small text-muted mb-2">Base: Total IOL</div>
                 <div class="chart-container"><canvas id="tipoChart"></canvas></div>
@@ -71,24 +102,17 @@
     </div>
 </section>
 
-<section id="analisis-concentracion" class="mb-3">
-    <div class="border-start border-4 border-warning ps-3 mb-3">
-        <h2 class="mb-1">Concentración</h2>
-        <p class="text-muted mb-0">Foco en pesos altos por sector para detectar acumulación de riesgo.</p>
-    </div>
-</section>
-
 <section class="row g-3 mb-4">
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Ranking de sectores por peso relativo dentro de la cartera.">Concentración por Sector</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0">Concentración por sector</h5></div>
             <div class="card-body table-responsive">
                 <div class="small text-muted mb-2">Base: Portafolio Invertido</div>
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
                             <th>Sector</th>
-                            <th class="text-end"><span data-bs-toggle="tooltip" title="Peso relativo del sector dentro del total de la cartera.">Peso</span></th>
+                            <th class="text-end">Peso</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -107,9 +131,9 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-6" id="analisis-riesgo">
+    <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header bg-transparent"><h5 class="mb-0" data-bs-toggle="tooltip" title="Lectura resumida de exposición geográfica, estilo y sensibilidad de la cartera.">Riesgo Detallado</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0">Riesgo detallado</h5></div>
             <div class="card-body table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
@@ -122,8 +146,8 @@
                     <tbody>
                         <tr><td>% USA</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Argentina</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
-                        <tr><td data-bs-toggle="tooltip" title="Base: portafolio invertido. Incluye Tecnología, Tecnología / E-commerce y Tecnología / Semiconductores.">% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
-                        <tr><td data-bs-toggle="tooltip" title="Peso de la renta fija argentina dentro del portafolio invertido. Incluye soberanos, CER y corporativos AR.">% Renta fija AR</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_renta_fija_ar|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
+                        <tr><td>% Tech</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
+                        <tr><td>% Renta fija AR</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_renta_fija_ar|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Defensivo</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_defensivo|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Growth</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_growth|pct:1 }}</td><td class="text-end text-muted small">Portafolio Invertido</td></tr>
                         <tr><td>% Liquidez</td><td class="text-end">{{ riesgo_portafolio_detallado.pct_liquidez|pct:1 }}</td><td class="text-end text-muted small">Total IOL</td></tr>
@@ -134,27 +158,172 @@
     </div>
 </section>
 
+<section class="mb-5">
+    <div class="card">
+        <div class="card-header bg-transparent"><h5 class="mb-0">Vista agregada opcional de sectores</h5></div>
+        <div class="card-body table-responsive">
+            <div class="small text-muted mb-2">Base: Portafolio Invertido. Agrupa Tecnología, Tecnología / E-commerce y Tecnología / Semiconductores como Tecnología total.</div>
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Sector agregado</th>
+                        <th class="text-end">Peso</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sector, porcentaje in concentracion_sector_agregado.items %}
+                    <tr>
+                        <td>{{ sector }}</td>
+                        <td class="text-end">{{ porcentaje|pct:1 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section id="analisis-performance" class="mb-3">
+    <div class="border-start border-4 border-danger ps-3 mb-3">
+        <h2 class="mb-1">Performance temporal</h2>
+        <p class="text-muted mb-0">Retornos, drawdown y comparación temporal del portafolio sin salir del centro analítico.</p>
+    </div>
+</section>
+
+<section class="mb-4">
+    <div class="alert alert-light border mb-0">
+        <strong>Metodología breve.</strong>
+        <span class="text-muted">
+            Portafolio real = Total IOL deflactado por IPC.
+            BADLAR = referencia local de liquidez en ARS.
+            Benchmark compuesto = combinación por buckets del portafolio con referencias externas o locales según disponibilidad histórica.
+        </span>
+    </div>
+</section>
+
+<section class="mb-4">
+    <div class="alert alert-info mb-0">
+        <strong>Familia temporal.</strong>
+        <span class="text-muted">Este bloque muestra retornos temporales sobre patrimonio total. Para ganancia acumulada sobre costo invertido, usar el KPI de Resumen o Estrategia.</span>
+    </div>
+</section>
+
+<section class="mb-4 d-none" id="performance-fallback-wrap">
+    <div class="alert alert-warning mb-0" id="performance-fallback-text"></div>
+</section>
+
+<section class="mb-4 d-none" id="performance-history-wrap">
+    <div class="alert alert-warning mb-0" id="performance-history-text"></div>
+</section>
+
+<section class="row g-3 mb-4" id="performance-kpis">
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno temporal total</div><div class="h4 mb-0" id="ret-total">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR total</div><div class="h4 mb-0" id="ret-twr-total">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">TWR anualizado</div><div class="h4 mb-0" id="ret-twr-anual">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h4 mb-0" id="ret-real-ytd">-</div><div class="small text-muted" id="ret-real-ytd-note">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">IPC YTD</div><div class="h4 mb-0 text-warning-emphasis" id="ret-ipc-ytd">-</div></div></div></div>
+    <div class="col-md-4 col-xl-2"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h4 mb-0 text-danger" id="ret-max-dd">-</div><div class="small text-muted" id="ret-max-dd-real">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Drawdown histórico (365 días)</h5></div>
+            <div class="card-body"><div class="chart-container"><canvas id="drawdownChart"></canvas></div></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Drawdown actual</h5></div>
+            <div class="card-body">
+                <div class="display-6 {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}" id="ret-current-dd">-</div>
+                <p class="text-muted mb-0">Calculado sobre la serie de Total IOL.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="row g-3 mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header bg-transparent"><h5 class="mb-0">Vista agregada opcional de sectores</h5></div>
+            <div class="card-header bg-transparent"><h5 class="mb-0">Portafolio vs benchmark compuesto</h5></div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="benchmarkComparisonChart"></canvas></div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Bucket</th><th class="text-end">Peso</th><th>Referencia</th><th>Fuente</th><th>Frecuencia</th></tr></thead>
+                        <tbody id="benchmark-trace-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-5">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Portafolio vs inflación vs dólar</h5></div>
+            <div class="card-body">
+                <div class="chart-container"><canvas id="macroComparisonChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Comparación de retornos por ventana</h5></div>
             <div class="card-body table-responsive">
-                <div class="small text-muted mb-2">Base: Portafolio Invertido. Agrupa Tecnología, Tecnología / E-commerce y Tecnología / Semiconductores como Tecnología Total.</div>
                 <table class="table table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Sector agregado</th>
-                            <th class="text-end">Peso</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sector, porcentaje in concentracion_sector_agregado.items %}
-                        <tr>
-                            <td>{{ sector }}</td>
-                            <td class="text-end">{{ porcentaje|pct:1 }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    <thead><tr><th>Ventana</th><th class="text-end">Retorno</th><th class="text-end">Volatilidad</th></tr></thead>
+                    <tbody id="comparison-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="analisis-metricas" class="mb-3">
+    <div class="border-start border-4 border-dark ps-3 mb-3">
+        <h2 class="mb-1">Métricas cuantitativas</h2>
+        <p class="text-muted mb-0">Volatilidad, ratios, benchmarking y trazabilidad cuantitativa en el mismo centro.</p>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Volatilidad anualizada</div><div class="h4 mb-0" id="m-vol">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sharpe ratio</div><div class="h4 mb-0" id="m-sharpe">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Sharpe vs BADLAR</div><div class="h4 mb-0" id="m-sharpe-badlar">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Tracking error</div><div class="h4 mb-0" id="m-te">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Information ratio</div><div class="h3 mb-0" id="m-ir">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Retorno periodo</div><div class="h3 mb-0" id="m-ret">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">Real YTD</div><div class="h3 mb-0" id="m-real-ytd">-</div></div></div></div>
+    <div class="col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted small">BADLAR</div><div class="h3 mb-0" id="m-badlar">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso vs benchmark</div><div class="h3 mb-0" id="m-excess">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">IPC YTD</div><div class="h3 mb-0" id="m-ipc-ytd">-</div></div></div></div>
+    <div class="col-md-4"><div class="card h-100"><div class="card-body"><div class="text-muted small">Exceso YTD vs BADLAR</div><div class="h3 mb-0" id="m-excess-badlar">-</div></div></div></div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown</div><div class="h3 mb-0" id="m-max-dd">-</div></div></div></div>
+    <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="text-muted small">Max Drawdown real</div><div class="h3 mb-0" id="m-max-dd-real">-</div></div></div></div>
+</section>
+
+<section class="row g-3">
+    <div class="col-12 d-none" id="metrics-warning-wrap">
+        <div class="alert alert-warning mb-0" id="metrics-warning-text"></div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-transparent"><h5 class="mb-0">Detalle de métricas</h5></div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover">
+                    <tbody id="metrics-detail-body"></tbody>
                 </table>
             </div>
         </div>
@@ -201,8 +370,284 @@ function createPieChart(canvasId, data) {
     });
 }
 
+function formatPct(value) {
+    if (value === undefined || value === null) return '-';
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return '-';
+    const threshold = 0.01;
+    if (numericValue > 0 && numericValue < threshold) return '&lt; 0,01%';
+    if (numericValue < 0 && numericValue > -threshold) return '&gt; -0,01%';
+    return `${window.formatNumberAr(numericValue, 2)}%`;
+}
+
+function formatPctColored(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return '<span class="text-muted">N/D</span>';
+    const numericValue = Number(value);
+    const cls = numericValue >= 0 ? 'text-success' : 'text-danger';
+    return `<span class="${cls}">${formatPct(numericValue)}</span>`;
+}
+
+function formatPctOrNA(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return 'N/D';
+    return formatPct(Number(value));
+}
+
+function formatNum(value) {
+    if (value === undefined || value === null) return '-';
+    return window.formatNumberAr(value, 2);
+}
+
+function formatNumOrNA(value) {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return 'N/D';
+    return formatNum(Number(value));
+}
+
+function formatFallbackLabel(source) {
+    if (!source) return 'N/D';
+    if (source === 'iol_historical_prices_proxy') return 'Históricos IOL proxy';
+    if (source === 'evolucion_historica') return 'Evolución histórica';
+    return source;
+}
+
+function buildPartialHistoryMessage(returns) {
+    if (!returns || returns.robust_history_available) return '';
+    const health = returns.history_health || {};
+    const observations = Number(health.observations ?? returns.observations ?? 0);
+    const historySpanDays = Number(health.history_span_days ?? returns.history_span_days ?? 0);
+    const requestedDays = Number(health.requested_days ?? returns.requested_days ?? 0);
+    const robustMinDays = Number(health.robust_history_min_days ?? returns.robust_history_min_days ?? 0);
+    const parts = [
+        health.message || `Historia parcial: ${historySpanDays} días reales sobre ${requestedDays} solicitados.`,
+    ];
+    if (observations) parts.push(`Observaciones: ${observations}`);
+    if (robustMinDays) parts.push(`Mínimo robusto: ${robustMinDays} días`);
+    return parts.join(' | ');
+}
+
+function computeDrawdownSeries(values) {
+    let runningMax = -Infinity;
+    return values.map(v => {
+        runningMax = Math.max(runningMax, v);
+        if (runningMax <= 0) return 0;
+        return ((v / runningMax) - 1) * 100;
+    });
+}
+
+function hasInsufficientHistory(payload) {
+    return payload && payload.warning === 'insufficient_history';
+}
+
+function hasRobustHistory(returns) {
+    return !!(returns && returns.robust_history_available);
+}
+
+function hasInsufficientTwr(returns) {
+    return returns && (
+        (returns.warning === 'insufficient_history') ||
+        Number(returns.twr_periods || 0) < 2 ||
+        !returns.robust_history_available
+    );
+}
+
+function formatPctMetric(payload, key) {
+    if (hasInsufficientHistory(payload)) return 'Histórico insuficiente';
+    return formatPctOrNA(payload ? payload[key] : null);
+}
+
+function formatNumMetric(payload, key) {
+    if (hasInsufficientHistory(payload)) return 'Histórico insuficiente';
+    return formatNumOrNA(payload ? payload[key] : null);
+}
+
+function renderLineChart(canvasId, labels, datasets, yTickCallback = null) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: {
+                    ticks: yTickCallback ? { callback: yTickCallback } : {},
+                },
+            },
+            plugins: {
+                legend: { position: 'bottom' },
+            },
+        },
+    });
+}
+
+function loadAnalysisCenterData() {
+    Promise.all([
+        fetch('/api/metrics/returns/?days=365').then(r => r.json()),
+        fetch('/api/metrics/historical-comparison/?periods=7,30,90,180,365').then(r => r.json()),
+        fetch('/api/historical/evolution/?days=365').then(r => r.json()),
+        fetch('/api/metrics/macro-comparison/?days=365').then(r => r.json()),
+        fetch('/api/metrics/benchmark-curve/?days=365').then(r => r.json()),
+        fetch('/api/metrics/volatility/?days=365').then(r => r.json()),
+        fetch('/api/metrics/benchmarking/?days=365').then(r => r.json())
+    ]).then(([returns, comparison, evolution, macroComparison, benchmarkCurve, vol, bench]) => {
+        const partialHistoryMessage = buildPartialHistoryMessage(returns);
+        if (partialHistoryMessage) {
+            document.getElementById('performance-history-wrap').classList.remove('d-none');
+            document.getElementById('performance-history-text').textContent = `Guardrail temporal activo. ${partialHistoryMessage}`;
+        }
+
+        const fallbackTexts = [];
+        if (returns.fallback_source) fallbackTexts.push(`Retornos: ${formatFallbackLabel(returns.fallback_source)}`);
+        if (vol.fallback_source) fallbackTexts.push(`Volatilidad: ${formatFallbackLabel(vol.fallback_source)}`);
+        if (bench.fallback_source) fallbackTexts.push(`Benchmarking: ${formatFallbackLabel(bench.fallback_source)}`);
+        if (fallbackTexts.length) {
+            document.getElementById('performance-fallback-wrap').classList.remove('d-none');
+            document.getElementById('performance-fallback-text').textContent = `Fallback activo: ${fallbackTexts.join(' | ')}.`;
+        }
+
+        document.getElementById('ret-total').innerHTML = formatPctColored(returns.total_period_return);
+        document.getElementById('ret-twr-total').innerHTML = hasInsufficientTwr(returns) ? '<span class="text-warning-emphasis">Histórico insuficiente</span>' : formatPctColored(returns.twr_total_return);
+        document.getElementById('ret-twr-anual').innerHTML = hasInsufficientTwr(returns) ? '<span class="text-warning-emphasis">Histórico insuficiente</span>' : formatPctColored(returns.twr_annualized_return);
+        document.getElementById('ret-real-ytd').innerHTML = formatPctColored(returns.portfolio_return_ytd_real);
+        document.getElementById('ret-real-ytd-note').textContent = `Nominal YTD: ${formatPctOrNA(returns.portfolio_return_ytd_nominal)}`;
+        document.getElementById('ret-ipc-ytd').textContent = formatPctOrNA(returns.ipc_ytd);
+        document.getElementById('ret-max-dd').textContent = formatPctOrNA(returns.max_drawdown);
+        document.getElementById('ret-max-dd-real').textContent = `Real: ${formatPctOrNA(returns.max_drawdown_real)}`;
+        document.getElementById('ret-current-dd').textContent = formatPctOrNA(returns.current_drawdown || returns.max_drawdown);
+
+        const evolutionSeries = Array.isArray(evolution.series) ? evolution.series : [];
+        if (evolutionSeries.length) {
+            const labels = evolutionSeries.map(row => row.fecha || row.date || '');
+            const values = evolutionSeries.map(row => Number(row.total_iol || row.valor || 0));
+            renderLineChart(
+                'drawdownChart',
+                labels,
+                [{
+                    label: 'Drawdown',
+                    data: computeDrawdownSeries(values),
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220,53,69,0.15)',
+                    fill: true,
+                    tension: 0.2,
+                }],
+                (value) => `${window.formatNumberAr(value, 1)}%`
+            );
+        }
+
+        const benchmarkSeries = Array.isArray(benchmarkCurve.series) ? benchmarkCurve.series : [];
+        if (benchmarkSeries.length) {
+            const labels = benchmarkSeries.map(row => row.date || row.fecha || '');
+            renderLineChart('benchmarkComparisonChart', labels, [
+                {
+                    label: 'Portafolio',
+                    data: benchmarkSeries.map(row => Number(row.portfolio_index || row.portfolio || 0)),
+                    borderColor: '#0d6efd',
+                    tension: 0.2,
+                },
+                {
+                    label: 'Benchmark compuesto',
+                    data: benchmarkSeries.map(row => Number(row.benchmark_index || row.benchmark || 0)),
+                    borderColor: '#212529',
+                    tension: 0.2,
+                },
+            ]);
+        }
+
+        const benchmarkTrace = Array.isArray(bench.benchmark_trace) ? bench.benchmark_trace : (Array.isArray(benchmarkCurve.benchmark_trace) ? benchmarkCurve.benchmark_trace : []);
+        document.getElementById('benchmark-trace-body').innerHTML = benchmarkTrace.length
+            ? benchmarkTrace.map(row => `<tr><td>${row.bucket}</td><td class="text-end">${formatPctOrNA(row.weight)}</td><td>${row.reference || row.fallback_reference || 'N/D'}</td><td>${row.source || 'N/D'}</td><td>${row.frequency_used || 'N/D'}</td></tr>`).join('')
+            : '<tr><td colspan="5" class="text-muted">Sin trazabilidad disponible</td></tr>';
+
+        const macroSeries = Array.isArray(macroComparison.series) ? macroComparison.series : [];
+        if (macroSeries.length) {
+            const labels = macroSeries.map(row => row.date || row.fecha || '');
+            const datasets = [];
+            [
+                ['Portafolio nominal', 'portfolio_nominal_index', '#0d6efd'],
+                ['Portafolio real', 'portfolio_real_index', '#198754'],
+                ['USD oficial', 'usd_official_index', '#f59e0b'],
+                ['Inflación acumulada', 'ipc_index', '#6c757d'],
+            ].forEach(([label, key, color]) => {
+                if (macroSeries.some(row => row[key] !== undefined && row[key] !== null)) {
+                    datasets.push({ label, data: macroSeries.map(row => Number(row[key] || 0)), borderColor: color, tension: 0.2 });
+                }
+            });
+            if (datasets.length) {
+                renderLineChart('macroComparisonChart', labels, datasets);
+            }
+        }
+
+        const windows = Array.isArray(comparison.windows) ? comparison.windows : (Array.isArray(comparison.comparisons) ? comparison.comparisons : []);
+        document.getElementById('comparison-body').innerHTML = windows.length
+            ? windows.map(row => `<tr><td>${row.label || row.window || row.period || 'Ventana'}</td><td class="text-end">${formatPctOrNA(row.return || row.portfolio_return || row.total_return)}</td><td class="text-end">${formatPctOrNA(row.volatility || row.annualized_volatility)}</td></tr>`).join('')
+            : '<tr><td colspan="3" class="text-muted">Sin comparación temporal disponible</td></tr>';
+
+        const robustHistory = hasRobustHistory(returns);
+        document.getElementById('m-vol').textContent = robustHistory ? formatPctMetric(vol, 'annualized_volatility') : 'Histórico insuficiente';
+        document.getElementById('m-sharpe').textContent = robustHistory ? formatNumMetric(vol, 'sharpe_ratio') : 'Histórico insuficiente';
+        document.getElementById('m-sharpe-badlar').textContent = robustHistory ? formatNumMetric(vol, 'sharpe_ratio_badlar') : 'Histórico insuficiente';
+        document.getElementById('m-te').textContent = formatPctMetric(bench, 'tracking_error_annualized');
+        document.getElementById('m-ir').textContent = formatNumMetric(bench, 'information_ratio');
+        document.getElementById('m-ret').textContent = formatPctOrNA(returns.total_period_return);
+        document.getElementById('m-real-ytd').textContent = formatPctOrNA(returns.portfolio_return_ytd_real);
+        document.getElementById('m-badlar').textContent = formatPctOrNA(returns.badlar_privada);
+        document.getElementById('m-excess').textContent = formatPctOrNA(bench.excess_return_period);
+        document.getElementById('m-ipc-ytd').textContent = formatPctOrNA(returns.ipc_ytd);
+        document.getElementById('m-excess-badlar').textContent = formatPctOrNA(returns.portfolio_excess_ytd_vs_badlar);
+        document.getElementById('m-max-dd').textContent = formatPctOrNA(returns.max_drawdown);
+        document.getElementById('m-max-dd-real').textContent = formatPctOrNA(returns.max_drawdown_real);
+
+        const warningTexts = [];
+        if (partialHistoryMessage) warningTexts.push(`Retornos temporales (${partialHistoryMessage})`);
+        if (hasInsufficientHistory(vol) || !robustHistory) warningTexts.push('Volatilidad y ratios');
+        if (hasInsufficientHistory(bench)) warningTexts.push('Benchmarking');
+        if (warningTexts.length || fallbackTexts.length) {
+            document.getElementById('metrics-warning-wrap').classList.remove('d-none');
+            const parts = [];
+            if (warningTexts.length) parts.push(`Histórico insuficiente para calcular con robustez: ${warningTexts.join(', ')}.`);
+            if (fallbackTexts.length) parts.push(`Fallback activo: ${fallbackTexts.join(' | ')}.`);
+            document.getElementById('metrics-warning-text').textContent = parts.join(' ');
+        }
+
+        const detail = [
+            ['Retorno diario', formatPctOrNA(returns.daily_return)],
+            ['Retorno semanal', formatPctOrNA(returns.weekly_return)],
+            ['Retorno mensual', formatPctOrNA(returns.monthly_return)],
+            ['TWR total', formatPctOrNA(returns.twr_total_return)],
+            ['TWR anualizado', robustHistory ? formatPctOrNA(returns.twr_annualized_return) : 'Histórico insuficiente'],
+            ['Sharpe vs BADLAR', robustHistory ? formatNumMetric(vol, 'sharpe_ratio_badlar') : 'Histórico insuficiente'],
+            ['Sortino', robustHistory ? formatNumMetric(vol, 'sortino_ratio') : 'Histórico insuficiente'],
+            ['Real YTD', formatPctOrNA(returns.portfolio_return_ytd_real)],
+            ['Nominal YTD', formatPctOrNA(returns.portfolio_return_ytd_nominal)],
+            ['IPC YTD', formatPctOrNA(returns.ipc_ytd)],
+            ['BADLAR', formatPctOrNA(returns.badlar_privada)],
+            ['BADLAR YTD', formatPctOrNA(returns.badlar_ytd)],
+            ['Exceso YTD vs BADLAR', formatPctOrNA(returns.portfolio_excess_ytd_vs_badlar)],
+            ['Max Drawdown', formatPctOrNA(returns.max_drawdown)],
+            ['Max Drawdown real', formatPctOrNA(returns.max_drawdown_real)],
+            ['Portfolio return period', formatPctOrNA(bench.portfolio_return_period)],
+            ['Benchmark return period', formatPctOrNA(bench.benchmark_return_period)],
+            ['Tracking error', formatPctMetric(bench, 'tracking_error_annualized')],
+            ['Information ratio', formatNumMetric(bench, 'information_ratio')],
+            ['Frecuencia benchmark usada', bench.benchmark_frequency_used || 'N/D'],
+            ['Fallback retornos', formatFallbackLabel(returns.fallback_source)],
+            ['Fallback volatilidad', formatFallbackLabel(vol.fallback_source)],
+            ['Fallback benchmarking', formatFallbackLabel(bench.fallback_source)],
+        ];
+        document.getElementById('metrics-detail-body').innerHTML = detail.map(([k, v]) => `<tr><td>${k}</td><td class="text-end">${v}</td></tr>`).join('');
+    }).catch(() => {
+        document.getElementById('metrics-detail-body').innerHTML = '<tr><td colspan="2" class="text-danger">Error cargando métricas</td></tr>';
+        document.getElementById('benchmark-trace-body').innerHTML = '<tr><td colspan="5" class="text-danger">Error cargando benchmark</td></tr>';
+        document.getElementById('performance-fallback-wrap').classList.remove('d-none');
+        document.getElementById('performance-fallback-text').textContent = 'Error al cargar datos del centro analítico.';
+    });
+}
+
 createPieChart('sectorChart', sectorData);
 createPieChart('paisChart', paisData);
 createPieChart('tipoChart', tipoData);
+loadAnalysisCenterData();
 </script>
 {% endblock %}

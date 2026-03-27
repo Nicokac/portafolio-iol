@@ -5,24 +5,25 @@
 <h1>Estrategia del Portafolio</h1>
 
 <div class="alert alert-info mb-4">
-    <strong>Bases de Cálculo:</strong>
+    <strong>Como leer esta hoja:</strong>
     <ul class="mb-0 mt-2">
-        <li><strong>Total patrimonio modelado:</strong> Capital invertido analizado + caucion colocada + FCI cash management + cash disponible broker</li>
-        <li><strong>Capital invertido analizado:</strong> Solo activos de inversion; excluye cash real y FCI cash management</li>
-        <li><strong>Métricas de composición:</strong> Porcentajes calculados sobre la base informada en cada bloque</li>
-        <li><strong>Liquidez operativa:</strong> Solo cash real disponible en broker</li><li><strong>Liquidez estrategica:</strong> FCI cash management facilmente desplegable, pero ya invertido</li><li><strong>Liquidez total combinada:</strong> Liquidez operativa + liquidez estrategica sobre el total modelado</li>
+        <li><strong>Total patrimonio modelado:</strong> capital invertido analizado + caucion colocada + FCI cash management + cash disponible broker.</li>
+        <li><strong>Capital invertido analizado:</strong> solo activos de inversion; excluye cash real y FCI cash management.</li>
+        <li><strong>Liquidez operativa:</strong> solo cash real disponible.</li>
+        <li><strong>Liquidez estrategica:</strong> FCI cash management ya invertido pero facilmente desplegable.</li>
+        <li><strong>Liquidez total combinada:</strong> liquidez operativa + liquidez estrategica sobre el total modelado.</li>
     </ul>
 </div>
 
 <div class="card border-0 bg-light mb-4">
     <div class="card-body py-3">
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="text-muted small me-2">Navegación rápida:</span>
+            <span class="text-muted small me-2">Navegacion rapida:</span>
             <a class="btn btn-sm btn-outline-primary" href="#lectura-portafolio">Lectura del portafolio</a>
             <a class="btn btn-sm btn-outline-success" href="#lectura-ejecutiva">Resumen ejecutivo</a>
             <a class="btn btn-sm btn-outline-warning" href="#lectura-riesgo">Riesgo y calidad</a>
-            <a class="btn btn-sm btn-outline-dark" href="#posiciones-portafolio">Posiciones completas</a>
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:planeacion' %}">Ir a Planeación</a>
+            <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:cartera_detalle' %}">Cartera detallada</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:planeacion' %}">Ir a Planeacion</a>
         </div>
     </div>
 </div>
@@ -30,7 +31,7 @@
 <section id="lectura-portafolio" class="mb-4">
     <div class="border-start border-4 border-primary ps-3 mb-4">
         <h2 class="mb-1">Lectura del portafolio</h2>
-        <p class="text-muted mb-0">Composición, riesgo, concentración, señales de rebalanceo y evolución histórica para entender el estado actual de la cartera.</p>
+        <p class="text-muted mb-0">Composicion, riesgo, concentracion, senales de rebalanceo y evolucion historica para entender el estado actual de la cartera sin entrar al inventario completo.</p>
     </div>
 </section>
 
@@ -39,29 +40,39 @@
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h3 class="h5 mb-1">Resumen ejecutivo</h3>
-                <p class="text-muted mb-0">Primero lectura rápida del tamaño, liquidez, retorno y concentración antes de bajar al detalle operativo.</p>
+                <p class="text-muted mb-0">Primero lectura rapida del tamano, liquidez, retorno y concentracion antes de bajar a herramientas de decision o detalle de cartera.</p>
             </div>
-            <span class="badge text-bg-primary">Vista analítica</span>
+            <span class="badge text-bg-primary">Vista ejecutiva</span>
         </div>
     </div>
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Patrimonio total modelado para lectura estrategica: capital invertido analizado + caucion colocada + FCI cash management + cash disponible broker.">Total patrimonio modelado</h6><h4 class="card-text text-primary">{{ kpis.total_patrimonio_modelado|currency:0 }}</h4><small class="text-muted">Invertido + caucion + FCI + cash broker</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Porcentaje del portafolio invertido explicado por las 10 posiciones de inversión más grandes. Excluye liquidez operativa y cash management.">Top 10 Concentración</h6><h4 class="card-text text-danger">{{ kpis.top_10_concentracion|pct:1 }}</h4><small class="text-muted">Base: Portafolio Invertido</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Familia: acumulado sobre costo invertido. Mide ganancia acumulada del portafolio invertido sobre costo estimado. No es un retorno temporal del patrimonio total.">Rendimiento acumulado invertido</h6><h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|pct:2 }}</h4><small class="text-muted">Familia acumulada · retornos temporales en Performance</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted" data-bs-toggle="tooltip" title="Desvío estándar anualizado sobre retornos diarios netos de flujos. Si la cobertura histórica no alcanza, el sistema no la presenta como métrica robusta.">Proxy preliminar de volatilidad</h6>{% if riesgo_portafolio.volatilidad_estimada is not None %}<h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|pct:1 }}</h4><small class="text-muted">Retornos netos de flujos</small>{% else %}<h4 class="card-text text-warning">Histórico insuficiente</h4><small class="text-muted">No confiable todavía</small>{% endif %}{% if snapshot_coverage.status != 'ok' %}<div class="small text-warning-emphasis mt-2">Cobertura insuficiente: {{ snapshot_coverage.snapshots_count }} snapshots / {{ snapshot_coverage.requested_days }} días</div>{% endif %}</div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Total patrimonio modelado</h6><h4 class="card-text text-primary">{{ kpis.total_patrimonio_modelado|currency:0 }}</h4><small class="text-muted">Invertido + caucion + FCI + cash broker</small></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Top 10 Concentracion</h6><h4 class="card-text text-danger">{{ kpis.top_10_concentracion|pct:1 }}</h4><small class="text-muted">Base: Portafolio Invertido</small></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Rendimiento acumulado invertido</h6><h4 class="card-text {% if kpis.rendimiento_total_porcentaje >= 0 %}text-success{% else %}text-danger{% endif %}">{{ kpis.rendimiento_total_porcentaje|pct:2 }}</h4><small class="text-muted">Familia acumulada</small></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-body text-center"><h6 class="card-title text-muted">Volatilidad estimada</h6>{% if riesgo_portafolio.volatilidad_estimada is not None %}<h4 class="card-text text-warning">{{ riesgo_portafolio.volatilidad_estimada|pct:1 }}</h4><small class="text-muted">Retornos netos de flujos</small>{% else %}<h4 class="card-text text-warning">Historico insuficiente</h4><small class="text-muted">No confiable todavia</small>{% endif %}</div></div></div>
 </div>
 
 <div class="mb-4">
-    {% if kpis.top_10_concentracion > 70 %}<span class="badge bg-danger me-2">Riesgo alto: concentración Top 10 > 70%</span>{% endif %}
+    {% if kpis.top_10_concentracion > 70 %}<span class="badge bg-danger me-2">Riesgo alto: concentracion Top 10 > 70%</span>{% endif %}
     {% if kpis.pct_liquidez_operativa < 10 %}<span class="badge bg-warning text-dark me-2">Liquidez operativa baja: menor al 10%</span>{% endif %}
-    {% if riesgo_portafolio.stress_worst_case_pct and riesgo_portafolio.stress_worst_case_pct < -10 %}<span class="badge bg-danger me-2">Stress severo: escenario peor a -10%</span>{% endif %}
+    {% if riesgo_portafolio.stress_worst_case_pct and riesgo_portafolio.stress_worst_case_pct < -10 %}<span class="badge bg-danger me-2">Fragilidad alta: escenario peor a -10%</span>{% endif %}
     {% if snapshot_coverage.status != 'ok' %}<span class="badge bg-warning text-dark me-2">Historia de snapshots insuficiente para riesgo robusto</span>{% endif %}
 </div>
 
 <section class="mb-4">
-    {% include 'dashboard/market_snapshot_panel.html' with title='Capa operativa puntual' subtitle='CotizacionDetalle como lectura táctica de operabilidad, spread y actividad sobre las principales posiciones invertidas.' row_limit=':6' panel_mode='detailed' %}
+    <div class="card border-0 bg-info-subtle">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h3 class="h5 mb-1">Cartera detallada y capa operativa</h3>
+                    <p class="text-muted mb-0">El inventario completo, la lectura tactica de operabilidad y el detalle por posicion viven ahora en una vista separada para no romper la lectura ejecutiva.</p>
+                </div>
+                <a class="btn btn-outline-dark" href="{% url 'dashboard:cartera_detalle' %}">Abrir cartera detallada</a>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section class="mb-4">
@@ -70,460 +81,81 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                 <div>
                     <h3 class="h5 mb-1">Analytics v2</h3>
-                    <p class="text-muted mb-0">Capa explicativa para leer contribución al riesgo, escenarios, factores, fragilidad y retorno esperado estructural.</p>
+                    <p class="text-muted mb-0">Sintesis ejecutiva de riesgo, escenarios, factores, fragilidad y retorno esperado, sin fragmentar la lectura en multiples modulos.</p>
                 </div>
-                <span class="badge text-bg-dark">Integración MVP</span>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge text-bg-dark">Integracion MVP</span>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:riesgo_avanzado' %}">Abrir riesgo avanzado</a>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<div class="row mb-4">
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Activo con mayor contribución relativa al riesgo. Usa el modelo proxy MVP por defecto y activa covarianza solo con al menos 20 observaciones diarias, 3 activos cubiertos y 80% de cobertura del portafolio invertido.">Risk Contribution</div>
-                <div class="h5 mb-1">{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</div>
-                <div class="small text-body-secondary">
-                    {% if analytics_v2_summary.risk_contribution.top_asset %}
-                    {{ analytics_v2_summary.risk_contribution.top_asset.contribution_pct|pct:1 }} del riesgo proxy
-                    {% else %}
-                    Sin datos
-                    {% endif %}
-                </div>
-                <div class="small mt-2">
-                    <span class="badge {% if analytics_v2_summary.risk_contribution.confidence == 'high' %}bg-success{% elif analytics_v2_summary.risk_contribution.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.risk_contribution.confidence }}</span>
-                </div>
-                <div class="small text-body-secondary mt-2">
-                    {% if analytics_v2_summary.risk_contribution.model_variant == 'covariance_aware' %}
-                    Covarianza activa · {{ analytics_v2_summary.risk_contribution.covariance_observations }} obs · {{ analytics_v2_summary.risk_contribution.coverage_pct|floatformat:0 }}% cobertura
-                    {% else %}
-                    Proxy MVP · covarianza no activa ({{ analytics_v2_summary.risk_contribution.covariance_observations }} obs, {{ analytics_v2_summary.risk_contribution.coverage_pct|floatformat:0 }}% cobertura)
-                    {% endif %}
-                </div>
-                <div class="mt-3">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:risk_contribution_detail' %}">Ver detalle</a>
-                </div>
-                {% if analytics_v2_summary.risk_contribution.interpretation %}
-                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.risk_contribution.interpretation }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Impacto heurístico estimado bajo shocks cerrados del MVP. Se muestra el más adverso entre stress Argentina y shock tech.">Scenario Analysis</div>
-                <div class="h5 mb-1">{{ analytics_v2_summary.scenario_analysis.worst_label }}</div>
-                <div class="small text-body-secondary">
-                    Arg: {{ analytics_v2_summary.scenario_analysis.argentina_stress_pct|pct:1 }} | Tech: {{ analytics_v2_summary.scenario_analysis.tech_shock_pct|pct:1 }}
-                </div>
-                <div class="small mt-2">
-                    <span class="badge {% if analytics_v2_summary.scenario_analysis.confidence == 'high' %}bg-success{% elif analytics_v2_summary.scenario_analysis.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.scenario_analysis.confidence }}</span>
-                </div>
-                <div class="mt-3">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:scenario_analysis_detail' %}">Ver detalle</a>
-                </div>
-                {% if analytics_v2_summary.scenario_analysis.interpretation %}
-                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.scenario_analysis.interpretation }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Factor o estilo dominante dentro del universo clasificado del portafolio.">Factor Exposure</div>
-                <div class="h5 mb-1">{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"N/D"|title }}</div>
-                <div class="small text-body-secondary">
-                    {% if analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct is not None %}
-                    {{ analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct|pct:1 }} clasificado
-                    {% else %}
-                    Sin datos
-                    {% endif %}
-                </div>
-                <div class="small mt-2">
-                    <span class="badge {% if analytics_v2_summary.factor_exposure.confidence == 'high' %}bg-success{% elif analytics_v2_summary.factor_exposure.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.factor_exposure.confidence }}</span>
-                </div>
-                <div class="mt-3">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:factor_exposure_detail' %}">Ver detalle</a>
-                </div>
-                {% if analytics_v2_summary.factor_exposure.interpretation %}
-                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.factor_exposure.interpretation }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Fragilidad heurística frente a stress extremo local severo. Resume pérdida estimada, concentración de daño y amortiguación por liquidez.">Stress Testing</div>
-                <div class="h5 mb-1">{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</div>
-                <div class="small text-body-secondary">
-                    Loss {{ analytics_v2_summary.stress_testing.total_loss_pct|pct:1 }}
-                </div>
-                <div class="small mt-2">
-                    <span class="badge {% if analytics_v2_summary.stress_testing.confidence == 'high' %}bg-success{% elif analytics_v2_summary.stress_testing.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.stress_testing.confidence }}</span>
-                </div>
-                <div class="mt-3">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:stress_fragility_detail' %}">Ver detalle</a>
-                </div>
-                {% if analytics_v2_summary.stress_testing.interpretation %}
-                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.stress_testing.interpretation }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Referencia estructural de retorno esperado por buckets. No es un forecast preciso.">Expected Return Simple</div>
-                <div class="h5 mb-1">
-                    {% if analytics_v2_summary.expected_return.expected_return_pct is not None %}
-                    {{ analytics_v2_summary.expected_return.expected_return_pct|pct:1 }}
-                    {% else %}
-                    N/D
-                    {% endif %}
-                </div>
-                <div class="small text-body-secondary">
-                    Real:
-                    {% if analytics_v2_summary.expected_return.real_expected_return_pct is not None %}
-                    {{ analytics_v2_summary.expected_return.real_expected_return_pct|pct:1 }}
-                    {% else %}
-                    N/D
-                    {% endif %}
-                </div>
-                <div class="small mt-2">
-                    <span class="badge {% if analytics_v2_summary.expected_return.confidence == 'high' %}bg-success{% elif analytics_v2_summary.expected_return.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.expected_return.confidence }}</span>
-                </div>
-                <div class="mt-3">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard:expected_return_detail' %}">Ver detalle</a>
-                </div>
-                {% if analytics_v2_summary.expected_return.interpretation %}
-                <div class="small text-body-secondary mt-3">{{ analytics_v2_summary.expected_return.interpretation }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 col-xl mb-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <div class="text-muted small" data-bs-toggle="tooltip" title="Lectura local simple usando BADLAR, IPC, composición argentina actual y, si existe la serie, brecha entre dólar oficial y MEP.">Macro Local</div>
-                <div class="h5 mb-1">
-                    {% if analytics_v2_summary.local_macro.fx_signal_state %}
-                    {{ analytics_v2_summary.local_macro.fx_signal_state|title }}
-                    {% else %}
-                    N/D
-                    {% endif %}
-                </div>
-                <div class="small text-body-secondary">
-                    FX: {% if analytics_v2_summary.local_macro.fx_gap_pct is not None %}{{ analytics_v2_summary.local_macro.fx_gap_pct|pct:1 }}{% else %}N/D{% endif %} | UVA: {% if analytics_v2_summary.local_macro.uva_annualized_pct_30d is not None %}{{ analytics_v2_summary.local_macro.uva_annualized_pct_30d|pct:1 }}{% else %}N/D{% endif %} | RP: {% if analytics_v2_summary.local_macro.riesgo_pais_arg is not None %}{{ analytics_v2_summary.local_macro.riesgo_pais_arg|floatformat:0 }}{% else %}N/D{% endif %}
-                </div>
-                <div class="small mt-2">
-                    <span class="badge {% if analytics_v2_summary.local_macro.confidence == 'high' %}bg-success{% elif analytics_v2_summary.local_macro.confidence == 'medium' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ analytics_v2_summary.local_macro.confidence|default:"low" }}</span>
-                </div>
-            </div>
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Lectura</th>
+                        <th>Dato principal</th>
+                        <th>Interpretacion corta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Activo que mas explica el riesgo</strong></td>
+                        <td>{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"N/D" }}</td>
+                        <td>{% if analytics_v2_summary.risk_contribution.top_asset %}{{ analytics_v2_summary.risk_contribution.top_asset.contribution_pct|pct:1 }} del riesgo proxy{% else %}Sin datos suficientes{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Escenario mas adverso</strong></td>
+                        <td>{{ analytics_v2_summary.scenario_analysis.worst_label }}</td>
+                        <td>Arg: {{ analytics_v2_summary.scenario_analysis.argentina_stress_pct|pct:1 }} | Tech: {{ analytics_v2_summary.scenario_analysis.tech_shock_pct|pct:1 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Factor dominante</strong></td>
+                        <td>{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"N/D"|title }}</td>
+                        <td>{% if analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct is not None %}{{ analytics_v2_summary.factor_exposure.dominant_factor_exposure_pct|pct:1 }} clasificado{% else %}Sin datos suficientes{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fragilidad ante stress</strong></td>
+                        <td>{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</td>
+                        <td>Loss {{ analytics_v2_summary.stress_testing.total_loss_pct|pct:1 }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Retorno estructural</strong></td>
+                        <td>{% if analytics_v2_summary.expected_return.expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</td>
+                        <td>Real: {% if analytics_v2_summary.expected_return.real_expected_return_pct is not None %}{{ analytics_v2_summary.expected_return.real_expected_return_pct|pct:1 }}{% else %}N/D{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Macro local</strong></td>
+                        <td>{% if analytics_v2_summary.local_macro.fx_signal_state %}{{ analytics_v2_summary.local_macro.fx_signal_state|title }}{% else %}N/D{% endif %}</td>
+                        <td>Estado FX, UVA anualizada 30d y riesgo pais</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-lg-6 mb-3">
-        <h3 data-bs-toggle="tooltip" title="Resumen de los outputs analíticos de Analytics v2 listos para consumo por dashboard.">Resumen Analytics v2</h3>
-        <div class="card">
-            <div class="card-body">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr>
-                            <td><strong>Top activo por riesgo</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.risk_contribution.top_asset.symbol|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Top sector por riesgo</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.risk_contribution.top_sector.key|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Modelo de riesgo</strong></td>
-                            <td class="text-end">{% if analytics_v2_summary.risk_contribution.model_variant == 'covariance_aware' %}Covarianza activa{% else %}Proxy MVP{% endif %}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Factor dominante</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.factor_exposure.dominant_factor|default:"-"|title }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Assets unknown en factores</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.factor_exposure.unknown_assets_count }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Fragilidad crisis local</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.stress_testing.fragility_score|floatformat:0 }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Warnings retorno esperado</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.expected_return.warnings_count }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Carry real BADLAR</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.badlar_real_carry_pct is not None %}
-                                {{ analytics_v2_summary.local_macro.badlar_real_carry_pct|pct:1 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Cobertura CER</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.local_macro.cer_weight_pct|default:0|pct:1 }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Brecha FX</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.fx_gap_pct is not None %}
-                                {{ analytics_v2_summary.local_macro.fx_gap_pct|pct:1 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>CCL</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.usdars_ccl is not None %}
-                                {{ analytics_v2_summary.local_macro.usdars_ccl|floatformat:2 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Estado FX</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.local_macro.fx_signal_state|default:"-"|title }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Spread MEP / CCL</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.fx_mep_ccl_spread_pct is not None %}
-                                {{ analytics_v2_summary.local_macro.fx_mep_ccl_spread_pct|pct:1 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Riesgo pais</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.riesgo_pais_arg is not None %}
-                                {{ analytics_v2_summary.local_macro.riesgo_pais_arg|floatformat:0 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>UVA anualizada 30d</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.uva_annualized_pct_30d is not None %}
-                                {{ analytics_v2_summary.local_macro.uva_annualized_pct_30d|pct:1 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Tasa real BADLAR vs UVA</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.real_rate_badlar_vs_uva_30d is not None %}
-                                {{ analytics_v2_summary.local_macro.real_rate_badlar_vs_uva_30d|pct:1 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Peso soberano local</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.local_macro.sovereign_bond_weight_pct|default:0|pct:1 }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Nombres soberanos</strong></td>
-                            <td class="text-end">{{ analytics_v2_summary.local_macro.local_sovereign_symbols_count|default:0 }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Top soberano local</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.top_local_sovereign_symbol %}
-                                {{ analytics_v2_summary.local_macro.top_local_sovereign_symbol }} ({{ analytics_v2_summary.local_macro.top_local_sovereign_share_pct|default:0|pct:0 }} bloque)
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Concentración bloque soberano</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.local_sovereign_concentration_hhi is not None %}
-                                HHI {{ analytics_v2_summary.local_macro.local_sovereign_concentration_hhi|floatformat:0 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Split hard dollar / CER</strong></td>
-                            <td class="text-end">
-                                {% if analytics_v2_summary.local_macro.local_hard_dollar_share_pct is not None %}
-                                {{ analytics_v2_summary.local_macro.local_hard_dollar_share_pct|default:0|pct:0 }} / {{ analytics_v2_summary.local_macro.local_cer_share_pct|default:0|pct:0 }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<section id="lectura-riesgo" class="mb-4">
+    <div class="border-start border-4 border-warning ps-3 mb-3">
+        <h2 class="mb-1">Riesgo y calidad</h2>
+        <p class="text-muted mb-0">Senales sinteticas para decidir si conviene rebalancear, esperar o profundizar el analisis.</p>
     </div>
-    <div class="col-lg-6 mb-3">
-        <h3 data-bs-toggle="tooltip" title="Señales reutilizables producidas por los módulos Analytics v2, ordenadas por severidad.">Señales Analytics v2</h3>
-        <div class="card">
-            <div class="card-body">
-                {% if analytics_v2_summary.signals %}
-                <div class="list-group list-group-flush">
-                    {% for signal in analytics_v2_summary.signals %}
-                    <div class="list-group-item px-0">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-semibold">{{ signal.title }}</div>
-                                <div class="small text-muted">{{ signal.description }}</div>
-                            </div>
-                            <span class="badge {% if signal.severity == 'high' %}bg-danger{% elif signal.severity == 'medium' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ signal.severity }}</span>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-muted">Sin señales activas en Analytics v2.</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
 <div class="row mb-4">
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-header bg-success text-white"><h6 class="mb-0" data-bs-toggle="tooltip" title="Cash real disponible en broker. Incluye saldos ARS/USD y no trata FCI cash management como dinero en cuenta.">Liquidez Operativa</h6><small>Cash real disponible</small></div><div class="card-body text-center"><h4 class="card-text text-success">{{ kpis.cash_disponible_broker|currency:0 }}</h4><small class="text-muted">{{ kpis.pct_liquidez_operativa|pct:1 }} del total modelado</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-header bg-warning text-dark"><h6 class="mb-0" data-bs-toggle="tooltip" title="Saldos a liquidar provenientes de estadocuenta. No son cash inmediato, pero forman parte del capital broker que entra en próximas liquidaciones.">Cash a liquidar</h6><small>No inmediato</small></div><div class="card-body text-center"><h4 class="card-text text-warning-emphasis">{{ kpis.cash_a_liquidar_broker|currency:0 }}</h4><small class="text-muted">Saldos próximos a liquidar</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-header bg-secondary text-white"><h6 class="mb-0" data-bs-toggle="tooltip" title="Caucion colocada como liquidez tactica. No es cash real en broker, pero tampoco se interpreta como capital de riesgo.">Caucion Colocada</h6><small>Liquidez tactica</small></div><div class="card-body text-center"><h4 class="card-text text-secondary">{{ kpis.caucion_colocada|currency:0 }}</h4><small class="text-muted">{{ kpis.pct_caucion_colocada|pct:1 }} del total modelado</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-header bg-info text-white"><h6 class="mb-0" data-bs-toggle="tooltip" title="Fondos liquidos ya invertidos en cash management. Son facilmente desplegables, pero no son cash directo en broker.">Liquidez Estrategica</h6><small>FCI cash management</small></div><div class="card-body text-center"><h4 class="card-text text-info">{{ kpis.liquidez_estrategica|currency:0 }}</h4><small class="text-muted">{{ kpis.pct_liquidez_estrategica|pct:1 }} del total modelado</small></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card h-100"><div class="card-header bg-primary text-white"><h6 class="mb-0" data-bs-toggle="tooltip" title="Capital desplegado en activos de riesgo analizados. Excluye cash real, caucion y FCI cash management.">Capital Invertido Analizado</h6><small>Activos de inversion</small></div><div class="card-body text-center"><h4 class="card-text text-primary">{{ kpis.portafolio_invertido|currency:0 }}</h4><small class="text-muted">{{ kpis.pct_portafolio_invertido_modelado|pct:1 }} del total modelado</small></div></div></div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-4">
-        <h3 data-bs-toggle="tooltip" title="Agrupación sectorial pura del capital invertido. Excluye liquidez operativa, cash management y cash disponible.">Distribución sectorial del capital invertido</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Portafolio Invertido</small>
-        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="sector-distribution-body"></tbody></table></div></div>
-    </div>
-    <div class="col-md-4">
-        <h3 data-bs-toggle="tooltip" title="País o región económica subyacente del activo, no necesariamente la plaza donde cotiza. Esta vista usa solo el portafolio invertido.">Exposición geográfica real</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Portafolio Invertido</small>
-        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="pais-distribution-body"></tbody></table></div></div>
-    </div>
-    <div class="col-md-4">
-        <h3 data-bs-toggle="tooltip" title="Distribución patrimonial total del capital desplegado entre cash, equity, bonos, ETF y FCI.">Distribución patrimonial total</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Activos valorizados</small>
-        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="tipo-distribution-body"></tbody></table></div></div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6">
-        <h3 data-bs-toggle="tooltip" title="La misma exposición geográfica, pero sobre Total IOL. Incluye liquidez operativa, cash management y cash disponible asignados por país económico.">Exposición geográfica real</h3>
-        <small class="text-muted mb-3 d-block">Base de cálculo: Total IOL</small>
-        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="pais-total-iol-distribution-body"></tbody></table></div></div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6">
-        <h3 data-bs-toggle="tooltip" title="Moneda de riesgo económico del activo. Un CEDEAR puede cotizar en ARS pero tener exposición económica en USD.">Exposición por Moneda Económica</h3>
-        <small class="text-muted mb-3 d-block">Exposición real del activo</small>
-        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="moneda-distribution-body"></tbody></table></div></div>
-    </div>
-    <div class="col-md-6">
-        <h3 data-bs-toggle="tooltip" title="Moneda en la que operás o ves cotizar la posición dentro de la cuenta.">Exposición por Moneda Operativa</h3>
-        <small class="text-muted mb-3 d-block">Moneda de cotización</small>
-        <div class="card"><div class="card-body table-responsive"><table class="table table-sm mb-0"><tbody id="moneda-operativa-distribution-body"></tbody></table></div></div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6">
-        <h3 data-bs-toggle="tooltip" title="Lectura complementaria sobre CEDEARs usando el MEP implícito por símbolo informado por IOL. No reemplaza la valuación patrimonial base.">Lectura USD implícita por MEP</h3>
-        <small class="text-muted mb-3 d-block">Capa táctica ARS/USD para CEDEARs</small>
-        <div class="card"><div class="card-body">
-            {% if implicit_fx_summary.total_positions_count > 0 %}
-            <table class="table table-sm mb-0"><tbody>
-                <tr><td><strong>CEDEARs relevados</strong></td><td class="text-end">{{ implicit_fx_summary.total_positions_count }}</td></tr>
-                <tr><td><strong>CEDEARs cubiertos</strong></td><td class="text-end">{{ implicit_fx_summary.covered_positions_count }}</td></tr>
-                <tr><td><strong>Cobertura MEP</strong></td><td class="text-end">{{ implicit_fx_summary.coverage_pct|pct:1 }}</td></tr>
-                <tr><td><strong>Valor cubierto ARS</strong></td><td class="text-end">{{ implicit_fx_summary.covered_value_ars|currency:2 }}</td></tr>
-                <tr><td><strong>USD implícitos</strong></td><td class="text-end">{{ implicit_fx_summary.implied_usd_value|floatformat:2 }}</td></tr>
-                <tr><td><strong>MEP ponderado</strong></td><td class="text-end">{% if implicit_fx_summary.weighted_mep is not None %}{{ implicit_fx_summary.weighted_mep|currency:2 }}{% else %}-{% endif %}</td></tr>
-            </tbody></table>
-            {% else %}
-            <div class="text-muted">No hay CEDEARs relevantes para calcular una lectura MEP implícita.</div>
-            {% endif %}
-        </div></div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div id="lectura-riesgo" class="mb-2"></div>
-        <h3>Riesgo del Portafolio</h3>
-        <div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>
-            <tr><td><strong>% USA</strong></td><td class="text-end">{{ riesgo_portafolio_detallado.pct_usa|pct:1 }}</td></tr>
-            <tr><td><strong>% Argentina</strong></td><td class="text-end">{{ riesgo_portafolio_detallado.pct_argentina|pct:1 }}</td></tr>
-            <tr><td><strong>% Tech</strong></td><td class="text-end">{{ riesgo_portafolio_detallado.pct_tech|pct:1 }}</td></tr>
-            <tr><td><strong data-bs-toggle="tooltip" title="Peso de la renta fija argentina dentro del portafolio invertido. Incluye soberanos, CER y corporativos AR.">% Renta fija AR</strong></td><td class="text-end">{{ riesgo_portafolio_detallado.pct_renta_fija_ar|pct:1 }}</td></tr>
-            {% if riesgo_portafolio.tracking_error_annualized is not None %}<tr><td><strong data-bs-toggle="tooltip" title="Desvío anualizado del retorno activo frente al benchmark compuesto. Cuanto más alto, más se aparta la cartera de su referencia.">Tracking Error</strong></td><td class="text-end">{{ riesgo_portafolio.tracking_error_annualized|pct:2 }}</td></tr>{% endif %}
-            {% if riesgo_portafolio.information_ratio is not None %}<tr><td><strong data-bs-toggle="tooltip" title="Retorno activo por unidad de tracking error. Mide si el desvío frente al benchmark fue recompensado.">Information Ratio</strong></td><td class="text-end">{{ riesgo_portafolio.information_ratio|floatformat:2 }}</td></tr>{% endif %}
-            {% if riesgo_portafolio.stress_worst_case_pct is not None %}<tr><td><strong data-bs-toggle="tooltip" title="Escenario de caída más severo estimado según shocks definidos en el stress test local.">Stress (Worst)</strong></td><td class="text-end {% if riesgo_portafolio.stress_worst_case_pct < 0 %}text-danger{% else %}text-success{% endif %}">{{ riesgo_portafolio.stress_worst_case_pct|pct:2 }}</td></tr>{% endif %}
-        </tbody></table></div></div>
-    </div>
-    <div class="col-md-6">
-        <h3>Calidad de Datos</h3>
-        <div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>
-            <tr><td><strong>Activos sin clasificación</strong></td><td class="text-end {% if riesgo_portafolio.metadata_unclassified_count > 0 %}text-warning{% else %}text-success{% endif %}">{{ riesgo_portafolio.metadata_unclassified_count|default:0 }}</td></tr>
-            <tr><td><strong>Activos inconsistentes</strong></td><td class="text-end {% if riesgo_portafolio.metadata_inconsistent_count > 0 %}text-danger{% else %}text-success{% endif %}">{{ riesgo_portafolio.metadata_inconsistent_count|default:0 }}</td></tr>
-            <tr><td><strong>Issues integridad snapshots</strong></td><td class="text-end {% if snapshot_integrity.issues_count > 0 %}text-danger{% else %}text-success{% endif %}">{{ snapshot_integrity.issues_count|default:0 }}</td></tr>
-            <tr><td><strong>Snapshots recientes</strong></td><td class="text-end {% if snapshot_coverage.status == 'ok' %}text-success{% else %}text-warning{% endif %}">{{ snapshot_coverage.snapshots_count }}/{{ snapshot_coverage.requested_days }}</td></tr>
-            <tr><td><strong>Último snapshot</strong></td><td class="text-end">{% if snapshot_coverage.latest_snapshot_at %}{{ snapshot_coverage.latest_snapshot_at }}{% else %}{{ snapshot_coverage.latest_snapshot_date|default:"-" }}{% endif %}</td></tr>
-            <tr><td><strong>Gap máximo</strong></td><td class="text-end">{% if snapshot_coverage.max_gap_days is not None %}{{ snapshot_coverage.max_gap_days }} días{% else %}-{% endif %}</td></tr>
-            <tr><td><strong>Estado sync IOL</strong></td><td class="text-end"><span class="badge {% if sync_audit.patrimonial_status == 'ok' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ sync_audit.patrimonial_status|default:sync_audit.status|default:"unknown" }}</span></td></tr>
-        </tbody></table></div></div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6">
-        {% include 'dashboard/operations_flow_panel.html' with title='Flujos y actividad reciente' subtitle='Lectura operativa del mes: compras, ventas, dividendos, suscripciones FCI y últimas ejecuciones cerradas.' row_limit=':5' panel_mode='detailed' %}
-    </div>
-    <div class="col-md-6">
-        <h3>Calidad de datos (detalle)</h3>
-        <div class="card"><div class="card-body"><div id="quality-details-content" class="text-muted">Cargando detalle de snapshots, sync y metadata...</div></div></div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-4"><h3>Concentración por Sector</h3><div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>{% for sector, porcentaje in concentracion_sector.items|slice:":8" %}<tr><td>{{ sector }}</td><td class="text-end">{{ porcentaje|pct:1 }}</td></tr>{% endfor %}</tbody></table></div></div></div>
-    <div class="col-md-4"><h3>Concentración por País</h3><div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>{% for pais, porcentaje in concentracion_pais.items|slice:":8" %}<tr><td>{{ pais }}</td><td class="text-end">{{ porcentaje|pct:1 }}</td></tr>{% endfor %}</tbody></table></div></div></div>
-    <div class="col-md-4"><h3>Concentración por Tipo</h3><div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>{% for tipo, porcentaje in concentracion_tipo.items|slice:":8" %}<tr><td>{{ tipo }}</td><td class="text-end">{{ porcentaje|pct:1 }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+    <div class="col-md-4"><h3>Concentracion por Sector</h3><div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>{% for sector, porcentaje in concentracion_sector.items|slice:":8" %}<tr><td>{{ sector }}</td><td class="text-end">{{ porcentaje|pct:1 }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+    <div class="col-md-4"><h3>Concentracion por Pais</h3><div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>{% for pais, porcentaje in concentracion_pais.items|slice:":8" %}<tr><td>{{ pais }}</td><td class="text-end">{{ porcentaje|pct:1 }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+    <div class="col-md-4"><h3>Concentracion por Tipo</h3><div class="card"><div class="card-body"><table class="table table-sm mb-0"><tbody>{% for tipo, porcentaje in concentracion_tipo.items|slice:":8" %}<tr><td>{{ tipo }}</td><td class="text-end">{{ porcentaje|pct:1 }}</td></tr>{% endfor %}</tbody></table></div></div></div>
 </div>
 
 <div class="row mb-4">
     <div class="col-12">
-        <h3>Señales de Rebalanceo</h3>
+        <h3>Senales de Rebalanceo</h3>
         <div class="row">
             <div class="col-md-3"><div class="card border-primary h-100"><div class="card-header bg-primary text-white"><h6 class="mb-0">Patrimonial</h6></div><div class="card-body">{% for item in senales_rebalanceo.patrimonial_sobreponderado %}<div class="mb-2"><strong>{{ item.categoria }}</strong><br><small class="text-danger">{{ item.porcentaje|pct:1 }}</small></div>{% empty %}<small class="text-muted">Sin alertas</small>{% endfor %}</div></div></div>
             <div class="col-md-3"><div class="card border-success h-100"><div class="card-header bg-success text-white"><h6 class="mb-0">Sectorial</h6></div><div class="card-body">{% for item in senales_rebalanceo.sectorial_sobreponderado %}<div class="mb-2"><strong>{{ item.sector }}</strong><br><small class="text-danger">{{ item.porcentaje|pct:1 }}</small></div>{% empty %}<small class="text-muted">Sin alertas</small>{% endfor %}</div></div></div>
@@ -535,86 +167,17 @@
 
 <div class="row mb-4">
     <div class="col-12">
-        <h3>Evolución Histórica</h3>
+        <h3>Evolucion Historica</h3>
         <div class="card"><div class="card-body">{% if evolucion_historica_obj.tiene_datos %}<canvas id="evolucionChart" style="height: 300px;"></canvas>{% else %}<div class="text-muted">{{ evolucion_historica_obj.mensaje }}</div>{% endif %}</div></div>
     </div>
 </div>
-
-<div id="posiciones-portafolio"></div>
-<section class="mt-5 mb-4">
-    <div class="border-start border-4 border-info ps-3 mb-3">
-        <h2 class="mb-1">Posiciones completas</h2>
-        <p class="text-muted mb-0">Detalle operativo de liquidez, cash management, top posiciones y portafolio invertido completo.</p>
-    </div>
-    <div class="card border-0 bg-info-subtle">
-        <div class="card-body py-3">
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                <div>
-                    <h3 class="h5 mb-1">Capa operativa</h3>
-                    <p class="text-muted mb-0">Esta sección ya no intenta explicar la cartera: expone inventario y disponibilidad para auditoría y ejecución.</p>
-                </div>
-                <span class="badge text-bg-info">Vista de detalle</span>
-            </div>
-        </div>
-    </div>
-</section>
-<div class="card border-0 bg-light mb-4"><div class="card-body py-2"><div class="d-flex flex-wrap gap-2"><a class="btn btn-sm btn-outline-success" href="#posiciones-liquidez">Liquidez</a><a class="btn btn-sm btn-outline-info" href="#posiciones-fci">FCI / Cash</a><a class="btn btn-sm btn-outline-primary" href="#posiciones-top">Top 5</a><a class="btn btn-sm btn-outline-dark" href="#posiciones-inversion">Portafolio invertido</a></div></div></div>
-
-<div id="posiciones-liquidez"></div>
-<h3 class="mt-4">Liquidez Operativa</h3>
-<div class="table-responsive mb-5"><table class="table table-striped"><thead><tr><th>Símbolo</th><th>Descripción</th><th class="text-end">Valorizado</th><th class="text-end"><span data-bs-toggle="tooltip" title="Para caución se muestra la tasa informada por IOL. No es comparable con la variación diaria de una acción o ETF.">Tasa / Referencia</span></th><th class="text-end">Ganancia $</th><th class="text-end"><span data-bs-toggle="tooltip" title="Peso de la posición sobre el total IOL o el bloque correspondiente según la vista.">Peso %</span></th><th>Moneda</th><th class="text-end"><span data-bs-toggle="tooltip" title="Cantidad o saldo que puede usarse de inmediato para operar o rescatar.">Disponible Inmediato</span></th><th>Tipo</th><th>Sector</th><th><span data-bs-toggle="tooltip" title="Clasificación estratégica interna usada para agrupar posiciones por función en cartera.">Bloque Estratégico</span></th><th><span data-bs-toggle="tooltip" title="País o región económica donde realmente está expuesto el activo.">País Exposición</span></th><th><span data-bs-toggle="tooltip" title="Categoría patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</span></th></tr></thead><tbody>{% for item in portafolio.liquidez %}{% if item.tipo_traducido == 'Caución' %}<tr class="table-warning"><td><strong>{{ item.activo.simbolo }}</strong></td><td><strong>{{ item.activo.descripcion }}</strong><div class="small text-muted">Liquidez productiva</div></td><td class="text-end"><strong>{{ item.activo.valorizado|currency:2 }}</strong></td><td class="text-end text-body-secondary"><strong>Tasa {{ item.activo.variacion_diaria|abs_value|floatformat:2 }}%</strong><div class="small text-muted">Referencia IOL</div></td><td class="text-end"><strong>{{ item.activo.ganancia_dinero|currency:2 }}</strong></td><td class="text-end"><strong>{{ item.peso_porcentual|floatformat:1 }}%</strong></td><td><span class="badge bg-warning">{{ item.moneda_traducida }}</span></td><td class="text-end"><strong>N/A</strong></td><td><span class="badge bg-warning">{{ item.tipo_traducido }}</span></td><td>{{ item.sector }}</td><td>{{ item.bloque_estrategico }}</td><td>{{ item.pais_exposicion }}</td><td>{{ item.tipo_patrimonial }}</td></tr>{% else %}<tr><td>{{ item.activo.simbolo }}</td><td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}</td><td class="text-end">{{ item.activo.valorizado|currency:2 }}</td><td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td><td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.ganancia_dinero|currency:2 }}</td><td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td><td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td><td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td><td><span class="badge bg-info">{{ item.tipo_traducido }}</span></td><td>{{ item.sector }}</td><td>{{ item.bloque_estrategico }}</td><td>{{ item.pais_exposicion }}</td><td>{{ item.tipo_patrimonial }}</td></tr>{% endif %}{% endfor %}</tbody></table></div>
-
-<div id="posiciones-fci"></div>
-<h3 class="mt-5">FCI / Cash Management</h3>
-<div class="table-responsive mb-5"><table class="table table-striped"><thead><tr><th>Símbolo</th><th>Descripción</th><th class="text-end">Cantidad</th><th class="text-end">ltimo Precio</th><th class="text-end">Valorizado</th><th class="text-end"><span data-bs-toggle="tooltip" title="Variación porcentual del día sobre la cotización actual.">Variación Diaria</span></th><th class="text-end"><span data-bs-toggle="tooltip" title="Precio promedio de compra o costo promedio ponderado de la posición.">PPC</span></th><th class="text-end">Ganancia $</th><th class="text-end"><span data-bs-toggle="tooltip" title="Peso de la posición sobre el total de la cartera.">Peso %</span></th><th>Moneda</th><th class="text-end"><span data-bs-toggle="tooltip" title="Saldo o cantidad disponible para operar sin esperar liquidaciones adicionales.">Disponible Inmediato</span></th><th>Sector</th><th><span data-bs-toggle="tooltip" title="Clasificación estratégica interna usada para agrupar posiciones por función en cartera.">Bloque Estratégico</span></th><th><span data-bs-toggle="tooltip" title="País o región económica donde realmente está expuesto el activo.">País Exposición</span></th><th><span data-bs-toggle="tooltip" title="Categoría patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</span></th></tr></thead><tbody>{% for item in portafolio.fci_cash_management %}<tr><td>{{ item.activo.simbolo }}</td><td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}{% include 'dashboard/fci_profile_summary.html' with item=item %}</td><td class="text-end">{{ item.activo.cantidad|floatformat:2 }}</td><td class="text-end">{{ item.activo.ultimo_precio|currency:2 }}</td><td class="text-end">{{ item.activo.valorizado|currency:2 }}</td><td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td><td class="text-end">{{ item.activo.ppc|currency:2 }}</td><td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.ganancia_dinero|currency:2 }}</td><td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td><td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td><td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td><td>{{ item.sector }}</td><td>{{ item.bloque_estrategico }}</td><td>{{ item.pais_exposicion }}</td><td>{{ item.tipo_patrimonial }}</td></tr>{% endfor %}</tbody></table></div>
-
-<div id="posiciones-top"></div>
-<h3 class="mt-4">Top 5 Posiciones</h3>
-<div class="table-responsive mb-5"><table class="table table-striped"><thead><tr><th>#</th><th>Símbolo</th><th>Descripción</th><th class="text-end">Valorizado</th><th class="text-end"><span data-bs-toggle="tooltip" title="Variación porcentual del día sobre la cotización actual.">Variación Diaria</span></th><th class="text-end">Ganancia $</th><th class="text-end"><span data-bs-toggle="tooltip" title="Peso de la posición sobre el total de la cartera.">Peso %</span></th><th>Sector</th><th><span data-bs-toggle="tooltip" title="Categoría patrimonial interna de la posición.">Tipo Patrimonial</span></th></tr></thead><tbody>{% for item in portafolio.inversion|slice:":5" %}<tr><td><strong>{{ forloop.counter }}</strong></td><td><strong>{{ item.activo.simbolo }}</strong></td><td title="{{ item.activo.descripcion }}"><strong>{{ item.activo.descripcion|truncatechars:40 }}</strong></td><td class="text-end"><strong>{{ item.activo.valorizado|currency:0 }}</strong></td><td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>{{ item.activo.variacion_diaria|floatformat:2 }}%</strong></td><td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}"><strong>{{ item.activo.ganancia_dinero|currency:0 }}</strong></td><td class="text-end"><strong>{{ item.peso_porcentual|floatformat:1 }}%</strong></td><td><span class="badge bg-primary">{{ item.sector }}</span></td><td><span class="badge bg-info">{{ item.tipo_patrimonial }}</span></td></tr>{% endfor %}</tbody></table></div>
-
-<div id="posiciones-inversion"></div>
-<h3 class="mt-5">Portafolio Invertido Completo</h3>
-<div class="table-responsive mb-5"><table class="table table-striped"><thead><tr><th>Símbolo</th><th>Descripción</th><th class="text-end">Cantidad</th><th class="text-end">ltimo Precio</th><th class="text-end">Valorizado</th><th class="text-end"><span data-bs-toggle="tooltip" title="Variación porcentual del día sobre la cotización actual.">Variación Diaria</span></th><th class="text-end"><span data-bs-toggle="tooltip" title="Precio promedio de compra o costo promedio ponderado de la posición.">PPC</span></th><th class="text-end">Ganancia $</th><th class="text-end"><span data-bs-toggle="tooltip" title="Peso de la posición sobre el total de la cartera.">Peso %</span></th><th>Moneda</th><th class="text-end"><span data-bs-toggle="tooltip" title="Saldo o cantidad disponible para operar sin esperar liquidaciones adicionales.">Disponible Inmediato</span></th><th>Tipo</th><th>Sector</th><th><span data-bs-toggle="tooltip" title="Clasificación estratégica interna usada para agrupar posiciones por función en cartera.">Bloque Estratégico</span></th><th><span data-bs-toggle="tooltip" title="País o región económica donde realmente está expuesto el activo.">País Exposición</span></th><th><span data-bs-toggle="tooltip" title="Categoría patrimonial interna: cash, equity, bond, ETF o FCI.">Tipo Patrimonial</span></th></tr></thead><tbody>{% for item in portafolio.inversion %}<tr><td>{{ item.activo.simbolo }}</td><td title="{{ item.activo.descripcion }}">{{ item.activo.descripcion|truncatechars:30 }}{% include 'dashboard/fci_profile_summary.html' with item=item %}{% include 'dashboard/cedear_mep_summary.html' with item=item %}</td><td class="text-end">{{ item.activo.cantidad|floatformat:2 }}</td><td class="text-end">{{ item.activo.ultimo_precio|currency:2 }}</td><td class="text-end">{{ item.activo.valorizado|currency:2 }}</td><td class="text-end {% if item.activo.variacion_diaria >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.variacion_diaria|floatformat:2 }}%</td><td class="text-end">{{ item.activo.ppc|currency:2 }}</td><td class="text-end {% if item.activo.ganancia_dinero >= 0 %}text-success{% else %}text-danger{% endif %}">{{ item.activo.ganancia_dinero|currency:2 }}</td><td class="text-end">{{ item.peso_porcentual|floatformat:1 }}%</td><td><span class="badge bg-secondary">{{ item.moneda_traducida }}</span></td><td class="text-end">{{ item.activo.disponible_inmediato|floatformat:2 }}</td><td><span class="badge bg-info">{{ item.tipo_traducido }}</span></td><td>{{ item.sector }}</td><td>{{ item.bloque_estrategico }}</td><td>{{ item.pais_exposicion }}</td><td>{{ item.tipo_patrimonial }}</td></tr>{% endfor %}</tbody></table></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const sectorData = {{ concentracion_sector_json|safe }};
-const paisData = {{ concentracion_pais_json|safe }};
-const tipoData = {{ concentracion_tipo_json|safe }};
-const paisTotalIolData = {{ concentracion_pais_total_iol_json|safe }};
-const monedaData = {{ concentracion_moneda_json|safe }};
-const monedaOperativaData = {{ concentracion_moneda_operativa_json|safe }};
 const evolucionData = {{ evolucion_historica|safe }};
 
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-
-function renderDistributionTable(bodyId, data) {
-    const body = document.getElementById(bodyId);
-    if (!body) return;
-    if (!data || Object.keys(data).length === 0) {
-        body.innerHTML = '<tr><td colspan="2" class="text-muted">Sin datos suficientes</td></tr>';
-        return;
-    }
-
-    const rows = Object.entries(data)
-        .sort((a, b) => Number(b[1]) - Number(a[1]))
-        .map(([label, value]) => `
-            <tr>
-                <td>${label}</td>
-                <td class="text-end">${formatPercentageLabel(value)}</td>
-            </tr>
-        `)
-        .join('');
-    body.innerHTML = rows;
-}
-
-function formatPercentageLabel(value) {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) return '-';
-    if (numericValue > 0 && numericValue < 0.1) return '&lt; 0,1%';
-    return `${window.formatNumberAr(numericValue, 1)}%`;
-}
 
 function createEvolutionChart() {
     const canvas = document.getElementById('evolucionChart');
@@ -624,7 +187,7 @@ function createEvolutionChart() {
         ctx.font = '16px Arial';
         ctx.fillStyle = '#666';
         ctx.textAlign = 'center';
-        ctx.fillText('Sin datos históricos suficientes', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Sin datos historicos suficientes', canvas.width / 2, canvas.height / 2);
         return;
     }
     new Chart(ctx, {
@@ -638,44 +201,19 @@ function createEvolutionChart() {
                 { label: 'Cash Management', data: evolucionData.cash_management, borderColor: '#4BC0C0', backgroundColor: 'rgba(75,192,192,0.1)', tension: 0.1 }
             ]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Evolución del Portafolio (ltimos 30 días)' } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Evolucion del Portafolio (Ultimos 30 dias)'
+                }
+            }
+        }
     });
 }
 
-function loadDataQualityDetails() {
-    Promise.all([
-        fetch('/api/metrics/snapshot-integrity/').then(r => r.json()),
-        fetch('/api/metrics/sync-audit/').then(r => r.json()),
-        fetch('/api/metrics/data-quality/').then(r => r.json())
-    ]).then(([snapshot, sync, metadata]) => {
-        const syncReasons = [];
-        if (sync.snapshots && Array.isArray(sync.snapshots.reasons) && sync.snapshots.reasons.length) {
-            syncReasons.push(`Snapshots: ${sync.snapshots.reasons.join(', ')}`);
-        }
-        if (sync.operations && sync.operations.reason) {
-            syncReasons.push(`Operaciones: ${sync.operations.reason}`);
-        }
-        if (sync.token && sync.token.reason) {
-            syncReasons.push(`Token: ${sync.token.reason}`);
-        }
-        const syncReasonText = syncReasons.length
-            ? `<div class="mt-1 small text-muted">${syncReasons.join(' | ')}</div>`
-            : '';
-        const content = `<div class="row g-3"><div class="col-md-3"><div class="p-2 border rounded"><strong>Snapshot issues</strong><br>${snapshot.issues_count || 0}</div></div><div class="col-md-3"><div class="p-2 border rounded"><strong>Sync issues</strong><br>${sync.issues_count || 0}</div></div><div class="col-md-3"><div class="p-2 border rounded"><strong>Sin metadata</strong><br>${metadata.unclassified_assets_count || 0}</div></div><div class="col-md-3"><div class="p-2 border rounded"><strong>Inconsistentes</strong><br>${metadata.inconsistent_assets_count || 0}</div></div></div><div class="mt-3 small text-muted">Sync status: ${sync.status || 'unknown'} | Token: ${(sync.token && sync.token.status) || 'unknown'}</div>${syncReasonText}`;
-        document.getElementById('quality-details-content').innerHTML = content;
-    }).catch(() => {
-        document.getElementById('quality-details-content').innerHTML = '<div class="text-danger">Error cargando calidad de datos.</div>';
-    });
-}
-
-renderDistributionTable('sector-distribution-body', sectorData);
-renderDistributionTable('pais-distribution-body', paisData);
-renderDistributionTable('pais-total-iol-distribution-body', paisTotalIolData);
-renderDistributionTable('tipo-distribution-body', tipoData);
-renderDistributionTable('moneda-distribution-body', monedaData);
-renderDistributionTable('moneda-operativa-distribution-body', monedaOperativaData);
 createEvolutionChart();
-loadDataQualityDetails();
 </script>
 {% endblock %}
-

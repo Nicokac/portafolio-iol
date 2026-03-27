@@ -1145,10 +1145,17 @@ class TestHistoricalEvolutionFallback:
 
 @pytest.mark.django_db
 class TestPortfolioParametersGet:
-    def test_portfolio_parameters_get_returns_404_without_active_params(self, auth_client):
+    def test_portfolio_parameters_get_returns_defaults_without_active_params(self, auth_client):
         response = auth_client.get(reverse('portfolio-parameters-get'))
-        assert response.status_code == 404
-        assert response.json()['error'] == 'No hay parámetros activos'
+        assert response.status_code == 200
+        body = response.json()
+        assert body['id'] is None
+        assert body['is_persisted'] is False
+        assert body['liquidez_target'] == 20.0
+        assert body['usa_target'] == 40.0
+        assert body['argentina_target'] == 30.0
+        assert body['emerging_target'] == 10.0
+        assert body['total_allocation'] == 100.0
 
     def test_portfolio_parameters_get_returns_active_params(self, auth_client):
         from apps.core.models import PortfolioParameters
@@ -1164,6 +1171,7 @@ class TestPortfolioParametersGet:
         assert response.status_code == 200
         body = response.json()
         assert body['id'] == params.id
+        assert body['is_persisted'] is True
         assert body['is_valid'] is True
         assert body['total_allocation'] == 100.0
 

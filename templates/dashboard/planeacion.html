@@ -9,40 +9,45 @@
     <span class="text-muted">resolver primero qué hacer con el aporte mensual. Si solo querés tomar esa decisión, arrancá por `Aportes` y no necesitás recorrer el resto de la hoja.</span>
 </div>
 
-<div class="card border-0 bg-light mb-4">
-    <div class="card-body py-3">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="text-muted small me-2">Navegación rápida:</span>
-            <a class="btn btn-sm btn-outline-info" href="#planeacion-aportes">1. Aportes</a>
-            <a class="btn btn-sm btn-outline-primary" href="#recomendaciones">2. Diagnóstico previo</a>
-            <a class="btn btn-sm btn-outline-success" href="#simulacion">3. Simulación táctica</a>
-            <a class="btn btn-sm btn-outline-warning" href="#optimizacion">4. Optimización teórica</a>
-            <a class="btn btn-sm btn-outline-secondary" href="#parametros-estrategia">5. Config base</a>
-            <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
-        </div>
-    </div>
-</div>
-
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body py-3">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
-                <h2 class="h5 mb-1">Mapa de trabajo</h2>
-                <p class="text-muted mb-0">La lectura recomendada arranca por `Aportes`, sigue opcionalmente por `Diagnóstico previo` y deja `Simulación`, `Optimización` y `Config base` solo como apoyo táctico.</p>
+                <h2 class="h5 mb-1">Flujo principal</h2>
+                <p class="text-muted mb-0">Esta hoja queda centrada primero en `Aportes`. `Diagnóstico`, `Simulación`, `Optimización` y `Config base` siguen disponibles, pero como herramientas complementarias y no como parte del recorrido principal.</p>
             </div>
-            <ul class="nav nav-pills gap-2" id="planeacion-tab-nav">
-                <li class="nav-item"><button type="button" class="nav-link active" data-planeacion-tab="planeacion-aportes">Aportes principal</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="recomendaciones">Diagnóstico previo</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="simulacion">Simulación táctica</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="optimizacion">Optimización teórica</button></li>
-                <li class="nav-item"><button type="button" class="nav-link" data-planeacion-tab="parametros-estrategia">Config base</button></li>
-            </ul>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-info text-white" href="#planeacion-aportes">Ir a Aportes</a>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#planeacion-secondary-tools" aria-expanded="false" aria-controls="planeacion-secondary-tools">
+                    Abrir herramientas complementarias
+                </button>
+                <a class="btn btn-sm btn-outline-dark" href="{% url 'dashboard:estrategia' %}">Volver a Estrategia</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="collapse mb-4" id="planeacion-secondary-tools">
+    <div class="card border-0 bg-light">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Herramientas complementarias</h2>
+                    <p class="text-muted mb-0">Usalas solo si necesitás más contexto antes de cerrar el aporte mensual o si querés abrir el laboratorio con herramientas avanzadas de contraste.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#planeacion-diagnostico" aria-expanded="false" aria-controls="planeacion-diagnostico">
+                        Abrir diagnóstico previo
+                    </button>
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:laboratorio' %}">Ir a Laboratorio</a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="planeacion-panels">
-    <div class="planeacion-panel d-none" data-planeacion-panel="recomendaciones">
+    <div class="collapse mb-4" id="planeacion-diagnostico">
         <section id="recomendaciones" class="mb-4">
             <div class="border-start border-4 border-primary ps-3 mb-4">
                 <h2 class="mb-1">Diagnóstico previo al aporte</h2>
@@ -81,83 +86,6 @@
         </div>
     </div>
 
-    <div class="planeacion-panel d-none" data-planeacion-panel="simulacion">
-        <section id="simulacion" class="mt-1 mb-4">
-            <div class="border-start border-4 border-success ps-3">
-                <h2 class="mb-1">Simulación táctica</h2>
-                <p class="text-muted mb-0">Soporte secundario para validar operaciones puntuales o rebalanceos fuera del flujo principal de aportes.</p>
-            </div>
-        </section>
-        <div class="alert alert-light border mb-4">
-            <strong>Cuándo usar este bloque:</strong>
-            <span class="text-muted">después de definir la idea de aporte en la pestaña Aportes, o cuando necesitás revisar una compra, venta o rebalanceo puntual por separado.</span>
-        </div>
-        <div class="row mb-4">
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">Simulador Rápido</h5>
-                        <small>Compra, venta y rebalanceo hipotético</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="simulation-activo" class="form-label">Activo</label>
-                                <select class="form-select" id="simulation-activo">
-                                    <option value="">Seleccionar...</option>
-                                    <option value="SPY">SPY (S&P 500)</option>
-                                    <option value="EEM">EEM (Mercados Emergentes)</option>
-                                    <option value="QQQ">QQQ (Nasdaq)</option>
-                                    <option value="GGAL">GGAL (Banco Galicia)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="simulation-capital" class="form-label">Capital a Invertir ($)</label>
-                                <input type="number" class="form-control" id="simulation-capital" placeholder="100000" min="1000">
-                            </div>
-                            <div class="col-md-2">
-                                <label for="simulation-quantity" class="form-label">Cantidad</label>
-                                <input type="number" class="form-control" id="simulation-quantity" placeholder="10" min="1" step="0.01">
-                            </div>
-                            <div class="col-md-2">
-                                <label for="simulation-price" class="form-label">Precio Estimado</label>
-                                <input type="number" class="form-control" id="simulation-price" placeholder="25000" min="0.01" step="0.01">
-                            </div>
-                        </div>
-                        <div class="row g-2 mt-3">
-                            <div class="col-md-4"><button class="btn btn-success w-100" onclick="runSimulation()">Simular Compra</button></div>
-                            <div class="col-md-4"><button class="btn btn-outline-danger w-100" onclick="runSaleSimulation()">Simular Venta</button></div>
-                            <div class="col-md-4"><button class="btn btn-outline-primary w-100" onclick="runRebalanceSimulation()">Simular Rebalanceo</button></div>
-                        </div>
-                        <div class="mt-3">
-                            <label for="rebalance-json" class="form-label">Rebalanceo (JSON pesos %)</label>
-                            <textarea class="form-control" id="rebalance-json" rows="3" placeholder='{"SPY": 30, "AAPL": 20, "GGAL": 10}'></textarea>
-                        </div>
-                        <div id="simulation-result" class="mt-3" style="display: none;">
-                            <hr>
-                            <h6>Resultado de Simulación</h6>
-                            <div id="simulation-details"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="card h-100">
-                    <div class="card-header bg-light"><h5 class="mb-0">Contexto rápido</h5></div>
-                    <div class="card-body">
-                        <p class="small text-muted mb-2">Perfil UI actual: <strong>{{ risk_profile|default:'moderado' }}</strong></p>
-                        <p class="small text-muted mb-2">Total patrimonio modelado: <strong>{{ kpis.total_patrimonio_modelado|currency:0 }}</strong></p>
-                        <p class="small text-muted mb-2">Cash disponible: <strong>{{ kpis.cash_disponible_broker|currency:0 }}</strong></p>
-                        {% if kpis.cash_a_liquidar_broker %}
-                        <p class="small text-muted mb-2">Cash a liquidar: <strong>{{ kpis.cash_a_liquidar_broker|currency:0 }}</strong></p>
-                        {% endif %}
-                        <p class="small text-muted mb-0">Caucion colocada: <strong>{{ kpis.caucion_colocada|currency:0 }}</strong></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="planeacion-panel" data-planeacion-panel="planeacion-aportes">
         <section id="planeacion-aportes" class="mt-1 mb-4">
             <div class="border-start border-4 border-info ps-3">
@@ -169,13 +97,29 @@
             <strong>Ruta recomendada:</strong>
             <span class="text-muted">primero definí qué bloques reforzar, después mirá activos candidatos, luego validá la propuesta preferida y recién ahí contrastá el impacto incremental.</span>
         </div>
-        {% with scope=portfolio_scope_summary %}
+        <div class="alert alert-light border mb-4">
+            <strong>Si necesitás más contexto:</strong>
+            <span class="text-muted">abrí `Herramientas complementarias` para revisar diagnóstico previo o entrá a `Laboratorio` si querés usar simulación, optimización o configuración base.</span>
+        </div>
         <section class="mb-4">
-            <div class="card border-secondary-subtle shadow-sm">
-                <div class="card-header bg-light border-bottom-0">
-                    <h3 class="h5 mb-1">Universo patrimonial</h3>
-                    <small class="text-muted">Patrimonio broker, cash disponible, caucion colocada y capital invertido analizado separados para evitar mezclar scopes.</small>
+            <div class="alert alert-light border d-flex flex-wrap justify-content-between align-items-start gap-3 mb-0">
+                <div>
+                    <strong>Laboratorio de apoyo.</strong>
+                    <span class="text-muted">Las herramientas avanzadas de contraste y configuración quedaron fuera del recorrido principal.</span>
                 </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'dashboard:laboratorio' %}">Abrir Laboratorio</a>
+                </div>
+            </div>
+        </section>
+        {% with scope=portfolio_scope_summary %}
+        <details class="mb-4">
+            <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
+                Universo patrimonial
+                <span class="text-muted fw-normal small ms-2">Patrimonio broker, liquidez y capital invertido separados para no mezclar scopes.</span>
+            </summary>
+            <div class="mt-3">
+            <div class="card border-secondary-subtle shadow-sm">
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-lg-3 col-md-6">
@@ -229,125 +173,133 @@
                     </div>
                 </div>
             </div>
-        </section>
-        {% endwith %}
-        <section class="mb-4">
-            {% include 'dashboard/market_snapshot_panel.html' with title='Chequeo de mercado puntual' subtitle='Validación táctica sobre las posiciones más relevantes antes de decidir despliegue, refuerzo o espera del aporte.' row_limit=':3' panel_mode='compact' %}
-        </section>
-        <section class="mb-4">
-            {% include 'dashboard/market_snapshot_history_panel.html' with title='Calidad reciente de ejecucion' subtitle='Lectura corta de spread, libro y actividad de los ultimos dias para no decidir compras futuras solo con la foto puntual.' %}
-        </section>
-        <section class="mb-4">
-            {% include 'dashboard/operations_flow_panel.html' with title='Flujo operativo del mes' subtitle='Contexto corto para no decidir el aporte aislado del cash ya desplegado, dividendos cobrados o suscripciones FCI recientes.' row_limit=':3' panel_mode='compact' %}
-        </section>
-        {% with execution=operation_execution_feature %}
-        {% if execution.has_symbols %}
-        <section class="mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light border-bottom-0">
-                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
-                        <div>
-                            <h3 class="h5 mb-1">Huella real de ejecución reciente</h3>
-                            <small class="text-muted">Lectura táctica de compras o ventas terminadas para los símbolos sugeridos, usando operaciones reales IOL ya visibles.</small>
-                        </div>
-                        <div class="small text-muted">
-                            {{ execution.matched_symbols_count }}/{{ execution.tracked_symbols_count }} símbolo(s) con referencia reciente
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <div class="border rounded p-3 h-100">
-                                <div class="small text-muted">Cobertura operativa</div>
-                                <div class="h5 mb-0">{{ execution.coverage_pct|floatformat:0 }}%</div>
-                                <div class="small text-muted mt-1">{{ execution.missing_symbols_count }} símbolo(s) sin referencia reciente.</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="border rounded p-3 h-100">
-                                <div class="small text-muted">Aranceles visibles</div>
-                                <div class="h5 mb-0">{{ execution.execution_analytics.fee_visible_pct|default:0|floatformat:0 }}%</div>
-                                <div class="small text-muted mt-1">{{ execution.execution_analytics.fee_visible_count|default:0 }} operación(es) comparables con costo visible.</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="border rounded p-3 h-100">
-                                <div class="small text-muted">Fragmentación reciente</div>
-                                <div class="h5 mb-0">{{ execution.execution_analytics.fragmented_pct|default:0|floatformat:0 }}%</div>
-                                <div class="small text-muted mt-1">{{ execution.execution_analytics.fragmented_count|default:0 }} operación(es) comparables con múltiples fills.</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="alert alert-secondary mb-3">
-                        <strong>{{ execution.headline }}</strong><br>
-                        {{ execution.summary }}
-                    </div>
-                    {% for alert in execution.alerts %}
-                    <div class="alert alert-{{ alert.tone }} mb-3">
-                        <strong>{{ alert.title }}</strong><br>
-                        {{ alert.message }}
-                    </div>
-                    {% endfor %}
-                    {% if execution.rows %}
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Símbolo</th>
-                                    <th>Ejecución reciente</th>
-                                    <th class="text-end">Monto</th>
-                                    <th class="text-end">Costo visible</th>
-                                    <th class="text-end">Fills</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in execution.rows %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ row.simbolo }}</strong>
-                                        <div class="small text-muted">{{ row.tipo }} · {{ row.estado }}</div>
-                                    </td>
-                                    <td>{{ row.fecha_label|default:"-" }}</td>
-                                    <td class="text-end">{{ row.executed_amount|currency:0 }}</td>
-                                    <td class="text-end">
-                                        {% if row.fees_ars or row.fees_usd %}
-                                        <div>ARS {{ row.fees_ars|currency:2 }}</div>
-                                        {% if row.fees_usd %}
-                                        <div class="small text-muted">USD {{ row.fees_usd|currency:2 }}</div>
-                                        {% endif %}
-                                        {% if row.fee_over_amount_pct %}
-                                        <div class="small text-muted">{{ row.fee_over_amount_pct|floatformat:2 }}% sobre monto visible</div>
-                                        {% endif %}
-                                        {% else %}
-                                        <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-end">
-                                        {{ row.fills_count }}
-                                        {% if row.is_fragmented %}
-                                        <div class="small text-warning">Múltiples fills</div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="empty-state py-3">
-                        <div class="empty-state-title">Sin referencias recientes por símbolo</div>
-                        <div class="empty-state-description mb-0">Todavía no hay compras o ventas terminadas recientes para los símbolos sugeridos dentro de la ventana operativa considerada.</div>
-                    </div>
-                    {% endif %}
-                </div>
             </div>
-        </section>
-        {% endif %}
+        </details>
         {% endwith %}
-        <section class="mb-4">
-            {% include 'dashboard/parking_panel.html' with title='Parking visible antes de decidir' subtitle='Si parte del portafolio invertido sigue con parking visible, conviene leerlo antes de reforzar esa misma zona de exposición.' row_limit=':3' panel_mode='compact' %}
-        </section>
+        <details class="mb-4">
+            <summary class="btn btn-outline-secondary btn-sm mb-3">Abrir contexto operativo opcional</summary>
+            <div class="alert alert-light border mb-4">
+                <strong>Contexto operativo opcional.</strong>
+                <span class="text-muted">Chequeo puntual, calidad reciente de ejecución, flujo del mes, huella real y parking quedan plegados para que la decisión principal arranque antes. Abrilo solo si necesitás validar timing, costo o fricciones de implementación.</span>
+            </div>
+            <section class="mb-4">
+                {% include 'dashboard/market_snapshot_panel.html' with title='Chequeo de mercado puntual' subtitle='Validación táctica sobre las posiciones más relevantes antes de decidir despliegue, refuerzo o espera del aporte.' row_limit=':3' panel_mode='compact' %}
+            </section>
+            <section class="mb-4">
+                {% include 'dashboard/market_snapshot_history_panel.html' with title='Calidad reciente de ejecucion' subtitle='Lectura corta de spread, libro y actividad de los ultimos dias para no decidir compras futuras solo con la foto puntual.' %}
+            </section>
+            <section class="mb-4">
+                {% include 'dashboard/operations_flow_panel.html' with title='Flujo operativo del mes' subtitle='Contexto corto para no decidir el aporte aislado del cash ya desplegado, dividendos cobrados o suscripciones FCI recientes.' row_limit=':3' panel_mode='compact' %}
+            </section>
+            {% with execution=operation_execution_feature %}
+            {% if execution.has_symbols %}
+            <section class="mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-light border-bottom-0">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                            <div>
+                                <h3 class="h5 mb-1">Huella real de ejecución reciente</h3>
+                                <small class="text-muted">Lectura táctica de compras o ventas terminadas para los símbolos sugeridos, usando operaciones reales IOL ya visibles.</small>
+                            </div>
+                            <div class="small text-muted">
+                                {{ execution.matched_symbols_count }}/{{ execution.tracked_symbols_count }} símbolo(s) con referencia reciente
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Cobertura operativa</div>
+                                    <div class="h5 mb-0">{{ execution.coverage_pct|floatformat:0 }}%</div>
+                                    <div class="small text-muted mt-1">{{ execution.missing_symbols_count }} símbolo(s) sin referencia reciente.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Aranceles visibles</div>
+                                    <div class="h5 mb-0">{{ execution.execution_analytics.fee_visible_pct|default:0|floatformat:0 }}%</div>
+                                    <div class="small text-muted mt-1">{{ execution.execution_analytics.fee_visible_count|default:0 }} operación(es) comparables con costo visible.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="small text-muted">Fragmentación reciente</div>
+                                    <div class="h5 mb-0">{{ execution.execution_analytics.fragmented_pct|default:0|floatformat:0 }}%</div>
+                                    <div class="small text-muted mt-1">{{ execution.execution_analytics.fragmented_count|default:0 }} operación(es) comparables con múltiples fills.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="alert alert-secondary mb-3">
+                            <strong>{{ execution.headline }}</strong><br>
+                            {{ execution.summary }}
+                        </div>
+                        {% for alert in execution.alerts %}
+                        <div class="alert alert-{{ alert.tone }} mb-3">
+                            <strong>{{ alert.title }}</strong><br>
+                            {{ alert.message }}
+                        </div>
+                        {% endfor %}
+                        {% if execution.rows %}
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Símbolo</th>
+                                        <th>Ejecución reciente</th>
+                                        <th class="text-end">Monto</th>
+                                        <th class="text-end">Costo visible</th>
+                                        <th class="text-end">Fills</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in execution.rows %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ row.simbolo }}</strong>
+                                            <div class="small text-muted">{{ row.tipo }} · {{ row.estado }}</div>
+                                        </td>
+                                        <td>{{ row.fecha_label|default:"-" }}</td>
+                                        <td class="text-end">{{ row.executed_amount|currency:0 }}</td>
+                                        <td class="text-end">
+                                            {% if row.fees_ars or row.fees_usd %}
+                                            <div>ARS {{ row.fees_ars|currency:2 }}</div>
+                                            {% if row.fees_usd %}
+                                            <div class="small text-muted">USD {{ row.fees_usd|currency:2 }}</div>
+                                            {% endif %}
+                                            {% if row.fee_over_amount_pct %}
+                                            <div class="small text-muted">{{ row.fee_over_amount_pct|floatformat:2 }}% sobre monto visible</div>
+                                            {% endif %}
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {{ row.fills_count }}
+                                            {% if row.is_fragmented %}
+                                            <div class="small text-warning">Múltiples fills</div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state py-3">
+                            <div class="empty-state-title">Sin referencias recientes por símbolo</div>
+                            <div class="empty-state-description mb-0">Todavía no hay compras o ventas terminadas recientes para los símbolos sugeridos dentro de la ventana operativa considerada.</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+            {% endwith %}
+            <section class="mb-4">
+                {% include 'dashboard/parking_panel.html' with title='Parking visible antes de decidir' subtitle='Si parte del portafolio invertido sigue con parking visible, conviene leerlo antes de reforzar esa misma zona de exposición.' row_limit=':3' panel_mode='compact' %}
+            </section>
+        </details>
         <section class="mb-4">
             {% with decision=decision_engine_summary %}
             <div class="card border-primary shadow-sm">
@@ -559,7 +511,7 @@
                                     {% endif %}
                                     <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
                                         <button type="button" class="btn {% if decision.execution_gate.primary_cta_tone == 'warning' %}btn-warning text-dark{% else %}btn-success{% endif %}">{{ decision.execution_gate.primary_cta_label|default:"Ejecutar decisión" }}</button>
-                                        <a class="btn btn-outline-primary" href="#planeacion-exploracion">Explorar alternativas</a>
+                                        <a class="btn btn-outline-primary" href="#planeacion-bloques-secundarios">Explorar alternativas</a>
                                         <button type="button" class="btn btn-outline-secondary">Postergar</button>
                                     </div>
                                 </div>
@@ -570,10 +522,28 @@
             </div>
             {% endwith %}
         </section>
-        <details id="planeacion-exploracion" class="mb-4">
+        <section id="planeacion-bloques-secundarios" class="mb-4">
+            <div class="border-start border-4 border-secondary ps-3 mb-3">
+                <h3 class="h5 mb-1">Bloques secundarios</h3>
+                <p class="text-muted mb-0">Validación, seguimiento y comparadores quedan segmentados para que el flujo principal no compita con todo al mismo tiempo.</p>
+            </div>
+            <ul class="nav nav-pills gap-2 mb-3" id="planeacion-secondary-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="btn btn-outline-primary active" id="planeacion-validacion-tab" data-bs-toggle="pill" data-bs-target="#planeacion-validacion-pane" type="button" role="tab" aria-controls="planeacion-validacion-pane" aria-selected="true">Validación</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="btn btn-outline-secondary" id="planeacion-seguimiento-tab" data-bs-toggle="pill" data-bs-target="#planeacion-seguimiento-pane" type="button" role="tab" aria-controls="planeacion-seguimiento-pane" aria-selected="false">Seguimiento</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="btn btn-outline-dark" id="planeacion-comparadores-tab" data-bs-toggle="pill" data-bs-target="#planeacion-comparadores-pane" type="button" role="tab" aria-controls="planeacion-comparadores-pane" aria-selected="false">Comparadores</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="planeacion-secondary-tabs-content">
+                <div class="tab-pane fade show active" id="planeacion-validacion-pane" role="tabpanel" aria-labelledby="planeacion-validacion-tab" tabindex="0">
+        <details id="planeacion-exploracion" class="mb-4" open>
             <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
-                Exploración
-                <span class="text-muted fw-normal small ms-2">Detalles, comparadores, simulación táctica y seguimiento solo si necesitás salir del modo decisión.</span>
+                Validación y detalle del modo decisión
+                <span class="text-muted fw-normal small ms-2">Detalle ampliado de la propuesta mensual y su impacto incremental.</span>
             </summary>
             <div class="mt-3">
         <div class="border-start border-4 border-success ps-3 mb-4">
@@ -788,11 +758,13 @@
                 {% endif %}
             </div>
         </div>
-        <div class="card border-success-subtle shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Validación before/after del impacto incremental</h5>
-                <small class="text-muted">Comparación de referencia para validar cómo cambia el portafolio si aplicás una compra incremental construida con los candidatos sugeridos.</small>
-            </div>
+        <details class="mb-4">
+            <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
+                Validación before/after del impacto incremental
+                <span class="text-muted fw-normal small ms-2">Abrila solo si querés contrastar el cambio esperado antes de ejecutar.</span>
+            </summary>
+            <div class="mt-3">
+            <div class="card border-success-subtle shadow-sm">
             <div class="card-body">
                 <p class="text-muted mb-3">{{ incremental_portfolio_simulation.interpretation }}</p>
                 <div class="row g-3 mb-3">
@@ -877,7 +849,11 @@
                 {% endif %}
             </div>
         </div>
-        <details class="mb-4">
+            </div>
+        </details>
+                </div>
+                <div class="tab-pane fade" id="planeacion-seguimiento-pane" role="tabpanel" aria-labelledby="planeacion-seguimiento-tab" tabindex="0">
+        <details class="mb-4" open>
             <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
                 Seguimiento y governance
                 <span class="text-muted fw-normal small ms-2">Baseline, decisiones manuales e historial persistido fuera del núcleo de decisión.</span>
@@ -1801,7 +1777,9 @@
         </div>
             </div>
         </details>
-        <details class="mb-4">
+                </div>
+                <div class="tab-pane fade" id="planeacion-comparadores-pane" role="tabpanel" aria-labelledby="planeacion-comparadores-tab" tabindex="0">
+        <details class="mb-4" open>
             <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
                 Exploración y comparación
                 <span class="text-muted fw-normal small ms-2">Comparadores y herramientas secundarias para validar alternativas.</span>
@@ -2288,143 +2266,9 @@
         </div>
             </div>
         </details>
-        <details class="mb-4">
-            <summary class="list-unstyled border rounded bg-light px-3 py-2 fw-semibold">
-                Herramienta secundaria: plan mensual por perfil
-                <span class="text-muted fw-normal small ms-2">Generador legacy para contraste rápido, fuera del flujo incremental principal.</span>
-            </summary>
-            <div class="mt-3">
-                <div class="alert alert-light border mb-4">
-                    <strong>Cómo leerlo:</strong>
-                    <span class="text-muted">este bloque sirve para contrastar la propuesta incremental actual contra una distribución más genérica por perfil. No reemplaza el motor mensual guiado por Analytics v2.</span>
-                </div>
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="mb-0">Plan mensual por perfil</h5>
-                                <small>Distribución automática genérica de nuevos capitales</small>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="monthly-amount" class="form-label">Aporte Mensual ($)</label>
-                                    <input type="number" class="form-control" id="monthly-amount" placeholder="500000" min="10000">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="risk-profile" class="form-label">Perfil de Riesgo</label>
-                                    <select class="form-select" id="risk-profile">
-                                        <option value="conservador">Conservador</option>
-                                        <option value="moderado" selected>Moderado</option>
-                                        <option value="agresivo">Agresivo</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-info w-100" onclick="runMonthlyPlan()">Generar plan de contraste</button>
-                                <div id="monthly-plan-result" class="mt-3" style="display: none;">
-                                    <hr>
-                                    <h6>Distribución sugerida</h6>
-                                    <div id="monthly-plan-details"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 border-info-subtle">
-                            <div class="card-header bg-light">
-                                <h5 class="mb-0">Cuándo usarlo</h5>
-                            </div>
-                            <div class="card-body">
-                                <ul class="mb-0 text-muted">
-                                    <li>Usalo como contraste rápido si querés una referencia genérica por perfil.</li>
-                                    <li>Comparalo contra la propuesta incremental visible arriba antes de ejecutar cambios.</li>
-                                    <li>Si ambos difieren mucho, el flujo principal sigue siendo revisar el núcleo decisional y no este bloque legacy.</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
-        </details>
-            </div>
-        </details>
-            </div>
-        </details>
-    </div>
-
-    <div class="planeacion-panel d-none" data-planeacion-panel="optimizacion">
-        <section id="optimizacion" class="mt-1 mb-4">
-            <div class="border-start border-4 border-warning ps-3">
-                <h2 class="mb-1">Optimización teórica</h2>
-                <p class="text-muted mb-0">Soporte secundario para contrastar la propuesta mensual contra asignaciones teóricas o target de cartera.</p>
             </div>
         </section>
-        <div class="alert alert-light border mb-4">
-            <strong>Cómo leerlo:</strong>
-            <span class="text-muted">estos métodos sirven para contraste y exploración. No reemplazan el motor incremental ni la propuesta preferida visible en Aportes.</span>
-        </div>
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-warning text-white">
-                        <h5 class="mb-0">Optimización de Portafolio</h5>
-                        <small>Asignaciones óptimas por diferentes métodos</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-warning" onclick="runOptimization('risk_parity')">Risk Parity</button>
-                            <button class="btn btn-outline-warning" onclick="runOptimization('markowitz')">Markowitz</button>
-                            <button class="btn btn-outline-warning" onclick="runOptimization('target')">Asignación Objetivo</button>
-                        </div>
-                        <div id="optimization-result" class="mt-3" style="display: none;">
-                            <hr>
-                            <h6>Resultado de Optimización</h6>
-                            <div id="optimization-details"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card h-100 border-warning-subtle">
-                    <div class="card-header bg-light">
-                        <h5 class="mb-0">Criterio de uso</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="mb-0 text-muted">
-                            <li><strong>Risk parity:</strong> para balancear riesgo entre bloques.</li>
-                            <li><strong>Markowitz:</strong> para explorar eficiencia teórica, no para ejecutar ciegamente.</li>
-                            <li><strong>Asignación objetivo:</strong> para contrastar contra tu política deseada.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="planeacion-panel d-none" data-planeacion-panel="parametros-estrategia">
-        <section id="parametros-estrategia" class="mt-1 mb-4">
-            <div class="border-start border-4 border-secondary ps-3">
-                <h2 class="mb-1">Configuración base</h2>
-                <p class="text-muted mb-0">Ajustes estructurales de pesos objetivo. No forman parte de la lectura principal del aporte mensual.</p>
-            </div>
-        </section>
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0">Parámetros de Estrategia</h5>
-                        <small>Configuración editable de pesos objetivo</small>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3"><label for="liquidez-target" class="form-label">Liquidez Objetivo (%)</label><input type="number" class="form-control" id="liquidez-target" min="0" max="100" step="0.1" value="20"></div>
-                            <div class="col-md-3"><label for="usa-target" class="form-label">USA Objetivo (%)</label><input type="number" class="form-control" id="usa-target" min="0" max="100" step="0.1" value="40"></div>
-                            <div class="col-md-3"><label for="argentina-target" class="form-label">Argentina Objetivo (%)</label><input type="number" class="form-control" id="argentina-target" min="0" max="100" step="0.1" value="30"></div>
-                            <div class="col-md-3"><label for="emerging-target" class="form-label">Emerging Objetivo (%)</label><input type="number" class="form-control" id="emerging-target" min="0" max="100" step="0.1" value="10"></div>
-                        </div>
-                        <div class="mt-3"><button class="btn btn-secondary" onclick="savePortfolioParams()">Guardar Parámetros</button><span id="params-save-status" class="ms-2"></span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 {% endblock %}
@@ -2439,12 +2283,23 @@ function getCsrfToken() {
 }
 
 function loadRecommendedActions() {
+    const container = document.getElementById('recommendations-container');
+    if (!container || container.dataset.loaded === 'true' || container.dataset.loading === 'true') {
+        return;
+    }
+    container.dataset.loading = 'true';
+    container.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando recomendaciones...</span></div>
+            <p class="mt-2">Cargando recomendaciones...</p>
+        </div>
+    `;
+
     Promise.all([
         fetch('/api/recommendations/all/').then(r => r.json()),
         fetch('/api/alerts/active/').then(r => r.json()),
         fetch('/api/rebalance/suggestions/').then(r => r.json())
     ]).then(([recommendations, alerts, rebalance]) => {
-        const container = document.getElementById('recommendations-container');
         const items = [];
         const recommendationSourceLabel = (rec) => {
             const type = String(rec.tipo || '').toLowerCase();
@@ -2477,143 +2332,47 @@ function loadRecommendedActions() {
         });
         (alerts || []).forEach(alert => items.push({ source: 'Alerta', severity: (alert.severidad || 'warning').toUpperCase(), title: alert.tipo || 'Alerta', description: alert.mensaje || '', detail: alert.valor !== undefined ? `Valor: ${window.formatNumberAr(alert.valor, 2)}` : '' }));
         (rebalance || []).forEach(action => items.push({ source: 'Rebalanceo', severity: 'WARNING', title: action.accion || action.razon || 'Acción de rebalanceo', description: action.razon || 'Sugerencia de ajuste de portafolio', detail: action.activo ? `Activo: ${action.activo}` : (action.sector ? `Sector: ${action.sector}` : '') }));
+        container.dataset.loaded = 'true';
+        container.dataset.loading = 'false';
         if (!items.length) { container.innerHTML = '<div class="alert alert-info">No hay acciones recomendadas disponibles</div>'; return; }
         const severityClass = (severity) => severity === 'CRITICAL' || severity === 'ALTA' ? 'danger' : (severity === 'WARNING' || severity === 'MEDIA' ? 'warning text-dark' : 'info');
         container.innerHTML = '<div class="list-group">' + items.map(item => `<div class="list-group-item"><div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">${item.source}</small><span class="badge bg-${severityClass(item.severity)}">${item.severity}</span></div><h6 class="mb-1">${item.title}</h6><p class="mb-1">${item.description}</p>${item.detail ? `<small class="text-muted">${item.detail}</small>` : ''}</div>`).join('') + '</div>';
     }).catch(() => {
-        document.getElementById('recommendations-container').innerHTML = '<div class="alert alert-warning">Error al cargar acciones recomendadas</div>';
+        container.dataset.loading = 'false';
+        container.innerHTML = '<div class="alert alert-warning">Error al cargar acciones recomendadas</div>';
     });
 }
 
-function runSimulation() {
-    const activo = document.getElementById('simulation-activo').value;
-    const capital = document.getElementById('simulation-capital').value;
-    const quantity = parseFloat(document.getElementById('simulation-quantity').value || 0);
-    const estimatedPrice = parseFloat(document.getElementById('simulation-price').value || 0);
-    const effectiveCapital = parseFloat(capital || 0) || (quantity > 0 && estimatedPrice > 0 ? quantity * estimatedPrice : 0);
-    if (!activo || !effectiveCapital) return;
-    fetch('/api/simulation/purchase/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ activo, capital: effectiveCapital }) })
-    .then(r => r.json()).then(data => {
-        document.getElementById('simulation-details').innerHTML = data.error ? `<div class="alert alert-danger">${data.error}</div>` : `<div class="row"><div class="col-6"><strong>Capital:</strong> ${window.formatCurrencyAr(data.capital_invertido, 0)}</div><div class="col-6"><strong>Cantidad:</strong> ${window.formatNumberAr(data.cantidad_comprada, 2)}</div></div><div class="row mt-2"><div class="col-6"><strong>Nuevo peso:</strong> ${window.formatNumberAr(data.nuevo_peso_activo, 2)}%</div><div class="col-6"><strong>Riesgo:</strong> ${data.riesgo_estimado || 'N/D'}</div></div>`;
-        document.getElementById('simulation-result').style.display = 'block';
-    });
-}
-
-function runSaleSimulation() {
-    const activo = document.getElementById('simulation-activo').value;
-    const cantidad = parseFloat(document.getElementById('simulation-quantity').value || 0);
-    if (!activo || !cantidad) return;
-    fetch('/api/simulation/sale/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ activo, cantidad }) })
-    .then(r => r.json()).then(data => {
-        document.getElementById('simulation-details').innerHTML = data.error ? `<div class="alert alert-danger">${data.error}</div>` : `<div class="row"><div class="col-6"><strong>Capital recuperado:</strong> ${window.formatCurrencyAr(data.capital_recuperado, 0)}</div><div class="col-6"><strong>Cantidad vendida:</strong> ${window.formatNumberAr(data.cantidad_vendida, 2)}</div></div>`;
-        document.getElementById('simulation-result').style.display = 'block';
-    });
-}
-
-function runRebalanceSimulation() {
-    const raw = document.getElementById('rebalance-json').value || '{}';
-    let target_weights;
-    try { target_weights = JSON.parse(raw); } catch (e) {
-        document.getElementById('simulation-details').innerHTML = '<div class="alert alert-danger">JSON de rebalanceo inválido</div>';
-        document.getElementById('simulation-result').style.display = 'block';
+function initializePlaneacionDiagnostics() {
+    const diagnosticCollapse = document.getElementById('planeacion-diagnostico');
+    const secondaryToolsCollapse = document.getElementById('planeacion-secondary-tools');
+    if (!diagnosticCollapse) {
         return;
     }
-    fetch('/api/simulation/rebalance/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ target_weights }) })
-    .then(r => r.json()).then(data => {
-        if (data.error) {
-            document.getElementById('simulation-details').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-        } else {
-            const ops = (data.operaciones || []).map(op => `<tr><td>${op.activo}</td><td class="text-end">${window.formatNumberAr(op.peso_objetivo, 1)}%</td><td class="text-end">${window.formatCurrencyAr(op.valor_objetivo, 0)}</td></tr>`).join('');
-            document.getElementById('simulation-details').innerHTML = `<div><strong>Impacto en riesgo:</strong> ${data.riesgo_post_rebalanceo || 'calcular'}</div><table class="table table-sm mt-2"><thead><tr><th>Activo</th><th class="text-end">Peso resultante</th><th class="text-end">Valor objetivo</th></tr></thead><tbody>${ops}</tbody></table>`;
-        }
-        document.getElementById('simulation-result').style.display = 'block';
-    });
-}
 
-function runMonthlyPlan() {
-    const amount = document.getElementById('monthly-amount').value;
-    const riskProfile = document.getElementById('risk-profile').value;
-    if (!amount) return;
-    fetch('/api/monthly-plan/custom/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ monthly_amount: parseFloat(amount), risk_profile: riskProfile, investment_horizon: 'medio' }) })
-    .then(r => r.json()).then(data => {
-        if (data.error) {
-            document.getElementById('monthly-plan-details').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-        } else {
-            let html = '<table class="table table-sm"><thead><tr><th>Activo</th><th>%</th><th>Monto</th></tr></thead><tbody>';
-            Object.entries(data.distribucion).forEach(([activo, d]) => { html += `<tr><td>${activo}</td><td>${window.formatNumberAr(d.porcentaje, 1)}%</td><td>${window.formatCurrencyAr(d.monto, 0)}</td></tr>`; });
-            html += '</tbody></table>';
-            document.getElementById('monthly-plan-details').innerHTML = html;
-        }
-        document.getElementById('monthly-plan-result').style.display = 'block';
-    });
-}
+    diagnosticCollapse.addEventListener('shown.bs.collapse', loadRecommendedActions);
 
-function runOptimization(method) {
-    let url, data;
-    if (method === 'risk_parity') { url = '/api/optimizer/risk-parity/'; data = { activos: ['SPY', 'EEM', 'QQQ', 'GGAL'] }; }
-    else if (method === 'markowitz') { url = '/api/optimizer/markowitz/'; data = { activos: ['SPY', 'EEM', 'QQQ'], target_return: 0.08 }; }
-    else { url = '/api/optimizer/target-allocation/'; data = { target_allocations: { liquidez: 20, usa: 40, argentina: 30, emerging: 10 } }; }
-    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify(data) })
-    .then(r => r.json()).then(data => {
-        if (data.error) {
-            document.getElementById('optimization-details').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-        } else {
-            let html = `<div class="alert alert-success">Método: ${data.metodo}</div><table class="table table-sm"><thead><tr><th>Activo</th><th>Peso</th></tr></thead><tbody>`;
-            Object.entries(data.pesos_optimos).forEach(([a, p]) => { html += `<tr><td>${a}</td><td>${p.toFixed(1)}%</td></tr>`; });
-            html += '</tbody></table>';
-            if (data.sharpe_ratio) html += `<strong>Sharpe Ratio:</strong> ${data.sharpe_ratio.toFixed(2)}`;
-            document.getElementById('optimization-details').innerHTML = html;
-        }
-        document.getElementById('optimization-result').style.display = 'block';
-    });
-}
+    const hash = window.location.hash;
+    const shouldOpenDiagnostics =
+        diagnosticCollapse.classList.contains('show') ||
+        hash === '#planeacion-diagnostico' ||
+        hash === '#recomendaciones';
 
-function loadPortfolioParameters() {
-    fetch('/api/portfolio/parameters/').then(r => r.json()).then(data => {
-        if (!data.error) {
-            document.getElementById('liquidez-target').value = data.liquidez_target;
-            document.getElementById('usa-target').value = data.usa_target;
-            document.getElementById('argentina-target').value = data.argentina_target;
-            document.getElementById('emerging-target').value = data.emerging_target;
-        }
-    });
-}
-
-function savePortfolioParams() {
-    const data = { liquidez_target: parseFloat(document.getElementById('liquidez-target').value), usa_target: parseFloat(document.getElementById('usa-target').value), argentina_target: parseFloat(document.getElementById('argentina-target').value), emerging_target: parseFloat(document.getElementById('emerging-target').value) };
-    fetch('/api/portfolio/parameters/update/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify(data) })
-    .then(r => r.json()).then(data => {
-        const status = document.getElementById('params-save-status');
-        status.innerHTML = data.message ? '<span class="text-success">OK Guardado</span>' : '<span class="text-danger">Error</span>';
-        setTimeout(() => status.innerHTML = '', 3000);
-    });
-}
-
-function activatePlaneacionTab(tabName) {
-    const normalized = tabName || 'recomendaciones';
-    document.querySelectorAll('[data-planeacion-tab]').forEach(button => {
-        button.classList.toggle('active', button.dataset.planeacionTab === normalized);
-    });
-    document.querySelectorAll('[data-planeacion-panel]').forEach(panel => {
-        panel.classList.toggle('d-none', panel.dataset.planeacionPanel !== normalized);
-    });
-    if (window.location.hash !== `#${normalized}`) {
-        history.replaceState(null, '', `#${normalized}`);
+    if (shouldOpenDiagnostics && window.bootstrap && secondaryToolsCollapse && !secondaryToolsCollapse.classList.contains('show')) {
+        const secondaryToolsInstance = bootstrap.Collapse.getOrCreateInstance(secondaryToolsCollapse, { toggle: false });
+        secondaryToolsInstance.show();
+    }
+    if (shouldOpenDiagnostics && window.bootstrap && !diagnosticCollapse.classList.contains('show')) {
+        const diagnosticInstance = bootstrap.Collapse.getOrCreateInstance(diagnosticCollapse, { toggle: false });
+        diagnosticInstance.show();
+        return;
+    }
+    if (shouldOpenDiagnostics) {
+        loadRecommendedActions();
     }
 }
 
-document.querySelectorAll('[data-planeacion-tab]').forEach(button => {
-    button.addEventListener('click', () => activatePlaneacionTab(button.dataset.planeacionTab));
-});
-
-window.addEventListener('hashchange', () => {
-    const target = window.location.hash.replace('#', '');
-    if (target) activatePlaneacionTab(target);
-});
-
-loadRecommendedActions();
-loadPortfolioParameters();
-activatePlaneacionTab(window.location.hash.replace('#', '') || 'planeacion-aportes');
+initializePlaneacionDiagnostics();
 </script>
 {% endblock %}
 
