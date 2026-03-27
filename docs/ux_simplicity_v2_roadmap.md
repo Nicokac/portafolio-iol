@@ -217,13 +217,26 @@ Corresponde a mejoras estructurales o de prolijidad que apoyan el producto, pero
     - `apps/dashboard/tests/test_views.py`
     - `apps/core/tests/test_url_conventions.py`
 
+- `F2 - Historiales IOL fuera del dashboard web`
+  - estado: `implementado`
+  - resultado:
+    - se retiraron del `dashboard` las tres rutas web ocultas de sincronizacion de historicos IOL
+    - la operacion tecnica queda cubierta por `python manage.py sync_iol_historical_prices`
+    - el command ahora soporta filtros por `--statuses` y `--eligibility-reason-keys`
+    - el valor analitico de historicos IOL se conserva sin volver a inflar la superficie web
+  - archivos principales:
+    - `apps/dashboard/urls.py`
+    - `apps/core/management/commands/sync_iol_historical_prices.py`
+    - `apps/core/tests/test_sync_iol_historical_prices_command.py`
+    - `apps/dashboard/tests/test_views.py`
+    - `docs/dashboard_surface_inventory.md`
+
 ### Reevaluacion post-iteracion
 
-La auditoria posterior a `A2` muestra una mejora material del flujo principal, pero todavia quedan tres focos reales de friccion:
+La auditoria posterior a `F2` muestra una mejora material del flujo principal, pero todavia quedan dos focos reales de friccion:
 
 1. `Planeacion` sigue siendo la superficie mas pesada del producto con `2289` lineas.
-2. siguen existiendo tres acciones `staff` ocultas de historicos IOL que ya no tienen entrada visible en UI.
-3. `Analisis`, `Performance` y `Metricas` todavia se presentan como tres centros separados, aunque ya se comportan como una misma familia.
+2. `Analisis`, `Performance` y `Metricas` todavia se presentan como tres centros separados, aunque ya se comportan como una misma familia.
 
 ### Decisiones cerradas para fase 2
 
@@ -236,10 +249,6 @@ La auditoria posterior a `A2` muestra una mejora material del flujo principal, p
 ### Proxima ola sugerida
 
 - `B3 - Reduccion de llamadas frontend no esenciales`
-- poda o migracion fuera del dashboard de:
-  - `dashboard:sync_iol_historical_prices`
-  - `dashboard:sync_iol_historical_prices_partial`
-  - `dashboard:sync_iol_historical_prices_retry_metadata`
 - convergencia exploratoria de:
   - `dashboard:analisis`
   - `dashboard:performance`
@@ -257,6 +266,7 @@ La auditoria posterior a `A2` muestra una mejora material del flujo principal, p
   - mantener los historicos como pipeline de soporte para decisiones de compra, no como CTA de interfaz principal
 - Criterio de aceptacion:
   - no quedan acciones de historicos IOL dentro de la familia web del dashboard principal
+  - estado: `implementado`
 
 #### Modulo F3 - Centro unificado de analisis
 

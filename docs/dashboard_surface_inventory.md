@@ -58,13 +58,13 @@ Se uso para cerrar el modulo `E2 - Auditoria de funciones y vistas realmente usa
 | `dashboard:refresh_iol_market_snapshot` | `RefreshIOLMarketSnapshotView` | mantener | boton visible para staff en `ops.html` y panel de market snapshot |
 | `dashboard:sync_benchmarks` | `SyncBenchmarksView` | mantener | boton visible para staff en `ops.html` |
 
-### Staff ocultas o sin entrada visible actual
+### Staff ocultas o migradas fuera del dashboard web
 
 | Ruta | Vista | Estado actual | Observacion |
 |---|---|---|---|
-| `dashboard:sync_iol_historical_prices` | `SyncIOLHistoricalPricesView` | oculta | sigue testeada y operativa, pero ya no tiene boton visible en `Ops Lite` |
-| `dashboard:sync_iol_historical_prices_partial` | `SyncIOLHistoricalPricesPartialView` | oculta | quedo fuera de UI al simplificar `Ops` |
-| `dashboard:sync_iol_historical_prices_retry_metadata` | `SyncIOLHistoricalPricesRetryMetadataView` | oculta | quedo fuera de UI al simplificar `Ops` |
+| `dashboard:sync_iol_historical_prices` | `SyncIOLHistoricalPricesView` | retirada | la capacidad se mantiene por `python manage.py sync_iol_historical_prices --statuses=missing` |
+| `dashboard:sync_iol_historical_prices_partial` | `SyncIOLHistoricalPricesPartialView` | retirada | la capacidad se mantiene por `python manage.py sync_iol_historical_prices --statuses=partial` |
+| `dashboard:sync_iol_historical_prices_retry_metadata` | `SyncIOLHistoricalPricesRetryMetadataView` | retirada | la capacidad se mantiene por `python manage.py sync_iol_historical_prices --statuses=unsupported --eligibility-reason-keys=title_metadata_unresolved` |
 
 ### Acciones del flujo de planeacion
 
@@ -93,11 +93,11 @@ Rutas:
 - `dashboard:sync_iol_historical_prices_partial`
 - `dashboard:sync_iol_historical_prices_retry_metadata`
 
-Motivo:
+Resolucion:
 
-- hoy ya no tienen entrada visible en UI
-- agregan superficie operativa y tests sin formar parte del flujo simplificado
-- si siguen siendo utiles, conviene moverlas a admin o management commands y no dejarlas como endpoints del dashboard
+- ya no forman parte del dashboard web
+- la operacion se resuelve por management command
+- si en el futuro hace falta una consola tecnica, conviene crearla fuera de la familia `dashboard`
 
 Decision sugerida:
 

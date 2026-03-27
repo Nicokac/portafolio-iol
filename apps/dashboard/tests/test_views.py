@@ -5,7 +5,7 @@ from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.db import connection
 from django.test import Client, override_settings
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.test.utils import CaptureQueriesContext
 
 from apps.core.models import IncrementalProposalSnapshot, SensitiveActionAudit
@@ -2964,19 +2964,13 @@ class TestDashboardView:
         assert response.status_code == 403
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_forbidden_for_non_staff(self, auth_client):
-        response = auth_client.post(reverse('dashboard:sync_iol_historical_prices'))
-        assert response.status_code == 403
-
-    @pytest.mark.django_db
-    def test_sync_iol_historical_prices_partial_forbidden_for_non_staff(self, auth_client):
-        response = auth_client.post(reverse('dashboard:sync_iol_historical_prices_partial'))
-        assert response.status_code == 403
-
-    @pytest.mark.django_db
-    def test_sync_iol_historical_prices_retry_metadata_forbidden_for_non_staff(self, auth_client):
-        response = auth_client.post(reverse('dashboard:sync_iol_historical_prices_retry_metadata'))
-        assert response.status_code == 403
+    def test_iol_historical_sync_routes_are_not_exposed_in_dashboard(self, auth_client):
+        with pytest.raises(NoReverseMatch):
+            reverse('dashboard:sync_iol_historical_prices')
+        with pytest.raises(NoReverseMatch):
+            reverse('dashboard:sync_iol_historical_prices_partial')
+        with pytest.raises(NoReverseMatch):
+            reverse('dashboard:sync_iol_historical_prices_retry_metadata')
 
     @pytest.mark.django_db
     def test_refresh_iol_market_snapshot_forbidden_for_non_staff(self, auth_client):
@@ -3041,7 +3035,7 @@ class TestDashboardView:
         assert summary['latest_state'] == 'success_with_skips'
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_view_success_message(self, staff_client, monkeypatch):
+    def xtest_sync_iol_historical_prices_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_current_portfolio_symbols_by_status(self, statuses=('missing',), minimum_ready_rows=5, params=None):
                 assert statuses == ('missing',)
@@ -3069,7 +3063,7 @@ class TestDashboardView:
         assert audit.user.username == 'staffuser'
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_view_handles_empty_selection(self, staff_client, monkeypatch):
+    def xtest_sync_iol_historical_prices_view_handles_empty_selection(self, staff_client, monkeypatch):
         class DummyService:
             def sync_current_portfolio_symbols_by_status(self, statuses=('missing',), minimum_ready_rows=5, params=None):
                 return {
@@ -3087,7 +3081,7 @@ class TestDashboardView:
         assert any('No hay símbolos faltantes para sincronizar históricos IOL' in str(message) or 'No hay simbolos faltantes para sincronizar historicos IOL' in str(message) for message in messages)
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_partial_view_success_message(self, staff_client, monkeypatch):
+    def xtest_sync_iol_historical_prices_partial_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_current_portfolio_symbols_by_status(self, statuses=('partial',), minimum_ready_rows=5, params=None):
                 assert statuses == ('partial',)
@@ -3115,7 +3109,7 @@ class TestDashboardView:
         assert audit.user.username == 'staffuser'
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_partial_view_handles_empty_selection(self, staff_client, monkeypatch):
+    def xtest_sync_iol_historical_prices_partial_view_handles_empty_selection(self, staff_client, monkeypatch):
         class DummyService:
             def sync_current_portfolio_symbols_by_status(self, statuses=('partial',), minimum_ready_rows=5, params=None):
                 return {
@@ -3133,7 +3127,7 @@ class TestDashboardView:
         assert any('No hay símbolos parciales para reforzar históricos IOL' in str(message) or 'No hay simbolos parciales para reforzar historicos IOL' in str(message) for message in messages)
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_retry_metadata_view_success_message(self, staff_client, monkeypatch):
+    def xtest_sync_iol_historical_prices_retry_metadata_view_success_message(self, staff_client, monkeypatch):
         class DummyService:
             def sync_current_portfolio_symbols_by_status(
                 self,
@@ -3169,7 +3163,7 @@ class TestDashboardView:
         assert audit.user.username == 'staffuser'
 
     @pytest.mark.django_db
-    def test_sync_iol_historical_prices_retry_metadata_view_handles_empty_selection(self, staff_client, monkeypatch):
+    def xtest_sync_iol_historical_prices_retry_metadata_view_handles_empty_selection(self, staff_client, monkeypatch):
         class DummyService:
             def sync_current_portfolio_symbols_by_status(
                 self,
