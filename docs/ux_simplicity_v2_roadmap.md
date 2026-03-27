@@ -251,6 +251,14 @@ La auditoria posterior a `G1` y `G2` muestra una mejora material del flujo princ
 - `H1 - Limpieza fina de aliases y documentacion residual`
 - `H2 - Planeacion por bloques con carga diferida adicional`
 
+### Fase 3 sugerida
+
+La siguiente iteracion ya no deberia perseguir grandes movimientos de arquitectura. El foco pasa a ser:
+
+1. cerrar residuos de transicion
+2. vigilar que `Planeacion` no vuelva a inflarse
+3. decidir si hace falta una `v3` de simplificacion o si conviene pasar a optimizacion puntual de producto
+
 ### Roadmap de fase 2
 
 #### Modulo F2 - Historiales IOL fuera del dashboard web
@@ -345,6 +353,82 @@ La auditoria posterior a `G1` y `G2` muestra una mejora material del flujo princ
   - archivos principales:
     - `templates/dashboard/planeacion.html`
     - `apps/dashboard/tests/test_feature_flows.py`
+
+#### Modulo H1 - Limpieza fina de aliases y documentacion residual
+
+- Prioridad: `P2`
+- Problema:
+  - despues de la convergencia del centro analitico quedaron aliases y documentos describiendo superficies que ya no existen como pantallas separadas
+- Cambio esperado:
+  - alinear labels, inventarios y checklist de exposicion con el estado real del producto
+- Criterio de aceptacion:
+  - estado: `implementado`
+  - resultado:
+    - la documentacion ya reconoce al `Centro analitico` como superficie unificada
+    - `Performance` y `Metricas` quedan descriptos como aliases de compatibilidad
+    - se retiraron templates ya absorbidos por la convergencia
+  - archivos principales:
+    - `docs/dashboard_surface_inventory.md`
+    - `docs/analytics_v2_feature_exposure_checklist.md`
+    - `apps/dashboard/portfolio_enrichment.py`
+    - `templates/dashboard/performance.html`
+    - `templates/dashboard/metricas.html`
+
+#### Modulo H2 - Planeacion por bloques con carga diferida adicional
+
+- Prioridad: `P1`
+- Problema:
+  - `Planeacion` mejoro, pero seguia mostrando demasiado contexto incluso despues de sacar laboratorio y plegar bloques secundarios
+- Cambio esperado:
+  - seguir compactando el recorrido principal y dejar visibles solo los pasos de decision mas importantes
+- Criterio de aceptacion:
+  - estado: `implementado`
+  - resultado:
+    - `Validacion before/after` paso a quedar plegada bajo demanda
+    - `Laboratorio de apoyo` ya no ocupa una card completa
+    - la hoja explicita mejor que seguimiento y comparadores son capas secundarias
+  - archivos principales:
+    - `templates/dashboard/planeacion.html`
+    - `apps/dashboard/tests/test_feature_flows.py`
+    - `apps/dashboard/tests/test_views.py`
+
+## Fase 3 - Simplificacion final y estabilizacion
+
+### Modulo I1 - Roadmap v3 de simplificacion final
+
+- Prioridad: `P2`
+- Problema:
+  - el track v2 ya hizo los recortes grandes y ahora falta decidir si queda una ronda final o si el producto entra en fase de mantenimiento fino
+- Cambio esperado:
+  - documentar una fase corta, con pocos modulos y criterios claros de cierre
+- Criterio de aceptacion:
+  - roadmap v3 documentado
+  - decision explicita sobre si continuar simplificando o estabilizar
+
+### Modulo I2 - Planeacion segmentada sin perder continuidad
+
+- Prioridad: `P1`
+- Problema:
+  - la hoja principal sigue siendo larga aunque ya este mas limpia
+- Cambio esperado:
+  - evaluar una segmentacion suave por pasos o tabs internos:
+    - decision
+    - validacion
+    - seguimiento
+    - comparadores
+- Criterio de aceptacion:
+  - propuesta implementada o descarte razonado documentado
+
+### Modulo I3 - Poda tecnica final del dashboard
+
+- Prioridad: `P2`
+- Problema:
+  - despues de varias iteraciones pueden quedar aliases, clases o rutas que ya no justifican su costo de mantenimiento
+- Cambio esperado:
+  - revisar y podar residuos tecnicos del dashboard
+- Criterio de aceptacion:
+  - inventario actualizado
+  - residuos tecnicos principales eliminados o marcados para deprecacion
 
 ## Track A - Navegacion y arquitectura de pantallas
 
