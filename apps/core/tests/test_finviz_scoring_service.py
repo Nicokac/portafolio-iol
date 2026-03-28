@@ -84,6 +84,10 @@ def test_score_asset_generates_strengths_and_cautions():
         "analyst_signal_label": "positive",
         "ratings_count": 6,
         "news_count": 4,
+        "news_headlines": [
+            "Microsoft beats earnings expectations and raises guidance",
+            "Microsoft expands cloud partnership with major customer",
+        ],
         "insider_buy_count": 2,
         "insider_sale_count": 1,
     }
@@ -97,6 +101,7 @@ def test_score_asset_generates_strengths_and_cautions():
     assert scored["analyst_signal_label_text"] == "Consenso favorable"
     assert "rating(s)" in scored["secondary_overlay_summary"]
     assert "Catalizadores:" in scored["overlay_catalyst_summary"]
+    assert "earnings o guidance favorable" in scored["overlay_catalyst_summary"].lower()
     assert "Sin fricciones" in scored["overlay_risk_summary"]
 
 
@@ -123,6 +128,9 @@ def test_score_asset_highlights_overlay_risks_when_consensus_and_insiders_are_we
         "analyst_signal_label": "negative",
         "ratings_count": 4,
         "news_count": 1,
+        "news_headlines": [
+            "Alibaba faces antitrust investigation after weak quarter",
+        ],
         "insider_buy_count": 0,
         "insider_sale_count": 3,
     }
@@ -130,6 +138,7 @@ def test_score_asset_highlights_overlay_risks_when_consensus_and_insiders_are_we
     scored = FinvizScoringService().score_asset(item)
 
     assert "consenso adverso" in scored["overlay_risk_summary"].lower()
+    assert "presion regulatoria" in scored["overlay_risk_summary"].lower()
     assert "sesgo vendedor" in scored["overlay_risk_summary"].lower()
 
 

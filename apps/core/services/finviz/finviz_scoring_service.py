@@ -37,6 +37,7 @@ class FinvizScoringService:
             "analyst_score",
             "analyst_signal_label",
             "news_count",
+            "news_headlines",
             "insider_buy_count",
             "insider_sale_count",
             "metadata",
@@ -333,12 +334,15 @@ class FinvizScoringService:
         news_count = int(item.get("news_count") or 0)
         insider_buy_count = int(item.get("insider_buy_count") or 0)
         insider_sale_count = int(item.get("insider_sale_count") or 0)
+        news_context = FinvizScoringService._classify_news_context(item)
 
         notes = []
         if analyst_label == "positive" or (analyst_score is not None and analyst_score >= 75):
             notes.append("consenso externo favorable")
         if news_count >= 5:
             notes.append("cobertura alta de noticias")
+        if news_context["positive"]:
+            notes.extend(news_context["positive"])
         if insider_buy_count > insider_sale_count and insider_buy_count > 0:
             notes.append("sesgo comprador en insiders")
 
@@ -353,12 +357,15 @@ class FinvizScoringService:
         news_count = int(item.get("news_count") or 0)
         insider_buy_count = int(item.get("insider_buy_count") or 0)
         insider_sale_count = int(item.get("insider_sale_count") or 0)
+        news_context = FinvizScoringService._classify_news_context(item)
 
         notes = []
         if analyst_label == "negative" or (analyst_score is not None and analyst_score <= 35):
             notes.append("consenso adverso")
         elif analyst_label in {"mixed", "cautious"}:
             notes.append("consenso menos firme")
+        if news_context["negative"]:
+            notes.extend(news_context["negative"])
         if insider_sale_count > insider_buy_count and insider_sale_count > 0:
             notes.append("sesgo vendedor en insiders")
         if 0 < news_count < 2:
@@ -367,6 +374,36 @@ class FinvizScoringService:
         if not notes:
             return "Sin fricciones externas visibles por ahora."
         return "Fricciones: " + ", ".join(notes) + "."
+
+    @classmethod
+    def _classify_news_context(cls, item: dict[str, Any]) -> dict[str, list[str]]:
+        headlines = [str(title or "").strip().lower() for title in item.get("news_headlines") or [] if str(title or "").strip()]
+        if not headlines:
+            return {"positive": [], "negative": []}
+
+        positive_map = {
+            "earnings o guidance favorable": ("beat", "beats", "earnings top", "guidance raised", "raises guidance", "strong quarter"),
+            "producto, alianza o expansion": ("launch", "partnership", "deal", "contract", "expansion", "opens", "rollout", "approval"),
+            "m&a o recompra favorable": ("acquire", "acquisition", "buyback", "repurchase", "merger"),
+        }
+        negative_map = {
+            "earnings o guidance flojos": ("miss", "misses", "cuts guidance", "guidance cut", "weak quarter", "profit warning"),
+            "presion regulatoria": ("antitrust", "regulator", "regulatory", "ban", "fine", "sanction", "probe"),
+            "litigio o investigacion": ("lawsuit", "litigation", "investigation", "fraud", "sec"),
+            "friccion operativa": ("recall", "delay", "strike", "outage", "shutdown"),
+        }
+
+        positive = cls._match_news_buckets(headlines, positive_map)
+        negative = cls._match_news_buckets(headlines, negative_map)
+        return {"positive": positive, "negative": negative}
+
+    @staticmethod
+    def _match_news_buckets(headlines: list[str], bucket_map: dict[str, tuple[str, ...]]) -> list[str]:
+        matched: list[str] = []
+        for label, keywords in bucket_map.items():
+            if any(keyword in headline for headline in headlines for keyword in keywords):
+                matched.append(label)
+        return matched
 
     @staticmethod
     def _data_quality_label(data_quality: Any) -> str:

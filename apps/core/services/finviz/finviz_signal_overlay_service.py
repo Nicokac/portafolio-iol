@@ -213,6 +213,8 @@ class FinvizSignalOverlayService:
 
     @staticmethod
     def _serialize_snapshot(snapshot: FinvizSignalSnapshot) -> dict:
+        raw_payload = snapshot.raw_payload or {}
+        news_rows = raw_payload.get("news") or []
         return {
             "internal_symbol": snapshot.internal_symbol,
             "finviz_symbol": snapshot.finviz_symbol,
@@ -226,8 +228,24 @@ class FinvizSignalOverlayService:
             "news_count": snapshot.news_count,
             "insider_buy_count": snapshot.insider_buy_count,
             "insider_sale_count": snapshot.insider_sale_count,
+            "news_headlines": FinvizSignalOverlayService._extract_news_headlines(news_rows),
             "metadata": snapshot.metadata or {},
         }
+
+    @staticmethod
+    def _extract_news_headlines(rows: list[dict[str, Any]]) -> list[str]:
+        headlines: list[str] = []
+        for row in rows:
+            headline = str(
+                row.get("Title")
+                or row.get("title")
+                or row.get("Headline")
+                or row.get("headline")
+                or ""
+            ).strip()
+            if headline:
+                headlines.append(headline)
+        return headlines[:5]
 
     @classmethod
     def _make_json_safe(cls, value: Any) -> Any:

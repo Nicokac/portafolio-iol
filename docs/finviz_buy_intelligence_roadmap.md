@@ -657,6 +657,25 @@ Criterio de aceptacion:
   - `apps/dashboard/tests/test_decision_engine.py`
   - `apps/core/services/finviz/finviz_signal_overlay_service.py`
 
+### Fase L1 - Lectura ligera de noticias como contexto, no como trigger
+
+- usar titulares solo como capa explicativa de catalizadores y fricciones
+- mantener el score centrado en fundamentals, quality, valuation y balance
+
+Criterio de aceptacion:
+
+- cuando hay noticias disponibles, `Planeacion` y `Centro analitico` pueden sugerir si el flujo parece mas de `earnings/guidance`, `alianza/expansion`, `presion regulatoria`, `litigio` o `friccion operativa`
+- estado: `implementado`
+- resultado:
+  - `FinvizSignalOverlayService` ahora expone una lista corta de titulares recientes para scoring interno
+  - `FinvizScoringService` clasifica titulares con una taxonomia chica y explicable
+  - `overlay_catalyst_summary` y `overlay_risk_summary` pueden enriquecer el contexto con noticias sin convertirlas en score duro ni en tabla larga de headlines
+- archivos principales:
+  - `apps/core/services/finviz/finviz_signal_overlay_service.py`
+  - `apps/core/services/finviz/finviz_scoring_service.py`
+  - `apps/core/tests/test_finviz_signal_overlay_service.py`
+  - `apps/core/tests/test_finviz_scoring_service.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`

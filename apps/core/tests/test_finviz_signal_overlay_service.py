@@ -85,6 +85,33 @@ def test_list_latest_snapshots_serializes_signal_fields():
     assert payload["count"] == 1
     assert payload["items"][0]["analyst_score"] == 80.0
     assert payload["items"][0]["news_count"] == 5
+    assert payload["items"][0]["news_headlines"] == []
+
+
+@pytest.mark.django_db
+def test_list_latest_snapshots_exposes_top_news_headlines():
+    captured_at = timezone.now()
+    FinvizSignalSnapshot.objects.create(
+        internal_symbol="NVDA",
+        finviz_symbol="NVDA",
+        captured_at=captured_at,
+        captured_date=captured_at.date(),
+        source_status="ok",
+        raw_payload={
+            "news": [
+                {"Title": "Nvidia beats earnings expectations"},
+                {"Title": "Nvidia signs AI partnership"},
+            ]
+        },
+    )
+
+    payload = FinvizSignalOverlayService().list_latest_snapshots(symbols=["NVDA"])
+
+    assert payload["count"] == 1
+    assert payload["items"][0]["news_headlines"] == [
+        "Nvidia beats earnings expectations",
+        "Nvidia signs AI partnership",
+    ]
 
 
 @pytest.mark.django_db
