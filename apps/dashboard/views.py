@@ -41,6 +41,8 @@ from apps.dashboard.selectors import (
     get_distribucion_sector,
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
+    get_finviz_candidate_shortlist,
+    get_finviz_portfolio_overlay,
     get_expected_return_detail,
     get_incremental_proposal_history,
     get_macro_local_context,
@@ -190,6 +192,14 @@ class DashboardAnalyticsContextMixin(DashboardBaseContextMixin):
         return context
 
 
+class DashboardFinvizContextMixin(DashboardBaseContextMixin):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['finviz_candidate_shortlist'] = get_finviz_candidate_shortlist(limit=5)
+        context['finviz_portfolio_overlay'] = get_finviz_portfolio_overlay()
+        return context
+
+
 class DashboardEvolutionContextMixin(DashboardBaseContextMixin):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -297,6 +307,7 @@ class PlaneacionView(
     LoginRequiredMixin,
     DashboardPortfolioContextMixin,
     DashboardRiskSignalsContextMixin,
+    DashboardFinvizContextMixin,
     DashboardMarketSupportContextMixin,
     TemplateView,
 ):
@@ -339,6 +350,7 @@ class AnalisisView(
     DashboardKpiContextMixin,
     DashboardRiskSignalsContextMixin,
     DashboardAnalyticsContextMixin,
+    DashboardFinvizContextMixin,
     TemplateView,
 ):
     template_name = 'dashboard/analisis.html'

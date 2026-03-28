@@ -71,6 +71,33 @@ apps/core/services/analytics_v2/
 No reemplaza servicios existentes de `v1`.
 Convive con ellos y reutiliza sus salidas cuando es razonable.
 
+## Overlays externos compatibles
+
+`Analytics v2` puede convivir con overlays externos de decision de compra siempre que:
+
+- no reemplacen fuentes core de IOL
+- no alteren la valuacion oficial del portafolio
+- entren como capas complementarias y serializables
+
+Caso actual alineado:
+
+- `apps/core/services/finviz/`
+  - mapping
+  - fundamentals snapshot
+  - buy score
+  - portfolio overlay
+
+Uso actual:
+
+- `Planeacion`
+  - shortlist externa de compra
+- `Centro analitico`
+  - overlay agregado de beta, valuation, quality y leverage
+
+Regla:
+
+- Finviz y overlays equivalentes complementan a `Analytics v2`, pero no se mezclan con sus metricas core sin dejar explicita la familia de señal.
+
 ## Estructura actual relevante
 
 ```text

@@ -301,6 +301,58 @@
             </section>
         </details>
         <section class="mb-4">
+            {% with finviz=finviz_candidate_shortlist %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light border-bottom-0">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                        <div>
+                            <h3 class="h5 mb-1">Shortlist externa de compra</h3>
+                            <small class="text-muted">Lectura complementaria desde Finviz para validar valuation, quality, growth y balance de nombres USA/CEDEAR ya mapeables.</small>
+                        </div>
+                        <div class="small text-muted">
+                            {% if finviz.captured_date %}
+                            Snapshot {{ finviz.captured_date }}
+                            {% else %}
+                            Sin snapshot disponible
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if finviz.items %}
+                    <div class="row g-3">
+                        {% for item in finviz.items|slice:":3" %}
+                        <div class="col-lg-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    <div class="fw-semibold">{{ item.internal_symbol }}</div>
+                                    <span class="badge {% if item.interpretation.level == 'high' %}bg-success{% elif item.interpretation.level == 'medium_high' %}bg-primary{% elif item.interpretation.level == 'medium' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ item.interpretation.label }}</span>
+                                </div>
+                                <div class="small text-muted mb-2">{{ item.data_quality_label }}</div>
+                                <div class="row g-2 small mb-2">
+                                    <div class="col-6">Score compuesto</div>
+                                    <div class="col-6 text-end fw-semibold">{{ item.composite_buy_score|floatformat:1 }}</div>
+                                    <div class="col-6">Quality</div>
+                                    <div class="col-6 text-end">{{ item.quality_score|floatformat:0 }}</div>
+                                    <div class="col-6">Valuation</div>
+                                    <div class="col-6 text-end">{{ item.valuation_score|floatformat:0 }}</div>
+                                </div>
+                                <div class="small">{{ item.main_reason }}</div>
+                                {% if item.cautions %}
+                                <div class="small text-muted mt-2">Atención: {{ item.cautions.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="small text-muted mt-3">Usalo como contraste de compra, no como gatillo automático de ejecución.</div>
+                    {% else %}
+                    <div class="text-muted">Todavía no hay snapshot Finviz usable para mostrar una shortlist externa.</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endwith %}
+
             {% with decision=decision_engine_summary %}
             <div class="card border-primary shadow-sm">
                 <div class="card-header bg-primary-subtle border-bottom-0">

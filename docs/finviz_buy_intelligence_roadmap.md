@@ -484,6 +484,17 @@ Criterio de aceptacion:
 Criterio de aceptacion:
 
 - decision de compra mejora sin ensuciar la UX principal
+- estado: `implementado`
+- resultado:
+  - `Planeacion` ahora muestra una `Shortlist externa de compra` con score compuesto, quality, valuation e interpretacion breve
+  - `Centro analitico` ahora muestra `Overlay Finviz del portafolio` con beta agregada y perfiles ponderados de quality, valuation y leverage
+  - la integracion sigue siendo secundaria y legible: no reemplaza el flujo principal ni expone columnas crudas masivamente
+- archivos principales:
+  - `apps/dashboard/selectors.py`
+  - `apps/dashboard/views.py`
+  - `templates/dashboard/planeacion.html`
+  - `templates/dashboard/analisis.html`
+  - `apps/dashboard/tests/test_feature_flows.py`
 
 ### Fase F - Ratings, news e insiders
 

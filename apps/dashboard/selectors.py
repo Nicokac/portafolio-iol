@@ -15,6 +15,7 @@ from apps.core.models import Alert
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
 from apps.core.services.iol_mep_service import IOLMEPService
+from apps.core.services.finviz import FinvizPortfolioOverlayService, FinvizScoringService
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
@@ -419,6 +420,20 @@ def get_implicit_fx_summary() -> Dict:
         if getattr(item.get('activo'), 'tipo', '') == 'CEDEARS'
     ]
     return IOLMEPService().build_implicit_fx_summary(relevant_positions=relevant_positions)
+
+
+def get_finviz_candidate_shortlist(limit: int = 5) -> Dict:
+    def build():
+        return FinvizScoringService().build_latest_shortlist(limit=limit)
+
+    return _get_cached_selector_result(f"finviz_candidate_shortlist:{int(limit or 0)}", build)
+
+
+def get_finviz_portfolio_overlay() -> Dict:
+    return _get_cached_selector_result(
+        "finviz_portfolio_overlay",
+        lambda: FinvizPortfolioOverlayService().build_current_portfolio_overlay(),
+    )
 
 
 def get_riesgo_portafolio_detallado() -> Dict[str, float]:

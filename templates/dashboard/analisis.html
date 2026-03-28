@@ -183,6 +183,111 @@
     </div>
 </section>
 
+{% with finviz=finviz_portfolio_overlay %}
+<section class="mb-5">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom-0">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Overlay Finviz del portafolio</h2>
+                    <p class="text-muted mb-0">Lectura agregada de beta, valuation, quality y leverage para entender mejor cómo está parado el bloque USA/CEDEAR del portafolio.</p>
+                </div>
+                <div class="small text-muted">
+                    {% if finviz.captured_date %}
+                    Snapshot {{ finviz.captured_date }}
+                    {% else %}
+                    Sin snapshot disponible
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if finviz.coverage.mapped_assets %}
+            <div class="alert alert-light border mb-4">
+                <strong>{{ finviz.summary }}</strong>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">Beta agregada</div>
+                        <div class="h4 mb-0">{{ finviz.weighted_profiles.portfolio_beta|floatformat:2 }}</div>
+                        <div class="small text-muted mt-1">{{ finviz.beta_profile.label }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">Quality del portafolio</div>
+                        <div class="h4 mb-0">{{ finviz.weighted_profiles.quality_score|floatformat:1 }}</div>
+                        <div class="small text-muted mt-1">{{ finviz.quality_profile.label }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">Valuation del portafolio</div>
+                        <div class="h4 mb-0">{{ finviz.weighted_profiles.valuation_score|floatformat:1 }}</div>
+                        <div class="small text-muted mt-1">{{ finviz.valuation_profile.label }}</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-muted">Leverage del portafolio</div>
+                        <div class="h4 mb-0">{{ finviz.weighted_profiles.balance_score|floatformat:1 }}</div>
+                        <div class="small text-muted mt-1">{{ finviz.leverage_profile.label }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6">Lideres por peso con lectura Finviz</h3>
+                        {% for row in finviz.leaders.highest_weight %}
+                        <div class="d-flex justify-content-between border-bottom py-2 small">
+                            <div>
+                                <strong>{{ row.symbol }}</strong>
+                                <div class="text-muted">{{ row.interpretation.label }}</div>
+                            </div>
+                            <div class="text-end">
+                                <div>{{ row.weight_pct|floatformat:1 }}%</div>
+                                <div class="text-muted">score {{ row.composite_buy_score|floatformat:1 }}</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">Sin activos cubiertos.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6">Alertas Finviz visibles</h3>
+                        <div class="small text-muted mb-2">Nombres que se ven más exigentes por valuation o más frágiles por balance dentro del overlay mapeado.</div>
+                        {% for row in finviz.warnings.expensive_names %}
+                        <div class="d-flex justify-content-between border-bottom py-2 small">
+                            <span><strong>{{ row.symbol }}</strong> · valuation {{ row.valuation_score|floatformat:0 }}</span>
+                            <span class="text-muted">{{ row.weight_pct|floatformat:1 }}%</span>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">Sin alertas de valuation visibles.</div>
+                        {% endfor %}
+                        <div class="mt-3"></div>
+                        {% for row in finviz.warnings.fragile_balance %}
+                        <div class="d-flex justify-content-between border-bottom py-2 small">
+                            <span><strong>{{ row.symbol }}</strong> · balance {{ row.balance_score|floatformat:0 }}</span>
+                            <span class="text-muted">{{ row.weight_pct|floatformat:1 }}%</span>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">Sin alertas de balance visibles.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-muted">Todavía no hay cobertura Finviz suficiente para leer el portafolio desde esta capa.</div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endwith %}
+
 <section id="analisis-performance" class="mb-3">
     <div class="border-start border-4 border-danger ps-3 mb-3">
         <h2 class="mb-1">Performance temporal</h2>

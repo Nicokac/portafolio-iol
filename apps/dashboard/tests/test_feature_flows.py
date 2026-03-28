@@ -17,11 +17,11 @@ class TestDashboardFeatureFlows:
         ("route_name", "expected_template", "required_context_keys"),
         [
             ("dashboard:dashboard", "dashboard/resumen.html", ["kpis", "alerts", "macro_local", "market_snapshot_feature", "parking_feature", "evolucion_historica"]),
-            ("dashboard:analisis", "dashboard/analisis.html", ["kpis", "concentracion_sector", "riesgo_portafolio_detallado", "analytics_v2_summary"]),
+            ("dashboard:analisis", "dashboard/analisis.html", ["kpis", "concentracion_sector", "riesgo_portafolio_detallado", "analytics_v2_summary", "finviz_portfolio_overlay"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "senales_rebalanceo", "analytics_v2_summary", "evolucion_historica"]),
             ("dashboard:cartera_detalle", "dashboard/cartera_detalle.html", ["kpis", "portafolio", "market_snapshot_feature"]),
             ("dashboard:riesgo_avanzado", "dashboard/riesgo_avanzado.html", ["kpis", "analytics_v2_summary", "riesgo_portafolio"]),
-            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison"]),
+            ("dashboard:planeacion", "dashboard/planeacion.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary", "monthly_allocation_plan", "candidate_asset_ranking", "incremental_portfolio_simulation", "preferred_incremental_portfolio_proposal", "decision_engine_summary", "incremental_proposal_history", "incremental_proposal_tracking_baseline", "incremental_manual_decision_summary", "incremental_decision_executive_summary", "incremental_portfolio_simulation_comparison", "candidate_incremental_portfolio_comparison", "candidate_split_incremental_portfolio_comparison", "manual_incremental_portfolio_simulation_comparison", "finviz_candidate_shortlist"]),
             ("dashboard:laboratorio", "dashboard/laboratorio.html", ["kpis", "portafolio", "senales_rebalanceo", "portfolio_scope_summary"]),
         ],
     )
@@ -74,6 +74,9 @@ class TestDashboardFeatureFlows:
         assert "Métricas cuantitativas" in content
         assert "Portafolio vs benchmark compuesto" in content
         assert "Detalle de métricas" in content
+        assert "Overlay Finviz del portafolio" in content
+        assert "Beta agregada" in content
+        assert "Quality del portafolio" in content
         assert "id=\"analisis-performance\"" in content
         assert "id=\"analisis-metricas\"" in content
 
@@ -135,6 +138,8 @@ class TestDashboardFeatureFlows:
         assert "Abrir herramientas complementarias" in content
         assert "Herramientas complementarias" in content
         assert "Planeaci\u00f3n de aportes: flujo principal" in content
+        assert "Shortlist externa de compra" in content
+        assert "Lectura complementaria desde Finviz" in content
         assert "Universo patrimonial" in content
         assert "Patrimonio total broker" in content
         assert "Cash disponible" in content
