@@ -463,6 +463,17 @@ Criterio de aceptacion:
 Criterio de aceptacion:
 
 - lectura del portafolio enriquecida sin ruido excesivo
+- estado: `implementado`
+- resultado:
+  - se agrego `FinvizPortfolioOverlayService` para resumir el portafolio actual usando el snapshot Finviz mas reciente
+  - el overlay calcula `portfolio_beta`, `composite_buy_score` ponderado, perfiles ponderados de `valuation`, `quality`, `balance`, `growth` y `market_signal`
+  - se agregan cobertura del portafolio mapeado, lideres por peso, lideres por beta y quality, y alertas de nombres caros o de balance fragil
+  - se agrego el command `inspect_finviz_portfolio_overlay` para inspeccion tecnica sin ensuciar la UX principal
+- archivos principales:
+  - `apps/core/services/finviz/finviz_portfolio_overlay_service.py`
+  - `apps/core/management/commands/inspect_finviz_portfolio_overlay.py`
+  - `apps/core/tests/test_finviz_portfolio_overlay_service.py`
+  - `apps/core/tests/test_inspect_finviz_portfolio_overlay_command.py`
 
 ### Fase E - Integracion UI
 
