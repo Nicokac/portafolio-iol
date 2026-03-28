@@ -676,6 +676,26 @@ Criterio de aceptacion:
   - `apps/core/tests/test_finviz_signal_overlay_service.py`
   - `apps/core/tests/test_finviz_scoring_service.py`
 
+### Fase L2 - Diagnostico real de overlays secundarios y saneamiento de payload
+
+- verificar con una prueba aislada de 5 simbolos si `finvizfinance` realmente puede traer `ratings`, `news` e `insiders`
+- cerrar errores de persistencia SQLite antes de seguir agregando señales
+
+Criterio de aceptacion:
+
+- queda descartado un problema estructural de conectividad con `finvizfinance` y Finviz
+- estado: `implementado`
+- resultado:
+  - se agrego un script de diagnostico chico para consultar `fundamentals`, `ratings`, `news` e `insiders` sobre 5 simbolos
+  - la prueba real confirmo que la libreria y Finviz responden correctamente para overlays secundarios
+  - se detecto que el fallo del sync venia de valores `NaN` en payloads de insiders, que SQLite rechazaba por `JSON_VALID`
+  - `FinvizSignalOverlayService` ahora convierte `NaN`/`Infinity` a `null` antes de persistir
+  - el sync `sync_finviz_signal_overlays` ya queda en `ok=27 errors=0`
+- archivos principales:
+  - `scripts/diagnose_finviz_signal_endpoints.py`
+  - `apps/core/services/finviz/finviz_signal_overlay_service.py`
+  - `apps/core/tests/test_finviz_signal_overlay_service.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`

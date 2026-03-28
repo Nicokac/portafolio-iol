@@ -132,3 +132,29 @@ def test_sync_signals_makes_timestamp_payload_json_safe():
     snapshot = FinvizSignalSnapshot.objects.get(internal_symbol="NVDA")
     assert snapshot.news_count == 1
     assert snapshot.raw_payload["news"][0]["Date"] == "2026-03-28T10:00:00"
+
+
+@pytest.mark.django_db
+def test_sync_signals_converts_nan_payload_values_to_null():
+    ParametroActivo.objects.create(
+        simbolo="AAPL",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    client = DummyFinvizSignalClient(
+        insiders={
+            "AAPL": [
+                {
+                    "Transaction": "Buy",
+                    "#Shares Total": float("nan"),
+                }
+            ]
+        },
+    )
+
+    FinvizSignalOverlayService(client=client).sync_signals(scope="metadata")
+
+    snapshot = FinvizSignalSnapshot.objects.get(internal_symbol="AAPL")
+    assert snapshot.raw_payload["insiders"][0]["#Shares Total"] is None

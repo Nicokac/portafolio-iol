@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from decimal import Decimal
 from typing import Any
 
@@ -255,6 +256,8 @@ class FinvizSignalOverlayService:
             return [cls._make_json_safe(item) for item in value]
         if isinstance(value, tuple):
             return [cls._make_json_safe(item) for item in value]
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            return None
         if isinstance(value, Decimal):
             return float(value)
         if hasattr(value, "isoformat"):
