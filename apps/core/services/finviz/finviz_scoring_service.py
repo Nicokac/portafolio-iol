@@ -140,6 +140,8 @@ class FinvizScoringService:
             "data_quality_label": self._data_quality_label(item.get("data_quality")),
             "analyst_signal_label_text": self._analyst_signal_label(item.get("analyst_signal_label"), analyst_score),
             "secondary_overlay_summary": self._build_secondary_overlay_summary(item),
+            "overlay_catalyst_summary": self._build_overlay_catalyst_summary(item),
+            "overlay_risk_summary": self._build_overlay_risk_summary(item),
         }
 
     def _score_valuation(self, item: dict[str, Any]) -> float | None:
@@ -310,7 +312,49 @@ class FinvizScoringService:
             parts.append(f"insiders B{insider_buy_count}/S{insider_sale_count}")
         if not parts:
             return "Sin overlays secundarios visibles por ahora."
-        return "Overlay: " + " · ".join(parts)
+        return "Overlay: " + " | ".join(parts)
+
+    @staticmethod
+    def _build_overlay_catalyst_summary(item: dict[str, Any]) -> str:
+        analyst_label = str(item.get("analyst_signal_label") or "").strip().lower()
+        analyst_score = FinvizScoringService._as_float(item.get("analyst_score"))
+        news_count = int(item.get("news_count") or 0)
+        insider_buy_count = int(item.get("insider_buy_count") or 0)
+        insider_sale_count = int(item.get("insider_sale_count") or 0)
+
+        notes = []
+        if analyst_label == "positive" or (analyst_score is not None and analyst_score >= 75):
+            notes.append("consenso externo favorable")
+        if news_count >= 5:
+            notes.append("cobertura alta de noticias")
+        if insider_buy_count > insider_sale_count and insider_buy_count > 0:
+            notes.append("sesgo comprador en insiders")
+
+        if not notes:
+            return "Sin catalizadores externos fuertes por ahora."
+        return "Catalizadores: " + ", ".join(notes) + "."
+
+    @staticmethod
+    def _build_overlay_risk_summary(item: dict[str, Any]) -> str:
+        analyst_label = str(item.get("analyst_signal_label") or "").strip().lower()
+        analyst_score = FinvizScoringService._as_float(item.get("analyst_score"))
+        news_count = int(item.get("news_count") or 0)
+        insider_buy_count = int(item.get("insider_buy_count") or 0)
+        insider_sale_count = int(item.get("insider_sale_count") or 0)
+
+        notes = []
+        if analyst_label == "negative" or (analyst_score is not None and analyst_score <= 35):
+            notes.append("consenso adverso")
+        elif analyst_label in {"mixed", "cautious"}:
+            notes.append("consenso menos firme")
+        if insider_sale_count > insider_buy_count and insider_sale_count > 0:
+            notes.append("sesgo vendedor en insiders")
+        if 0 < news_count < 2:
+            notes.append("poca cobertura externa")
+
+        if not notes:
+            return "Sin fricciones externas visibles por ahora."
+        return "Fricciones: " + ", ".join(notes) + "."
 
     @staticmethod
     def _data_quality_label(data_quality: Any) -> str:

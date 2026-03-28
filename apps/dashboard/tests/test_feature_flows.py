@@ -78,6 +78,7 @@ class TestDashboardFeatureFlows:
         assert "Radar Finviz de oportunidades" in content
         assert "Ideas externas mejor rankeadas" in content
         assert "Nombres para reforzar dentro de cartera" in content
+        assert "Catalizadores:" in content or "Sin catalizadores externos fuertes por ahora." in content
         assert "Beta agregada" in content
         assert "Quality del portafolio" in content
         assert "id=\"analisis-performance\"" in content

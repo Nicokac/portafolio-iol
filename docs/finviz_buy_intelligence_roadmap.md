@@ -545,6 +545,26 @@ Criterio de aceptacion:
   - `templates/dashboard/analisis.html`
   - `apps/dashboard/tests/test_feature_flows.py`
 
+### Fase H - Explicaciones de catalizadores y fricciones
+
+- explotar `news` e `insiders` como explicacion
+- mantener la UX en formato legible y no tabular
+
+Criterio de aceptacion:
+
+- los overlays secundarios ya no son solo conteos: explican mejor por que mirar o frenar un nombre
+- estado: `implementado`
+- resultado:
+  - el scoring ahora agrega `overlay_catalyst_summary` y `overlay_risk_summary`
+  - `Planeacion` muestra una lectura corta de catalizadores y fricciones junto al shortlist externo
+  - `Centro analitico` reutiliza esas explicaciones en el radar de oportunidades
+- archivos principales:
+  - `apps/core/services/finviz/finviz_scoring_service.py`
+  - `apps/core/tests/test_finviz_scoring_service.py`
+  - `templates/dashboard/planeacion.html`
+  - `templates/dashboard/analisis.html`
+  - `apps/dashboard/tests/test_feature_flows.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`

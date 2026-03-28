@@ -96,6 +96,41 @@ def test_score_asset_generates_strengths_and_cautions():
     assert scored["data_quality_label"] == "Cobertura alta"
     assert scored["analyst_signal_label_text"] == "Consenso favorable"
     assert "rating(s)" in scored["secondary_overlay_summary"]
+    assert "Catalizadores:" in scored["overlay_catalyst_summary"]
+    assert "Sin fricciones" in scored["overlay_risk_summary"]
+
+
+@pytest.mark.django_db
+def test_score_asset_highlights_overlay_risks_when_consensus_and_insiders_are_weak():
+    item = {
+        "internal_symbol": "BABA",
+        "source_status": "ok",
+        "data_quality": "full",
+        "fwd_pe": 30.0,
+        "peg": 2.5,
+        "eps_next_y": 4.0,
+        "eps_next_5y": 3.0,
+        "sales_past_5y": 2.0,
+        "roic": 9.0,
+        "oper_m": 11.0,
+        "profit_m": 8.0,
+        "debt_eq": 1.8,
+        "quick_r": 0.8,
+        "beta": 1.7,
+        "change_pct": -5.0,
+        "volume": 400000.0,
+        "analyst_score": 30.0,
+        "analyst_signal_label": "negative",
+        "ratings_count": 4,
+        "news_count": 1,
+        "insider_buy_count": 0,
+        "insider_sale_count": 3,
+    }
+
+    scored = FinvizScoringService().score_asset(item)
+
+    assert "consenso adverso" in scored["overlay_risk_summary"].lower()
+    assert "sesgo vendedor" in scored["overlay_risk_summary"].lower()
 
 
 @pytest.mark.django_db

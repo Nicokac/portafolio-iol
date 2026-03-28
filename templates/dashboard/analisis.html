@@ -321,6 +321,7 @@
                             <div>
                                 <strong>{{ row.internal_symbol }}</strong>
                                 <div class="text-muted">{{ row.interpretation.label }} · {{ row.analyst_signal_label_text }}</div>
+                                <div class="text-muted">{{ row.overlay_catalyst_summary }}</div>
                             </div>
                             <div class="text-end">
                                 <div>score {{ row.composite_buy_score|floatformat:1 }}</div>
@@ -341,6 +342,7 @@
                             <div>
                                 <strong>{{ row.internal_symbol }}</strong>
                                 <div class="text-muted">peso {{ row.holding_weight_pct|floatformat:1 }}% · {{ row.analyst_signal_label_text }}</div>
+                                <div class="text-muted">{{ row.overlay_risk_summary }}</div>
                             </div>
                             <div class="text-end">
                                 <div>score {{ row.composite_buy_score|floatformat:1 }}</div>

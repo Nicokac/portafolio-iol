@@ -93,6 +93,7 @@ Uso actual:
 - `Planeacion`
   - shortlist externa de compra
   - consenso sintetico de analistas como overlay secundario
+  - catalizadores y fricciones visibles desde news e insiders sin exponer tablas crudas
 - `Centro analitico`
   - overlay agregado de beta, valuation, quality y leverage
   - radar de oportunidades para separar ideas externas de nombres ya tenidos que merecen refuerzo
