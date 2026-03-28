@@ -393,6 +393,16 @@ Criterio de aceptacion:
 
 - tabla de mapping confiable
 - cobertura del universo objetivo conocida
+- estado: `implementado`
+- resultado:
+  - se agrego un `FinvizMappingService` con overrides explicitos para simbolos internos que no coinciden 1 a 1 con Finviz
+  - se definio fuera de alcance inicial a `Bond`, `FCI` y equivalentes no soportados
+  - se agrego el command `audit_finviz_mapping` para auditar `metadata` y `portfolio` actual
+- archivos principales:
+  - `apps/core/services/finviz/finviz_mapping_service.py`
+  - `apps/core/management/commands/audit_finviz_mapping.py`
+  - `apps/core/tests/test_finviz_mapping_service.py`
+  - `apps/core/tests/test_audit_finviz_mapping_command.py`
 
 ### Fase B - Fundamentals MVP
 
