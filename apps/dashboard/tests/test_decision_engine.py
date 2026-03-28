@@ -2,6 +2,7 @@ from unittest.mock import ANY, patch
 
 import pytest
 
+from apps.dashboard.decision_engine import _build_decision_finviz_support
 from apps.dashboard.selectors import get_decision_engine_summary, get_planeacion_incremental_context
 
 _MOD = "apps.dashboard.incremental_planeacion"
@@ -9,6 +10,50 @@ _MOD = "apps.dashboard.incremental_planeacion"
 
 @pytest.mark.django_db
 class TestDecisionEngineSummary:
+    def test_build_decision_finviz_support_does_not_promote_shortlist_top_as_external_when_only_reinforce_exists(self):
+        payload = _build_decision_finviz_support(
+            finviz_shortlist={
+                "items": [
+                    {"internal_symbol": "NEM", "composite_buy_score": 80.7},
+                    {"internal_symbol": "GOOGL", "composite_buy_score": 78.1},
+                ]
+            },
+            finviz_watchlist={
+                "external_candidates": [],
+                "reinforce_candidates": [
+                    {
+                        "internal_symbol": "NEM",
+                        "composite_buy_score": 80.7,
+                        "overlay_risk_summary": "Sin fricciones externas visibles por ahora.",
+                    }
+                ],
+            },
+        )
+
+        assert payload["has_signal"] is True
+        assert payload["external_candidate"] is None
+        assert payload["reinforce_candidate"]["internal_symbol"] == "NEM"
+        assert "afuera lidera" not in payload["summary"]
+        assert "en cartera se sostiene NEM" in payload["summary"]
+
+    def test_build_decision_finviz_support_returns_empty_contract_without_real_watchlist_candidates(self):
+        payload = _build_decision_finviz_support(
+            finviz_shortlist={
+                "items": [
+                    {"internal_symbol": "NEM", "composite_buy_score": 80.7},
+                ]
+            },
+            finviz_watchlist={
+                "external_candidates": [],
+                "reinforce_candidates": [],
+            },
+        )
+
+        assert payload["has_signal"] is False
+        assert payload["external_candidate"] is None
+        assert payload["reinforce_candidate"] is None
+        assert "Todavia no hay cobertura Finviz suficiente" in payload["summary"]
+
     def test_get_decision_engine_summary_returns_complete_payload(self):
         class DummyUser:
             pk = 17

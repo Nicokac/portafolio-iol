@@ -639,6 +639,24 @@ Criterio de aceptacion:
   - `apps/core/services/finviz/finviz_portfolio_overlay_service.py`
   - `apps/core/tests/test_finviz_portfolio_overlay_service.py`
 
+### Fase K3 - Coherencia de decision support y diagnostico de overlays secundarios
+
+- evitar que `Planeacion` muestre como idea externa un nombre que solo existe como refuerzo en cartera
+- dejar trazable que ratings, news e insiders siguen condicionados por conectividad real hacia Finviz
+
+Criterio de aceptacion:
+
+- `Modo decision` no inventa una idea externa cuando el radar Finviz solo tiene candidatos de refuerzo
+- estado: `implementado`
+- resultado:
+  - `Apoyo Finviz para esta decision` ahora solo muestra `idea externa` si existe un candidato real en `external_candidates`
+  - cuando solo hay refuerzos, el bloque se concentra en esa lectura y evita duplicar el mismo nombre como externo y refuerzo
+  - se dejo verificado que los overlays secundarios hoy fallan por conectividad/permisos hacia `finviz.com`, no por integracion del repo
+- archivos principales:
+  - `apps/dashboard/decision_engine.py`
+  - `apps/dashboard/tests/test_decision_engine.py`
+  - `apps/core/services/finviz/finviz_signal_overlay_service.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`

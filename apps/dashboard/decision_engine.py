@@ -247,9 +247,8 @@ def _build_decision_finviz_support(
 
     external = ((finviz_watchlist.get("external_candidates") or [])[:1] or [None])[0]
     reinforce = ((finviz_watchlist.get("reinforce_candidates") or [])[:1] or [None])[0]
-    shortlist_top = ((finviz_shortlist.get("items") or [])[:1] or [None])[0]
 
-    if not external and not reinforce and not shortlist_top:
+    if not external and not reinforce:
         return {
             "has_signal": False,
             "title": "Apoyo Finviz para esta decision",
@@ -258,12 +257,11 @@ def _build_decision_finviz_support(
             "reinforce_candidate": None,
         }
 
-    top_external = external or shortlist_top
     summary_parts = []
-    if top_external:
+    if external:
         summary_parts.append(
-            f"afuera lidera {top_external.get('internal_symbol')} con score "
-            f"{float(top_external.get('composite_buy_score') or 0):.1f}"
+            f"afuera lidera {external.get('internal_symbol')} con score "
+            f"{float(external.get('composite_buy_score') or 0):.1f}"
         )
     if reinforce:
         summary_parts.append(
@@ -275,7 +273,7 @@ def _build_decision_finviz_support(
         "has_signal": True,
         "title": "Apoyo Finviz para esta decision",
         "summary": " | ".join(summary_parts) if summary_parts else "Hay lectura Finviz disponible como contraste.",
-        "external_candidate": top_external,
+        "external_candidate": external,
         "reinforce_candidate": reinforce,
     }
 
