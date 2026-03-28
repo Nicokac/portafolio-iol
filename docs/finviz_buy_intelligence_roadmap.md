@@ -565,6 +565,43 @@ Criterio de aceptacion:
   - `templates/dashboard/analisis.html`
   - `apps/dashboard/tests/test_feature_flows.py`
 
+### Fase I - Integracion con recomendaciones
+
+- cruzar Finviz con el motor de recomendaciones actual
+- usar la capa externa como contraste operativo, no como reemplazo del engine
+
+Criterio de aceptacion:
+
+- Finviz puede emitir recomendaciones complementarias sin duplicar ni ensuciar las senales core
+- estado: `implementado`
+- resultado:
+  - `RecommendationEngine` ahora incorpora una lectura Finviz acotada desde el radar de oportunidades
+  - puede sugerir una `oportunidad externa` y un `nombre para refuerzo` solo cuando la conviccion supera umbrales minimos
+  - la integracion queda como origen `finviz`, explicable y subordinado al motor principal
+- archivos principales:
+  - `apps/core/services/recommendation_engine.py`
+  - `apps/core/tests/test_recommendation_engine.py`
+  - `docs/signals_and_recommendations.md`
+
+### Fase J - Integracion visible en Planeacion
+
+- proyectar Finviz dentro del workflow mensual sin reemplazar la recomendacion principal
+- usarlo como contraste de compra y refuerzo dentro del bloque de decision
+
+Criterio de aceptacion:
+
+- `Planeacion` muestra apoyo Finviz de forma legible dentro de `Modo decision`
+- estado: `implementado`
+- resultado:
+  - `decision_engine_summary` ahora incluye `finviz_support`
+  - `Planeacion` muestra una capa `Apoyo Finviz para esta decision` con idea externa y nombre reforzable cuando hay cobertura
+  - la integracion no reescribe la recomendacion principal; solo suma contraste visible y explicable
+- archivos principales:
+  - `apps/dashboard/decision_engine.py`
+  - `apps/dashboard/incremental_planeacion.py`
+  - `templates/dashboard/planeacion.html`
+  - `apps/dashboard/tests/test_feature_flows.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`

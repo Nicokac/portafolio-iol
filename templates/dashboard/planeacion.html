@@ -470,6 +470,33 @@
                         </div>
                     </div>
 
+                    <div class="border rounded p-3 mb-4">
+                        <div class="small text-muted mb-2">4b. Apoyo Finviz para esta decisión</div>
+                        <div class="small mb-2">{{ decision.finviz_support.summary }}</div>
+                        {% if decision.finviz_support.external_candidate or decision.finviz_support.reinforce_candidate %}
+                        <div class="row g-3 small">
+                            {% if decision.finviz_support.external_candidate %}
+                            <div class="col-lg-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="fw-semibold">{{ decision.finviz_support.external_candidate.internal_symbol }}</div>
+                                    <div class="text-muted">Idea externa · score {{ decision.finviz_support.external_candidate.composite_buy_score|floatformat:1 }}</div>
+                                    <div class="text-muted">{{ decision.finviz_support.external_candidate.overlay_catalyst_summary }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if decision.finviz_support.reinforce_candidate %}
+                            <div class="col-lg-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="fw-semibold">{{ decision.finviz_support.reinforce_candidate.internal_symbol }}</div>
+                                    <div class="text-muted">Refuerzo en cartera · score {{ decision.finviz_support.reinforce_candidate.composite_buy_score|floatformat:1 }}</div>
+                                    <div class="text-muted">{{ decision.finviz_support.reinforce_candidate.overlay_risk_summary }}</div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
                     <div class="row g-3 mb-4">
                         <div class="col-lg-6">
                             <div class="border rounded p-3 h-100">

@@ -94,6 +94,7 @@ Uso actual:
   - shortlist externa de compra
   - consenso sintetico de analistas como overlay secundario
   - catalizadores y fricciones visibles desde news e insiders sin exponer tablas crudas
+  - apoyo Finviz visible dentro de `Modo decision` como contraste externo de compra/refuerzo
 - `Centro analitico`
   - overlay agregado de beta, valuation, quality y leverage
   - radar de oportunidades para separar ideas externas de nombres ya tenidos que merecen refuerzo
@@ -101,6 +102,7 @@ Uso actual:
 Regla:
 
 - Finviz y overlays equivalentes complementan a `Analytics v2`, pero no se mezclan con sus metricas core sin dejar explicita la familia de señal.
+- cuando se proyectan como recomendacion, entran via `RecommendationEngine` con origen separado y umbrales propios.
 
 ## Estructura actual relevante
 

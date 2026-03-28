@@ -237,6 +237,49 @@ def _build_decision_strategy_bias(recommendation_context: str | None) -> str | N
     return None
 
 
+def _build_decision_finviz_support(
+    *,
+    finviz_shortlist: Dict | None,
+    finviz_watchlist: Dict | None,
+) -> Dict:
+    finviz_shortlist = finviz_shortlist or {}
+    finviz_watchlist = finviz_watchlist or {}
+
+    external = ((finviz_watchlist.get("external_candidates") or [])[:1] or [None])[0]
+    reinforce = ((finviz_watchlist.get("reinforce_candidates") or [])[:1] or [None])[0]
+    shortlist_top = ((finviz_shortlist.get("items") or [])[:1] or [None])[0]
+
+    if not external and not reinforce and not shortlist_top:
+        return {
+            "has_signal": False,
+            "title": "Apoyo Finviz para esta decision",
+            "summary": "Todavia no hay cobertura Finviz suficiente para sumar contraste externo a esta decision.",
+            "external_candidate": None,
+            "reinforce_candidate": None,
+        }
+
+    top_external = external or shortlist_top
+    summary_parts = []
+    if top_external:
+        summary_parts.append(
+            f"afuera lidera {top_external.get('internal_symbol')} con score "
+            f"{float(top_external.get('composite_buy_score') or 0):.1f}"
+        )
+    if reinforce:
+        summary_parts.append(
+            f"en cartera se sostiene {reinforce.get('internal_symbol')} con score "
+            f"{float(reinforce.get('composite_buy_score') or 0):.1f}"
+        )
+
+    return {
+        "has_signal": True,
+        "title": "Apoyo Finviz para esta decision",
+        "summary": " | ".join(summary_parts) if summary_parts else "Hay lectura Finviz disponible como contraste.",
+        "external_candidate": top_external,
+        "reinforce_candidate": reinforce,
+    }
+
+
 def _manual_execution_readiness_rank(status: str) -> int:
     normalized = str(status or "pending").strip()
     if normalized == "ready":

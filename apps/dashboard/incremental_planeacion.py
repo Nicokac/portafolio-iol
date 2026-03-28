@@ -9,6 +9,7 @@ import hashlib
 from typing import Dict
 
 from apps.dashboard.decision_engine import (
+    _build_decision_finviz_support,
     _build_decision_engine_query_stamp,
     _build_decision_expected_impact,
     _build_decision_macro_state,
@@ -103,6 +104,8 @@ def get_decision_engine_summary(
     # Lazy: estas funciones siguen en selectors.py
     from apps.dashboard.selectors import (
         get_analytics_v2_dashboard_summary,
+        get_finviz_candidate_shortlist,
+        get_finviz_opportunity_watchlist,
         get_macro_local_context,
         get_market_snapshot_history_feature_context,
         get_portfolio_parking_feature_context,
@@ -117,6 +120,8 @@ def get_decision_engine_summary(
         portfolio_scope = _build_portfolio_scope_summary()
         macro_local = get_macro_local_context()
         analytics = get_analytics_v2_dashboard_summary()
+        finviz_shortlist = get_finviz_candidate_shortlist(limit=5)
+        finviz_watchlist = get_finviz_opportunity_watchlist()
         monthly_plan = get_monthly_allocation_plan(capital_amount=capital_amount)
         ranking = get_candidate_asset_ranking(capital_amount=capital_amount)
         preferred_payload = get_preferred_incremental_portfolio_proposal(
@@ -177,6 +182,10 @@ def get_decision_engine_summary(
             market_history_signal=market_history_signal,
             operation_execution_signal=operation_execution_signal,
         )
+        finviz_support = _build_decision_finviz_support(
+            finviz_shortlist=finviz_shortlist,
+            finviz_watchlist=finviz_watchlist,
+        )
         score = _compute_decision_score(
             macro_state=macro_state,
             portfolio_state=portfolio_state,
@@ -230,6 +239,7 @@ def get_decision_engine_summary(
             "operation_execution_signal": operation_execution_signal,
             "execution_gate": execution_gate,
             "action_suggestions": action_suggestions,
+            "finviz_support": finviz_support,
             "macro_state": macro_state,
             "portfolio_state": portfolio_state,
             "recommendation": recommendation,

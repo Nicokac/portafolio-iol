@@ -165,6 +165,7 @@ class TestDashboardFeatureFlows:
         assert "Estado de cartera" in content
         assert "Recomendaci\u00f3n principal" in content
         assert "Opciones sugeridas" in content
+        assert "Apoyo Finviz para esta decisión" in content
         assert "Impacto estimado" in content
         assert "Tu decisi\u00f3n este mes" in content
         assert "Score:" in content

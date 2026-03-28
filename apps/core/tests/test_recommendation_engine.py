@@ -19,6 +19,7 @@ def test_generate_recommendations_uses_dashboard_kpis_when_portfolio_missing(eng
     monkeypatch.setattr(engine, "_analyze_risk_profile", lambda portfolio: None)
     monkeypatch.setattr(engine, "_analyze_performance", lambda portfolio: None)
     monkeypatch.setattr(engine, "_analyze_analytics_v2", lambda: [])
+    monkeypatch.setattr(engine, "_analyze_finviz_buy_intelligence", lambda: [])
 
     result = engine.generate_recommendations()
 
@@ -40,6 +41,7 @@ def test_generate_recommendations_returns_combined_output(engine, monkeypatch):
     monkeypatch.setattr(engine, "_analyze_risk_profile", lambda portfolio: {"tipo": "risk", "prioridad": "alta"})
     monkeypatch.setattr(engine, "_analyze_performance", lambda portfolio: {"tipo": "perf", "prioridad": "baja"})
     monkeypatch.setattr(engine, "_analyze_analytics_v2", lambda: [{"tipo": "v2", "prioridad": "alta", "origen": "analytics_v2"}])
+    monkeypatch.setattr(engine, "_analyze_finviz_buy_intelligence", lambda: [{"tipo": "finviz", "prioridad": "media", "origen": "finviz"}])
 
     result = engine.generate_recommendations({"total_iol": 100})
 
@@ -50,6 +52,7 @@ def test_generate_recommendations_returns_combined_output(engine, monkeypatch):
         "liq",
         "geo_2",
         "sector",
+        "finviz",
         "perf",
     ]
 
@@ -65,6 +68,65 @@ def test_generate_recommendations_returns_error_payload_on_exception(engine, mon
             "mensaje": "Error generando recomendaciones: division by zero",
         }
     ]
+
+
+def test_analyze_finviz_buy_intelligence_returns_external_and_reinforce_recommendations(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.FinvizOpportunityWatchlistService",
+        lambda: type(
+            "DummyWatchlist",
+            (),
+            {
+                "build_watchlist": lambda self: {
+                    "external_candidates": [
+                        {
+                            "internal_symbol": "NVDA",
+                            "composite_buy_score": 82,
+                            "overlay_catalyst_summary": "Catalizadores: consenso externo favorable.",
+                            "analyst_signal_label_text": "Consenso favorable",
+                        }
+                    ],
+                    "reinforce_candidates": [
+                        {
+                            "internal_symbol": "MSFT",
+                            "composite_buy_score": 74,
+                            "overlay_risk_summary": "Sin fricciones externas visibles por ahora.",
+                            "analyst_signal_label_text": "Consenso favorable",
+                        }
+                    ],
+                }
+            },
+        )(),
+    )
+
+    result = engine._analyze_finviz_buy_intelligence()
+
+    assert [item["tipo"] for item in result] == [
+        "finviz_external_opportunity",
+        "finviz_reinforce_candidate",
+    ]
+    assert result[0]["activos_sugeridos"] == ["NVDA"]
+    assert result[1]["activos_sugeridos"] == ["MSFT"]
+
+
+def test_analyze_finviz_buy_intelligence_skips_low_conviction_rows(engine, monkeypatch):
+    monkeypatch.setattr(
+        "apps.core.services.recommendation_engine.FinvizOpportunityWatchlistService",
+        lambda: type(
+            "DummyWatchlist",
+            (),
+            {
+                "build_watchlist": lambda self: {
+                    "external_candidates": [{"internal_symbol": "KO", "composite_buy_score": 60}],
+                    "reinforce_candidates": [{"internal_symbol": "AAPL", "composite_buy_score": 65}],
+                }
+            },
+        )(),
+    )
+
+    result = engine._analyze_finviz_buy_intelligence()
+
+    assert result == []
 
 
 @pytest.mark.parametrize(

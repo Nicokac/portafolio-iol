@@ -15,6 +15,7 @@ Fuentes de senales actuales:
 - `StressFragilityService`
 - `ExpectedReturnService`
 - `LocalMacroSignalsService`
+- `FinvizOpportunityWatchlistService` como capa complementaria de compra
 
 Ademas, el engine combina recomendaciones legacy basadas en:
 
@@ -47,6 +48,7 @@ Esas senales ya salen serializadas con:
 Responsabilidades:
 
 - combinar recomendaciones legacy y senales de `Analytics v2`
+- incorporar overlays externos compatibles cuando agregan criterio de compra real
 - mapear senales a formato de recomendacion visible
 - sugerir acciones simples
 - priorizar y deduplicar
@@ -71,6 +73,7 @@ Heuristicas legacy
   -> _analyze_sector_concentration()
   -> _analyze_risk_profile()
   -> _analyze_performance()
+  -> _analyze_finviz_buy_intelligence()
 ```
 
 ## Outputs
@@ -169,6 +172,7 @@ Estado actual:
 - el engine ya deduplica varios solapamientos importantes
 - las acciones sugeridas son simples y trazables
 - el workflow incremental de futuras compras opera arriba de estas recomendaciones, sin duplicar el engine base
+- Finviz ya puede entrar como recomendacion complementaria para sourcing o refuerzo cuando hay conviccion suficiente
 
 Brechas:
 

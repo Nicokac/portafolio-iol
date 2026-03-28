@@ -10,6 +10,7 @@ from apps.core.services.analytics_v2 import (
     ScenarioAnalysisService,
     StressFragilityService,
 )
+from apps.core.services.finviz import FinvizOpportunityWatchlistService
 from apps.core.services.recommendation_signal_support import (
     build_analytics_v2_recommendations,
     build_risk_contribution_signals,
@@ -79,6 +80,10 @@ class RecommendationEngine:
             analytics_v2_recs = self._analyze_analytics_v2()
             if analytics_v2_recs:
                 recommendations.extend(analytics_v2_recs)
+
+            finviz_recs = self._analyze_finviz_buy_intelligence()
+            if finviz_recs:
+                recommendations.extend(finviz_recs)
 
             prioritized = self._prioritize_recommendations(recommendations)
             logger.info(
@@ -362,6 +367,58 @@ class RecommendationEngine:
             )
         except Exception as e:
             logger.error(f"Error analyzing analytics v2 signals: {str(e)}")
+            return []
+
+    def _analyze_finviz_buy_intelligence(self) -> List[Dict]:
+        try:
+            payload = FinvizOpportunityWatchlistService().build_watchlist()
+            recommendations = []
+
+            external = (payload.get("external_candidates") or [None])[0]
+            if external and float(external.get("composite_buy_score") or 0) >= 75:
+                recommendations.append(
+                    {
+                        "tipo": "finviz_external_opportunity",
+                        "prioridad": "media",
+                        "titulo": "Oportunidad externa con conviccion Finviz",
+                        "descripcion": (
+                            f"{external['internal_symbol']} aparece bien rankeado fuera de cartera. "
+                            f"{external.get('overlay_catalyst_summary') or external.get('analyst_signal_label_text')}"
+                        ),
+                        "acciones_sugeridas": [
+                            "Usar la shortlist externa como contraste antes de comprar",
+                            "Validar encaje con el bloque estrategico y la liquidez disponible",
+                        ],
+                        "activos_sugeridos": [external["internal_symbol"]],
+                        "impacto_esperado": "Mejor filtrado de ideas nuevas sin sumar ruido operativo",
+                        "origen": "finviz",
+                    }
+                )
+
+            reinforce = (payload.get("reinforce_candidates") or [None])[0]
+            if reinforce and float(reinforce.get("composite_buy_score") or 0) >= 70:
+                recommendations.append(
+                    {
+                        "tipo": "finviz_reinforce_candidate",
+                        "prioridad": "baja",
+                        "titulo": "Nombre ya tenido con lectura Finviz consistente",
+                        "descripcion": (
+                            f"{reinforce['internal_symbol']} sigue mostrando una lectura externa consistente. "
+                            f"{reinforce.get('overlay_risk_summary') or reinforce.get('analyst_signal_label_text')}"
+                        ),
+                        "acciones_sugeridas": [
+                            "Considerar refuerzo solo si no empeora concentracion ni liquidez",
+                            "Comparar contra oportunidades externas antes de reasignar capital",
+                        ],
+                        "activos_sugeridos": [reinforce["internal_symbol"]],
+                        "impacto_esperado": "Mejor disciplina para reforzar solo nombres con soporte externo",
+                        "origen": "finviz",
+                    }
+                )
+
+            return recommendations
+        except Exception as e:
+            logger.error(f"Error analyzing finviz buy intelligence: {str(e)}")
             return []
 
     def _build_risk_contribution_signals(self) -> List[Dict]:
