@@ -414,6 +414,21 @@ Criterio de aceptacion:
 
 - payload estable por activo
 - cache o persistencia local
+- estado: `implementado`
+- resultado:
+  - se agrego `FinvizFundamentalsSnapshot` como persistencia diaria normalizada por simbolo interno
+  - se agrego `FinvizClient` para encapsular `finvizfinance` y aislar errores de dependencia o fetch
+  - se agrego `FinvizFundamentalsService` para sincronizar `Market Cap`, `Fwd P/E`, `PEG`, `EPS`, `ROIC`, margenes, `Debt/Eq`, `Quick R`, `Beta`, `Change`, `Volume` y metricas relacionadas
+  - se agrego el command `sync_finviz_fundamentals` para correr la sincronizacion sobre `metadata` completa o sobre el `portfolio` actual
+  - la data quality queda clasificada como `full`, `partial`, `sparse` o `missing`
+- archivos principales:
+  - `apps/core/models.py`
+  - `apps/core/migrations/0022_finvizfundamentalssnapshot.py`
+  - `apps/core/services/finviz/finviz_client.py`
+  - `apps/core/services/finviz/finviz_fundamentals_service.py`
+  - `apps/core/management/commands/sync_finviz_fundamentals.py`
+  - `apps/core/tests/test_finviz_fundamentals_service.py`
+  - `apps/core/tests/test_sync_finviz_fundamentals_command.py`
 
 ### Fase C - Buy score MVP
 

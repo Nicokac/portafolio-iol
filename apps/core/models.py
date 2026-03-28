@@ -646,3 +646,72 @@ class IOLMarketCoverageSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.pais} / {self.instrumento} ({self.captured_date})"
+
+
+class FinvizFundamentalsSnapshot(models.Model):
+    """Snapshot diario normalizado de fundamentals Finviz para activos mapeables."""
+
+    internal_symbol = models.CharField(max_length=24)
+    finviz_symbol = models.CharField(max_length=24)
+    source = models.CharField(max_length=32, default="finviz")
+    captured_at = models.DateTimeField()
+    captured_date = models.DateField()
+    source_status = models.CharField(max_length=16, default="ok")
+    data_quality = models.CharField(max_length=16, default="partial")
+    mapped_reason = models.CharField(max_length=64, blank=True, default="")
+
+    tipo_patrimonial = models.CharField(max_length=32, blank=True, default="")
+    sector = models.CharField(max_length=64, blank=True, default="")
+    country = models.CharField(max_length=64, blank=True, default="")
+    strategic_bucket = models.CharField(max_length=64, blank=True, default="")
+
+    market_cap = models.DecimalField(max_digits=22, decimal_places=2, null=True, blank=True)
+    price = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    change_pct = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    volume = models.BigIntegerField(null=True, blank=True)
+    beta = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    pe = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    fwd_pe = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    peg = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    ps = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    pb = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    pc = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    pfcf = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    eps_this_y = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    eps_next_y = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    eps_past_5y = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    eps_next_5y = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    sales_past_5y = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    roa = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    roe = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    roic = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    curr_r = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    quick_r = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    lt_debt_eq = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    debt_eq = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    gross_m = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    oper_m = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    profit_m = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    dividend = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+
+    raw_payload = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-captured_date", "internal_symbol"]
+        indexes = [
+            models.Index(fields=["captured_date", "source_status"]),
+            models.Index(fields=["captured_date", "strategic_bucket"]),
+            models.Index(fields=["captured_date", "sector"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["internal_symbol", "source", "captured_date"],
+                name="unique_finviz_fundamentals_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.internal_symbol} {self.captured_date} ({self.source_status})"
