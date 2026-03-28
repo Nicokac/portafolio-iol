@@ -22,6 +22,7 @@
 
 - `portfolio_analytics_v2_spec.md`
 - `analytics_v2_architecture.md`
+- `finviz_buy_intelligence_roadmap.md`
 - `analytics_v2_data_contracts.md`
 - `analytics_v2_gap_analysis.md`
 - `analytics_v2_mvp.md`
