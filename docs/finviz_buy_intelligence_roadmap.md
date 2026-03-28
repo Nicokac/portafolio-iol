@@ -440,6 +440,18 @@ Criterio de aceptacion:
 
 - shortlist de compra ordenable
 - comparador entre candidatos
+- estado: `implementado`
+- resultado:
+  - se agrego `FinvizScoringService` para calcular `valuation_score`, `growth_score`, `quality_score`, `balance_score` y `market_signal_score`
+  - se agrego `composite_buy_score` como promedio ponderado sobre los subscores disponibles del snapshot mas reciente
+  - cada activo ahora expone interpretacion legible, fortalezas, cautelas y `main_reason`
+  - se agrego el command `score_finviz_candidates` para construir una shortlist o comparar simbolos puntuales desde consola
+  - el scoring sigue siendo heuristico y deliberadamente explicable; todavia no incorpora ratings, news ni insiders
+- archivos principales:
+  - `apps/core/services/finviz/finviz_scoring_service.py`
+  - `apps/core/management/commands/score_finviz_candidates.py`
+  - `apps/core/tests/test_finviz_scoring_service.py`
+  - `apps/core/tests/test_score_finviz_candidates_command.py`
 
 ### Fase D - Portfolio overlay
 

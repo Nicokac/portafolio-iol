@@ -1,0 +1,132 @@
+from decimal import Decimal
+
+import pytest
+from django.utils import timezone
+
+from apps.core.models import FinvizFundamentalsSnapshot
+from apps.core.services.finviz.finviz_scoring_service import FinvizScoringService
+
+
+@pytest.mark.django_db
+def test_build_latest_shortlist_orders_candidates_by_composite_buy_score():
+    captured_at = timezone.now()
+    common = {
+        "captured_at": captured_at,
+        "captured_date": captured_at.date(),
+        "source_status": "ok",
+        "data_quality": "full",
+    }
+    FinvizFundamentalsSnapshot.objects.create(
+        internal_symbol="AAPL",
+        finviz_symbol="AAPL",
+        fwd_pe=Decimal("24"),
+        peg=Decimal("1.8"),
+        eps_next_y=Decimal("10"),
+        eps_next_5y=Decimal("9"),
+        sales_past_5y=Decimal("8"),
+        roic=Decimal("28"),
+        oper_m=Decimal("30"),
+        profit_m=Decimal("24"),
+        debt_eq=Decimal("0.4"),
+        quick_r=Decimal("1.3"),
+        beta=Decimal("1.1"),
+        change_pct=Decimal("1.2"),
+        volume=5000000,
+        **common,
+    )
+    FinvizFundamentalsSnapshot.objects.create(
+        internal_symbol="BABA",
+        finviz_symbol="BABA",
+        fwd_pe=Decimal("35"),
+        peg=Decimal("2.7"),
+        eps_next_y=Decimal("4"),
+        eps_next_5y=Decimal("3"),
+        sales_past_5y=Decimal("2"),
+        roic=Decimal("8"),
+        oper_m=Decimal("10"),
+        profit_m=Decimal("9"),
+        debt_eq=Decimal("1.8"),
+        quick_r=Decimal("0.9"),
+        beta=Decimal("1.7"),
+        change_pct=Decimal("-5"),
+        volume=400000,
+        **common,
+    )
+
+    payload = FinvizScoringService().build_latest_shortlist(limit=5)
+
+    assert payload["count"] == 2
+    assert payload["items"][0]["internal_symbol"] == "AAPL"
+    assert payload["items"][0]["composite_buy_score"] > payload["items"][1]["composite_buy_score"]
+    assert payload["items"][0]["interpretation"]["level"] in {"high", "medium_high"}
+
+
+@pytest.mark.django_db
+def test_score_asset_generates_strengths_and_cautions():
+    item = {
+        "internal_symbol": "MSFT",
+        "source_status": "ok",
+        "data_quality": "full",
+        "fwd_pe": 22.0,
+        "peg": 1.2,
+        "eps_next_y": 15.0,
+        "eps_next_5y": 12.0,
+        "sales_past_5y": 10.0,
+        "roic": 22.0,
+        "oper_m": 32.0,
+        "profit_m": 28.0,
+        "debt_eq": 0.5,
+        "quick_r": 1.1,
+        "beta": 1.0,
+        "change_pct": -4.0,
+        "volume": 8000000,
+    }
+
+    scored = FinvizScoringService().score_asset(item)
+
+    assert scored["composite_buy_score"] is not None
+    assert scored["strengths"]
+    assert scored["main_reason"] == scored["strengths"][0]
+    assert scored["data_quality_label"] == "Cobertura alta"
+
+
+@pytest.mark.django_db
+def test_compare_candidates_returns_gap_summary():
+    captured_at = timezone.now()
+    common = {
+        "captured_at": captured_at,
+        "captured_date": captured_at.date(),
+        "source_status": "ok",
+        "data_quality": "full",
+        "fwd_pe": Decimal("20"),
+        "peg": Decimal("1.1"),
+        "eps_next_y": Decimal("12"),
+        "eps_next_5y": Decimal("10"),
+        "sales_past_5y": Decimal("8"),
+        "roic": Decimal("18"),
+        "oper_m": Decimal("25"),
+        "profit_m": Decimal("20"),
+        "debt_eq": Decimal("0.5"),
+        "quick_r": Decimal("1.2"),
+        "beta": Decimal("1.0"),
+        "volume": 2000000,
+    }
+    FinvizFundamentalsSnapshot.objects.create(
+        internal_symbol="MSFT",
+        finviz_symbol="MSFT",
+        change_pct=Decimal("3"),
+        **common,
+    )
+    ko_payload = {**common, "debt_eq": Decimal("0.3"), "quick_r": Decimal("0.9")}
+    FinvizFundamentalsSnapshot.objects.create(
+        internal_symbol="KO",
+        finviz_symbol="KO",
+        change_pct=Decimal("0.5"),
+        **ko_payload,
+    )
+
+    payload = FinvizScoringService().compare_candidates(["MSFT", "KO"])
+
+    assert payload["count"] == 2
+    assert payload["winner"]["internal_symbol"] in {"MSFT", "KO"}
+    assert "queda arriba" in payload["summary"]
