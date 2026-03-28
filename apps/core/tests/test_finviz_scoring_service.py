@@ -80,6 +80,12 @@ def test_score_asset_generates_strengths_and_cautions():
         "beta": 1.0,
         "change_pct": -4.0,
         "volume": 8000000,
+        "analyst_score": 82.0,
+        "analyst_signal_label": "positive",
+        "ratings_count": 6,
+        "news_count": 4,
+        "insider_buy_count": 2,
+        "insider_sale_count": 1,
     }
 
     scored = FinvizScoringService().score_asset(item)
@@ -88,6 +94,8 @@ def test_score_asset_generates_strengths_and_cautions():
     assert scored["strengths"]
     assert scored["main_reason"] == scored["strengths"][0]
     assert scored["data_quality_label"] == "Cobertura alta"
+    assert scored["analyst_signal_label_text"] == "Consenso favorable"
+    assert "rating(s)" in scored["secondary_overlay_summary"]
 
 
 @pytest.mark.django_db

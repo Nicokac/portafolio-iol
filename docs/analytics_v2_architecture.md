@@ -84,6 +84,7 @@ Caso actual alineado:
 - `apps/core/services/finviz/`
   - mapping
   - fundamentals snapshot
+  - signal snapshot
   - buy score
   - portfolio overlay
 
@@ -91,6 +92,7 @@ Uso actual:
 
 - `Planeacion`
   - shortlist externa de compra
+  - consenso sintetico de analistas como overlay secundario
 - `Centro analitico`
   - overlay agregado de beta, valuation, quality y leverage
 

@@ -336,8 +336,16 @@
                                     <div class="col-6 text-end">{{ item.quality_score|floatformat:0 }}</div>
                                     <div class="col-6">Valuation</div>
                                     <div class="col-6 text-end">{{ item.valuation_score|floatformat:0 }}</div>
+                                    {% if item.analyst_score %}
+                                    <div class="col-6">Consenso</div>
+                                    <div class="col-6 text-end">{{ item.analyst_score|floatformat:0 }}</div>
+                                    {% endif %}
                                 </div>
                                 <div class="small">{{ item.main_reason }}</div>
+                                {% if item.analyst_score %}
+                                <div class="small text-muted mt-2">{{ item.analyst_signal_label_text }}</div>
+                                {% endif %}
+                                <div class="small text-muted mt-1">{{ item.secondary_overlay_summary }}</div>
                                 {% if item.cautions %}
                                 <div class="small text-muted mt-2">Atención: {{ item.cautions.0 }}</div>
                                 {% endif %}

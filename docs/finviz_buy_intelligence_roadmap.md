@@ -504,6 +504,23 @@ Criterio de aceptacion:
 Criterio de aceptacion:
 
 - evidencia de valor real y no solo mas datos
+- estado: `implementado`
+- resultado:
+  - se agrego persistencia diaria de overlays secundarios en `FinvizSignalSnapshot`
+  - el scoring ahora incorpora `analyst_score` y una lectura sintetica de consenso
+  - `Planeacion` muestra contexto complementario de `Consenso` para enriquecer la shortlist sin invadir la UX principal
+  - news e insiders quedan disponibles como capa persistida para una fase posterior de mayor explotacion
+- archivos principales:
+  - `apps/core/models.py`
+  - `apps/core/migrations/0023_finvizsignalsnapshot.py`
+  - `apps/core/services/finviz/finviz_client.py`
+  - `apps/core/services/finviz/finviz_signal_overlay_service.py`
+  - `apps/core/services/finviz/finviz_scoring_service.py`
+  - `apps/core/management/commands/sync_finviz_signal_overlays.py`
+  - `apps/core/tests/test_finviz_signal_overlay_service.py`
+  - `apps/core/tests/test_sync_finviz_signal_overlays_command.py`
+  - `apps/core/tests/test_finviz_scoring_service.py`
+  - `templates/dashboard/planeacion.html`
 
 ## Archivos que deberian mantenerse alineados
 

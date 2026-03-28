@@ -715,3 +715,47 @@ class FinvizFundamentalsSnapshot(models.Model):
 
     def __str__(self):
         return f"{self.internal_symbol} {self.captured_date} ({self.source_status})"
+
+
+class FinvizSignalSnapshot(models.Model):
+    """Snapshot diario resumido de ratings, news e insiders Finviz."""
+
+    internal_symbol = models.CharField(max_length=24)
+    finviz_symbol = models.CharField(max_length=24)
+    source = models.CharField(max_length=32, default="finviz_signal")
+    captured_at = models.DateTimeField()
+    captured_date = models.DateField()
+    source_status = models.CharField(max_length=16, default="ok")
+    mapped_reason = models.CharField(max_length=64, blank=True, default="")
+
+    ratings_count = models.PositiveIntegerField(default=0)
+    ratings_positive_count = models.PositiveIntegerField(default=0)
+    ratings_negative_count = models.PositiveIntegerField(default=0)
+    ratings_neutral_count = models.PositiveIntegerField(default=0)
+    analyst_score = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    analyst_signal_label = models.CharField(max_length=32, blank=True, default="")
+
+    news_count = models.PositiveIntegerField(default=0)
+    insider_buy_count = models.PositiveIntegerField(default=0)
+    insider_sale_count = models.PositiveIntegerField(default=0)
+
+    raw_payload = models.JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-captured_date", "internal_symbol"]
+        indexes = [
+            models.Index(fields=["captured_date", "source_status"]),
+            models.Index(fields=["captured_date", "analyst_signal_label"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["internal_symbol", "source", "captured_date"],
+                name="unique_finviz_signal_snapshot_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.internal_symbol} {self.captured_date} ({self.source_status})"

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from apps.core.services.finviz.finviz_fundamentals_service import FinvizFundamentalsService
+from apps.core.services.finviz.finviz_signal_overlay_service import FinvizSignalOverlayService
 
 
 class FinvizScoringService:
@@ -14,14 +15,29 @@ class FinvizScoringService:
         "quality_score": 25,
         "balance_score": 15,
         "market_signal_score": 10,
+        "analyst_score": 10,
     }
 
-    def __init__(self, *, fundamentals_service: FinvizFundamentalsService | None = None):
+    def __init__(
+        self,
+        *,
+        fundamentals_service: FinvizFundamentalsService | None = None,
+        signal_overlay_service: FinvizSignalOverlayService | None = None,
+    ):
         self.fundamentals_service = fundamentals_service or FinvizFundamentalsService()
+        self.signal_overlay_service = signal_overlay_service or FinvizSignalOverlayService()
 
     def build_latest_shortlist(self, *, symbols: list[str] | None = None, limit: int = 10) -> dict:
         latest = self.fundamentals_service.list_latest_snapshots(symbols=symbols)
-        scored_items = [self.score_asset(item) for item in latest.get("items", [])]
+        signal_map = {
+            item["internal_symbol"]: item
+            for item in self.signal_overlay_service.list_latest_snapshots(symbols=symbols).get("items", [])
+        }
+        scored_items = []
+        for item in latest.get("items", []):
+            merged = {**item, **signal_map.get(item.get("internal_symbol"), {})}
+            scored_items.append(self.score_asset(merged))
+
         scored_items = [
             item for item in scored_items
             if item.get("source_status") == "ok" and item.get("composite_buy_score") is not None
@@ -86,6 +102,7 @@ class FinvizScoringService:
         quality_score = self._score_quality(item)
         balance_score = self._score_balance(item)
         market_signal_score = self._score_market_signal(item)
+        analyst_score = self._as_float(item.get("analyst_score"))
 
         score_map = {
             "valuation_score": valuation_score,
@@ -93,6 +110,7 @@ class FinvizScoringService:
             "quality_score": quality_score,
             "balance_score": balance_score,
             "market_signal_score": market_signal_score,
+            "analyst_score": analyst_score,
         }
         available_weight = sum(
             weight for key, weight in self.SCORE_WEIGHTS.items()
@@ -118,8 +136,10 @@ class FinvizScoringService:
             "interpretation": interpretation,
             "strengths": strengths,
             "cautions": cautions,
-            "main_reason": strengths[0] if strengths else "Sin señal diferencial clara por ahora.",
+            "main_reason": strengths[0] if strengths else "Sin senal diferencial clara por ahora.",
             "data_quality_label": self._data_quality_label(item.get("data_quality")),
+            "analyst_signal_label_text": self._analyst_signal_label(item.get("analyst_signal_label"), analyst_score),
+            "secondary_overlay_summary": self._build_secondary_overlay_summary(item),
         }
 
     def _score_valuation(self, item: dict[str, Any]) -> float | None:
@@ -233,6 +253,7 @@ class FinvizScoringService:
             "quality_score": "quality",
             "balance_score": "balance",
             "market_signal_score": "timing",
+            "analyst_score": "consenso externo",
         }
 
         for key, score in score_map.items():
@@ -240,9 +261,9 @@ class FinvizScoringService:
                 continue
             label = labels[key]
             if score >= 75:
-                strengths.append(f"Buena señal de {label}.")
+                strengths.append(f"Buena senal de {label}.")
             elif score <= 40:
-                cautions.append(f"Señal floja de {label}.")
+                cautions.append(f"Senal floja de {label}.")
 
         if not strengths and any(score is not None for score in score_map.values()):
             best_key = max(
@@ -258,6 +279,38 @@ class FinvizScoringService:
             if score_map[worst_key] < 60:
                 cautions.append(f"El punto mas flojo hoy pasa por {labels[worst_key]}.")
         return strengths, cautions
+
+    @staticmethod
+    def _analyst_signal_label(signal_label: Any, analyst_score: float | None) -> str:
+        label = str(signal_label or "").strip().lower()
+        if label == "positive":
+            return "Consenso favorable"
+        if label == "negative":
+            return "Consenso adverso"
+        if label == "cautious":
+            return "Consenso fragil"
+        if label == "mixed":
+            return "Consenso mixto"
+        if analyst_score is None:
+            return "Sin consenso visible"
+        return "Consenso disponible"
+
+    @staticmethod
+    def _build_secondary_overlay_summary(item: dict[str, Any]) -> str:
+        ratings_count = int(item.get("ratings_count") or 0)
+        news_count = int(item.get("news_count") or 0)
+        insider_buy_count = int(item.get("insider_buy_count") or 0)
+        insider_sale_count = int(item.get("insider_sale_count") or 0)
+        parts = []
+        if ratings_count:
+            parts.append(f"{ratings_count} rating(s)")
+        if news_count:
+            parts.append(f"{news_count} noticia(s)")
+        if insider_buy_count or insider_sale_count:
+            parts.append(f"insiders B{insider_buy_count}/S{insider_sale_count}")
+        if not parts:
+            return "Sin overlays secundarios visibles por ahora."
+        return "Overlay: " + " · ".join(parts)
 
     @staticmethod
     def _data_quality_label(data_quality: Any) -> str:
