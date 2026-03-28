@@ -522,6 +522,29 @@ Criterio de aceptacion:
   - `apps/core/tests/test_finviz_scoring_service.py`
   - `templates/dashboard/planeacion.html`
 
+### Fase G - Radar de oportunidades
+
+- separar oportunidades externas de nombres ya tenidos
+- usar el score Finviz para sourcing y seguimiento sin meter una watchlist pesada en la UX principal
+
+Criterio de aceptacion:
+
+- se ve claramente que nombres aparecen para mirar afuera y cuales merecen refuerzo dentro de cartera
+- estado: `implementado`
+- resultado:
+  - se agrego `FinvizOpportunityWatchlistService` para construir un radar simple a partir del shortlist Finviz y la cartera actual
+  - el radar separa `ideas externas mejor rankeadas` de `nombres para reforzar dentro de cartera`
+  - `Centro analitico` ahora muestra esta capa como lectura secundaria, sin reemplazar `Planeacion`
+- archivos principales:
+  - `apps/core/services/finviz/finviz_opportunity_watchlist_service.py`
+  - `apps/core/management/commands/inspect_finviz_opportunity_watchlist.py`
+  - `apps/core/tests/test_finviz_opportunity_watchlist_service.py`
+  - `apps/core/tests/test_inspect_finviz_opportunity_watchlist_command.py`
+  - `apps/dashboard/selectors.py`
+  - `apps/dashboard/views.py`
+  - `templates/dashboard/analisis.html`
+  - `apps/dashboard/tests/test_feature_flows.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`

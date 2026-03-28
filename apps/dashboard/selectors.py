@@ -15,7 +15,11 @@ from apps.core.models import Alert
 from apps.core.services.iol_historical_price_service import IOLHistoricalPriceService
 from apps.core.services.iol_fci_catalog_service import IOLFCICatalogService
 from apps.core.services.iol_mep_service import IOLMEPService
-from apps.core.services.finviz import FinvizPortfolioOverlayService, FinvizScoringService
+from apps.core.services.finviz import (
+    FinvizOpportunityWatchlistService,
+    FinvizPortfolioOverlayService,
+    FinvizScoringService,
+)
 from apps.core.services.risk.cvar_service import CVaRService
 from apps.core.services.risk.stress_test_service import StressTestService
 from apps.core.services.risk.var_service import VaRService
@@ -433,6 +437,13 @@ def get_finviz_portfolio_overlay() -> Dict:
     return _get_cached_selector_result(
         "finviz_portfolio_overlay",
         lambda: FinvizPortfolioOverlayService().build_current_portfolio_overlay(),
+    )
+
+
+def get_finviz_opportunity_watchlist() -> Dict:
+    return _get_cached_selector_result(
+        "finviz_opportunity_watchlist",
+        lambda: FinvizOpportunityWatchlistService().build_watchlist(),
     )
 
 

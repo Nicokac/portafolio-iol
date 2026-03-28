@@ -288,6 +288,79 @@
 </section>
 {% endwith %}
 
+{% with finviz_watchlist=finviz_opportunity_watchlist %}
+<section class="mb-5">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light border-bottom-0">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                    <h2 class="h5 mb-1">Radar Finviz de oportunidades</h2>
+                    <p class="text-muted mb-0">Separacion simple entre ideas externas bien rankeadas y nombres ya tenidos que hoy se ven reforzables segun valuation, quality, balance y consenso.</p>
+                </div>
+                <div class="small text-muted">
+                    {% if finviz_watchlist.captured_date %}
+                    Snapshot {{ finviz_watchlist.captured_date }}
+                    {% else %}
+                    Sin radar disponible
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if finviz_watchlist.coverage.shortlist_count %}
+            <div class="alert alert-light border mb-4">
+                <strong>{{ finviz_watchlist.summary }}</strong>
+            </div>
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6">Ideas externas mejor rankeadas</h3>
+                        <div class="small text-muted mb-2">Nombres del universo Finviz que no estan hoy en cartera y aparecen arriba en el score compuesto.</div>
+                        {% for row in finviz_watchlist.external_candidates %}
+                        <div class="d-flex justify-content-between border-bottom py-2 small">
+                            <div>
+                                <strong>{{ row.internal_symbol }}</strong>
+                                <div class="text-muted">{{ row.interpretation.label }} · {{ row.analyst_signal_label_text }}</div>
+                            </div>
+                            <div class="text-end">
+                                <div>score {{ row.composite_buy_score|floatformat:1 }}</div>
+                                <div class="text-muted">{{ row.main_reason }}</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">Todavia no hay ideas externas visibles con la cobertura actual.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="border rounded p-3 h-100">
+                        <h3 class="h6">Nombres para reforzar dentro de cartera</h3>
+                        <div class="small text-muted mb-2">Activos ya tenidos que mantienen lectura Finviz alta y podrian justificar seguimiento o refuerzo.</div>
+                        {% for row in finviz_watchlist.reinforce_candidates %}
+                        <div class="d-flex justify-content-between border-bottom py-2 small">
+                            <div>
+                                <strong>{{ row.internal_symbol }}</strong>
+                                <div class="text-muted">peso {{ row.holding_weight_pct|floatformat:1 }}% · {{ row.analyst_signal_label_text }}</div>
+                            </div>
+                            <div class="text-end">
+                                <div>score {{ row.composite_buy_score|floatformat:1 }}</div>
+                                <div class="text-muted">{{ row.main_reason }}</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted small">Todavia no hay nombres reforzables visibles con la cobertura actual.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-muted">Todavia no hay cobertura Finviz suficiente para construir un radar de oportunidades.</div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endwith %}
+
 <section id="analisis-performance" class="mb-3">
     <div class="border-start border-4 border-danger ps-3 mb-3">
         <h2 class="mb-1">Performance temporal</h2>

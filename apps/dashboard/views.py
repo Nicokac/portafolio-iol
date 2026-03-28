@@ -42,6 +42,7 @@ from apps.dashboard.selectors import (
     get_distribucion_tipo_patrimonial,
     get_evolucion_historica,
     get_finviz_candidate_shortlist,
+    get_finviz_opportunity_watchlist,
     get_finviz_portfolio_overlay,
     get_expected_return_detail,
     get_incremental_proposal_history,
@@ -197,6 +198,7 @@ class DashboardFinvizContextMixin(DashboardBaseContextMixin):
         context = super().get_context_data(**kwargs)
         context['finviz_candidate_shortlist'] = get_finviz_candidate_shortlist(limit=5)
         context['finviz_portfolio_overlay'] = get_finviz_portfolio_overlay()
+        context['finviz_opportunity_watchlist'] = get_finviz_opportunity_watchlist()
         return context
 
 

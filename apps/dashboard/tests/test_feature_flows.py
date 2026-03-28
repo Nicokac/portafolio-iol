@@ -17,7 +17,7 @@ class TestDashboardFeatureFlows:
         ("route_name", "expected_template", "required_context_keys"),
         [
             ("dashboard:dashboard", "dashboard/resumen.html", ["kpis", "alerts", "macro_local", "market_snapshot_feature", "parking_feature", "evolucion_historica"]),
-            ("dashboard:analisis", "dashboard/analisis.html", ["kpis", "concentracion_sector", "riesgo_portafolio_detallado", "analytics_v2_summary", "finviz_portfolio_overlay"]),
+            ("dashboard:analisis", "dashboard/analisis.html", ["kpis", "concentracion_sector", "riesgo_portafolio_detallado", "analytics_v2_summary", "finviz_portfolio_overlay", "finviz_opportunity_watchlist"]),
             ("dashboard:estrategia", "dashboard/estrategia.html", ["kpis", "senales_rebalanceo", "analytics_v2_summary", "evolucion_historica"]),
             ("dashboard:cartera_detalle", "dashboard/cartera_detalle.html", ["kpis", "portafolio", "market_snapshot_feature"]),
             ("dashboard:riesgo_avanzado", "dashboard/riesgo_avanzado.html", ["kpis", "analytics_v2_summary", "riesgo_portafolio"]),
@@ -75,6 +75,9 @@ class TestDashboardFeatureFlows:
         assert "Portafolio vs benchmark compuesto" in content
         assert "Detalle de métricas" in content
         assert "Overlay Finviz del portafolio" in content
+        assert "Radar Finviz de oportunidades" in content
+        assert "Ideas externas mejor rankeadas" in content
+        assert "Nombres para reforzar dentro de cartera" in content
         assert "Beta agregada" in content
         assert "Quality del portafolio" in content
         assert "id=\"analisis-performance\"" in content

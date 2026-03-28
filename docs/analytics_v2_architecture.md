@@ -95,6 +95,7 @@ Uso actual:
   - consenso sintetico de analistas como overlay secundario
 - `Centro analitico`
   - overlay agregado de beta, valuation, quality y leverage
+  - radar de oportunidades para separar ideas externas de nombres ya tenidos que merecen refuerzo
 
 Regla:
 
