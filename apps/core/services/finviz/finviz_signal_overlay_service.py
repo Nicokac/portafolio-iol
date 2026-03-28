@@ -148,9 +148,9 @@ class FinvizSignalOverlayService:
             "insider_buy_count": insider_buy_count,
             "insider_sale_count": insider_sale_count,
             "raw_payload": {
-                "ratings": ratings_rows,
-                "news": news_rows,
-                "insiders": insider_rows,
+                "ratings": self._make_json_safe(ratings_rows),
+                "news": self._make_json_safe(news_rows),
+                "insiders": self._make_json_safe(insider_rows),
             },
             "metadata": {
                 "mapping_scope_source": row.get("source") or "",
@@ -228,3 +228,22 @@ class FinvizSignalOverlayService:
             "insider_sale_count": snapshot.insider_sale_count,
             "metadata": snapshot.metadata or {},
         }
+
+    @classmethod
+    def _make_json_safe(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {str(key): cls._make_json_safe(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [cls._make_json_safe(item) for item in value]
+        if isinstance(value, tuple):
+            return [cls._make_json_safe(item) for item in value]
+        if isinstance(value, Decimal):
+            return float(value)
+        if hasattr(value, "isoformat"):
+            try:
+                return value.isoformat()
+            except Exception:
+                return str(value)
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        return str(value)

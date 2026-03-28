@@ -35,7 +35,10 @@ class FinvizPortfolioOverlayService:
         symbols = [row.simbolo.upper().strip() for row in invested_rows if (row.simbolo or "").strip()]
         latest_snapshots = {
             item["internal_symbol"]: item
-            for item in self.scoring_service.fundamentals_service.list_latest_snapshots(symbols=symbols).get("items", [])
+            for item in self.scoring_service.fundamentals_service.list_latest_snapshots(
+                symbols=symbols,
+                usable_only=True,
+            ).get("items", [])
         }
 
         total_invested = sum(self._as_float(row.valorizado) for row in invested_rows)
@@ -101,7 +104,11 @@ class FinvizPortfolioOverlayService:
             )
 
         if mapped_market_value <= 0:
-            return self._empty_overlay()
+            return self._empty_overlay(
+                captured_date=latest_finviz_date.isoformat(),
+                portfolio_date=latest_portfolio_date.isoformat(),
+                summary=self._build_unusable_summary(symbols=symbols),
+            )
 
         coverage_pct = round(mapped_market_value / total_invested * 100.0, 2) if total_invested > 0 else 0.0
         ranked_by_weight = sorted(overlay_rows, key=lambda item: (-item["weight_pct"], item["symbol"]))
@@ -161,10 +168,15 @@ class FinvizPortfolioOverlayService:
         }
 
     @staticmethod
-    def _empty_overlay() -> dict:
+    def _empty_overlay(
+        *,
+        captured_date: str | None = None,
+        portfolio_date: str | None = None,
+        summary: str | None = None,
+    ) -> dict:
         return {
-            "captured_date": None,
-            "portfolio_date": None,
+            "captured_date": captured_date,
+            "portfolio_date": portfolio_date,
             "coverage": {
                 "mapped_assets": 0,
                 "portfolio_assets": 0,
@@ -179,7 +191,7 @@ class FinvizPortfolioOverlayService:
             "beta_profile": {"label": "Sin base suficiente", "level": "unknown"},
             "leaders": {"highest_weight": [], "highest_beta": [], "best_quality": []},
             "warnings": {"expensive_names": [], "fragile_balance": []},
-            "summary": "Todavia no hay base suficiente de Finviz para leer el portafolio.",
+            "summary": summary or "Todavia no hay base suficiente de Finviz para leer el portafolio.",
             "items": [],
         }
 
@@ -220,6 +232,16 @@ class FinvizPortfolioOverlayService:
             f"Cobertura Finviz {coverage_pct:.1f}% del portafolio invertido. "
             f"Beta ponderada {beta:.2f}, quality {quality:.1f}, valuation {valuation:.1f}."
         )
+
+    def _build_unusable_summary(self, *, symbols: list[str]) -> str:
+        latest_items = self.scoring_service.fundamentals_service.list_latest_snapshots(symbols=symbols).get("items", [])
+        dependency_error = any(
+            str(((item.get("metadata") or {}).get("client_error") or {}).get("code") or "").strip() == "dependency_error"
+            for item in latest_items
+        )
+        if dependency_error:
+            return "La ultima corrida Finviz fallo por dependencia faltante; todavia no hay datos utilizables para leer el portafolio."
+        return "Existe corrida Finviz reciente, pero no dejo datos utilizables para leer el portafolio."
 
     @staticmethod
     def _is_candidate_tipo(tipo: str) -> bool:

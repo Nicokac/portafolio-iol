@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from django.utils import timezone
 
-from apps.core.models import FinvizFundamentalsSnapshot
+from apps.core.models import FinvizFundamentalsSnapshot, FinvizSignalSnapshot
 from apps.core.services.finviz.finviz_scoring_service import FinvizScoringService
 
 
@@ -173,3 +173,42 @@ def test_compare_candidates_returns_gap_summary():
     assert payload["count"] == 2
     assert payload["winner"]["internal_symbol"] in {"MSFT", "KO"}
     assert "queda arriba" in payload["summary"]
+
+
+@pytest.mark.django_db
+def test_build_latest_shortlist_keeps_fundamentals_ok_status_when_signal_snapshot_failed():
+    captured_at = timezone.now()
+    FinvizFundamentalsSnapshot.objects.create(
+        internal_symbol="AAPL",
+        finviz_symbol="AAPL",
+        captured_at=captured_at,
+        captured_date=captured_at.date(),
+        source_status="ok",
+        data_quality="full",
+        fwd_pe=Decimal("20"),
+        peg=Decimal("1.2"),
+        eps_next_y=Decimal("12"),
+        eps_next_5y=Decimal("10"),
+        sales_past_5y=Decimal("8"),
+        roic=Decimal("18"),
+        oper_m=Decimal("25"),
+        profit_m=Decimal("20"),
+        debt_eq=Decimal("0.5"),
+        quick_r=Decimal("1.2"),
+        beta=Decimal("1.0"),
+        change_pct=Decimal("2"),
+        volume=2000000,
+    )
+    FinvizSignalSnapshot.objects.create(
+        internal_symbol="AAPL",
+        finviz_symbol="AAPL",
+        captured_at=captured_at,
+        captured_date=captured_at.date(),
+        source_status="error",
+        metadata={"errors": {"news": {"code": "fetch_error"}}},
+    )
+
+    payload = FinvizScoringService().build_latest_shortlist(limit=5)
+
+    assert payload["count"] == 1
+    assert payload["items"][0]["internal_symbol"] == "AAPL"

@@ -29,8 +29,20 @@ class FinvizScoringService:
 
     def build_latest_shortlist(self, *, symbols: list[str] | None = None, limit: int = 10) -> dict:
         latest = self.fundamentals_service.list_latest_snapshots(symbols=symbols)
+        signal_fields = (
+            "ratings_count",
+            "ratings_positive_count",
+            "ratings_negative_count",
+            "ratings_neutral_count",
+            "analyst_score",
+            "analyst_signal_label",
+            "news_count",
+            "insider_buy_count",
+            "insider_sale_count",
+            "metadata",
+        )
         signal_map = {
-            item["internal_symbol"]: item
+            item["internal_symbol"]: {key: item.get(key) for key in signal_fields}
             for item in self.signal_overlay_service.list_latest_snapshots(symbols=symbols).get("items", [])
         }
         scored_items = []

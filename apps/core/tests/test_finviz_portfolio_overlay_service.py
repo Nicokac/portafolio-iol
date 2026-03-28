@@ -103,3 +103,46 @@ def test_build_current_portfolio_overlay_returns_empty_without_snapshots():
     assert payload["coverage"]["mapped_assets"] == 0
     assert payload["items"] == []
     assert "sin base suficiente" in payload["summary"].lower() or "todavia no hay base" in payload["summary"].lower()
+
+
+@pytest.mark.django_db
+def test_build_current_portfolio_overlay_ignores_error_only_snapshots():
+    captured_at = timezone.now()
+    portfolio_date = timezone.now()
+    ActivoPortafolioSnapshot.objects.create(
+        fecha_extraccion=portfolio_date,
+        pais_consulta="argentina",
+        simbolo="AAPL",
+        descripcion="Cedear Apple",
+        cantidad=1,
+        comprometido=0,
+        disponible_inmediato=1,
+        puntos_variacion=0,
+        variacion_diaria=0,
+        ultimo_precio=1,
+        ppc=1,
+        ganancia_porcentaje=0,
+        ganancia_dinero=0,
+        valorizado=100,
+        pais_titulo="argentina",
+        mercado="bcba",
+        tipo="CEDEARS",
+        plazo="t1",
+        moneda="peso_Argentino",
+    )
+    FinvizFundamentalsSnapshot.objects.create(
+        internal_symbol="AAPL",
+        finviz_symbol="AAPL",
+        captured_at=captured_at,
+        captured_date=captured_at.date(),
+        source_status="error",
+        data_quality="missing",
+        metadata={"client_error": {"code": "dependency_error", "message": "missing dependency"}},
+        raw_payload={},
+    )
+
+    payload = FinvizPortfolioOverlayService().build_current_portfolio_overlay()
+
+    assert payload["captured_date"] == captured_at.date().isoformat()
+    assert payload["coverage"]["mapped_assets"] == 0
+    assert "dependencia faltante" in payload["summary"].lower()

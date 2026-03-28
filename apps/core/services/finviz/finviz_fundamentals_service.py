@@ -121,12 +121,20 @@ class FinvizFundamentalsService:
             "captured_date": captured_at.date().isoformat(),
         }
 
-    def list_latest_snapshots(self, *, symbols: list[str] | None = None, limit: int | None = None) -> dict:
+    def list_latest_snapshots(
+        self,
+        *,
+        symbols: list[str] | None = None,
+        limit: int | None = None,
+        usable_only: bool = False,
+    ) -> dict:
         latest_date = FinvizFundamentalsSnapshot.objects.aggregate(latest=Max("captured_date"))["latest"]
         if latest_date is None:
             return {"captured_date": None, "count": 0, "items": []}
 
         queryset = FinvizFundamentalsSnapshot.objects.filter(captured_date=latest_date).order_by("internal_symbol")
+        if usable_only:
+            queryset = queryset.filter(source_status="ok")
         if symbols:
             normalized_symbols = [str(symbol).upper().strip() for symbol in symbols if str(symbol).strip()]
             queryset = queryset.filter(internal_symbol__in=normalized_symbols)

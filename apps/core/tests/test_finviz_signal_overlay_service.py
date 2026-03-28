@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+import pandas as pd
 from django.utils import timezone
 
 from apps.core.models import FinvizSignalSnapshot
@@ -84,3 +85,23 @@ def test_list_latest_snapshots_serializes_signal_fields():
     assert payload["count"] == 1
     assert payload["items"][0]["analyst_score"] == 80.0
     assert payload["items"][0]["news_count"] == 5
+
+
+@pytest.mark.django_db
+def test_sync_signals_makes_timestamp_payload_json_safe():
+    ParametroActivo.objects.create(
+        simbolo="NVDA",
+        sector="Tecnologia",
+        bloque_estrategico="Growth",
+        pais_exposicion="USA",
+        tipo_patrimonial="Equity",
+    )
+    client = DummyFinvizSignalClient(
+        news={"NVDA": [{"Date": pd.Timestamp("2026-03-28 10:00:00"), "Title": "Headline"}]},
+    )
+
+    FinvizSignalOverlayService(client=client).sync_signals(scope="metadata")
+
+    snapshot = FinvizSignalSnapshot.objects.get(internal_symbol="NVDA")
+    assert snapshot.news_count == 1
+    assert snapshot.raw_payload["news"][0]["Date"] == "2026-03-28T10:00:00"

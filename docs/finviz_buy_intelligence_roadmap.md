@@ -602,6 +602,43 @@ Criterio de aceptacion:
   - `templates/dashboard/planeacion.html`
   - `apps/dashboard/tests/test_feature_flows.py`
 
+### Fase K1 - Diagnostico y hardening de ingesta
+
+- cerrar la cadena real de ingesta Finviz
+- distinguir dependencia faltante de bloqueo de red o fetch
+
+Criterio de aceptacion:
+
+- el proyecto expone claramente por que Finviz no carga y no deja al usuario interpretando un silencio ambiguo
+- estado: `implementado`
+- resultado:
+  - `finvizfinance` quedo declarado en `requirements/base.txt`
+  - se confirmo por shell que la dependencia ya importa correctamente en el entorno
+  - se verifico que la falla actual de fetch no es de codigo sino de conectividad/permisos hacia `finviz.com`
+  - los snapshots persistidos guardan ese error tecnico en `metadata.client_error`
+- archivos principales:
+  - `requirements/base.txt`
+  - `apps/core/services/finviz/finviz_client.py`
+  - `apps/core/models.py`
+
+### Fase K2 - Fallback honesto de overlay y cobertura
+
+- evitar que snapshots Finviz con `source_status=error` se muestren como cobertura util
+- hacer que la UI falle de forma honesta cuando no hay base real
+
+Criterio de aceptacion:
+
+- el overlay ya no muestra 100% de cobertura ni scores `0.0` cuando toda la corrida Finviz fallo
+- estado: `implementado`
+- resultado:
+  - `FinvizPortfolioOverlayService` ahora ignora snapshots no utilizables
+  - si la ultima corrida fallo por dependencia o fetch, el resumen lo dice explicitamente
+  - `Centro analitico` y `Planeacion` quedan conectados pero sin fingir datos validos
+- archivos principales:
+  - `apps/core/services/finviz/finviz_fundamentals_service.py`
+  - `apps/core/services/finviz/finviz_portfolio_overlay_service.py`
+  - `apps/core/tests/test_finviz_portfolio_overlay_service.py`
+
 ## Archivos que deberian mantenerse alineados
 
 - `docs/analytics_v2_architecture.md`
