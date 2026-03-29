@@ -105,6 +105,27 @@ def build_planeacion_incremental_context_payload(
         split=candidate_split_incremental_portfolio_comparison,
         manual=manual_incremental_portfolio_simulation_comparison,
     )
+    activity_anchor_map = {
+        "general": "#planeacion-comparator-general",
+        "candidate": "#planeacion-comparator-candidate",
+        "split": "#planeacion-comparator-split",
+        "manual": "#planeacion-comparator-manual",
+    }
+    activity_clear_url_map = {
+        "general": comparator_form_state.get("general_reset_url") or "",
+        "candidate": comparator_form_state.get("candidate_reset_url") or "",
+        "split": comparator_form_state.get("split_reset_url") or "",
+        "manual": comparator_form_state.get("manual_reset_url") or "",
+    }
+    incremental_comparator_activity_summary["items"] = [
+        {
+            **item,
+            "anchor": activity_anchor_map.get(str(item.get("key") or ""), "#planeacion-aportes"),
+            "clear_url": activity_clear_url_map.get(str(item.get("key") or ""), ""),
+            "can_clear": bool(activity_clear_url_map.get(str(item.get("key") or ""), "")),
+        }
+        for item in incremental_comparator_activity_summary.get("items") or []
+    ]
     incremental_reactivation_vs_backlog_summary = _build_incremental_reactivation_vs_backlog_summary(
         incremental_reactivation_summary,
         incremental_backlog_prioritization,

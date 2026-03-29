@@ -262,6 +262,7 @@ Efecto actual:
 - Los comparadores incremental general, por candidato, por split y manual ahora aceptan filtro por readiness operativa (`all`, `ready`, `review_execution`, `monitor`) sobre el set visible, sin alterar el score base ni la heuristica de ranking.
 - Los formularios de comparadores incrementales ahora preservan el estado util de los otros comparadores mediante hidden inputs y reset URLs especificos para evitar perder contexto de trabajo dentro de `Planeacion`.
 - `Planeacion` ahora resume arriba del bloque de exploracion que comparadores siguen activos, que bloque se esta evaluando y que filtros de readiness siguen aplicados para reducir friccion de navegacion.
+- Ese resumen superior ahora tambien ofrece CTAs rapidos para saltar al comparador activo y limpiar solo ese contexto puntual sin perder el resto del trabajo visible.
 
 ---
 
